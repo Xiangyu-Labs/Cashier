@@ -26,7 +26,6 @@ interface DetailsTabProps {
     maxAmount?: string | null;
     search?: string | null;
   };
-  onResetFilters: () => void;
   timeZone?: string;
   onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
@@ -38,7 +37,6 @@ export function DetailsTab({
   periodParams,
   onFiltersChange,
   advancedFilters,
-  onResetFilters,
   timeZone,
   onQueryStateChange,
 }: DetailsTabProps) {
@@ -77,7 +75,7 @@ export function DetailsTab({
       }),
     [advancedFilters, periodParams]
   );
-  const batch = useDetailsBatchController(ledgerId, entryIds, queryFingerprint);
+  const batch = useDetailsBatchController(ledgerId, entryIds, queryFingerprint, timeZone);
   const { filters } = useDetailsTabFilters({
     periodParams,
     advancedFilters,
@@ -101,7 +99,6 @@ export function DetailsTab({
       filters={filters}
       advancedFilters={advancedFilters}
       onFiltersChange={onFiltersChange}
-      onResetFilters={onResetFilters}
       entries={data.entries}
       groupedItems={groupedItems}
       isLoading={data.isLoading}

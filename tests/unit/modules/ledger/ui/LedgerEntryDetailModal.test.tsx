@@ -107,6 +107,8 @@ function renderModal({
     <LedgerEntryDetailModal
       ledgerEntry={ledgerEntry}
       categories={[]}
+      mainCurrency="CNY"
+      preferredCurrencies={[]}
       open
       onClose={onClose}
       onUpdate={onUpdate}
@@ -216,6 +218,8 @@ describe("LedgerEntryDetailModal feedback", () => {
       <LedgerEntryDetailModal
         ledgerEntry={ledgerEntry}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
         open
         onClose={vi.fn()}
         onUpdate={onUpdate}
@@ -229,6 +233,8 @@ describe("LedgerEntryDetailModal feedback", () => {
       <LedgerEntryDetailModal
         ledgerEntry={ledgerEntry}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
         open={false}
         onClose={vi.fn()}
         onUpdate={onUpdate}
@@ -239,6 +245,8 @@ describe("LedgerEntryDetailModal feedback", () => {
       <LedgerEntryDetailModal
         ledgerEntry={ledgerEntry}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
         open
         onClose={vi.fn()}
         onUpdate={onUpdate}
@@ -259,6 +267,8 @@ describe("LedgerEntryDetailModal feedback", () => {
         loadError
         onReload={onReload}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
         open
         onClose={onClose}
         onUpdate={vi.fn(async () => undefined)}
@@ -284,6 +294,8 @@ describe("LedgerEntryDetailModal feedback", () => {
         loadError
         onReload={onReload}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
         open
         onClose={onClose}
         onUpdate={vi.fn(async () => undefined)}

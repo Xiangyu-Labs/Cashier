@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useSelection } from "@/hooks/use-selection";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import {
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
@@ -13,10 +14,13 @@ import {
   previewBatchLedgerEntryDateAction,
 } from "@/modules/ledger/actions";
 
+type BatchDateImpact = Awaited<ReturnType<typeof previewBatchLedgerEntryDateAction>>;
+
 export function useDetailsBatchController(
   ledgerId: string,
   entryIds: readonly string[],
-  queryFingerprint: string
+  queryFingerprint: string,
+  timeZone?: string
 ) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
@@ -24,10 +28,21 @@ export function useDetailsBatchController(
   const selection = useSelection({ allIds, queryFingerprint });
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dateImpact, setDateImpact] = useState<Awaited<
-    ReturnType<typeof previewBatchLedgerEntryDateAction>
-  > | null>(null);
+  const [selectedDate, setSelectedDate] = useState(
+    () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date())
+  );
+  const [dateImpact, setDateImpact] = useState<BatchDateImpact | null>(null);
+  const [dateSelectionSnapshot, setDateSelectionSnapshot] = useState<{
+    entryIds: string[];
+    impact: BatchDateImpact;
+  } | null>(null);
+  const setDateDialogVisibility = useCallback((open: boolean) => {
+    setDateDialogOpen(open);
+    if (!open) {
+      setDateImpact(null);
+      setDateSelectionSnapshot(null);
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(selection.isSelectionMode);
@@ -68,10 +83,15 @@ export function useDetailsBatchController(
     },
   });
   const previewDate = useMutation({
-    mutationFn: () => previewBatchLedgerEntryDateAction(ledgerId, selection.selectedIds),
-    onSuccess: (impact) => {
+    mutationFn: async () => {
+      const snapshotEntryIds = [...selection.selectedIds];
+      const impact = await previewBatchLedgerEntryDateAction(ledgerId, snapshotEntryIds);
+      return { entryIds: snapshotEntryIds, impact };
+    },
+    onSuccess: ({ entryIds: snapshotEntryIds, impact }) => {
       setDateImpact(impact);
-      setDateDialogOpen(true);
+      setDateSelectionSnapshot({ entryIds: snapshotEntryIds, impact });
+      setDateDialogVisibility(true);
     },
     onError: () => toast.error(tCommon("error")),
   });
@@ -80,26 +100,31 @@ export function useDetailsBatchController(
     void
   >(ledgerId, {
     mutationFn: () =>
-      batchUpdateLedgerEntryDatesAction(ledgerId, selection.selectedIds, selectedDate),
+      batchUpdateLedgerEntryDatesAction(
+        ledgerId,
+        dateSelectionSnapshot?.entryIds ?? selection.selectedIds,
+        selectedDate
+      ),
     resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("error"),
     onSuccess: () => {
       toast.success(t("dateUpdated"));
       selection.clearSelection();
-      setDateDialogOpen(false);
+      setDateDialogVisibility(false);
     },
   });
 
   return {
     ...selection,
     dateDialogOpen,
-    setDateDialogOpen,
+    setDateDialogOpen: setDateDialogVisibility,
     deleteDialogOpen,
     setDeleteDialogOpen,
     selectedDate,
     setSelectedDate,
     dateImpact,
+    dateSelectionSnapshot,
     update,
     remove,
     previewDate,

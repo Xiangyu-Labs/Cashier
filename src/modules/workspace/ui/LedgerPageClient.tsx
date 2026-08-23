@@ -368,14 +368,7 @@ export function LedgerPageClient({
     getServerTimeZone
   );
   const effectiveTimeZone = fixedTimeZone ?? deviceTimeZone;
-  const {
-    periodParams,
-    filters,
-    filterParams,
-    handleFiltersChange,
-    applyStreamStatusPreset,
-    resetFilters,
-  } = usePeriodFilter({
+  const { periodParams, filters, filterParams, handleFiltersChange } = usePeriodFilter({
     pathname,
     searchParams,
     initialPeriod,
@@ -396,6 +389,17 @@ export function LedgerPageClient({
           predicate: (query) =>
             (query.queryKey[0] === "ledgerEntries" || query.queryKey[0] === "summary") &&
             query.queryKey[1] === ledgerId,
+          type: "active",
+        },
+        { throwOnError: true }
+      );
+      return;
+    }
+    if (activeTab === "stream") {
+      void queryClient.refetchQueries(
+        {
+          predicate: (query) =>
+            query.queryKey[0] === "sourceDocuments" && query.queryKey[1] === ledgerId,
           type: "active",
         },
         { throwOnError: true }
@@ -533,8 +537,6 @@ export function LedgerPageClient({
                   onFiltersChange={handleFiltersChange}
                   advancedFilters={advancedFilters}
                   collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
-                  onApplyPreset={applyStreamStatusPreset}
-                  onResetFilters={resetFilters}
                   onQueryStateChange={handleQueryStateChange}
                   {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
                 />
@@ -556,7 +558,6 @@ export function LedgerPageClient({
                   periodParams={periodParams}
                   onFiltersChange={handleFiltersChange}
                   advancedFilters={advancedFilters}
-                  onResetFilters={resetFilters}
                   onQueryStateChange={handleQueryStateChange}
                   {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
                 />

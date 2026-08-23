@@ -18,7 +18,7 @@ const defaultProps = {
   onPeriodChange: vi.fn(),
   totalPrefix: "Total",
   mainCurrency: "CNY",
-  filteredTotal: 123.45,
+  filteredTotal: "123.45",
 };
 
 describe("LedgerEntriesToolbar", () => {
@@ -70,14 +70,6 @@ describe("LedgerEntriesToolbar", () => {
   it("does not render an external status reset control", () => {
     render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
     expect(screen.queryByRole("button", { name: "全部状态" })).not.toBeInTheDocument();
-  });
-
-  it("passes onApplyPreset to EntryFilterPanel", () => {
-    const onApplyPreset = vi.fn();
-
-    render(<LedgerEntriesToolbar {...defaultProps} onApplyPreset={onApplyPreset} />);
-
-    expect(screen.getByRole("button", { name: "筛选" })).toBeDefined();
   });
 
   it("does not render EntryFilterPanel in selection mode", () => {

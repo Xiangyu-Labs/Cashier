@@ -181,14 +181,12 @@ describe("EntryFilterPanel", () => {
 
   it("keeps needs_attention preset in the draft until Apply", async () => {
     const user = userEvent.setup();
-    const onApplyPreset = vi.fn();
     const onFiltersChange = vi.fn();
 
     render(
       <EntryFilterPanel
         filters={{}}
         onFiltersChange={onFiltersChange}
-        onApplyPreset={onApplyPreset}
         showCategory={false}
         showCurrency={false}
       />
@@ -198,7 +196,6 @@ describe("EntryFilterPanel", () => {
     // It's unique — no checkbox shares this text
     const needsAttentionBtn = screen.getByRole("button", { name: "待处理" });
     await user.click(needsAttentionBtn);
-    expect(onApplyPreset).not.toHaveBeenCalled();
     expect(onFiltersChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
     expect(onFiltersChange).toHaveBeenCalledTimes(1);
@@ -212,14 +209,12 @@ describe("EntryFilterPanel", () => {
 
   it("keeps in_progress preset in the draft until Apply", async () => {
     const user = userEvent.setup();
-    const onApplyPreset = vi.fn();
     const onFiltersChange = vi.fn();
 
     render(
       <EntryFilterPanel
         filters={{}}
         onFiltersChange={onFiltersChange}
-        onApplyPreset={onApplyPreset}
         showCategory={false}
         showCurrency={false}
       />
@@ -228,7 +223,6 @@ describe("EntryFilterPanel", () => {
     // "进行中" is uniquely the in_progress preset button (distinct from "处理中" checkbox label)
     const presetButton = screen.getByRole("button", { name: "进行中" });
     await user.click(presetButton);
-    expect(onApplyPreset).not.toHaveBeenCalled();
     expect(onFiltersChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
     expect(onFiltersChange).toHaveBeenCalledTimes(1);

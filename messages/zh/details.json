@@ -288,6 +288,7 @@
     "reloadServerData": "重新加载最新数据"
   },
   "LedgerEntryDetail": {
+    "title": "账目详情",
     "category": "交易类别",
     "entryDate": "交易时间",
     "status": "状态",

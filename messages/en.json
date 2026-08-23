@@ -378,6 +378,7 @@
     "discardAndLeave": "Discard and leave"
   },
   "LedgerEntryDetail": {
+    "title": "Ledger entry details",
     "category": "Transaction Category",
     "entryDate": "Transaction Time",
     "status": "Status",

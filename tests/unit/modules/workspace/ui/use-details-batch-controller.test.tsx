@@ -8,10 +8,12 @@ const {
   batchDeleteLedgerEntriesActionMock,
   batchUpdateLedgerEntriesActionMock,
   batchUpdateLedgerEntryDatesActionMock,
+  previewBatchLedgerEntryDateActionMock,
 } = vi.hoisted(() => ({
   batchDeleteLedgerEntriesActionMock: vi.fn(),
   batchUpdateLedgerEntriesActionMock: vi.fn(),
   batchUpdateLedgerEntryDatesActionMock: vi.fn(),
+  previewBatchLedgerEntryDateActionMock: vi.fn(),
 }));
 
 vi.mock("next-intl", () => ({
@@ -26,7 +28,7 @@ vi.mock("@/modules/ledger/server-actions/entries", () => ({
   batchDeleteLedgerEntriesAction: batchDeleteLedgerEntriesActionMock,
   batchUpdateLedgerEntriesAction: batchUpdateLedgerEntriesActionMock,
   batchUpdateLedgerEntryDatesAction: batchUpdateLedgerEntryDatesActionMock,
-  previewBatchLedgerEntryDateAction: vi.fn(),
+  previewBatchLedgerEntryDateAction: previewBatchLedgerEntryDateActionMock,
 }));
 
 function deferred() {
@@ -140,5 +142,42 @@ describe("useDetailsBatchController", () => {
       refreshGate.resolve();
       await mutation;
     });
+  });
+
+  it("confirms a date preview against its captured entry ids", async () => {
+    const { wrapper } = setup();
+    previewBatchLedgerEntryDateActionMock.mockResolvedValueOnce({
+      selectedEntryCount: 2,
+      sourceDocumentCount: 1,
+      affectedEntryCount: 2,
+      sourceDocumentIds: ["document-1"],
+    });
+    batchUpdateLedgerEntryDatesActionMock.mockResolvedValueOnce({ affectedCount: 2 });
+    const { result } = renderHook(
+      () => useDetailsBatchController("ledger-1", ["entry-1", "entry-2"], "fingerprint"),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.handleSelect("entry-1", true);
+      result.current.handleSelect("entry-2", true);
+    });
+    await act(async () => {
+      await result.current.previewDate.mutateAsync();
+    });
+    expect(previewBatchLedgerEntryDateActionMock).toHaveBeenCalledWith("ledger-1", [
+      "entry-1",
+      "entry-2",
+    ]);
+
+    act(() => result.current.clearSelection());
+    await act(async () => {
+      await result.current.updateDates.mutateAsync();
+    });
+    expect(batchUpdateLedgerEntryDatesActionMock).toHaveBeenCalledWith(
+      "ledger-1",
+      ["entry-1", "entry-2"],
+      result.current.selectedDate
+    );
   });
 });

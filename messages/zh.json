@@ -378,6 +378,7 @@
     "discardAndLeave": "放弃并离开"
   },
   "LedgerEntryDetail": {
+    "title": "账目详情",
     "category": "交易类别",
     "entryDate": "交易时间",
     "status": "状态",

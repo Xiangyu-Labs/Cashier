@@ -25,8 +25,8 @@ export interface EntryPendingChanges {
 interface LedgerEntryViewDetailsProps {
   ledgerEntry: LedgerEntry;
   categories: EntryCategory[];
-  preferredCurrencies?: string[];
-  mainCurrency?: string;
+  preferredCurrencies: string[];
+  mainCurrency: string;
   pendingChanges: EntryPendingChanges;
   onFieldChange: (changes: EntryPendingChanges) => void;
   onSave: () => void;
@@ -41,8 +41,8 @@ interface LedgerEntryViewDetailsProps {
 export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   ledgerEntry,
   categories,
-  preferredCurrencies = [],
-  mainCurrency = "CNY",
+  preferredCurrencies,
+  mainCurrency,
   pendingChanges,
   onFieldChange,
   onSave,

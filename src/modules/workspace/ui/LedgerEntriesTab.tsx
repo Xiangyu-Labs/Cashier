@@ -17,7 +17,6 @@ import {
 import { getStreamTotalAction } from "@/modules/source-document/actions";
 import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
-import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
@@ -37,8 +36,6 @@ interface LedgerEntriesTabProps {
   onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
-  onApplyPreset?: (preset: StreamStatusPreset) => void;
-  onResetFilters: () => void;
   timeZone?: string;
   onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
@@ -51,8 +48,6 @@ export function LedgerEntriesTab({
   onFiltersChange,
   advancedFilters,
   collapseEntriesDefault = false,
-  onApplyPreset,
-  onResetFilters,
   timeZone,
   onQueryStateChange,
 }: LedgerEntriesTabProps) {
@@ -93,11 +88,12 @@ export function LedgerEntriesTab({
       startDateStr,
     ]
   );
-  const { data: streamTotalData } = useQuery({
+  const streamTotalQuery = useQuery({
     queryKey: streamQueryDescriptor.totalQueryKey,
     queryFn: () => getStreamTotalAction(ledgerId, streamQueryDescriptor.totalInput),
   });
-  const filteredTotal = streamTotalData == null ? undefined : Number(streamTotalData.total);
+  const { data: streamTotalData } = streamTotalQuery;
+  const filteredTotal = streamTotalData?.total;
   const hasActiveFilters =
     filters.startDate != null ||
     filters.endDate != null ||
@@ -143,16 +139,33 @@ export function LedgerEntriesTab({
     ...(filters.search != null ? { search: filters.search } : {}),
     queryDescriptor: streamQueryDescriptor,
   });
+  const streamQueryStatus =
+    queryStatus === "error" || streamTotalQuery.status === "error"
+      ? "error"
+      : queryStatus === "pending" || streamTotalQuery.status === "pending"
+        ? "pending"
+        : "success";
+  const streamQueryIsFetching = queryIsFetching || streamTotalQuery.isFetching;
+  // The total query is auxiliary; only page data counts as list data for the
+  // error-with-data versus error-empty decision.
+  const streamQueryHasData = queryHasData;
   useEffect(() => {
     onQueryStateChange?.({
       ledgerId,
       tab: "stream",
       queryKey,
-      status: queryStatus,
-      isFetching: queryIsFetching,
-      hasData: queryHasData,
+      status: streamQueryStatus,
+      isFetching: streamQueryIsFetching,
+      hasData: streamQueryHasData,
     });
-  }, [ledgerId, onQueryStateChange, queryHasData, queryIsFetching, queryKey, queryStatus]);
+  }, [
+    ledgerId,
+    onQueryStateChange,
+    queryKey,
+    streamQueryHasData,
+    streamQueryIsFetching,
+    streamQueryStatus,
+  ]);
 
   // Selection uses unified stream groups
   const allSourceDocumentIds = useMemo(
@@ -339,8 +352,7 @@ export function LedgerEntriesTab({
         {...(!hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
         mainCurrency={mainCurrency}
         {...(filteredTotal === undefined ? {} : { filteredTotal })}
-        onResetFilters={onResetFilters}
-        {...(onApplyPreset != null ? { onApplyPreset } : {})}
+        {...(timeZone != null ? { timeZone } : {})}
       />
       {streamTotalData?.unconvertedCount != null && streamTotalData.unconvertedCount > 0 ? (
         <div

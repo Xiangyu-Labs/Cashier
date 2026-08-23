@@ -9,8 +9,8 @@ function entry(id: string): LedgerEntry {
 describe("ledger entry group virtualization rows", () => {
   it("flattens headers and entries with stable unique keys", () => {
     const rows = flattenLedgerEntryGroups([
-      { title: "Today", total: 3, items: [entry("entry-1"), entry("entry-2")] },
-      { title: "Yesterday", total: 4, items: [entry("entry-3")] },
+      { title: "Today", total: "3", items: [entry("entry-1"), entry("entry-2")] },
+      { title: "Yesterday", total: "4", items: [entry("entry-3")] },
     ]);
 
     expect(rows.map((row) => row.kind)).toEqual(["header", "entry", "entry", "header", "entry"]);

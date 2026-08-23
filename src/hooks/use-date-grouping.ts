@@ -1,12 +1,13 @@
 "use client";
 import { useMemo, useCallback } from "react";
 import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { add as addDecimal } from "@/lib/money/decimal";
 
 export interface DateGroup<T> {
   title: string;
   timestamp: number;
   items: T[];
-  total: number;
+  total: string;
 }
 
 export interface UseDateGroupingOptions<T> {
@@ -14,8 +15,8 @@ export interface UseDateGroupingOptions<T> {
   items: T[];
   /** Function to extract date string (yyyy-MM-dd) from item */
   getDateStr: (item: T) => string;
-  /** Function to extract amount from item for total calculation */
-  getAmount: (item: T) => number;
+  /** Function to extract a decimal amount from an item for total calculation */
+  getAmount: (item: T) => string;
   /** Current locale for date formatting */
   locale: string;
   /** Translation function for "today" and "yesterday" */
@@ -86,12 +87,12 @@ export function useDateGrouping<T>({
         title,
         timestamp: sortTimestamp,
         items: [],
-        total: 0,
+        total: "0",
       };
       groups[dateStr] = group;
 
       group.items.push(item);
-      group.total += getAmount(item);
+      group.total = addDecimal(group.total, getAmount(item));
     });
 
     const grouped = Object.values(groups);

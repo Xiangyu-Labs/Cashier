@@ -19,8 +19,8 @@ interface LedgerEntryDetailModalProps {
   loadError?: boolean;
   onReload?: () => Promise<void>;
   categories: EntryCategory[];
-  preferredCurrencies?: string[];
-  mainCurrency?: string;
+  preferredCurrencies: string[];
+  mainCurrency: string;
   open: boolean;
   onClose: () => void;
   onBack?: () => void;
@@ -43,7 +43,7 @@ function LedgerEntryDetailEditor({
   onReload,
   categories,
   preferredCurrencies,
-  mainCurrency = "CNY",
+  mainCurrency,
   open,
   onClose,
   onBack,
@@ -262,7 +262,7 @@ function LedgerEntryDetailEditor({
           onPointerDownOutside={(event) => busy && event.preventDefault()}
         >
           <VisuallyHidden.Root>
-            <DialogTitle>{t("unsavedChanges")}</DialogTitle>
+            <DialogTitle>{t("title")}</DialogTitle>
           </VisuallyHidden.Root>
 
           {onBack != null && (
@@ -330,7 +330,7 @@ function LedgerEntryDetailEditor({
               onCancelEdit={handleCancelEditMode}
               onDelete={() => setShowDeleteConfirm(true)}
               busy={busy}
-              {...(preferredCurrencies !== undefined ? { preferredCurrencies } : {})}
+              preferredCurrencies={preferredCurrencies}
               {...(onViewSourceDocument != null &&
               ledgerEntry.sourceDocumentId != null &&
               ledgerEntry.sourceDocumentId !== ""

@@ -38,7 +38,6 @@ interface DetailsTabViewProps {
     search?: string | null;
   };
   onFiltersChange: (filters: EntryFilters) => void;
-  onResetFilters: () => void;
   entries: LedgerEntry[];
   groupedItems: GroupedEntry[];
   isLoading: boolean;
@@ -60,7 +59,6 @@ export function DetailsTabView(props: DetailsTabViewProps) {
     filters,
     advancedFilters,
     onFiltersChange,
-    onResetFilters,
     entries,
     groupedItems,
     isLoading,
@@ -91,7 +89,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
         {...(!batch.isSelectionMode && monthStats.mainTotal != null
           ? {
               totalLabel: formatCurrencyAmount(
-                Number(monthStats.mainTotal),
+                monthStats.mainTotal,
                 monthStats.mainCurrency,
                 locale
               ),
@@ -141,10 +139,10 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             filters={filters}
             onFiltersChange={onFiltersChange}
             periodParams={periodParams}
+            categories={categories}
             preferredCurrencies={ledger?.settings.currencies ?? []}
             showStatus={false}
             className="flex-1 sm:flex-none"
-            onResetFilters={onResetFilters}
           />
         ) : null}
       </DetailsToolbar>

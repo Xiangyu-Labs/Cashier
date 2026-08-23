@@ -40,8 +40,6 @@ interface EntryFilterPanelProps {
   showCurrency?: boolean;
   showStatus?: boolean;
   className?: string;
-  onApplyPreset?: (preset: StreamStatusPreset) => void;
-  onResetFilters?: () => void;
 }
 
 const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "all", "week", "month", "custom"];

@@ -109,6 +109,8 @@ describe("LedgerEntryDetailWrapper ledger isolation", () => {
         open
         onClose={vi.fn()}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
       />,
       { wrapper: createWrapper(queryClient) }
     );
@@ -136,6 +138,8 @@ describe("LedgerEntryDetailWrapper ledger isolation", () => {
         open
         onClose={vi.fn()}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
       />,
       { wrapper: createWrapper(queryClient) }
     );
@@ -159,6 +163,8 @@ describe("LedgerEntryDetailWrapper ledger isolation", () => {
         open
         onClose={onClose}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
       />,
       { wrapper: createWrapper(queryClient) }
     );
@@ -185,6 +191,8 @@ describe("LedgerEntryDetailWrapper ledger isolation", () => {
         open
         onClose={onClose}
         categories={[]}
+        mainCurrency="CNY"
+        preferredCurrencies={[]}
       />,
       { wrapper: createWrapper(queryClient) }
     );

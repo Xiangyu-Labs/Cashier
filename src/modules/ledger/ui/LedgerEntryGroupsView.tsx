@@ -9,7 +9,7 @@ import { EntryGroupHeader } from "@/components/EntryGroupHeader";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 
 interface LedgerEntryGroupsViewProps {
-  groups: readonly { title: string; items: LedgerEntry[]; total: number }[];
+  groups: readonly { title: string; items: LedgerEntry[]; total: string }[];
   mainCurrency: string;
   onView: (entry: LedgerEntry) => void;
   selectionMode?: boolean;
@@ -18,7 +18,7 @@ interface LedgerEntryGroupsViewProps {
 }
 
 type LedgerEntryGroupRow =
-  | { key: string; kind: "header"; title: string; total: number }
+  | { key: string; kind: "header"; title: string; total: string }
   | { key: string; kind: "entry"; entry: LedgerEntry };
 
 const VIRTUALIZATION_THRESHOLD = 40;

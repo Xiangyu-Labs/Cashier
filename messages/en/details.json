@@ -288,6 +288,7 @@
     "reloadServerData": "Reload latest data"
   },
   "LedgerEntryDetail": {
+    "title": "Ledger entry details",
     "category": "Transaction Category",
     "entryDate": "Transaction Time",
     "status": "Status",

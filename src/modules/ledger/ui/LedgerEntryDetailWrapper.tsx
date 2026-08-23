@@ -24,6 +24,8 @@ interface LedgerEntryDetailWrapperProps {
   onBack?: () => void;
   onExitComplete?: () => void;
   categories: EntryCategory[];
+  mainCurrency: string;
+  preferredCurrencies: string[];
 }
 
 export function LedgerEntryDetailWrapper({
@@ -34,6 +36,8 @@ export function LedgerEntryDetailWrapper({
   onBack,
   onExitComplete,
   categories,
+  mainCurrency,
+  preferredCurrencies,
 }: LedgerEntryDetailWrapperProps) {
   const tCommon = useTranslations("Common");
 
@@ -93,6 +97,8 @@ export function LedgerEntryDetailWrapper({
       loadError={loadError}
       onReload={handleReload}
       categories={categories}
+      mainCurrency={mainCurrency}
+      preferredCurrencies={preferredCurrencies}
       open={open}
       onClose={onClose}
       {...(onBack !== undefined ? { onBack } : {})}

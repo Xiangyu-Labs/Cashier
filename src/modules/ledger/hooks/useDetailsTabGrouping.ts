@@ -2,7 +2,6 @@
 import { useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import { parseAmount } from "@/lib/formatters";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useDateGrouping } from "@/hooks/use-date-grouping";
 
@@ -10,7 +9,7 @@ export interface GroupedEntry {
   title: string;
   timestamp: number;
   items: LedgerEntry[];
-  total: number;
+  total: string;
 }
 
 export interface UseDetailsTabGroupingReturn {
@@ -31,11 +30,15 @@ export function useDetailsTabGrouping(
     }
     return formatDateTimeForApi(new Date(entry.createdAt)) ?? formatDateTimeForApi(new Date())!;
   }, []);
+  const getAmount = useCallback(
+    (entry: LedgerEntry) => (entry.convertedAmount != null ? entry.convertedAmount : "0"),
+    []
+  );
 
   const { groupedItems } = useDateGrouping({
     items: entries,
     getDateStr,
-    getAmount: (entry) => (entry.convertedAmount != null ? parseAmount(entry.convertedAmount) : 0),
+    getAmount,
     locale,
     t,
     preserveOrder: true,

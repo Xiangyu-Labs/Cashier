@@ -7,8 +7,7 @@ import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFi
 import type { PeriodParams, PeriodPreset } from "@/lib/period-utils";
 import { SourceDocumentActions } from "@/modules/source-document/ui";
 import { cn } from "@/lib/utils";
-import { formatDateTimeForApi } from "@/lib/date-utils";
-import { type StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
+import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
@@ -47,9 +46,8 @@ interface LedgerEntriesToolbarProps {
   periodParams: PeriodParams;
   totalPrefix?: string;
   mainCurrency: string;
-  filteredTotal?: number;
-  onApplyPreset?: (preset: StreamStatusPreset) => void;
-  onResetFilters?: () => void;
+  filteredTotal?: string;
+  timeZone?: string;
   readOnly?: boolean;
   syncStatus?: ReactNode;
 }
@@ -83,8 +81,7 @@ export function LedgerEntriesToolbar({
   totalPrefix,
   mainCurrency,
   filteredTotal,
-  onApplyPreset,
-  onResetFilters,
+  timeZone,
   readOnly = false,
   syncStatus,
 }: LedgerEntriesToolbarProps) {
@@ -93,7 +90,10 @@ export function LedgerEntriesToolbar({
   const tBatch = useTranslations("BatchActions");
   const locale = useLocale();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const date = getDateInTimezone(timeZone);
+    return date == null ? new Date() : parseDateString(date);
+  });
   const [dateImpact, setDateImpact] = useState<BatchEntryDateImpact | null>(null);
   const [dateImpactError, setDateImpactError] = useState(false);
   const [isPreviewingDateImpact, setIsPreviewingDateImpact] = useState(false);
@@ -253,8 +253,6 @@ export function LedgerEntriesToolbar({
           showCategory={false}
           showCurrency={false}
           className={cn("w-auto", showBatchActions && "sm:ml-auto")}
-          {...(onApplyPreset != null ? { onApplyPreset } : {})}
-          {...(onResetFilters != null ? { onResetFilters } : {})}
         />
       )}
       <ConfirmDialog
