@@ -12,6 +12,7 @@ import { StatsRanking } from "./StatsRanking";
 
 interface StatsContentViewProps {
   rangeType: DateRangeType;
+  contentRangeType: DateRangeType;
   onRangeTypeChange: (rangeType: DateRangeType) => void;
   periodOffset: number;
   onPeriodOffsetChange: (offset: number) => void;
@@ -22,7 +23,6 @@ interface StatsContentViewProps {
   endDateStr: string;
   stats: EnhancedStatsDto | undefined;
   isLoading?: boolean;
-  isPlaceholderData?: boolean;
   isError?: boolean;
   onRetry?: () => void;
   chartView: "trend" | "heatmap";
@@ -35,6 +35,7 @@ interface StatsContentViewProps {
 
 export function StatsContentView({
   rangeType,
+  contentRangeType,
   onRangeTypeChange,
   periodOffset,
   onPeriodOffsetChange,
@@ -45,7 +46,6 @@ export function StatsContentView({
   endDateStr,
   stats,
   isLoading = false,
-  isPlaceholderData = false,
   isError = false,
   onRetry,
   chartView,
@@ -60,7 +60,11 @@ export function StatsContentView({
   const locale = useLocale();
   const currencySymbol = stats?.summary.currency ?? fallbackCurrency;
   const periodLabel =
-    rangeType === "week" ? t("lastWeek") : rangeType === "month" ? t("lastMonth") : t("lastYear");
+    contentRangeType === "week"
+      ? t("lastWeek")
+      : contentRangeType === "month"
+        ? t("lastMonth")
+        : t("lastYear");
   const statsTrend = stats?.summary.trend;
   const trend =
     statsTrend == null ? undefined : { percent: statsTrend.percent, amount: statsTrend.amount };
@@ -153,18 +157,20 @@ export function StatsContentView({
             </Button>
           </div>
         </div>
-        {stats == null || (chartView === "heatmap" && isPlaceholderData) ? (
+        {stats == null ? (
           <div
             className="h-64 animate-pulse rounded-lg border border-border bg-surface2/60"
             data-testid="stats-visualization-skeleton"
+            role="status"
+            aria-busy="true"
           />
         ) : chartView === "trend" ? (
           <StatsChart
             data={stats.chart}
-            rangeType={rangeType}
+            rangeType={contentRangeType}
             startDate={startDate}
             endDate={endDate}
-            isLoading={isLoading}
+            isLoading={isLoading && stats == null}
             currencySymbol={currencySymbol}
           />
         ) : (
@@ -192,7 +198,7 @@ export function StatsContentView({
             amount: category.trend.amount,
           },
         }))}
-        isLoading={isLoading}
+        isLoading={isLoading && stats == null}
         currencySymbol={currencySymbol}
         {...(onCategoryDrilldown !== undefined
           ? {

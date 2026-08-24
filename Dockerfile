@@ -19,6 +19,7 @@ COPY . .
 # placeholders only; Compose supplies the real runtime configuration.
 ENV DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build
 ENV API_KEY_PEPPER=build-placeholder
+ENV RATE_LIMIT_PEPPER=build-placeholder
 ENV OPENAI_API_KEY=build-placeholder
 ENV AUTH_SECRET=build-placeholder
 ENV AUTH_OTP_PEPPER=build-placeholder

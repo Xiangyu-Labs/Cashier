@@ -35,7 +35,7 @@ export function parseEnhancedStatsInput(input: unknown): GetEnhancedStatsInput {
   const rangesOverlap =
     result.data.queryRange.from <= result.data.compareRange.to &&
     result.data.compareRange.from <= result.data.queryRange.to;
-  if (queryDays > 3660 || compareDays > 3660 || rangesOverlap) {
+  if (queryDays + 1 > 3660 || compareDays + 1 > 3660 || rangesOverlap) {
     throw new AppError(
       "Stats ranges must be disjoint and no longer than 3660 days",
       "STATS_RANGE_TOO_LARGE",

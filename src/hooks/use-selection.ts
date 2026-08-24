@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
 
 interface UseSelectionOptions {
   allIds: string[];
@@ -10,6 +11,8 @@ interface UseSelectionReturn {
   selectedIds: string[];
   isSelectionMode: boolean;
   isAllSelected: boolean;
+  isSelectionLimitReached: boolean;
+  selectableCount: number;
   selectedCount: number;
   handleSelect: (id: string, selected: boolean) => void;
   handleSelectAll: (selected: boolean) => void;
@@ -38,6 +41,7 @@ export function useSelection({
     isSelectionMode: false,
   }));
   const uniqueAllIds = useMemo(() => [...new Set(allIds)], [allIds]);
+  const selectableCount = Math.min(uniqueAllIds.length, MAX_BATCH_SIZE);
 
   if (selection.queryFingerprint !== queryFingerprint) {
     setSelection({
@@ -47,11 +51,19 @@ export function useSelection({
     });
   }
 
-  const selectedIds = selection.queryFingerprint === queryFingerprint ? selection.selectedIds : [];
+  const storedSelectedIds =
+    selection.queryFingerprint === queryFingerprint ? selection.selectedIds : [];
+  const selectedIds = storedSelectedIds
+    .filter((id) => uniqueAllIds.includes(id))
+    .slice(0, MAX_BATCH_SIZE);
+  if (selectedIds.length !== storedSelectedIds.length) {
+    setSelection({ ...selection, selectedIds });
+  }
   const isSelectionMode =
     selection.queryFingerprint === queryFingerprint ? selection.isSelectionMode : false;
-  const isAllSelected = selectedIds.length === uniqueAllIds.length && uniqueAllIds.length > 0;
   const selectedCount = selectedIds.length;
+  const isAllSelected = selectedCount === selectableCount && selectableCount > 0;
+  const isSelectionLimitReached = selectedCount >= MAX_BATCH_SIZE;
 
   const handleSelect = useCallback(
     (id: string, selected: boolean) => {
@@ -61,7 +73,9 @@ export function useSelection({
         const nextIds = selected
           ? selectedIds.includes(id)
             ? selectedIds
-            : [...selectedIds, id]
+            : selectedIds.length >= MAX_BATCH_SIZE || !uniqueAllIds.includes(id)
+              ? selectedIds
+              : [...selectedIds, id]
           : selectedIds.includes(id)
             ? selectedIds.filter((itemId) => itemId !== id)
             : selectedIds;
@@ -72,14 +86,14 @@ export function useSelection({
         };
       });
     },
-    [queryFingerprint]
+    [queryFingerprint, uniqueAllIds]
   );
 
   const handleSelectAll = useCallback(
     (selected: boolean) => {
       setSelection((current) => ({
         queryFingerprint,
-        selectedIds: selected ? uniqueAllIds : [],
+        selectedIds: selected ? uniqueAllIds.slice(0, MAX_BATCH_SIZE) : [],
         isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
       }));
     },
@@ -138,18 +152,20 @@ export function useSelection({
           queryFingerprint,
           selectedIds: selectedIds.includes(id)
             ? selectedIds.filter((selectedId) => selectedId !== id)
-            : [...selectedIds, id],
+            : selectedIds.length >= MAX_BATCH_SIZE || !uniqueAllIds.includes(id)
+              ? selectedIds
+              : [...selectedIds, id],
           isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
         };
       });
     },
-    [queryFingerprint]
+    [queryFingerprint, uniqueAllIds]
   );
 
   const selectAll = useCallback(() => {
     setSelection((current) => ({
       queryFingerprint,
-      selectedIds: uniqueAllIds,
+      selectedIds: uniqueAllIds.slice(0, MAX_BATCH_SIZE),
       isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
     }));
   }, [queryFingerprint, uniqueAllIds]);
@@ -158,11 +174,13 @@ export function useSelection({
     (ids: string[]) => {
       setSelection((current) => ({
         queryFingerprint,
-        selectedIds: [...new Set(ids)],
+        selectedIds: [...new Set(ids)]
+          .filter((id) => uniqueAllIds.includes(id))
+          .slice(0, MAX_BATCH_SIZE),
         isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
       }));
     },
-    [queryFingerprint]
+    [queryFingerprint, uniqueAllIds]
   );
 
   useEffect(() => {
@@ -199,6 +217,8 @@ export function useSelection({
     selectedIds,
     isSelectionMode,
     isAllSelected,
+    isSelectionLimitReached,
+    selectableCount,
     selectedCount,
     handleSelect,
     handleSelectAll,

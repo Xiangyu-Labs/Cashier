@@ -15,9 +15,9 @@ describe("buildChartPoints", () => {
   it("generates all 12 months for a historical year", () => {
     const points = buildChartPoints({
       data: [
-        { date: "2025-01-15", total: 10 },
-        { date: "2025-01-31", total: 5 },
-        { date: "2025-12-01", total: 7 },
+        { date: "2025-01-15", total: "10" },
+        { date: "2025-01-31", total: "5" },
+        { date: "2025-12-01", total: "7" },
       ],
       rangeType: "year",
       startDate: "2025-01-01",
@@ -33,7 +33,7 @@ describe("buildChartPoints", () => {
 
   it("stops at the endDate month for the current year", () => {
     const points = buildChartPoints({
-      data: [{ date: "2026-08-03", total: 42 }],
+      data: [{ date: "2026-08-03", total: "42" }],
       rangeType: "year",
       startDate: "2026-01-01",
       endDate: "2026-08-06",
@@ -46,7 +46,7 @@ describe("buildChartPoints", () => {
 
   it("generates every civil day from startDate to endDate inclusive", () => {
     const points = buildChartPoints({
-      data: [{ date: "2026-02-27", total: 3 }],
+      data: [{ date: "2026-02-27", total: "3" }],
       rangeType: "month",
       startDate: "2026-02-01",
       endDate: "2026-02-28",
@@ -63,7 +63,7 @@ describe("buildChartPoints", () => {
     for (const timeZone of ["Pacific/Kiritimati", "America/New_York", "Asia/Shanghai"]) {
       process.env.TZ = timeZone;
       const points = buildChartPoints({
-        data: [{ date: "2026-03-31", total: 9 }],
+        data: [{ date: "2026-03-31", total: "9" }],
         rangeType: "month",
         startDate: "2026-03-01",
         endDate: "2026-03-31",

@@ -33,7 +33,7 @@ import type { StatsUrlState } from "@/modules/workspace/ledger-url-params";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
-  initialStatsDate: Date;
+  ledgerToday: string;
   initialCategories: EntryCategoryWithCountDto[];
 }
 
@@ -73,7 +73,8 @@ export async function getLedgerPageBootstrap(
   const mainCurrency = ledgerDto.settings.mainCurrency ?? "CNY";
   const fixedTimeZone = ledgerDto.settings.timeZone ?? runtimeEnv.timeZone;
   const zonedToday = getDateInTimezone(fixedTimeZone);
-  const initialStatsDate = zonedToday != null ? parseDateString(zonedToday) : new Date();
+  const ledgerToday = zonedToday ?? getDateInTimezone("UTC")!;
+  const initialStatsDate = parseDateString(ledgerToday);
   const detailsDescriptor = buildDetailsQueryDescriptor({
     ledgerId: input.ledgerId,
     periodParams: input.periodParams,
@@ -197,7 +198,7 @@ export async function getLedgerPageBootstrap(
 
   return {
     dehydratedState: dehydrate(queryClient),
-    initialStatsDate,
+    ledgerToday,
     initialCategories,
   };
 }

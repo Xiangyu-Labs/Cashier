@@ -16,6 +16,8 @@ import { registerExchangeRatesStoredHandler } from "@/modules/currency/events";
 
 const CLAIM_LIMIT = 25;
 const CLAIM_LEASE_MS = 300_000;
+const MAX_DRAIN_BATCHES = 20;
+const MAX_DRAIN_DURATION_MS = 30_000;
 export const MAX_CONCURRENT_LEDGERS = 2;
 
 const orchestrationDisposerSymbol = Symbol.for("cashier.exchange-rate-ledger-recalculation");
@@ -102,8 +104,9 @@ export async function runBoundedExchangeRateRecalculation(now = new Date()): Pro
 
 /** Drain every currently due batch while preserving the worker's batch and concurrency bounds. */
 export async function drainDueExchangeRateRecalculations(now = new Date()): Promise<void> {
-  while ((await runBoundedExchangeRateRecalculation(now)) > 0) {
-    // Continue until the claim query returns no due jobs.
+  const deadline = Date.now() + MAX_DRAIN_DURATION_MS;
+  for (let batches = 0; batches < MAX_DRAIN_BATCHES && Date.now() < deadline; batches += 1) {
+    if ((await runBoundedExchangeRateRecalculation(now)) === 0) return;
   }
 }
 

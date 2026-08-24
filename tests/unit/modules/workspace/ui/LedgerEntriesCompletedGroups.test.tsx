@@ -87,6 +87,53 @@ describe("LedgerEntriesUnifiedGroups", () => {
     expect(cardProps).toHaveBeenCalledWith(expect.objectContaining({ defaultExpanded: false }));
   });
 
+  it("disables only unselected stream cards at the selection limit", () => {
+    const group = {
+      date: "2026-07-15",
+      dateProvenance: "transaction" as const,
+      total: "0",
+      unconvertedCount: 0,
+      currencyTotals: {},
+      items: [
+        {
+          sourceDocument: { id: "document-1", ledgerId: "ledger-1", status: "completed" },
+          ledgerEntries: [],
+          effectiveDate: "2026-07-15",
+          dateProvenance: "transaction" as const,
+        },
+        {
+          sourceDocument: { id: "document-2", ledgerId: "ledger-1", status: "completed" },
+          ledgerEntries: [],
+          effectiveDate: "2026-07-15",
+          dateProvenance: "transaction" as const,
+        },
+      ],
+    } as unknown as UnifiedStreamGroup;
+    cardProps.mockClear();
+
+    render(
+      <LedgerEntriesUnifiedGroups
+        streamGroups={[group]}
+        mainCurrency="CNY"
+        onViewSourceDetail={vi.fn()}
+        onDeleteSourceConfirm={vi.fn()}
+        isSelectionMode
+        selectedIds={["document-1"]}
+        disableUnselected
+        onToggleSelection={vi.fn()}
+        noRecordsText="No records"
+        getItemProps={() => ({})}
+      />
+    );
+
+    expect(cardProps).toHaveBeenCalledWith(
+      expect.objectContaining({ isSelected: true, selectionDisabled: false })
+    );
+    expect(cardProps).toHaveBeenCalledWith(
+      expect.objectContaining({ isSelected: false, selectionDisabled: true })
+    );
+  });
+
   it("only rerenders the stream row whose selected state changed", () => {
     const firstItem = {
       sourceDocument: { id: "document-1", ledgerId: "ledger-1", status: "completed" },

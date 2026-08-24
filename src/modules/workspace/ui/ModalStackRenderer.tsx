@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
@@ -21,15 +21,6 @@ export function ModalStackRenderer({
   const item = stack.at(-1);
   const itemKey = item == null ? null : `${item.type}:${item.ledgerId}:${item.id}`;
   const [closingKey, setClosingKey] = useState<string | null>(null);
-  const initialTriggerRef = useRef<HTMLElement | null>(null);
-  const previousLengthRef = useRef(0);
-
-  useEffect(() => {
-    if (previousLengthRef.current === 0 && stack.length > 0) {
-      initialTriggerRef.current = document.activeElement as HTMLElement | null;
-    }
-    previousLengthRef.current = stack.length;
-  }, [stack.length]);
 
   if (item == null) return null;
   const open = closingKey !== itemKey;
@@ -53,9 +44,13 @@ export function ModalStackRenderer({
     }
     closeLedgerDetail();
     if (stack.length === 1) {
-      const trigger = initialTriggerRef.current;
-      window.requestAnimationFrame(() => trigger?.focus());
-      initialTriggerRef.current = null;
+      const trigger = item.returnFocus;
+      window.requestAnimationFrame(() => {
+        if (trigger?.isConnected === true) trigger.focus();
+        else {
+          document.querySelector<HTMLElement>("[data-ledger-focus-fallback]")?.focus();
+        }
+      });
     }
     setClosingKey(null);
   };

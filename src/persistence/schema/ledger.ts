@@ -120,7 +120,7 @@ export const ledgerEntries = pgTable(
     sourceDocumentRevisionId: uuid("source_document_revision_id"),
     position: integer("position").notNull().default(0),
     amount: numeric("amount", { precision: 21, scale: 3, mode: "string" }).notNull(),
-    currency: varchar("currency", { length: 3 }),
+    currency: varchar("currency", { length: 3 }).notNull(),
     itemName: text("item_name").notNull(),
     description: text("description"),
     convertedAmount: numeric("converted_amount", { precision: 21, scale: 3, mode: "string" }),
@@ -167,10 +167,7 @@ export const ledgerEntries = pgTable(
         sql`lower(${table.itemName} || ' ' || COALESCE(${table.description}, '')) public.gin_trgm_ops`
       )
       .where(sql`${table.deletedAt} IS NULL`),
-    check(
-      "ck_ledger_entries_currency",
-      sql`${table.currency} IS NULL OR ${table.currency} ~ '^[A-Z]{3}$'`
-    ),
+    check("ck_ledger_entries_currency", sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check("ck_ledger_entries_position", sql`${table.position} >= 0`),
     // The live database (migration 0022) declares this FK as
     // `ON DELETE SET NULL (category_id)` — PostgreSQL 15+ column-list form —

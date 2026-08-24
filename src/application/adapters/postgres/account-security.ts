@@ -118,6 +118,7 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
   async verifyEmailChangeChallenge(input) {
     try {
       return await db.transaction(async (tx) => {
+        await tx.execute(sql`select id from users where id = ${input.userId} for update`);
         await tx.execute(
           sql`select id from email_change_challenges where user_id = ${input.userId} for update`
         );

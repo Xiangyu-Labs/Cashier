@@ -4,7 +4,6 @@ export type EnhancedCategoryStatDto = {
   id: string | null;
   name: string;
   icon: string | null;
-  totalOriginal: string;
   totalConverted: string;
   currency: string;
   percent: number;
@@ -38,7 +37,7 @@ export interface EnhancedStatsDto {
     };
   };
   categories: EnhancedCategoryStatDto[];
-  chart: { date: string; total: number }[];
+  chart: { date: string; total: string }[];
   heatmap: {
     days: CalendarDayData[];
     stats: CalendarHeatmapStats;

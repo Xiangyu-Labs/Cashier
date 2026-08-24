@@ -18,7 +18,7 @@ interface ActiveContentProps {
   interfaceLanguage?: InterfaceLanguage;
   locale?: string;
   initialCategories?: EntryCategoryWithCount[];
-  initialStatsDate?: Date;
+  ledgerToday?: string;
 }
 
 export function ActiveContent({
@@ -32,7 +32,7 @@ export function ActiveContent({
   passwordUpdatedAt,
   interfaceLanguage,
   initialCategories,
-  initialStatsDate,
+  ledgerToday,
 }: ActiveContentProps) {
   return (
     <LedgerPageClient
@@ -41,7 +41,7 @@ export function ActiveContent({
       initialTab={initialTab}
       initialPeriod={periodParams}
       {...(initialCategories !== undefined ? { initialCategories } : {})}
-      {...(initialStatsDate !== undefined ? { initialStatsDate } : {})}
+      {...(ledgerToday !== undefined ? { ledgerToday } : {})}
       {...(userEmail !== undefined ? { userEmail } : {})}
       {...(hasPassword !== undefined ? { hasPassword } : {})}
       {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}

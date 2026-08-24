@@ -23,7 +23,7 @@ vi.mock("resend", () => ({
 }));
 
 const TEST_EMAIL = "test@example.com";
-const REQUEST_HEADERS = new Headers({ "x-forwarded-for": "127.0.0.1" });
+const REQUEST_HEADERS = new Headers({ "x-real-ip": "127.0.0.1" });
 const authenticateWithOTP = (input: Parameters<typeof authenticateWithOTPUseCase>[0]) =>
   authenticateWithOTPUseCase(input, {
     userAccounts: serverComposition.userAccounts,
@@ -131,7 +131,7 @@ describe("authenticateWithOTP", () => {
   });
 
   it("charges the IP verification bucket before looking up a token", async () => {
-    process.env.TRUSTED_PROXY = "loopback";
+    process.env.TRUSTED_PROXY = "platform";
     const increment = vi.spyOn(serverComposition.rateLimiter, "increment");
 
     await expect(
@@ -199,7 +199,7 @@ describe("authenticateWithOTP", () => {
 
   it("returns otp_rate_limited when verify attempts exceed the IP limit", async () => {
     process.env.OTP_MAX_ATTEMPTS = "10";
-    process.env.TRUSTED_PROXY = "loopback";
+    process.env.TRUSTED_PROXY = "platform";
     await createTestOTP(TEST_EMAIL, "123456");
 
     for (let i = 0; i < 5; i++) {

@@ -112,11 +112,6 @@ export async function processImage(
       });
     }
 
-    // Strip metadata to reduce file size
-    if (opts.stripMetadata) {
-      pipeline = pipeline.withMetadata({});
-    }
-
     // Determine output format
     let outputFormat = opts.format;
     if (outputFormat === "auto") {

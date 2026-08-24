@@ -109,7 +109,7 @@ Authorization: Bearer <token>
 - `429` 返回 `Retry-After` 和三个 `X-RateLimit-*` 响应头。
 - `401` 返回 `WWW-Authenticate: Bearer`。
 - 每个响应都包含 `X-Request-Id`，报告问题时可以提供它，但不要提供 Bearer Token。
-- 设置 `TRUSTED_PROXY` 后，还会启用请求认证前和无效 Token 的可信 IP 限流。
+- 请求认证前和无效 Token 的限流始终启用。`TRUSTED_PROXY=platform` 仅决定是否读取平台覆盖的单值客户端 IP 头；否则使用固定的哈希 `unknown` 桶。
 
 常见状态码：
 

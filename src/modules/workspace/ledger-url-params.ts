@@ -1,5 +1,6 @@
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { DECIMAL_STRING_PATTERN, normalize as normalizeDecimal } from "@/lib/money/decimal";
+import { isValidDateString } from "@/lib/date-utils";
 
 export const STATUSES_URL_PARAM = "statuses";
 export type LedgerFilterScope = "stream" | "details";
@@ -244,6 +245,27 @@ export function normalizeLedgerUrlSearchParams(current: SearchParamsLike): URLSe
   const detail = readLedgerDetailSearchParams(params);
   const stats = readStatsSearchParams(params);
   let changed = false;
+
+  for (const scope of ["stream", "details"] as const) {
+    const periodKey = scopedKey(scope, "period");
+    const startKey = scopedKey(scope, "startDate");
+    const endKey = scopedKey(scope, "endDate");
+    if (params.get(periodKey) !== "custom") continue;
+    const start = params.get(startKey);
+    const end = params.get(endKey);
+    if (
+      start == null ||
+      end == null ||
+      !isValidDateString(start) ||
+      !isValidDateString(end) ||
+      start > end
+    ) {
+      params.delete(periodKey);
+      params.delete(startKey);
+      params.delete(endKey);
+      changed = true;
+    }
+  }
 
   if (detail == null && (params.has("detailType") || params.has("detailId"))) {
     params.delete("detailType");

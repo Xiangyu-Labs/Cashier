@@ -1,6 +1,7 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import { CredentialsSignin } from "@auth/core/errors";
 import Credentials from "next-auth/providers/credentials";
+import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import { authConfig } from "./auth.config";
 import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
 import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
@@ -76,7 +77,9 @@ const providers: NextAuthConfig["providers"] = [
           {
             email,
             otp,
-            locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
+            locale: resolveSupportedLocale({
+              explicitLocale: typeof credentials.locale === "string" ? credentials.locale : null,
+            }),
             requestHeaders: request.headers,
           },
           {
@@ -107,7 +110,9 @@ const providers: NextAuthConfig["providers"] = [
           {
             email,
             password,
-            locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
+            locale: resolveSupportedLocale({
+              explicitLocale: typeof credentials.locale === "string" ? credentials.locale : null,
+            }),
             requestHeaders: request.headers,
           },
           {
@@ -132,7 +137,9 @@ if (isDevAuthBypassEnabled()) {
         return authorizeInteractiveSignIn(() =>
           authenticateDevUser(
             {
-              locale: typeof credentials?.locale === "string" ? credentials.locale : "zh-CN",
+              locale: resolveSupportedLocale({
+                explicitLocale: typeof credentials?.locale === "string" ? credentials.locale : null,
+              }),
             },
             { users: serverComposition.userAccounts }
           )

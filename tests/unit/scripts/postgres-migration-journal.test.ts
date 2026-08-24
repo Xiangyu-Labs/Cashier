@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0030_remove_category_is_editable");
+    expect(journal.entries.at(-1)?.tag).toBe("0031_review_consistency_hardening");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

@@ -1,6 +1,6 @@
 export function LedgerEntriesLoading() {
   return (
-    <div className="space-y-6 px-1 animate-pulse">
+    <div className="space-y-6 px-1 animate-pulse" role="status" aria-busy="true">
       {[1, 2, 3].map((dateGroupIdx) => (
         <div key={dateGroupIdx} className="space-y-2">
           <div className="py-2 px-2 flex items-center justify-between">

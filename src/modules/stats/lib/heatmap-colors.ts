@@ -28,7 +28,8 @@ export function getHeatmapLevel(amount: string, stats: CalendarHeatmapStats): He
   if (value.lte(0)) return 0;
 
   // Use P80 as the effective max to handle outliers
-  const effectiveMax = Decimal.max(stats.p80Amount, new Decimal(stats.avgAmount).times(2));
+  const p80 = new Decimal(stats.p80Amount);
+  const effectiveMax = p80.gt(0) ? p80 : new Decimal(stats.avgAmount);
 
   // Guard against division by zero
   if (effectiveMax.lte(0)) return 0;

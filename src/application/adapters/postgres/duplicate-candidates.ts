@@ -17,7 +17,7 @@ interface EntryRow {
   revisionId: string;
   itemName: string;
   amount: string;
-  currency: string | null;
+  currency: string;
   categoryId: string | null;
   convertedAmount: string | null;
 }

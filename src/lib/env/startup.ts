@@ -137,7 +137,7 @@ const startupEnvFields = {
   S3_ACCESS_KEY_ID: requiredString("S3_ACCESS_KEY_ID"),
   S3_SECRET_ACCESS_KEY: requiredString("S3_SECRET_ACCESS_KEY"),
   S3_FORCE_PATH_STYLE: booleanStringWithDefault("S3_FORCE_PATH_STYLE"),
-  TRUSTED_PROXY: z.preprocess(blankToUndefined, z.string().trim().optional()),
+  TRUSTED_PROXY: z.preprocess(blankToUndefined, z.literal("platform").optional()),
   TZ: stringWithDefault("TZ"),
   AI_MODEL: stringWithDefault("AI_MODEL"),
   AI_MAX_RETRIES: nonNegativeIntWithDefault("AI_MAX_RETRIES"),
@@ -232,13 +232,18 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
   const result = startupEnvSchema.safeParse(env);
 
   if (result.success) {
-    if (env.NODE_ENV === "production" && result.data.TRUSTED_PROXY == null) {
+    if (result.data.DEV_AUTH_BYPASS === "true" && !isSafeDevAuthEnvironment(env, result.data)) {
       throw new AppError(
-        "Startup environment validation failed: TRUSTED_PROXY is required in production",
+        "Startup environment validation failed: DEV_AUTH_BYPASS requires test or local development",
         "STARTUP_ENV_INVALID",
         500,
         {
-          issues: [{ path: ["TRUSTED_PROXY"], message: "TRUSTED_PROXY is required in production" }],
+          issues: [
+            {
+              path: ["DEV_AUTH_BYPASS"],
+              message: "DEV_AUTH_BYPASS requires test or local development",
+            },
+          ],
         }
       );
     }
@@ -256,4 +261,11 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     500,
     { issues: result.error.issues }
   );
+}
+
+function isSafeDevAuthEnvironment(env: NodeJS.ProcessEnv, parsed: StartupEnv): boolean {
+  if (env.NODE_ENV === "test") return true;
+  if (env.NODE_ENV !== "development") return false;
+  const hostname = new URL(parsed.APP_URL).hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
 }

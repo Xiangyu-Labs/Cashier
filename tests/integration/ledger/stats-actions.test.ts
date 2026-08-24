@@ -15,7 +15,7 @@ async function seedEntry(
   ledgerId: string,
   opts: {
     amount: string;
-    currency?: string | null;
+    currency?: string;
     convertedAmount?: string | null;
     categoryId?: string;
     entryDate?: string;
@@ -91,7 +91,7 @@ describe("getLedgerStatsAction", () => {
     expect(usd!.count).toBe(1);
   });
 
-  it("uses the persisted main currency for null currency entries", async () => {
+  it("uses the persisted main currency for entries", async () => {
     const db = getTestDb();
     await db
       .update(ledgers)
@@ -99,7 +99,7 @@ describe("getLedgerStatsAction", () => {
       .where(sql`${ledgers.id} = ${ledgerId}`);
     await seedEntry(db, ledgerId, {
       amount: "12.50",
-      currency: null,
+      currency: "USD",
       convertedAmount: "12.50",
     });
 
@@ -121,13 +121,13 @@ describe("getLedgerStatsAction", () => {
     });
     await seedEntry(db, ledgerId, {
       amount: "8.25",
-      currency: null,
+      currency: "CNY",
       categoryId,
       convertedAmount: "8.25",
     });
     await seedEntry(db, ledgerId, {
       amount: "3.75",
-      currency: null,
+      currency: "CNY",
       categoryId,
       convertedAmount: "3.75",
     });

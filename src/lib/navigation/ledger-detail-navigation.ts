@@ -2,6 +2,7 @@
 
 import type { ModalItem } from "@/lib/store/modal-stack";
 import { useModalStackStore } from "@/lib/store/modal-stack";
+import { writeLedgerHistory } from "@/lib/navigation/ledger-history";
 
 function setDetailParams(detail: { type: ModalItem["type"]; id: string } | null): URLSearchParams {
   const params = new URLSearchParams(window.location.search);
@@ -20,34 +21,39 @@ function detailUrl(params: URLSearchParams): string {
   return query === "" ? window.location.pathname : `${window.location.pathname}?${query}`;
 }
 
-export function openLedgerDetail(item: ModalItem): void {
-  useModalStackStore.getState().push(item);
-  window.history.pushState(
-    {
-      ...(typeof window.history.state === "object" && window.history.state !== null
-        ? window.history.state
-        : {}),
-      cashier: { ledgerNavigation: true, kind: "detail" },
-    },
-    "",
-    detailUrl(setDetailParams({ type: item.type, id: item.id }))
+export function openLedgerDetail(item: Omit<ModalItem, "returnFocus">): void {
+  const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  useModalStackStore.getState().push({ ...item, returnFocus } as ModalItem);
+  writeLedgerHistory(
+    "push",
+    detailUrl(setDetailParams({ type: item.type, id: item.id })),
+    "detail"
   );
 }
 
 export function closeLedgerDetail(): void {
   const modalState = useModalStackStore.getState();
+  const current = modalState.stack.at(-1);
   const previous = modalState.stack.at(-2);
   const params =
     previous == null
       ? setDetailParams(null)
       : setDetailParams({ type: previous.type, id: previous.id });
-  window.history.replaceState(
-    typeof window.history.state === "object" && window.history.state !== null
-      ? window.history.state
-      : {},
-    "",
-    detailUrl(params)
-  );
+  const detail = new URLSearchParams(window.location.search);
+  const state = window.history.state as {
+    cashier?: { ledgerNavigation?: boolean; kind?: string; sequence?: number };
+  } | null;
+  if (
+    current != null &&
+    detail.get("detailType") === current.type &&
+    detail.get("detailId") === current.id &&
+    state?.cashier?.ledgerNavigation === true &&
+    state.cashier.kind === "detail"
+  ) {
+    window.history.back();
+    return;
+  }
+  writeLedgerHistory("replace", detailUrl(params), "detail");
   if (previous == null) modalState.closeAll();
   else modalState.pop();
 }

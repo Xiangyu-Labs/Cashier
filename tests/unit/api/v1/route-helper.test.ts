@@ -237,7 +237,7 @@ describe("api/v1 route helper", () => {
     expect("key" in context).toBe(false);
   });
 
-  it("skips pre-auth and invalid-bucket checks when the client IP is unknown", async () => {
+  it("uses a hashed pre-auth bucket when the client IP is unknown", async () => {
     getClientIPFromHeadersMock.mockReturnValue("unknown");
     const handler = vi.fn().mockResolvedValue({
       response: NextResponse.json({ ok: true }, { status: 200 }),
@@ -251,13 +251,15 @@ describe("api/v1 route helper", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(rateLimiterMock.increment).toHaveBeenCalledTimes(1);
-    expect(rateLimiterMock.increment.mock.calls[0]?.[0]).toMatch(/^rl_valid_cred:/);
+    expect(rateLimiterMock.increment).toHaveBeenCalledTimes(2);
+    expect(rateLimiterMock.increment.mock.calls[0]?.[0]).toMatch(/^rl_api_v1_preauth:/);
+    expect(rateLimiterMock.increment.mock.calls[0]?.[0]).not.toContain("unknown");
+    expect(rateLimiterMock.increment.mock.calls[1]?.[0]).toMatch(/^rl_valid_cred:/);
     expect(rateLimiterMock.current).not.toHaveBeenCalled();
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("does not increment invalid-bearer buckets when the client IP is unknown", async () => {
+  it("applies pre-auth limiting to invalid bearer requests with an unknown IP", async () => {
     getClientIPFromHeadersMock.mockReturnValue("unknown");
     serviceCredentialsMock.authenticate.mockResolvedValue(null);
     const handler = vi.fn();
@@ -272,9 +274,9 @@ describe("api/v1 route helper", () => {
     expect(response.status).toBe(401);
     expect(response.headers.get("WWW-Authenticate")).toBe("Bearer");
     expect(serviceCredentialsMock.authenticate).toHaveBeenCalledTimes(1);
-    // No pre-auth IP bucket and no shared invalid-bearer bucket may be touched
-    // when there is no trusted client IP.
-    expect(rateLimiterMock.increment).not.toHaveBeenCalled();
+    expect(rateLimiterMock.increment).toHaveBeenCalledOnce();
+    expect(rateLimiterMock.increment.mock.calls[0]?.[0]).toMatch(/^rl_api_v1_preauth:/);
+    expect(rateLimiterMock.increment.mock.calls[0]?.[0]).not.toContain("unknown");
     expect(rateLimiterMock.current).not.toHaveBeenCalled();
     expect(handler).not.toHaveBeenCalled();
   });

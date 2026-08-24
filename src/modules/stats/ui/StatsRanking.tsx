@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import Decimal from "decimal.js";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 interface CategoryStat {
   id: string | null;
@@ -43,7 +44,7 @@ export function StatsRanking({
 
   if (isLoading) {
     return (
-      <div className="space-y-5 px-2">
+      <div className="space-y-5 px-2" role="status" aria-busy="true">
         {/* "支出排行" title */}
         <div className="h-6 w-24 bg-surface2/50 rounded animate-pulse" />
 
@@ -80,7 +81,7 @@ export function StatsRanking({
       <h3 className="font-semibold text-lg flex items-center gap-2">{t("expenseRanking")}</h3>
 
       <div className="space-y-5">
-        {sorted.map((cat, idx) => {
+        {sorted.map((cat) => {
           const percent = cat.percent;
           const displayName = cat.id === null ? t("uncategorized") : cat.name;
           const handleClick = () => {
@@ -92,7 +93,7 @@ export function StatsRanking({
           return (
             <button
               type="button"
-              key={idx}
+              key={cat.id ?? "__uncategorized__"}
               disabled={onCategoryClick == null}
               aria-label={`${displayName}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${percent.toFixed(0)}%`}
               className={cn(
@@ -141,6 +142,14 @@ export function StatsRanking({
                           new Decimal(cat.trend.amount).gt(0) ? "text-destructive" : "text-primary"
                         )}
                       >
+                        {new Decimal(cat.trend.amount).gt(0) ? (
+                          <TrendingUp className="h-3 w-3" aria-hidden />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" aria-hidden />
+                        )}
+                        <span className="sr-only">
+                          {new Decimal(cat.trend.amount).gt(0) ? t("increase") : t("decrease")}
+                        </span>
                         <AmountText variant="secondary">
                           {formatCurrencyAmount(
                             new Decimal(cat.trend.amount).abs().toFixed(),

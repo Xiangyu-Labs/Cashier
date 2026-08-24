@@ -34,27 +34,21 @@ async function reservePasswordRateLimits(
     }
     reservations.push({ key: emailKey, resetTime: emailResult.resetTime });
 
-    // "unknown" means no trusted proxy header was present. There is no
-    // meaningful per-attacker bucket to share, and incrementing a single
-    // shared bucket would let one client block password sign-ins for every
-    // user. The email bucket still applies, so brute force remains bounded.
-    if (ip !== "unknown") {
-      const ipKey = `${PASSWORD_IP_PREFIX}${ip}`;
-      const ipResult = await rateLimiter.increment(
-        ipKey,
-        runtimeEnv.authPasswordIpMaxAttempts,
-        windowSeconds
+    const ipKey = `${PASSWORD_IP_PREFIX}${logIdentifier("ip", ip)}`;
+    const ipResult = await rateLimiter.increment(
+      ipKey,
+      runtimeEnv.authPasswordIpMaxAttempts,
+      windowSeconds
+    );
+    if (!ipResult.success) {
+      await Promise.all(
+        reservations.map((reservation) =>
+          rateLimiter.releaseIncrement(reservation.key, windowSeconds, reservation.resetTime)
+        )
       );
-      if (!ipResult.success) {
-        await Promise.all(
-          reservations.map((reservation) =>
-            rateLimiter.releaseIncrement(reservation.key, windowSeconds, reservation.resetTime)
-          )
-        );
-        throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED);
-      }
-      reservations.push({ key: ipKey, resetTime: ipResult.resetTime });
+      throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED);
     }
+    reservations.push({ key: ipKey, resetTime: ipResult.resetTime });
     return reservations;
   } catch (error) {
     if (error instanceof AuthSignInError) throw error;

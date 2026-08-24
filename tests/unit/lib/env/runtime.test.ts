@@ -52,7 +52,7 @@ describe("runtimeEnv", () => {
       SOURCE_DOC_STALE_TIME_MS: "654321",
       CURRENCY_STALE_TIME_MS: "7654321",
       TZ: "UTC",
-      TRUSTED_PROXY: "loopback",
+      TRUSTED_PROXY: "platform",
       AUTH_RESEND_KEY: "re_test",
       OPENAI_BASE_URL: "https://openai-proxy.example/v1",
     };
@@ -71,7 +71,7 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.s3Bucket).toBe("cashier-images");
     expect(runtimeEnv.s3AccessKeyId).toBe("test-access-key");
     expect(runtimeEnv.s3SecretAccessKey).toBe("test-secret-key");
-    expect(runtimeEnv.trustedProxy).toBe("loopback");
+    expect(runtimeEnv.trustedProxy).toBe("platform");
     expect(runtimeEnv.timeZone).toBe("UTC");
     expect(runtimeEnv.aiModel).toBe("custom-model");
     expect(runtimeEnv.aiMaxRetries).toBe(5);

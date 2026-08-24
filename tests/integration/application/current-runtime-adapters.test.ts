@@ -636,12 +636,15 @@ describe("current-runtime target adapters", () => {
       targetIds: [target.id],
     };
     const [file] = await adapter.finalizeDirectUpload(input);
+    const storedBytes = storage.files.get(`${ledgerId}/stored/${target.id}`);
+    expect(storedBytes).toBeDefined();
+    const storedDigest = createHash("sha256").update(storedBytes!).digest("hex");
     expect(file).toMatchObject({
       id: target.id,
       ownerLedgerId: ledgerId,
-      metadata: { checksum: digest },
+      metadata: { checksum: storedDigest, contentType: "image/webp" },
     });
-    expect(storage.files.get(`${ledgerId}/stored/${target.id}`)).toEqual(bytes);
+    expect(storedBytes).not.toEqual(bytes);
     expect(storage.files.has(temporaryKey)).toBe(false);
     await expect(adapter.finalizeDirectUpload(input)).resolves.toMatchObject([{ id: target.id }]);
     expect(
@@ -742,5 +745,56 @@ describe("current-runtime target adapters", () => {
       })
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(storage.files.has(`${ledgerId}/stored/${target.id}`)).toBe(false);
+  });
+
+  it("rejects normalized aggregate overflow before promoting direct-upload objects", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const storage = new DirectMemoryObjectStore();
+    const adapter = new StoredFileAdapter(storage);
+    const width = 1600;
+    const height = 1600;
+    const pixels = Buffer.allocUnsafe(width * height * 3);
+    for (let index = 0; index < pixels.length; index += 1) {
+      pixels[index] = (index * 31 + Math.floor(index / 97) * 17) % 256;
+    }
+    const bytes = await sharp(pixels, { raw: { width, height, channels: 3 } })
+      .jpeg({ quality: 30 })
+      .toBuffer();
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    const plan = await adapter.createDirectUploadPlan(
+      ledgerId,
+      Array.from({ length: 3 }, () => ({
+        contentType: "image/jpeg",
+        byteSize: bytes.length,
+        originalFilename: null,
+        checksum: digest,
+      }))
+    );
+    for (const target of plan.targets) {
+      const key = `temporary/${ledgerId}/${plan.id}/${target.id}`;
+      storage.files.set(key, bytes);
+      storage.metadata.set(key, {
+        byteSize: bytes.length,
+        contentType: "image/jpeg",
+        metadata: { sha256: digest },
+      });
+    }
+
+    await expect(
+      adapter.finalizeDirectUpload({
+        ownerLedgerId: ledgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: plan.targets.map((target) => target.id),
+      })
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+
+    expect(
+      await db.query.uploadSessions.findFirst({ where: eq(uploadSessions.id, plan.id) })
+    ).toMatchObject({ status: "open" });
+    expect(
+      plan.targets.some((target) => storage.files.has(`${ledgerId}/stored/${target.id}`))
+    ).toBe(false);
   });
 });

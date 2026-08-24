@@ -23,6 +23,7 @@ interface LedgerEntriesToolbarProps {
   selectedSourceDocumentIds?: string[];
   selectedEntryIds?: string[];
   selectedDuplicateCount?: number;
+  queryFingerprint: string;
   onToggleSelectionMode: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
@@ -60,6 +61,7 @@ export function LedgerEntriesToolbar({
   selectedSourceDocumentIds = [],
   selectedEntryIds = [],
   selectedDuplicateCount = 0,
+  queryFingerprint,
   onToggleSelectionMode,
   onSelectAll,
   onClearSelection,
@@ -101,7 +103,17 @@ export function LedgerEntriesToolbar({
   const [dateSelectionSnapshot, setDateSelectionSnapshot] = useState<{
     sourceDocumentIds: string[];
     entryIds: string[];
+    queryFingerprint: string;
   } | null>(null);
+  const dateSelectionMatches =
+    dateSelectionSnapshot != null &&
+    dateSelectionSnapshot.queryFingerprint === queryFingerprint &&
+    dateSelectionSnapshot.sourceDocumentIds.length === selectedSourceDocumentIds.length &&
+    dateSelectionSnapshot.sourceDocumentIds.every(
+      (id, index) => id === selectedSourceDocumentIds[index]
+    ) &&
+    dateSelectionSnapshot.entryIds.length === selectedEntryIds.length &&
+    dateSelectionSnapshot.entryIds.every((id, index) => id === selectedEntryIds[index]);
   const showBatchActions = isSelectionMode && selectedCount > 0;
   const isProcessing =
     externallyProcessing ||
@@ -120,6 +132,7 @@ export function LedgerEntriesToolbar({
     const snapshot = {
       sourceDocumentIds: [...selectedSourceDocumentIds],
       entryIds: [...selectedEntryIds],
+      queryFingerprint,
     };
     if (onPreviewDateImpact == null) {
       return onUpdateDates(formatDateTimeForApi(selectedDate), snapshot.sourceDocumentIds);
@@ -259,15 +272,19 @@ export function LedgerEntriesToolbar({
         open={dateConfirmOpen}
         onOpenChange={setDateConfirmOpen}
         title={tBatch("dateImpactTitle")}
-        description={tBatch("dateImpactDescription", {
-          documents: dateImpact?.sourceDocumentCount ?? 0,
-          entries: dateImpact?.affectedEntryCount ?? 0,
-          scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
-        })}
+        description={
+          dateSelectionSnapshot != null && !dateSelectionMatches
+            ? tBatch("selectionChanged")
+            : tBatch("dateImpactDescription", {
+                documents: dateImpact?.sourceDocumentCount ?? 0,
+                entries: dateImpact?.affectedEntryCount ?? 0,
+                scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
+              })
+        }
         confirmLabel={tBatch("confirm")}
         onConfirm={async () => {
           if (dateImpact == null || onUpdateDates == null) return false;
-          if (dateSelectionSnapshot == null) return false;
+          if (dateSelectionSnapshot == null || !dateSelectionMatches) return false;
           await onUpdateDates(
             formatDateTimeForApi(selectedDate),
             dateSelectionSnapshot.sourceDocumentIds

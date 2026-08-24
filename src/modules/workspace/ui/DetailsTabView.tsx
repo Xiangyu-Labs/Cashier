@@ -100,9 +100,9 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             <LedgerEntriesBatchActionToolbar
               variant="inline"
               selectedCount={batch.selectedIds.length}
-              totalCount={entries.length}
+              totalCount={batch.selectableCount}
               isAllSelected={batch.isAllSelected}
-              hasMoreData={hasNextPage}
+              hasMoreData={hasNextPage || entries.length > batch.selectableCount}
               onSelectAll={() => !batch.isPending && batch.selectAll()}
               onClearSelection={() => !batch.isPending && batch.clearSelection()}
               categories={categories}
@@ -162,10 +162,11 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             onView={onViewEntry}
             selectionMode={batch.isSelectionMode}
             selectedIds={batch.selectedIds}
+            disableUnselected={batch.isSelectionLimitReached}
             onToggleSelection={handleToggleSelection}
           />
           {isLoading ? (
-            <div className="space-y-4 px-2 animate-pulse">
+            <div className="space-y-4 px-2 animate-pulse" role="status" aria-busy="true">
               {[1, 2, 3].map((idx) => (
                 <div key={idx} className="bg-surface rounded-xl border border-border p-4 h-20" />
               ))}
@@ -234,6 +235,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             ) : null}
             <input
               type="date"
+              aria-label={t("changeDateTitle")}
               value={batch.selectedDate}
               onChange={(event) => batch.setSelectedDate(event.target.value)}
               className="min-h-11 rounded-md border border-border bg-bg px-3"

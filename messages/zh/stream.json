@@ -12,6 +12,7 @@
     "currencyChanged": "已更改 {count} 项的货币",
     "loadedOnly": "仅选中已加载的 {count} 项",
     "loadedScope": "仅作用于当前已加载并已选中的项目。",
+    "selectionChanged": "所选项目已变化，请重新预览日期影响。",
     "setDate": "修改日期",
     "setDateShort": "日期",
     "split": "拆分",

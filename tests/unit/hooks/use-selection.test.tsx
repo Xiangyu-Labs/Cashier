@@ -66,4 +66,40 @@ describe("useSelection", () => {
     expect(result.current.selectedIds).toEqual(["one", "two"]);
     overlay.remove();
   });
+
+  it("caps selection at 100 while allowing any visible item after one is cleared", () => {
+    const ids = Array.from({ length: 101 }, (_, index) => `entry-${index + 1}`);
+    const { result } = renderHook(() => useSelection({ allIds: ids }));
+
+    act(() => result.current.selectAll());
+    expect(result.current.selectedIds).toHaveLength(100);
+    expect(result.current.selectableCount).toBe(100);
+    expect(result.current.isSelectionLimitReached).toBe(true);
+    expect(result.current.isAllSelected).toBe(true);
+
+    act(() => result.current.toggleSelection("entry-101"));
+    expect(result.current.selectedIds).not.toContain("entry-101");
+
+    act(() => {
+      result.current.toggleSelection("entry-1");
+      result.current.toggleSelection("entry-101");
+    });
+    expect(result.current.selectedIds).toHaveLength(100);
+    expect(result.current.selectedIds).toContain("entry-101");
+  });
+
+  it("intersects selection with refreshed visible IDs", () => {
+    const { result, rerender } = renderHook(
+      ({ allIds }) => useSelection({ allIds, queryFingerprint: "same-query" }),
+      { initialProps: { allIds: ["one", "two", "three"] } }
+    );
+    act(() => {
+      result.current.handleSelect("one", true);
+      result.current.handleSelect("three", true);
+    });
+
+    rerender({ allIds: ["two", "three", "four"] });
+
+    expect(result.current.selectedIds).toEqual(["three"]);
+  });
 });

@@ -108,6 +108,8 @@ export function SourceDocumentDetailWrapper({
         sourceDocumentId={id}
         open={open}
         onOpenChange={onClose}
+        {...(onBack !== undefined ? { onBack } : {})}
+        {...(onExitComplete !== undefined ? { onExitComplete } : {})}
         mainCurrency={mainCurrency}
       />
     );

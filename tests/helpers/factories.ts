@@ -64,7 +64,7 @@ export function createLedgerEntryData(
     categoryId: string | null;
     sourceDocumentId: string | null;
     amount: string;
-    currency: string | null;
+    currency: string;
     itemName: string;
     description: string | null;
     entryDate: string | null; // yyyy-MM-dd format

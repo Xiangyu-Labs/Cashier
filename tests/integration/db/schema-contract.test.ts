@@ -239,6 +239,7 @@ describe("PostgreSQL schema contract", () => {
         sourceDocumentId,
         categoryId: category.id,
         amount: "1.00",
+        currency: "CNY",
         itemName: "Cross-ledger category",
       })
     ).rejects.toMatchObject({ cause: expect.objectContaining({ code: "23503" }) });

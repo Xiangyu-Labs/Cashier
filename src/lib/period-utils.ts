@@ -5,7 +5,12 @@
  * consistent date range calculation and query key matching.
  */
 
-import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "./date-utils";
+import {
+  formatDateTimeForApi,
+  getDateInTimezone,
+  isValidDateString,
+  parseDateString,
+} from "./date-utils";
 
 export type PeriodPreset =
   "all" | "thisMonth" | "week" | "month" | "3months" | "6months" | "year" | "custom";
@@ -189,20 +194,26 @@ export function parsePeriodFromSearchParams(
     "year",
     "custom",
   ];
-  const validatedPeriod: PeriodPreset = validPeriods.includes(period as PeriodPreset)
+  let validatedPeriod: PeriodPreset = validPeriods.includes(period as PeriodPreset)
     ? (period as PeriodPreset)
     : "thisMonth"; // Default to thisMonth
+
+  const validCustomRange =
+    validatedPeriod === "custom" &&
+    startDate != null &&
+    endDate != null &&
+    isValidDateString(startDate) &&
+    isValidDateString(endDate) &&
+    startDate <= endDate;
+  if (validatedPeriod === "custom" && !validCustomRange) validatedPeriod = "thisMonth";
 
   const parsedParams: PeriodParams = {
     period: validatedPeriod,
   };
 
-  if (validatedPeriod === "custom" && startDate != null && startDate !== "") {
-    parsedParams.startDate = startDate;
-  }
-
-  if (validatedPeriod === "custom" && endDate != null && endDate !== "") {
-    parsedParams.endDate = endDate;
+  if (validCustomRange) {
+    parsedParams.startDate = startDate!;
+    parsedParams.endDate = endDate!;
   }
 
   return parsedParams;

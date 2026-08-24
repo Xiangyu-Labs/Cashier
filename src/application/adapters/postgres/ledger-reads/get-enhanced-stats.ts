@@ -51,7 +51,10 @@ async function fetchAggregatedRows(
       AND entries.source_document_revision_id = documents.active_revision_id
       AND entries.deleted_at IS NULL
     JOIN ledgers ON ledgers.id = documents.ledger_id AND ledgers.deleted_at IS NULL
-    LEFT JOIN entry_categories categories ON categories.id = entries.category_id
+    LEFT JOIN entry_categories categories
+      ON categories.id = entries.category_id
+      AND categories.ledger_id = entries.ledger_id
+      AND categories.deleted_at IS NULL
     GROUP BY ranges.period, documents.effective_date, entries.currency, entries.category_id,
       categories.name, categories.icon, ledgers.main_currency
     UNION ALL

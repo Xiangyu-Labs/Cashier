@@ -70,4 +70,57 @@ describe("drainSourceDocumentDelta", () => {
     });
     expect(applyStreamRefreshToCacheMock).toHaveBeenCalledTimes(1);
   });
+
+  it("does not advance the cursor when cache invalidation fails", async () => {
+    const queryClient = new QueryClient();
+    getStreamRefreshActionMock.mockResolvedValue(delta(1, false));
+    applyStreamRefreshToCacheMock.mockRejectedValueOnce(new Error("invalidation failed"));
+
+    await expect(drainSourceDocumentDelta(queryClient, "ledger-3", "0")).rejects.toThrow(
+      "invalidation failed"
+    );
+    applyStreamRefreshToCacheMock.mockResolvedValue(undefined);
+    await drainSourceDocumentDelta(queryClient, "ledger-3", "0");
+
+    expect(getStreamRefreshActionMock).toHaveBeenNthCalledWith(2, "ledger-3", {
+      ledgerId: "ledger-3",
+      afterVersion: "0",
+    });
+  });
+
+  it("keeps timed-out work in flight and does not commit its cursor", async () => {
+    vi.useFakeTimers();
+    try {
+      const queryClient = new QueryClient();
+      let releaseInvalidation!: () => void;
+      applyStreamRefreshToCacheMock.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          releaseInvalidation = resolve;
+        })
+      );
+      getStreamRefreshActionMock.mockResolvedValue(delta(1, false));
+
+      const first = drainSourceDocumentDelta(queryClient, "ledger-4", "0");
+      const rejection = expect(first).rejects.toThrow("timed out");
+      await vi.advanceTimersByTimeAsync(15_000);
+      await rejection;
+
+      const overlapping = drainSourceDocumentDelta(queryClient, "ledger-4", "0");
+      expect(overlapping).toBe(first);
+      expect(getStreamRefreshActionMock).toHaveBeenCalledTimes(1);
+
+      releaseInvalidation();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+      applyStreamRefreshToCacheMock.mockResolvedValue(undefined);
+      await drainSourceDocumentDelta(queryClient, "ledger-4", "0");
+
+      expect(getStreamRefreshActionMock).toHaveBeenNthCalledWith(2, "ledger-4", {
+        ledgerId: "ledger-4",
+        afterVersion: "0",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

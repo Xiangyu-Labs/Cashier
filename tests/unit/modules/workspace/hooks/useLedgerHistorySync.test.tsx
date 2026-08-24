@@ -11,7 +11,11 @@ const guardKey = `ledger-entry-detail:${ledgerId}:${detailId}`;
 
 describe("useLedgerHistorySync", () => {
   beforeEach(() => {
-    window.history.replaceState({}, "", `/ledger/${ledgerId}?${detailSearch}`);
+    window.history.replaceState(
+      { cashier: { ledgerNavigation: true, kind: "detail", sequence: 1 } },
+      "",
+      `/ledger/${ledgerId}?${detailSearch}`
+    );
     useModalStackStore.getState().closeAll();
     useUnsavedChangesStore.setState({
       dirtyKeys: new Set(),
@@ -35,7 +39,6 @@ describe("useLedgerHistorySync", () => {
       continueNavigation = continuation;
     });
     const go = vi.spyOn(window.history, "go").mockImplementation(() => {});
-    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
 
     useUnsavedChangesStore.getState().registerLeaveGuard(guardKey, { requestLeave });
 
@@ -50,39 +53,40 @@ describe("useLedgerHistorySync", () => {
 
     await waitFor(() =>
       expect(useModalStackStore.getState().stack).toEqual([
-        { type: "ledger-entry", id: detailId, ledgerId },
+        { type: "ledger-entry", id: detailId, ledgerId, returnFocus: null },
       ])
     );
 
     act(() => {
-      window.history.replaceState({}, "", `/ledger/${ledgerId}`);
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      const state = { cashier: { ledgerNavigation: true, kind: "filter", sequence: 0 } };
+      window.history.replaceState(state, "", `/ledger/${ledgerId}`);
+      window.dispatchEvent(new PopStateEvent("popstate", { state }));
     });
 
     expect(go).toHaveBeenCalledWith(1);
     expect(requestLeave).not.toHaveBeenCalled();
-    expect(back).not.toHaveBeenCalled();
 
     act(() => {
-      window.history.replaceState({}, "", `/ledger/${ledgerId}?${detailSearch}`);
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      const state = { cashier: { ledgerNavigation: true, kind: "detail", sequence: 1 } };
+      window.history.replaceState(state, "", `/ledger/${ledgerId}?${detailSearch}`);
+      window.dispatchEvent(new PopStateEvent("popstate", { state }));
     });
 
     expect(requestLeave).toHaveBeenCalledTimes(1);
     expect(continueNavigation).not.toBeNull();
-    expect(back).not.toHaveBeenCalled();
 
     act(() => {
       continueNavigation?.();
     });
 
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(go).toHaveBeenLastCalledWith(-1);
 
     act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      const state = { cashier: { ledgerNavigation: true, kind: "filter", sequence: 0 } };
+      window.dispatchEvent(new PopStateEvent("popstate", { state }));
     });
 
-    expect(go).toHaveBeenCalledTimes(1);
+    expect(go).toHaveBeenCalledTimes(2);
     expect(requestLeave).toHaveBeenCalledTimes(1);
   });
 });

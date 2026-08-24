@@ -6,8 +6,12 @@ import { StatsTab } from "@/modules/workspace/ui/StatsTab";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { Ledger } from "@/modules/ledger/contracts";
 
+const { searchParamsState } = vi.hoisted(() => ({
+  searchParamsState: { current: new URLSearchParams() },
+}));
+
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsState.current,
 }));
 
 vi.mock("@/i18n/routing", () => ({
@@ -54,17 +58,18 @@ function renderStatsTab() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
-  render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
-      <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} />
+      <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} ledgerToday="2026-08-24" />
     </QueryClientProvider>
   );
-  return queryClient;
+  return { queryClient, ...view };
 }
 
 describe("StatsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsState.current = new URLSearchParams();
   });
 
   it("shows the error panel on failure and refetches via the retry button", async () => {
@@ -86,7 +91,7 @@ describe("StatsTab", () => {
       ...statsFixture,
       chart: Array.from({ length: 121 }, (_, index) => ({
         date: `2026-01-${String((index % 28) + 1).padStart(2, "0")}`,
-        total: index,
+        total: String(index),
       })),
     });
 
@@ -94,5 +99,32 @@ describe("StatsTab", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.queryByText("¥120.00")).not.toBeInTheDocument();
+  });
+
+  it("keeps placeholder data paired with its resolved range descriptor", async () => {
+    let resolveNext!: (value: EnhancedStatsDto) => void;
+    vi.mocked(getEnhancedStats)
+      .mockResolvedValueOnce(statsFixture)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveNext = resolve;
+        })
+      );
+    const { queryClient, rerender } = renderStatsTab();
+    await screen.findByText("¥120.00");
+    expect(screen.getByText("2026年8月")).toBeInTheDocument();
+
+    searchParamsState.current = new URLSearchParams("statsRange=week");
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} ledgerToday="2026-08-24" />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(getEnhancedStats).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("button", { name: "周" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("2026年8月")).toBeInTheDocument();
+
+    resolveNext(statsFixture);
   });
 });

@@ -113,12 +113,14 @@
   --chart-3: var(--warning);
   --chart-4: var(--danger);
   --chart-5: #71717a;
-  --heatmap-0: var(--surface2);
-  --heatmap-1: color-mix(in srgb, var(--primary), transparent 86%);
-  --heatmap-2: color-mix(in srgb, var(--primary), transparent 72%);
-  --heatmap-3: color-mix(in srgb, var(--primary), transparent 56%);
-  --heatmap-4: color-mix(in srgb, var(--primary), transparent 38%);
-  --heatmap-5: var(--primary);
+  --heatmap-0: #f1f5f3;
+  --heatmap-1: #d9eee7;
+  --heatmap-2: #b7ddcf;
+  --heatmap-3: #83c4ad;
+  --heatmap-4: #267b65;
+  --heatmap-5: #116149;
+  --heatmap-text-low: #12382d;
+  --heatmap-text-high: #ffffff;
 
   --sidebar: var(--surface2);
   --sidebar-foreground: var(--text);
@@ -170,12 +172,14 @@
   --chart-3: var(--warning);
   --chart-4: var(--danger);
   --chart-5: #8e8ea0;
-  --heatmap-0: var(--surface2);
-  --heatmap-1: color-mix(in srgb, var(--primary), transparent 78%);
-  --heatmap-2: color-mix(in srgb, var(--primary), transparent 64%);
-  --heatmap-3: color-mix(in srgb, var(--primary), transparent 48%);
-  --heatmap-4: color-mix(in srgb, var(--primary), transparent 30%);
-  --heatmap-5: var(--success);
+  --heatmap-0: #202223;
+  --heatmap-1: #263d36;
+  --heatmap-2: #275445;
+  --heatmap-3: #256b55;
+  --heatmap-4: #1e745a;
+  --heatmap-5: #116149;
+  --heatmap-text-low: #f2f4f3;
+  --heatmap-text-high: #ffffff;
 }
 
 html {

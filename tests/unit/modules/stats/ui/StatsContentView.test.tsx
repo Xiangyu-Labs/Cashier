@@ -6,6 +6,7 @@ import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 
 const baseProps = {
   rangeType: "month" as const,
+  contentRangeType: "month" as const,
   onRangeTypeChange: () => {},
   periodOffset: 0,
   onPeriodOffsetChange: () => {},
@@ -93,5 +94,19 @@ describe("StatsContentView", () => {
     fireEvent.click(trendButton);
     expect(trendButton).toHaveAttribute("aria-pressed", "true");
     expect(heatmapButton).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("keeps comparison copy bound to the committed content range", () => {
+    render(
+      <StatsContentView
+        {...baseProps}
+        rangeType="week"
+        contentRangeType="year"
+        stats={statsFixture}
+      />
+    );
+
+    expect(screen.getByText(/去年/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "周" })).toHaveAttribute("aria-pressed", "true");
   });
 });

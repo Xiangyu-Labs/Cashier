@@ -14,7 +14,7 @@ import { AmountText } from "@/modules/currency/ui/amount-text";
 import { Card } from "@/components/ui/card";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { cn } from "@/lib/utils";
-import { parseAmount } from "@/lib/formatters";
+import Decimal from "decimal.js";
 import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
 import type { EntryEditData } from "@/modules/source-document/types";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
@@ -29,7 +29,7 @@ import { useCachedSourceImages } from "@/modules/source-document/hooks";
 
 interface CurrencyBreakdownItemProps {
   currency: string;
-  amount: number;
+  amount: string;
   mainCurrency: string;
   entries: SourceDocumentDetailDisplayEntry[];
 }
@@ -43,7 +43,9 @@ function CurrencyBreakdownItem({
   const locale = useLocale();
   const converted = useMemo(() => {
     const currencyEntries = entries.filter((e) => (e.currency ?? mainCurrency) === currency);
-    return currencyEntries.reduce((total, entry) => total + (entry.convertedAmount ?? 0), 0);
+    return currencyEntries
+      .reduce((total, entry) => total.plus(entry.convertedAmount ?? 0), new Decimal(0))
+      .toFixed();
   }, [entries, currency, mainCurrency]);
 
   return (
@@ -154,9 +156,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       const aOrder = a.category?.sortOrder ?? 999999;
       const bOrder = b.category?.sortOrder ?? 999999;
       if (aOrder !== bOrder) return aOrder - bOrder;
-      return (
-        (displayEntriesById.get(b.id)?.amount ?? parseAmount(b.amount)) -
-        (displayEntriesById.get(a.id)?.amount ?? parseAmount(a.amount))
+      return new Decimal(displayEntriesById.get(b.id)?.amount ?? b.amount).cmp(
+        displayEntriesById.get(a.id)?.amount ?? a.amount
       );
     });
   }, [displayEntriesById, ledgerEntries]);
@@ -234,7 +235,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 <CurrencyBreakdownItem
                   key={curr}
                   currency={curr}
-                  amount={subtotalsByCurrency[curr] ?? 0}
+                  amount={subtotalsByCurrency[curr] ?? "0"}
                   mainCurrency={mainCurrency}
                   entries={displayEntries}
                 />

@@ -84,6 +84,7 @@ export function DetailsTab({
   const sentinelRef = useInfiniteScroll({
     hasNextPage: data.hasNextPage,
     isFetchingNextPage: data.isFetchingNextPage,
+    isFetchNextPageError: data.isFetchNextPageError,
     fetchNextPage: data.fetchNextPage,
   });
   const handleViewEntry = useCallback(

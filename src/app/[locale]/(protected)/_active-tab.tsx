@@ -161,9 +161,7 @@ async function ActiveTabBootstrap({
         {...(pageData?.initialCategories !== undefined
           ? { initialCategories: pageData.initialCategories }
           : {})}
-        {...(pageData?.initialStatsDate !== undefined
-          ? { initialStatsDate: pageData.initialStatsDate }
-          : {})}
+        {...(pageData?.ledgerToday !== undefined ? { ledgerToday: pageData.ledgerToday } : {})}
         {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
         hasPassword={session.user?.hasPassword ?? false}
         passwordUpdatedAt={session.user?.passwordUpdatedAt ?? null}

@@ -68,6 +68,11 @@ function assertEntryValues(entries: readonly LedgerProjectionEntryContract[]): v
   }
 }
 
+function requireCurrency(currency: string | null): string {
+  if (currency == null) throw new ValidationError("Ledger projection entries require a currency");
+  return currency;
+}
+
 async function assertCategoryOwnership(
   tx: PostgresTransaction,
   ledgerId: string,
@@ -111,7 +116,7 @@ async function insertRevisionEntries(
       position,
       categoryId: entry.categoryId,
       amount: entry.amount,
-      currency: entry.currency,
+      currency: requireCurrency(entry.currency),
       itemName: entry.itemName,
       description: entry.description,
       convertedAmount: entry.convertedAmount,
@@ -990,7 +995,7 @@ async function replaceManualProjection(
             position,
             categoryId: entry.categoryId,
             amount: entry.amount,
-            currency: entry.currency,
+            currency: requireCurrency(entry.currency),
             itemName: entry.itemName,
             description: entry.description,
             convertedAmount: entry.convertedAmount,

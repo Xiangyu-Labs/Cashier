@@ -99,7 +99,8 @@
     "deleteSelectedTitle": "删除所选明细",
     "deleteSelectedDescription": "确定删除所选 {count} 项明细吗？此操作无法撤销。",
     "changeDateTitle": "修改交易日期",
-    "changeDateImpact": "已选 {selected} 项明细，涉及 {documents} 张凭证。由于日期属于凭证，实际将更新 {affected} 项明细。"
+    "changeDateImpact": "已选 {selected} 项明细，涉及 {documents} 张凭证。由于日期属于凭证，实际将更新 {affected} 项明细。",
+    "selectionChanged": "所选项目已变化，请重新预览日期影响。"
   },
   "BatchActions": {
     "selected": "已选择 {count} 项",
@@ -114,6 +115,7 @@
     "currencyChanged": "已更改 {count} 项的货币",
     "loadedOnly": "仅选中已加载的 {count} 项",
     "loadedScope": "仅作用于当前已加载并已选中的项目。",
+    "selectionChanged": "所选项目已变化，请重新预览日期影响。",
     "setDate": "修改日期",
     "setDateShort": "日期",
     "split": "拆分",
@@ -182,6 +184,8 @@
     "noMatchingResults": "没有符合条件的结果"
   },
   "StatsTab": {
+    "increase": "增加",
+    "decrease": "减少",
     "throughToday": "截至今日",
     "expenseTrend": "支出趋势",
     "expenseRanking": "支出排行",

@@ -98,24 +98,21 @@ export async function handleApiV1Route(
   try {
     const clientIp = getClientIPFromHeaders(request.headers);
 
-    // 1. Pre-auth per-IP ceiling before parsing or authenticating the token.
-    //    When no trusted client IP is available this bucket is skipped so all
-    //    clients never share one global fixed window.
-    if (clientIp !== "unknown") {
-      const preAuthStart = performance.now();
-      const preAuthResult = await serverComposition.rateLimiter.increment(
-        preAuthBucketKey(clientIp),
-        PRE_AUTH_IP_LIMIT_PER_MINUTE,
-        RATE_LIMIT_WINDOW_SECONDS
-      );
-      stages.preAuthRateLimitMs = Math.round(performance.now() - preAuthStart);
-      if (!preAuthResult.success) {
-        throw new RateLimitError("Rate limit exceeded", undefined, {
-          limit: PRE_AUTH_IP_LIMIT_PER_MINUTE,
-          remaining: preAuthResult.remaining,
-          resetTime: preAuthResult.resetTime,
-        });
-      }
+    // 1. Pre-auth ceiling. Missing trusted client data uses one fixed HMAC
+    //    bucket so unauthenticated traffic is still bounded without raw IPs.
+    const preAuthStart = performance.now();
+    const preAuthResult = await serverComposition.rateLimiter.increment(
+      preAuthBucketKey(clientIp),
+      PRE_AUTH_IP_LIMIT_PER_MINUTE,
+      RATE_LIMIT_WINDOW_SECONDS
+    );
+    stages.preAuthRateLimitMs = Math.round(performance.now() - preAuthStart);
+    if (!preAuthResult.success) {
+      throw new RateLimitError("Rate limit exceeded", undefined, {
+        limit: PRE_AUTH_IP_LIMIT_PER_MINUTE,
+        remaining: preAuthResult.remaining,
+        resetTime: preAuthResult.resetTime,
+      });
     }
 
     // 2. Case-insensitive Bearer parsing. Missing header, empty token, or

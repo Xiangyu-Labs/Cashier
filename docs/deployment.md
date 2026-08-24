@@ -2,6 +2,10 @@
 
 Cashier 提供两种 Docker Compose 部署方式：
 
+反向代理不是必需项。仅当入口会覆盖客户端提供的 `X-Real-IP` 时设置
+`TRUSTED_PROXY=platform`；直连部署应保持未设置。Vercel 部署在显式设置该值后读取
+平台的单值 `X-Vercel-Forwarded-For`，非法或多值头不会被信任。
+
 - 本地全家桶：Cashier、PostgreSQL 和 MinIO 全部由 Compose 管理，适合首次体验和单机部署。
 - 外部服务：Compose 只启动 Cashier，数据库和对象存储由你提供。
 

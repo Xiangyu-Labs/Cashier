@@ -74,6 +74,7 @@ jobs:
           # These build-only placeholders match the Dockerfile builder environment.
           DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
           API_KEY_PEPPER: build-placeholder
+          RATE_LIMIT_PEPPER: build-placeholder
           OPENAI_API_KEY: build-placeholder
           AUTH_SECRET: build-placeholder
           AUTH_OTP_PEPPER: build-placeholder

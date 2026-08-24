@@ -92,4 +92,26 @@ describe("SelectableCardSurface", () => {
     await user.click(button);
     expect(onInternalClick).toHaveBeenCalledTimes(1);
   });
+
+  it("disables an unselected card when the selection limit is reached", async () => {
+    const user = userEvent.setup();
+    const onToggleSelection = vi.fn();
+    render(
+      <SelectableCardSurface
+        selectionMode
+        selected={false}
+        disabled
+        selectionLabel="Select lunch"
+        onToggleSelection={onToggleSelection}
+      >
+        <div>Lunch</div>
+      </SelectableCardSurface>
+    );
+
+    const overlay = screen.getByRole("checkbox", { name: "Select lunch" });
+    expect(overlay).toBeDisabled();
+    expect(overlay.parentElement).toHaveClass("opacity-60");
+    await user.click(overlay);
+    expect(onToggleSelection).not.toHaveBeenCalled();
+  });
 });

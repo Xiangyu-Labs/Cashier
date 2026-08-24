@@ -150,8 +150,8 @@ describe("getEnhancedStatsQuery", () => {
       to: "2024-02-29",
     });
     expect(result.chart).toEqual([
-      { date: "2024-03-01", total: 40 },
-      { date: "2024-03-02", total: 30 },
+      { date: "2024-03-01", total: "40" },
+      { date: "2024-03-02", total: "30" },
     ]);
   });
 
@@ -186,7 +186,7 @@ describe("getEnhancedStatsQuery", () => {
     });
 
     expect(result.summary.total).toBe("40");
-    expect(result.chart).toEqual([{ date: "2024-03-10", total: 40 }]);
+    expect(result.chart).toEqual([{ date: "2024-03-10", total: "40" }]);
   });
 
   it("counts active projections even while the document is pending", async () => {
@@ -286,7 +286,7 @@ describe("getEnhancedStatsQuery", () => {
     expect(result.heatmap.days[0]?.totalAmount).toBe("100");
   });
 
-  it("excludes entries when rates are missing and handles null currency", async () => {
+  it("excludes entries when rates are missing", async () => {
     const db = getTestDb();
     await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
 
@@ -319,8 +319,10 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc.id,
         amount: "25",
-        currency: null,
-        itemName: "null currency",
+        currency: "USD",
+        convertedAmount: "25",
+        exchangeRate: "1",
+        itemName: "main currency",
         categoryId,
       },
     ]);
@@ -332,8 +334,8 @@ describe("getEnhancedStatsQuery", () => {
     });
 
     expect(result.summary.currency).toBe("USD");
-    expect(result.summary.total).toBe("0");
-    expect(result.unconvertedCount).toBe(2);
+    expect(result.summary.total).toBe("25");
+    expect(result.unconvertedCount).toBe(1);
   });
 
   it("defaults summary currency to CNY when ledger main currency is absent", async () => {
@@ -354,7 +356,7 @@ describe("getEnhancedStatsQuery", () => {
       sourceDocumentId: doc.id,
       amount: "10",
       convertedAmount: "10",
-      currency: null,
+      currency: "CNY",
       itemName: "default currency item",
       categoryId,
     });
@@ -503,7 +505,7 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.chart).toHaveLength(1);
     expect(result.chart[0]?.date).toBe("2024-07-01");
-    expect(result.chart[0]?.total).toBe(800);
+    expect(result.chart[0]?.total).toBe("800");
 
     expect(result.heatmap.days).toHaveLength(1);
 

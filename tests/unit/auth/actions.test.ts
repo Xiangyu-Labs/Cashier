@@ -88,7 +88,7 @@ describe("sendOTPAction", () => {
   });
 
   it("prefers x-real-ip when TRUSTED_PROXY is configured", async () => {
-    process.env.TRUSTED_PROXY = "nginx";
+    process.env.TRUSTED_PROXY = "platform";
 
     headersMock.mockResolvedValue({
       get: (key: string) => {

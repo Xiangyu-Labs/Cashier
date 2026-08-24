@@ -56,6 +56,7 @@ describe("Ledger Entry Update Action", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: testSourceDocId,
         amount: "100.00",
+        currency: "CNY",
         itemName: "Test Item",
         description: "Initial description",
         categoryId: testCategoryId,

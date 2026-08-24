@@ -25,7 +25,7 @@ import {
   UPLOAD_SESSION_EXPIRY_MS,
 } from "@/lib/storage/upload-policy";
 import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cleanup";
-import { validateStoredImageBytes } from "@/lib/storage/image-processing";
+import { processImage, validateStoredImageBytes } from "@/lib/storage/image-processing";
 import {
   postgresAuthorizedFileRepository,
   type AuthorizedFileRepository,
@@ -459,12 +459,12 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     }
 
     let inspected: Array<{
-      metadata: Awaited<ReturnType<DirectObjectFileStore["head"]>>;
       bytes: Buffer;
+      contentType: string;
       checksum: string;
     }>;
     try {
-      inspected = await Promise.all(
+      const uploaded = await Promise.all(
         targets.map(async (target) => {
           const key = temporaryKey(session.ledgerId, session.id, target.targetId);
           const [metadata, bytes] = await Promise.all([storage.head(key), storage.download(key)]);
@@ -472,7 +472,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         })
       );
       for (const [position, target] of targets.entries()) {
-        const actual = inspected[position]!;
+        const actual = uploaded[position]!;
         if (
           actual.metadata.byteSize !== target.expectedByteSize ||
           actual.bytes.length !== target.expectedByteSize ||
@@ -481,10 +481,29 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         ) {
           throw new ConflictError("Uploaded object does not match the upload plan");
         }
-        await validateStoredImageBytes(actual.bytes, target.expectedContentType!);
+      }
+      inspected = await Promise.all(
+        uploaded.map(async (actual, position) => {
+          const processed = await processImage(
+            actual.bytes,
+            targets[position]!.expectedContentType!
+          );
+          await validateStoredImageBytes(processed.buffer, processed.mimeType);
+          return {
+            bytes: processed.buffer,
+            contentType: processed.mimeType,
+            checksum: checksum(processed.buffer),
+          };
+        })
+      );
+      const normalizedTotalBytes = inspected.reduce((sum, file) => sum + file.bytes.length, 0);
+      if (normalizedTotalBytes > MAX_NORMALIZED_BYTES_PER_REVISION) {
+        throw new ValidationError(
+          `Total stored bytes ${normalizedTotalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
+        );
       }
     } catch (error) {
-      if (error instanceof ConflictError || error instanceof ValidationError) {
+      if (error instanceof ConflictError) {
         await db.transaction(async (tx) => {
           await tx
             .update(uploadSessionFiles)
@@ -508,6 +527,11 @@ export class StoredFileAdapter implements DirectStoredFilePort {
             )
           )
         );
+      } else {
+        await db
+          .update(uploadSessions)
+          .set({ status: "open" })
+          .where(and(eq(uploadSessions.id, session.id), eq(uploadSessions.status, "finalizing")));
       }
       throw error;
     }
@@ -517,8 +541,8 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         if (target.status === "uploaded" || target.status === "finalized") return;
         const storedFileId = target.targetId;
         const storageKey = durableKey(session.ledgerId, storedFileId);
-        const bytes = inspected[target.position]!.bytes;
-        await storage.upload(storageKey, bytes, target.expectedContentType!);
+        const normalized = inspected[target.position]!;
+        await storage.upload(storageKey, normalized.bytes, normalized.contentType);
         try {
           await db.transaction(async (tx) => {
             await tx
@@ -528,10 +552,10 @@ export class StoredFileAdapter implements DirectStoredFilePort {
                 ledgerId: session.ledgerId,
                 storageProvider: "s3",
                 storageKey,
-                contentType: target.expectedContentType!,
-                byteSize: bytes.length,
+                contentType: normalized.contentType,
+                byteSize: normalized.bytes.length,
                 originalFilename: target.originalFilename,
-                checksum: target.expectedChecksum!,
+                checksum: normalized.checksum,
                 createdAt: now,
               })
               .onConflictDoNothing();
@@ -544,9 +568,9 @@ export class StoredFileAdapter implements DirectStoredFilePort {
             if (
               file == null ||
               file.storageKey !== storageKey ||
-              file.contentType !== target.expectedContentType ||
-              file.byteSize !== bytes.length ||
-              file.checksum !== target.expectedChecksum
+              file.contentType !== normalized.contentType ||
+              file.byteSize !== normalized.bytes.length ||
+              file.checksum !== normalized.checksum
             ) {
               throw new ConflictError("Stored file promotion conflicted with existing state");
             }

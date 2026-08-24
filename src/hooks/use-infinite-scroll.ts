@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface UseInfiniteScrollOptions {
   hasNextPage?: boolean;
   isFetchingNextPage: boolean;
+  isFetchNextPageError?: boolean;
   fetchNextPage: () => void;
   rootMargin?: string;
 }
@@ -20,6 +21,7 @@ interface UseInfiniteScrollOptions {
 export function useInfiniteScroll({
   hasNextPage,
   isFetchingNextPage,
+  isFetchNextPageError = false,
   fetchNextPage,
   rootMargin = "200px",
 }: UseInfiniteScrollOptions) {
@@ -31,8 +33,10 @@ export function useInfiniteScroll({
   }, []);
 
   useEffect(() => {
-    if (!hasNextPage || !isFetchingNextPage) loadRequestedRef.current = false;
-  }, [hasNextPage, isFetchingNextPage]);
+    if (!hasNextPage || (!isFetchingNextPage && !isFetchNextPageError)) {
+      loadRequestedRef.current = false;
+    }
+  }, [hasNextPage, isFetchingNextPage, isFetchNextPageError]);
 
   useEffect(() => {
     if (!sentinel) return;
@@ -47,6 +51,7 @@ export function useInfiniteScroll({
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting === true) loadNextPage();
+        else loadRequestedRef.current = false;
       },
       { rootMargin }
     );

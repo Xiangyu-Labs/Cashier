@@ -108,7 +108,6 @@ export function buildEnhancedStatsDto({
         id: category.id,
         name: category.name,
         icon: category.icon,
-        totalOriginal: "0",
         totalConverted: category.total.toFixed(),
         currency: mainCurrency,
         percent: current.total.gt(0)
@@ -125,7 +124,7 @@ export function buildEnhancedStatsDto({
   const sortedDays = [...current.days.entries()].toSorted(([left], [right]) =>
     left.localeCompare(right)
   );
-  const chart = sortedDays.map(([date, day]) => ({ date, total: day.total.toNumber() }));
+  const chart = sortedDays.map(([date, day]) => ({ date, total: day.total.toFixed() }));
   const heatmapDays: CalendarDayData[] = sortedDays.map(([date, day]) => ({
     date,
     totalAmount: day.total.toFixed(),

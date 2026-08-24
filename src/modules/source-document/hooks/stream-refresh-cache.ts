@@ -15,21 +15,27 @@ export function applyStreamRefreshToCache(
   queryClient: QueryClient,
   ledgerId: string,
   result: LedgerDeltaResult
-): void {
+): Promise<void> {
+  const invalidations: Array<Promise<unknown>> = [];
   if (result.changed || result.resetRequired) {
-    void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) });
-    void queryClient.invalidateQueries({
-      predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-    });
-    void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) });
-    void queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
-    void queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) });
-    void queryClient.invalidateQueries({ predicate: invalidateLedgerEntryDetails(ledgerId) });
+    invalidations.push(
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateLedgerEntryDetails(ledgerId) })
+    );
   }
   if (result.invalidations.categories || result.invalidations.settings) {
-    void queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) });
+    invalidations.push(
+      queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) })
+    );
   }
   if (result.invalidations.stats) {
-    void queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
+    invalidations.push(
+      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) })
+    );
   }
+  return Promise.all(invalidations).then(() => undefined);
 }

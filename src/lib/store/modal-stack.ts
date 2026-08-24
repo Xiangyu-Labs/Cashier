@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
 export type ModalItem =
-  | { type: "source-document"; id: string; ledgerId: string }
-  | { type: "ledger-entry"; id: string; ledgerId: string };
+  | { type: "source-document"; id: string; ledgerId: string; returnFocus?: HTMLElement | null }
+  | { type: "ledger-entry"; id: string; ledgerId: string; returnFocus?: HTMLElement | null };
 
 interface ModalStackState {
   stack: ModalItem[];

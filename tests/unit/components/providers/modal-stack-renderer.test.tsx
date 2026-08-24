@@ -106,4 +106,35 @@ describe("ModalStackRenderer", () => {
     expect(screen.getAllByTestId("ledger-modal")).toHaveLength(1);
     expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
   });
+
+  it("focuses the page fallback when the original trigger was removed", async () => {
+    const requestAnimationFrame = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        callback(0);
+        return 1;
+      });
+    const fallback = document.createElement("main");
+    fallback.tabIndex = -1;
+    fallback.dataset.ledgerFocusFallback = "";
+    document.body.appendChild(fallback);
+    const removedTrigger = document.createElement("button");
+
+    render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
+    act(() => {
+      useModalStackStore.getState().push({
+        type: "ledger-entry",
+        id: "entry-1",
+        ledgerId: "ledger-1",
+        returnFocus: removedTrigger,
+      });
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "close" }));
+    fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
+
+    expect(fallback).toHaveFocus();
+    fallback.remove();
+    requestAnimationFrame.mockRestore();
+  });
 });

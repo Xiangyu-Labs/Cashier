@@ -43,6 +43,7 @@ import { lockLedgerForUpdate } from "./transaction-locks";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { normalizeUserPreferences } from "@/modules/auth/services/user-preferences";
+import { normalizeEmail } from "@/lib/utils/email";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { computeCategoryCollectionRevision } from "@/modules/ledger/category-collection-revision";
 
@@ -1228,10 +1229,15 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
 
 export const postgresUserAccountAdapter: UserAccountPort = {
   async findOrCreate(email, name) {
+    const normalizedEmail = normalizeEmail(email);
     return db.transaction(async (tx) => {
       const created = await tx
         .insert(users)
-        .values({ email, ...(name === undefined ? {} : { name }), emailVerified: new Date() })
+        .values({
+          email: normalizedEmail,
+          ...(name === undefined ? {} : { name }),
+          emailVerified: new Date(),
+        })
         .onConflictDoNothing()
         .returning()
         .then((rows) => rows[0]);
@@ -1240,7 +1246,7 @@ export const postgresUserAccountAdapter: UserAccountPort = {
         (await tx
           .select()
           .from(users)
-          .where(and(eq(users.email, email), isNull(users.deletedAt)))
+          .where(and(eq(users.email, normalizedEmail), isNull(users.deletedAt)))
           .then((rows) => rows[0]));
       if (row == null) throw new ConflictError("Failed to create user account");
       return {

@@ -22,6 +22,7 @@ export function useTabScrollRestoration(ledgerId: string, activeTab: LedgerTab):
     const previousScrollBehavior = root.style.scrollBehavior;
     let frame: number | null = null;
     let observer: ResizeObserver | null = null;
+    let clampTimer: number | null = null;
     let restored = false;
 
     root.style.scrollBehavior = "auto";
@@ -48,10 +49,16 @@ export function useTabScrollRestoration(ledgerId: string, activeTab: LedgerTab):
       observer = new ResizeObserver(tryRestore);
       observer.observe(document.body);
     }
+    clampTimer = window.setTimeout(() => {
+      const maximum = Math.max(0, root.scrollHeight - window.innerHeight);
+      window.scrollTo({ top: Math.min(target, maximum), left: 0, behavior: "auto" });
+      finish();
+    }, 2_000);
 
     return () => {
       positions.set(key, restored ? window.scrollY : Math.max(window.scrollY, target));
       observer?.disconnect();
+      if (clampTimer != null) window.clearTimeout(clampTimer);
       if (frame != null) window.cancelAnimationFrame(frame);
       root.style.scrollBehavior = previousScrollBehavior;
     };

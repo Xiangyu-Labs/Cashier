@@ -28,6 +28,7 @@ interface SourceDocumentCardProps {
   className?: string;
   selectionMode?: boolean;
   isSelected?: boolean;
+  selectionDisabled?: boolean;
   onToggleSelect?: () => void;
   readOnly?: boolean;
 }
@@ -84,6 +85,7 @@ function SourceDocumentCardBody({
   className,
   selectionMode = false,
   isSelected = false,
+  selectionDisabled = false,
   onToggleSelect,
   readOnly = false,
   recovery,
@@ -109,6 +111,7 @@ function SourceDocumentCardBody({
     <SelectableCardSurface
       selectionMode={selectionMode}
       selected={isSelected}
+      disabled={selectionDisabled}
       selectionLabel={tCommon("selectItem", {
         item: sourceDocument.title?.trim() || tCard("untitled"),
       })}

@@ -31,6 +31,7 @@ describe("Ledger Entry Delete Action", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: testSourceDocId,
         amount: "100",
+        currency: "CNY",
         itemName: "Delete Me",
       })
       .returning();

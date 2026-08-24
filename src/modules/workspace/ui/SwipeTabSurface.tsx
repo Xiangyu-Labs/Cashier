@@ -23,15 +23,25 @@ export function SwipeTabSurface({
   const horizontal = useRef(false);
   const [offset, setOffset] = useState(0);
   const [settling, setSettling] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current != null) globalThis.clearTimeout(timerRef.current);
+    timerRef.current = null;
+  };
 
   useEffect(() => {
     start.current = null;
     horizontal.current = false;
+    clearTimer();
     const frame = window.requestAnimationFrame(() => {
       setOffset(0);
       setSettling(false);
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      clearTimer();
+    };
   }, [activeTab]);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -85,7 +95,14 @@ export function SwipeTabSurface({
     if (destination == null) {
       setSettling(true);
       setOffset(0);
-      globalThis.setTimeout(() => setSettling(false), reducedMotion ? 0 : 180);
+      clearTimer();
+      timerRef.current = globalThis.setTimeout(
+        () => {
+          timerRef.current = null;
+          setSettling(false);
+        },
+        reducedMotion ? 0 : 180
+      );
       return;
     }
     if (reducedMotion) {
@@ -95,7 +112,11 @@ export function SwipeTabSurface({
     }
     setSettling(true);
     setOffset(dx < 0 ? -window.innerWidth : window.innerWidth);
-    globalThis.setTimeout(() => onTabChange(destination), 140);
+    clearTimer();
+    timerRef.current = globalThis.setTimeout(() => {
+      timerRef.current = null;
+      onTabChange(destination);
+    }, 140);
   };
 
   return (
@@ -105,6 +126,7 @@ export function SwipeTabSurface({
       onPointerMove={handlePointerMove}
       onPointerUp={finish}
       onPointerCancel={() => {
+        clearTimer();
         start.current = null;
         horizontal.current = false;
         setOffset(0);

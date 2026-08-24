@@ -218,6 +218,13 @@
       "when": 1788096000000,
       "tag": "0030_remove_category_is_editable",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788182400000,
+      "tag": "0031_review_consistency_hardening",
+      "breakpoints": true
     }
   ]
 }

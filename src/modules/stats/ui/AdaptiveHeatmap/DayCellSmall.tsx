@@ -40,11 +40,16 @@ export function DayCellSmall({
           aria-label={`${date}, ${compare(amount, "0") > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
           onClick={onClick}
           className={cn(
-            "h-3 w-3 flex-shrink-0 rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
+            "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
             "hover:ring-1 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           )}
-          style={{ backgroundColor: getHeatmapColor(level) }}
-        />
+        >
+          <span
+            aria-hidden
+            className="h-3 w-3 rounded-sm"
+            style={{ backgroundColor: getHeatmapColor(level) }}
+          />
+        </button>
       </TooltipTrigger>
       <TooltipContent side="top" align="center">
         <div className="font-medium">{date}</div>

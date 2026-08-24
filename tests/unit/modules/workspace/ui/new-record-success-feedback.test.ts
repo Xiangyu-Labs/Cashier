@@ -63,7 +63,12 @@ describe("new record success feedback", () => {
       cashier: { ledgerNavigation: true, kind: "detail" },
     });
     expect(useModalStackStore.getState().stack).toEqual([
-      { type: "source-document", id: "source-1", ledgerId: "ledger-1" },
+      {
+        type: "source-document",
+        id: "source-1",
+        ledgerId: "ledger-1",
+        returnFocus: document.body,
+      },
     ]);
   });
 

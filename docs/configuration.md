@@ -40,16 +40,16 @@
 
 ## 认证与内部密钥
 
-| 变量                   | 必需   | 默认值                          | 说明                                     |
-| ---------------------- | ------ | ------------------------------- | ---------------------------------------- |
-| `AUTH_SECRET`          | 运行时 | Docker 自动生成                 | Auth.js 会话签名密钥。                   |
-| `API_KEY_PEPPER`       | 运行时 | Docker 自动生成                 | 服务凭证哈希使用的 pepper。              |
-| `AUTH_OTP_PEPPER`      | 运行时 | Docker 自动生成                 | 邮箱验证码哈希使用的 pepper。            |
-| `AUTH_RESEND_KEY`      | 否     | 无                              | 配置后启用 Resend 邮箱验证码登录和注册。 |
-| `AUTH_EMAIL_FROM`      | 否     | `Cashier <noreply@example.com>` | 验证码和登录通知的发件人。               |
-| `DISABLE_REGISTRATION` | 否     | `false`                         | 设为 `true` 后禁止新邮箱注册。           |
-| `SESSION_MAX_AGE_DAYS` | 否     | `14`                            | 登录会话最长天数。                       |
-| `DEV_AUTH_BYPASS`      | 否     | `false`                         | 仅非生产开发环境使用的免邮件登录入口。   |
+| 变量                   | 必需   | 默认值                          | 说明                                                             |
+| ---------------------- | ------ | ------------------------------- | ---------------------------------------------------------------- |
+| `AUTH_SECRET`          | 运行时 | Docker 自动生成                 | Auth.js 会话签名密钥。                                           |
+| `API_KEY_PEPPER`       | 运行时 | Docker 自动生成                 | 服务凭证哈希使用的 pepper。                                      |
+| `AUTH_OTP_PEPPER`      | 运行时 | Docker 自动生成                 | 邮箱验证码哈希使用的 pepper。                                    |
+| `AUTH_RESEND_KEY`      | 否     | 无                              | 配置后启用 Resend 邮箱验证码登录和注册。                         |
+| `AUTH_EMAIL_FROM`      | 否     | `Cashier <noreply@example.com>` | 验证码和登录通知的发件人。                                       |
+| `DISABLE_REGISTRATION` | 否     | `false`                         | 设为 `true` 后禁止新邮箱注册。                                   |
+| `SESSION_MAX_AGE_DAYS` | 否     | `14`                            | 登录会话最长天数。                                               |
+| `DEV_AUTH_BYPASS`      | 否     | `false`                         | 仅测试环境，或 `APP_URL` 指向 loopback 的 development 环境可用。 |
 
 Docker 容器会把自动生成的内部密钥保存在 `cashier_config` 卷。非 Docker 部署必须自行
 提供这些值，并保证重启和多实例之间保持一致。
@@ -71,18 +71,18 @@ Docker 容器会把自动生成的内部密钥保存在 `cashier_config` 卷。�
 
 ## 恢复、限流与代理
 
-| 变量                                      | 默认值       | 说明                                                                                          |
-| ----------------------------------------- | ------------ | --------------------------------------------------------------------------------------------- |
-| `PROCESSING_RECOVERY_MAX_BATCH`           | `5`          | 单次请求最多恢复的待处理任务数。                                                              |
-| `PROCESSING_RECOVERY_MAX_ATTEMPTS`        | `5`          | 待处理任务最多恢复尝试次数。                                                                  |
-| `PROCESSING_RECOVERY_COOLDOWN_SECONDS`    | `60`         | 恢复尝试之间的冷却时间。                                                                      |
-| `API_RATE_LIMIT_PER_MINUTE`               | `60`         | 每个服务凭证共享的 API v1 每分钟额度。                                                        |
-| `AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS`        | `10`         | 密码登录邮箱维度窗口上限。                                                                    |
-| `AUTH_PASSWORD_IP_MAX_ATTEMPTS`           | `50`         | 密码登录可信 IP 维度窗口上限。                                                                |
-| `AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS` | `900`        | 密码登录限流窗口秒数。                                                                        |
-| `TRUSTED_PROXY`                           | 生产环境必填 | 仅当所有流量都经过会覆盖外部 `X-Real-IP`/`X-Forwarded-For` 的可信代理时设置；生产启动会校验。 |
+| 变量                                      | 默认值 | 说明                                                                                                           |
+| ----------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| `PROCESSING_RECOVERY_MAX_BATCH`           | `5`    | 单次请求最多恢复的待处理任务数。                                                                               |
+| `PROCESSING_RECOVERY_MAX_ATTEMPTS`        | `5`    | 待处理任务最多恢复尝试次数。                                                                                   |
+| `PROCESSING_RECOVERY_COOLDOWN_SECONDS`    | `60`   | 恢复尝试之间的冷却时间。                                                                                       |
+| `API_RATE_LIMIT_PER_MINUTE`               | `60`   | 每个服务凭证共享的 API v1 每分钟额度。                                                                         |
+| `AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS`        | `10`   | 密码登录邮箱维度窗口上限。                                                                                     |
+| `AUTH_PASSWORD_IP_MAX_ATTEMPTS`           | `50`   | 密码登录可信 IP 维度窗口上限。                                                                                 |
+| `AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS` | `900`  | 密码登录限流窗口秒数。                                                                                         |
+| `TRUSTED_PROXY`                           | 无     | 可选值仅为 `platform`。Vercel 读取单值 `X-Vercel-Forwarded-For`；Docker 读取由可信入口覆盖的单值 `X-Real-IP`。 |
 
-`src/lib/env/startup.ts` 还定义了更细的 OTP 限流变量。普通部署通常不需要修改它们。
+未配置可信入口，或平台头为空、多值、非法时，地址会归入固定的哈希 `unknown` 桶，认证前限流仍然生效。`src/lib/env/startup.ts` 还定义了更细的 OTP 限流变量。
 
 ## 日志与端口
 

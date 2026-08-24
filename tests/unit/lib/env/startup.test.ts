@@ -74,13 +74,13 @@ describe("validateStartupEnv", () => {
     expect(result.AI_RETRY_DELAY_MS).toBe(1000);
   });
 
-  it("requires TRUSTED_PROXY in production while allowing it to be absent in tests", () => {
-    expect(() =>
+  it("accepts an absent or platform-managed trusted proxy", () => {
+    expect(
       validateStartupEnv({
         ...baseEnv,
         NODE_ENV: "production",
-      })
-    ).toThrow(/TRUSTED_PROXY/);
+      }).TRUSTED_PROXY
+    ).toBeUndefined();
 
     expect(
       validateStartupEnv({
@@ -89,6 +89,51 @@ describe("validateStartupEnv", () => {
         TRUSTED_PROXY: "platform",
       }).TRUSTED_PROXY
     ).toBe("platform");
+
+    expect(() =>
+      validateStartupEnv({
+        ...baseEnv,
+        TRUSTED_PROXY: "true",
+      })
+    ).toThrow(/TRUSTED_PROXY/);
+  });
+
+  it("only permits DEV_AUTH_BYPASS in tests or loopback development", () => {
+    expect(validateStartupEnv({ ...baseEnv, DEV_AUTH_BYPASS: "true" }).DEV_AUTH_BYPASS).toBe(
+      "true"
+    );
+    expect(
+      validateStartupEnv({
+        ...baseEnv,
+        NODE_ENV: "development",
+        DEV_AUTH_BYPASS: "true",
+        APP_URL: "http://127.0.0.1:3000",
+      }).DEV_AUTH_BYPASS
+    ).toBe("true");
+    expect(
+      validateStartupEnv({
+        ...baseEnv,
+        NODE_ENV: "development",
+        DEV_AUTH_BYPASS: "true",
+        APP_URL: "http://[::1]:3000",
+      }).DEV_AUTH_BYPASS
+    ).toBe("true");
+
+    expect(() =>
+      validateStartupEnv({
+        ...baseEnv,
+        NODE_ENV: "development",
+        DEV_AUTH_BYPASS: "true",
+        APP_URL: "https://dev.example.com",
+      })
+    ).toThrow(/DEV_AUTH_BYPASS/);
+    expect(() =>
+      validateStartupEnv({
+        ...baseEnv,
+        NODE_ENV: "production",
+        DEV_AUTH_BYPASS: "true",
+      })
+    ).toThrow(/DEV_AUTH_BYPASS/);
   });
 
   it("accepts AUTH_EMAIL_FROM in named mailbox format", () => {

@@ -191,6 +191,8 @@ export function LedgerEntriesTab({
     clearSelection,
     retainSelection,
     isAllSelected,
+    isSelectionLimitReached,
+    selectableCount,
   } = useSelection({ allIds: allSourceDocumentIds, queryFingerprint });
 
   const {
@@ -298,6 +300,7 @@ export function LedgerEntriesTab({
   const sentinelRef = useInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
     fetchNextPage,
     rootMargin: "400px",
   });
@@ -307,8 +310,9 @@ export function LedgerEntriesTab({
       <LedgerEntriesToolbar
         isSelectionMode={isSelectionMode}
         isAllSelected={isAllSelected}
-        hasMoreData={hasNextPage}
+        hasMoreData={hasNextPage || allSourceDocumentIds.length > selectableCount}
         selectedCount={selectedIds.length}
+        queryFingerprint={queryFingerprint}
         selectedSourceDocumentIds={selectedIds}
         selectedEntryIds={selectedEntryIds}
         selectedDuplicateCount={selectedDuplicateCount}
@@ -378,6 +382,7 @@ export function LedgerEntriesTab({
                 onDeleteSourceConfirm={handleDeleteSourceConfirm}
                 isSelectionMode={isSelectionMode}
                 selectedIds={selectedIds}
+                disableUnselected={isSelectionLimitReached}
                 onToggleSelection={handleToggleSelection}
                 noRecordsText={tCommon("noRecords")}
                 getItemProps={() => ({})}

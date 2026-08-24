@@ -6,7 +6,7 @@ import { formatCompactCurrencyAmount, formatCurrencyAmount } from "@/lib/format/
 import { buildChartPoints } from "@/modules/stats/lib/chart-points";
 
 interface StatsChartProps {
-  data: { date: string; total: number }[];
+  data: { date: string; total: string }[];
   rangeType: DateRangeType;
   startDate: Date;
   endDate: Date;
@@ -24,8 +24,6 @@ export function StatsChart({
 }: StatsChartProps) {
   const locale = useLocale();
   const t = useTranslations("StatsChart");
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   // The queried range is already truncated to the ledger-timezone today by the
   // stats state; do not re-clamp with the browser clock here.
   const chartPoints = useMemo(() => {
@@ -38,6 +36,10 @@ export function StatsChart({
       locale,
     });
   }, [data, endDate, isLoading, locale, rangeType, startDate]);
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    index: number;
+    dataset: typeof chartPoints;
+  } | null>(null);
 
   // 计算95th percentile作为Y轴显示上限，处理异常值
   const { yAxisMax, hasOutliers } = useMemo(() => {
@@ -53,7 +55,7 @@ export function StatsChart({
 
     // 计算95th percentile
     const sorted = [...values].sort((a, b) => a - b);
-    const p95Index = Math.floor(sorted.length * 0.95);
+    const p95Index = Math.ceil(sorted.length * 0.95) - 1;
     const p95Value = sorted[p95Index] ?? maxVal;
 
     // 如果95th percentile与最大值差距不大（<20%），直接使用最大值
@@ -67,7 +69,13 @@ export function StatsChart({
   }, [chartPoints]);
 
   if (isLoading) {
-    return <div className="h-48 w-full bg-surface2/30 animate-pulse rounded-lg" />;
+    return (
+      <div
+        className="h-48 w-full animate-pulse rounded-lg bg-surface2/30"
+        role="status"
+        aria-busy="true"
+      />
+    );
   }
 
   if (chartPoints.length === 0) {
@@ -82,7 +90,7 @@ export function StatsChart({
   const chartHeight = 130; // pixels, matches h-full minus padding
   const paddingTop = 10; // 10% top padding
   const paddingBottom = 10; // 10% bottom padding
-  const formatAmount = (value: number) => formatCurrencyAmount(value, currencySymbol, locale);
+  const formatAmount = (value: string) => formatCurrencyAmount(value, currencySymbol, locale);
   const formatAxisAmount = (value: number) =>
     formatCompactCurrencyAmount(value, currencySymbol, locale);
   const yAxisTicks = [yAxisMax, (yAxisMax * 2) / 3, yAxisMax / 3, 0];
@@ -96,7 +104,7 @@ export function StatsChart({
         </div>
       )}
       {/* Grid Lines */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-8 top-6 flex flex-col justify-between pl-12">
+      <div className="pointer-events-none absolute bottom-8 left-12 right-2 top-6 flex flex-col justify-between">
         {yAxisTicks.map((tick) => (
           <div key={tick} className="relative h-px w-full border-b border-dashed border-border/40">
             <span className="absolute right-full -translate-y-1/2 pr-2 text-[10px] tabular-nums text-muted-foreground">
@@ -107,7 +115,7 @@ export function StatsChart({
       </div>
 
       {/* Chart Area - Using relative positioning for points */}
-      <div className="h-full w-full px-2 relative" style={{ height: `${chartHeight}px` }}>
+      <div className="absolute left-12 right-2 top-6" style={{ height: `${chartHeight}px` }}>
         {/* SVG for line only - stretched horizontally */}
         <svg
           className="absolute inset-0 w-full h-full overflow-visible"
@@ -158,7 +166,7 @@ export function StatsChart({
                   day: "numeric",
                 });
 
-          const isHovered = hoveredIndex === i;
+          const isHovered = hoveredPoint?.dataset === chartPoints && hoveredPoint.index === i;
 
           return (
             <div
@@ -172,13 +180,15 @@ export function StatsChart({
               {/* Data Point */}
               <button
                 type="button"
-                aria-label={`${displayDate}, ${t("expense")}: ${formatAmount(p.value)}`}
+                aria-label={`${displayDate}, ${t("expense")}: ${formatAmount(p.total)}`}
                 aria-pressed={isHovered}
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-                onFocus={() => setHoveredIndex(i)}
-                onBlur={() => setHoveredIndex(null)}
-                onClick={() => setHoveredIndex(isHovered ? null : i)}
+                onMouseEnter={() => setHoveredPoint({ index: i, dataset: chartPoints })}
+                onMouseLeave={() => setHoveredPoint(null)}
+                onFocus={() => setHoveredPoint({ index: i, dataset: chartPoints })}
+                onBlur={() => setHoveredPoint(null)}
+                onClick={() =>
+                  setHoveredPoint(isHovered ? null : { index: i, dataset: chartPoints })
+                }
                 className={`
                     w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
                     cursor-pointer transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]
@@ -195,7 +205,7 @@ export function StatsChart({
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-tooltip pointer-events-none">
                   <div className="font-medium">{displayDate}</div>
                   <div className={isCapped ? "text-danger" : ""}>
-                    {t("expense")}: {formatAmount(p.value)}
+                    {t("expense")}: {formatAmount(p.total)}
                     {isCapped && t("exceedsLimit")}
                   </div>
                 </div>
@@ -206,7 +216,7 @@ export function StatsChart({
       </div>
 
       {/* X Axis Labels */}
-      <div className="relative ml-12 mt-2 h-6 px-2">
+      <div className="absolute bottom-0 left-12 right-2 h-6">
         {chartPoints.map((p, i) => {
           // Label Filtering
           let showLabel = false;

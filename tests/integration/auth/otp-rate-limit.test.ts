@@ -84,13 +84,17 @@ describe("OTP Rate Limiting", () => {
   });
 
   describe("checkSendRateLimitByIP", () => {
-    it("does not create a shared IP bucket when the client IP is unknown", async () => {
+    it("uses a hashed shared IP bucket when the client IP is unknown", async () => {
       const increment = vi.spyOn(postgresRateLimiter, "increment");
 
       const result = await checkSendRateLimitByIP("unknown");
 
       expect(result.allowed).toBe(true);
-      expect(increment).not.toHaveBeenCalled();
+      expect(increment).toHaveBeenCalledWith(
+        expect.stringMatching(/^otp:send:ip:[a-f0-9]+$/),
+        10,
+        3600
+      );
     });
     it("should allow first 10 sends within 1 hour", async () => {
       const ip = "192.168.1.1";
@@ -201,11 +205,15 @@ describe("OTP Rate Limiting", () => {
   });
 
   describe("checkVerifyRateLimit (brute force protection)", () => {
-    it("does not create a shared verification bucket for an unknown IP", async () => {
+    it("uses a hashed shared verification bucket for an unknown IP", async () => {
       const increment = vi.spyOn(postgresRateLimiter, "increment");
 
       await expect(checkVerifyRateLimit("unknown")).resolves.toBe(true);
-      expect(increment).not.toHaveBeenCalled();
+      expect(increment).toHaveBeenCalledWith(
+        expect.stringMatching(/^otp:verify:[a-f0-9]+$/),
+        5,
+        60
+      );
     });
     it("should allow first 5 verifications per minute", async () => {
       const ip = "192.168.1.1";

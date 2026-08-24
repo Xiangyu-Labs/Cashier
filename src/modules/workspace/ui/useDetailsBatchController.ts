@@ -34,6 +34,7 @@ export function useDetailsBatchController(
   const [dateImpact, setDateImpact] = useState<BatchDateImpact | null>(null);
   const [dateSelectionSnapshot, setDateSelectionSnapshot] = useState<{
     entryIds: string[];
+    queryFingerprint: string;
     impact: BatchDateImpact;
   } | null>(null);
   const setDateDialogVisibility = useCallback((open: boolean) => {
@@ -90,7 +91,7 @@ export function useDetailsBatchController(
     },
     onSuccess: ({ entryIds: snapshotEntryIds, impact }) => {
       setDateImpact(impact);
-      setDateSelectionSnapshot({ entryIds: snapshotEntryIds, impact });
+      setDateSelectionSnapshot({ entryIds: snapshotEntryIds, queryFingerprint, impact });
       setDateDialogVisibility(true);
     },
     onError: () => toast.error(tCommon("error")),
@@ -99,15 +100,21 @@ export function useDetailsBatchController(
     Awaited<ReturnType<typeof batchUpdateLedgerEntryDatesAction>>,
     void
   >(ledgerId, {
-    mutationFn: () =>
-      batchUpdateLedgerEntryDatesAction(
-        ledgerId,
-        dateSelectionSnapshot?.entryIds ?? selection.selectedIds,
-        selectedDate
-      ),
+    mutationFn: () => {
+      const snapshot = dateSelectionSnapshot;
+      if (
+        snapshot == null ||
+        snapshot.queryFingerprint !== queryFingerprint ||
+        snapshot.entryIds.length !== selection.selectedIds.length ||
+        snapshot.entryIds.some((id, index) => id !== selection.selectedIds[index])
+      ) {
+        throw new Error("selection_changed");
+      }
+      return batchUpdateLedgerEntryDatesAction(ledgerId, snapshot.entryIds, selectedDate);
+    },
     resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    errorMessage: tCommon("error"),
+    errorMessage: t("selectionChanged"),
     onSuccess: () => {
       toast.success(t("dateUpdated"));
       selection.clearSelection();

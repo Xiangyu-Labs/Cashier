@@ -426,7 +426,7 @@ describe("updateLedgerEntryAction", () => {
     expect(result.amount).toBe("50.000");
   });
 
-  it("preserves null currency while using the ledger currency for calculations", async () => {
+  it("persists the ledger currency when an empty currency is submitted", async () => {
     const result = await updateLedgerEntryAction(
       ledgerId,
       entryId,
@@ -434,7 +434,7 @@ describe("updateLedgerEntryAction", () => {
       crypto.randomUUID()
     );
 
-    expect(result.currency).toBeNull();
+    expect(result.currency).toBe("CNY");
     expect(result.amount).toBe("12.350");
     expect(result.convertedAmount).toBe("12.350");
   });

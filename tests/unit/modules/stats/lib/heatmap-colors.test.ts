@@ -14,13 +14,20 @@ describe("heatmap-colors", () => {
   });
 
   it("maps amount to levels using effective max based on p80 and avg", () => {
-    const stats = { minAmount: "0", maxAmount: "1000", avgAmount: "20", p80Amount: "10" };
+    const stats = { minAmount: "0", maxAmount: "1000", avgAmount: "20", p80Amount: "40" };
     expect(getHeatmapLevel("3", stats)).toBe(1);
     expect(getHeatmapLevel("8", stats)).toBe(2);
     expect(getHeatmapLevel("15", stats)).toBe(3);
     expect(getHeatmapLevel("25", stats)).toBe(4);
     expect(getHeatmapLevel("40", stats)).toBe(5);
     expect(getHeatmapLevel("400", stats)).toBe(5);
+  });
+
+  it("falls back to the average when p80 is not positive", () => {
+    const stats = { minAmount: "0", maxAmount: "1000", avgAmount: "20", p80Amount: "0" };
+
+    expect(getHeatmapLevel("4", stats)).toBe(2);
+    expect(getHeatmapLevel("20", stats)).toBe(5);
   });
 
   it("returns safe fallback color for invalid level index", () => {

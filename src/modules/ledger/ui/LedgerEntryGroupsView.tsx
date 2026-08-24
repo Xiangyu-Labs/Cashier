@@ -14,6 +14,7 @@ interface LedgerEntryGroupsViewProps {
   onView: (entry: LedgerEntry) => void;
   selectionMode?: boolean;
   selectedIds?: readonly string[];
+  disableUnselected?: boolean;
   onToggleSelection?: (id: string) => void;
 }
 
@@ -43,6 +44,7 @@ export function LedgerEntryGroupsView({
   onView,
   selectionMode = false,
   selectedIds = [],
+  disableUnselected = false,
   onToggleSelection,
 }: LedgerEntryGroupsViewProps) {
   const locale = useLocale();
@@ -84,6 +86,7 @@ export function LedgerEntryGroupsView({
           onView={onView}
           selectionMode={selectionMode}
           isSelected={selectedIdSet.has(row.entry.id)}
+          selectionDisabled={disableUnselected && !selectedIdSet.has(row.entry.id)}
           {...(onToggleSelection == null ? {} : { onToggleSelect: onToggleSelection })}
         />
       </div>
@@ -105,6 +108,7 @@ export function LedgerEntryGroupsView({
               onView={onView}
               selectionMode={selectionMode}
               isSelected={selectedIdSet.has(entry.id)}
+              selectionDisabled={disableUnselected && !selectedIdSet.has(entry.id)}
               {...(onToggleSelection == null ? {} : { onToggleSelect: onToggleSelection })}
             />
           ))}

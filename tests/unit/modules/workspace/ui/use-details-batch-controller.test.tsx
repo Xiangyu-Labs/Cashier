@@ -93,6 +93,12 @@ describe("useDetailsBatchController", () => {
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
     batchUpdateLedgerEntryDatesActionMock.mockResolvedValueOnce({ affectedCount: 1 });
+    previewBatchLedgerEntryDateActionMock.mockResolvedValueOnce({
+      selectedEntryCount: 1,
+      sourceDocumentCount: 0,
+      affectedEntryCount: 1,
+      sourceDocumentIds: [],
+    });
     const { result } = renderHook(
       () => useDetailsBatchController("ledger-1", ["entry-1"], "fingerprint"),
       { wrapper }
@@ -100,8 +106,8 @@ describe("useDetailsBatchController", () => {
 
     act(() => {
       result.current.handleSelect("entry-1", true);
-      result.current.setDateDialogOpen(true);
     });
+    await act(async () => result.current.previewDate.mutateAsync());
     let mutation!: Promise<unknown>;
     act(() => {
       mutation = result.current.updateDates.mutateAsync();
@@ -144,7 +150,7 @@ describe("useDetailsBatchController", () => {
     });
   });
 
-  it("confirms a date preview against its captured entry ids", async () => {
+  it("confirms a date preview while its captured selection is unchanged", async () => {
     const { wrapper } = setup();
     previewBatchLedgerEntryDateActionMock.mockResolvedValueOnce({
       selectedEntryCount: 2,
@@ -170,7 +176,6 @@ describe("useDetailsBatchController", () => {
       "entry-2",
     ]);
 
-    act(() => result.current.clearSelection());
     await act(async () => {
       await result.current.updateDates.mutateAsync();
     });
@@ -179,5 +184,29 @@ describe("useDetailsBatchController", () => {
       ["entry-1", "entry-2"],
       result.current.selectedDate
     );
+  });
+
+  it("rejects confirmation when selection changes after date preview", async () => {
+    const { wrapper } = setup();
+    previewBatchLedgerEntryDateActionMock.mockResolvedValueOnce({
+      selectedEntryCount: 2,
+      sourceDocumentCount: 1,
+      affectedEntryCount: 2,
+      sourceDocumentIds: ["document-1"],
+    });
+    const { result } = renderHook(
+      () => useDetailsBatchController("ledger-1", ["entry-1", "entry-2"], "fingerprint"),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.handleSelect("entry-1", true);
+      result.current.handleSelect("entry-2", true);
+    });
+    await act(async () => result.current.previewDate.mutateAsync());
+    act(() => result.current.handleSelect("entry-2", false));
+
+    await expect(result.current.updateDates.mutateAsync()).rejects.toThrow("selection_changed");
+    expect(batchUpdateLedgerEntryDatesActionMock).not.toHaveBeenCalled();
   });
 });

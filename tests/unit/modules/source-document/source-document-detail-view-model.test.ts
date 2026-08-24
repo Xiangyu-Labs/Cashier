@@ -18,11 +18,16 @@ const entry: LedgerEntry = {
   deletedAt: null,
 };
 
-function build(entryDate: string, entries: Record<string, { currency?: string }> = {}) {
+function build(
+  entryDate: string,
+  entries: Record<string, { currency?: string; amount?: string }> = {},
+  mainCurrency = "CNY",
+  ledgerEntry = entry
+) {
   return buildSourceDocumentDetailViewModel({
-    ledgerEntries: [entry],
+    ledgerEntries: [ledgerEntry],
     pendingChanges: { entries },
-    mainCurrency: "CNY",
+    mainCurrency,
     entryDate,
     originalEntryDate: "2026-08-01",
   });
@@ -31,15 +36,27 @@ function build(entryDate: string, entries: Record<string, { currency?: string }>
 describe("source document detail conversion view model", () => {
   it("reuses the stored conversion only while currency and date identity match", () => {
     expect(build("2026-08-01")).toMatchObject({
-      totalInMainCurrency: 70,
+      totalInMainCurrency: "70",
       unconvertedCount: 0,
     });
+  });
+
+  it("preserves the persisted accounting amount instead of recomputing a rounded rate", () => {
+    const result = build("2026-08-01", {}, "KWD", {
+      ...entry,
+      amount: "2",
+      convertedAmount: "2.470",
+      exchangeRate: "1.23456",
+    });
+
+    expect(result.displayEntries[0]?.convertedAmount).toBe("2.47");
+    expect(result.totalInMainCurrency).toBe("2.47");
   });
 
   it("excludes a foreign entry when its date changes and no new rate exists", () => {
     const result = build("2026-08-02");
     expect(result.displayEntries[0]).toMatchObject({ exchangeRate: null, convertedAmount: null });
-    expect(result.totalInMainCurrency).toBe(0);
+    expect(result.totalInMainCurrency).toBe("0");
     expect(result.unconvertedCount).toBe(1);
   });
 
@@ -47,5 +64,25 @@ describe("source document detail conversion view model", () => {
     const result = build("2026-08-01", { "entry-1": { currency: "EUR" } });
     expect(result.displayEntries[0]).toMatchObject({ currency: "EUR", convertedAmount: null });
     expect(result.unconvertedCount).toBe(1);
+  });
+
+  it("rounds recalculated conversions to zero-decimal main currencies", () => {
+    const result = build("2026-08-01", { "entry-1": { amount: "2" } }, "JPY", {
+      ...entry,
+      exchangeRate: "1.23456",
+    });
+
+    expect(result.displayEntries[0]?.convertedAmount).toBe("2");
+    expect(result.totalInMainCurrency).toBe("2");
+  });
+
+  it("rounds recalculated conversions to three-decimal main currencies", () => {
+    const result = build("2026-08-01", { "entry-1": { amount: "2" } }, "KWD", {
+      ...entry,
+      exchangeRate: "1.23456",
+    });
+
+    expect(result.displayEntries[0]?.convertedAmount).toBe("2.469");
+    expect(result.totalInMainCurrency).toBe("2.469");
   });
 });

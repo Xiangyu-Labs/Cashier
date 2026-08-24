@@ -263,7 +263,7 @@ export async function updateLedgerEntryInTransaction(
               input.amount !== undefined || input.currency !== undefined
                 ? roundToCurrency(nextAmount, effectiveCurrency)
                 : entry.amount,
-            currency: input.currency !== undefined ? input.currency : entry.currency,
+            currency: input.currency !== undefined ? effectiveCurrency : entry.currency,
             itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
             description: input.description !== undefined ? input.description : entry.description,
             convertedAmount,

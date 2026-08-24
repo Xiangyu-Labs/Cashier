@@ -27,6 +27,7 @@ export interface UnifiedStreamGroupProps {
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;
   selectedIds: string[];
+  disableUnselected?: boolean;
   onToggleSelection: (id: string) => void;
   noRecordsText: string;
   getItemProps: () => Record<string, unknown>;
@@ -44,6 +45,7 @@ export function LedgerEntriesUnifiedGroups({
   onDeleteSourceConfirm,
   isSelectionMode,
   selectedIds,
+  disableUnselected = false,
   onToggleSelection,
   noRecordsText,
   getItemProps,
@@ -70,6 +72,7 @@ export function LedgerEntriesUnifiedGroups({
     onDeleteSourceConfirm,
     isSelectionMode,
     selectedIds,
+    disableUnselected,
     onToggleSelection,
     noRecordsText,
     getItemProps,
@@ -112,6 +115,10 @@ function StaticUnifiedGroups(props: UnifiedStreamGroupProps) {
                 onDeleteSourceConfirm={props.onDeleteSourceConfirm}
                 selectionMode={props.isSelectionMode}
                 selected={props.selectedIds.includes(item.sourceDocument.id)}
+                selectionDisabled={
+                  props.disableUnselected === true &&
+                  !props.selectedIds.includes(item.sourceDocument.id)
+                }
                 onToggleSelection={props.onToggleSelection}
                 getItemProps={props.getItemProps}
                 readOnly={props.readOnly === true}
@@ -190,6 +197,10 @@ function InteractiveUnifiedGroups(props: UnifiedStreamGroupProps) {
             onDeleteSourceConfirm={props.onDeleteSourceConfirm}
             selectionMode={props.isSelectionMode}
             selected={props.selectedIds.includes(item.sourceDocument.id)}
+            selectionDisabled={
+              props.disableUnselected === true &&
+              !props.selectedIds.includes(item.sourceDocument.id)
+            }
             onToggleSelection={props.onToggleSelection}
             getItemProps={props.getItemProps}
             readOnly={props.readOnly === true}
@@ -274,6 +285,7 @@ interface UnifiedStreamItemRowProps {
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   selectionMode: boolean;
   selected: boolean;
+  selectionDisabled: boolean;
   onToggleSelection: (id: string) => void;
   getItemProps: () => Record<string, unknown>;
   readOnly: boolean;
@@ -289,6 +301,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   onDeleteSourceConfirm,
   selectionMode,
   selected,
+  selectionDisabled,
   onToggleSelection,
   getItemProps,
   readOnly,
@@ -311,6 +324,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         anomalyReason={item.sourceDocument.anomalyReason}
         selectionMode={selectionMode}
         isSelected={selected}
+        selectionDisabled={selectionDisabled}
         onToggleSelect={() => onToggleSelection(sourceDocument.id)}
         readOnly={readOnly}
         defaultExpanded={defaultExpanded}

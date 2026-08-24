@@ -57,20 +57,20 @@ describe("source-document-card utils", () => {
     );
 
     expect(totals.subtotalsByCurrency).toEqual({
-      USD: 10,
-      CNY: 20,
+      USD: "10",
+      CNY: "20",
     });
-    expect(totals.totalInMainCurrency).toBe(90);
+    expect(totals.totalInMainCurrency).toBe("90");
     expect(totals.breakdownData).toEqual([
       {
         currency: "USD",
-        amount: 10,
-        convertedAmount: 70,
+        amount: "10",
+        convertedAmount: "70",
       },
       {
         currency: "CNY",
-        amount: 20,
-        convertedAmount: 20,
+        amount: "20",
+        convertedAmount: "20",
       },
     ]);
   });

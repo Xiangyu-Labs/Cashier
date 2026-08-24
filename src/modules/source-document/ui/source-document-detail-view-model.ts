@@ -1,6 +1,5 @@
 import Decimal from "decimal.js";
-import { round } from "@/lib/money/decimal";
-import { parseAmount } from "@/lib/formatters";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
 
@@ -12,9 +11,9 @@ export interface SourceDocumentDetailDisplayEntry extends Omit<
   LedgerEntry,
   "amount" | "convertedAmount" | "exchangeRate" | "currency"
 > {
-  amount: number;
-  convertedAmount: number | null;
-  exchangeRate: number | null;
+  amount: string;
+  convertedAmount: string | null;
+  exchangeRate: string | null;
   currency: string;
 }
 
@@ -36,25 +35,25 @@ export function buildSourceDocumentDetailViewModel({
   const displayEntries = ledgerEntries.map((entry) => {
     const change = pendingChanges.entries[entry.id] ?? {};
     const currency = change.currency ?? entry.currency ?? mainCurrency;
-    const amount = parseAmount(change.amount ?? entry.amount);
+    const amount = new Decimal(change.amount ?? entry.amount).toFixed();
     const conversionIdentityChanged =
       currency !== (entry.currency ?? mainCurrency) || entryDate !== originalEntryDate;
     const exchangeRate =
       !conversionIdentityChanged && entry.exchangeRate != null && entry.exchangeRate !== ""
-        ? Number.parseFloat(entry.exchangeRate)
+        ? entry.exchangeRate
         : null;
 
     const convertedAmount =
       currency === mainCurrency
         ? amount
-        : exchangeRate != null
-          ? Number(round(new Decimal(amount).times(exchangeRate).toFixed(), 2))
-          : entry.convertedAmount != null &&
-              entry.convertedAmount !== "" &&
-              change.amount === undefined &&
-              change.currency === undefined &&
-              entryDate === originalEntryDate
-            ? parseAmount(entry.convertedAmount)
+        : entry.convertedAmount != null &&
+            entry.convertedAmount !== "" &&
+            change.amount === undefined &&
+            change.currency === undefined &&
+            entryDate === originalEntryDate
+          ? new Decimal(entry.convertedAmount).toFixed()
+          : exchangeRate != null
+            ? roundToCurrency(new Decimal(amount).times(exchangeRate).toFixed(), mainCurrency)
             : null;
 
     return {
@@ -66,14 +65,14 @@ export function buildSourceDocumentDetailViewModel({
     };
   });
 
-  const subtotalsByCurrency = displayEntries.reduce<Record<string, number>>((groups, entry) => {
-    groups[entry.currency] = (groups[entry.currency] ?? 0) + entry.amount;
+  const subtotalsByCurrency = displayEntries.reduce<Record<string, string>>((groups, entry) => {
+    groups[entry.currency] = new Decimal(groups[entry.currency] ?? 0).plus(entry.amount).toFixed();
     return groups;
   }, {});
 
-  const totalInMainCurrency = displayEntries.reduce((total, entry) => {
-    return total + (entry.convertedAmount ?? 0);
-  }, 0);
+  const totalInMainCurrency = displayEntries
+    .reduce((total, entry) => total.plus(entry.convertedAmount ?? 0), new Decimal(0))
+    .toFixed();
   const unconvertedCount = displayEntries.filter((entry) => entry.convertedAmount == null).length;
 
   return {

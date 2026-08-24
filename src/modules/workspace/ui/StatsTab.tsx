@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import {
@@ -37,7 +37,7 @@ interface StatsTabProps {
   ledger?: Ledger;
   onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
   onDateDrilldown?: (date: string) => void;
-  initialDate?: Date;
+  ledgerToday?: string;
   timeZone?: string;
   onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
@@ -47,7 +47,7 @@ export function StatsTab({
   ledger,
   onCategoryDrilldown,
   onDateDrilldown,
-  initialDate,
+  ledgerToday,
   timeZone,
   onQueryStateChange,
 }: StatsTabProps) {
@@ -58,7 +58,7 @@ export function StatsTab({
   const rangeType: DateRangeType = statsUrlState.range ?? DEFAULT_STATS_RANGE_TYPE;
   const periodOffset = statsUrlState.offset;
   const [todayKey, setTodayKey] = useState(
-    () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(initialDate ?? new Date())
+    () => ledgerToday ?? getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date())
   );
   useEffect(() => {
     const updateToday = () => {
@@ -76,7 +76,7 @@ export function StatsTab({
       window.removeEventListener("focus", updateToday);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [timeZone]);
+  }, [ledgerToday, timeZone]);
   const today = useMemo(() => parseDateString(todayKey), [todayKey]);
   const currentDate = useMemo(
     () => addPeriod(today, rangeType, periodOffset),
@@ -106,34 +106,61 @@ export function StatsTab({
       }),
     [currentDate, ledger?.settings.mainCurrency, ledgerId, periodOffset, rangeType]
   );
-  const { startDate, endDate, startDateStr, endDateStr } = statsDescriptor.state;
   const queryDescriptor = useDebouncedValue(statsDescriptor, STATS_QUERY_DEBOUNCE_MS);
-
-  const label = useMemo(() => {
-    switch (rangeType) {
-      case "week":
-        return `${formatCivilDate(startDateStr, locale, { month: "numeric", day: "numeric" })} - ${formatCivilDate(endDateStr, locale, { month: "numeric", day: "numeric" })}`;
-      case "month":
-        return formatCivilDate(startDateStr, locale, { year: "numeric", month: "long" });
-      case "year":
-        return formatCivilDate(startDateStr, locale, { year: "numeric" });
-      default:
-        return "";
-    }
-  }, [endDateStr, locale, rangeType, startDateStr]);
-
   const statsQuery = useQuery({
     queryKey: queryDescriptor.queryKey,
     queryFn: () => getEnhancedStats(queryDescriptor.input),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
     refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
   });
-  const { data: stats, isError, refetch } = statsQuery;
+  const queryKeyFingerprint = JSON.stringify(queryDescriptor.queryKey);
+  const [lastResolved, setLastResolved] = useState<{
+    stats: NonNullable<typeof statsQuery.data>;
+    descriptor: typeof queryDescriptor.state;
+    queryKeyFingerprint: string;
+  } | null>(null);
+  if (
+    statsQuery.data !== undefined &&
+    (lastResolved?.stats !== statsQuery.data ||
+      lastResolved.queryKeyFingerprint !== queryKeyFingerprint)
+  ) {
+    setLastResolved({
+      stats: statsQuery.data,
+      descriptor: queryDescriptor.state,
+      queryKeyFingerprint,
+    });
+  }
+  const stats = statsQuery.data ?? lastResolved?.stats;
+  const contentDescriptor =
+    statsQuery.data === undefined && lastResolved != null
+      ? lastResolved.descriptor
+      : queryDescriptor.state;
+  const { isError, refetch } = statsQuery;
+  const {
+    startDate: contentStartDate,
+    endDate: contentEndDate,
+    startDateStr: contentStartDateStr,
+    endDateStr: contentEndDateStr,
+    rangeType: contentRangeType,
+  } = contentDescriptor;
   const hasOversizedResult =
     stats != null &&
-    (stats.chart.length > MAX_CHART_POINTS || stats.heatmap.days.length > MAX_HEATMAP_DAYS);
+    ((contentRangeType !== "year" && stats.chart.length > MAX_CHART_POINTS) ||
+      stats.heatmap.days.length > MAX_HEATMAP_DAYS);
+
+  const contentLabel = useMemo(() => {
+    switch (contentRangeType) {
+      case "week":
+        return `${formatCivilDate(contentStartDateStr, locale, { month: "numeric", day: "numeric" })} - ${formatCivilDate(contentEndDateStr, locale, { month: "numeric", day: "numeric" })}`;
+      case "month":
+        return formatCivilDate(contentStartDateStr, locale, { year: "numeric", month: "long" });
+      case "year":
+        return formatCivilDate(contentStartDateStr, locale, { year: "numeric" });
+      default:
+        return "";
+    }
+  }, [contentEndDateStr, contentRangeType, contentStartDateStr, locale]);
 
   useEffect(() => {
     onQueryStateChange?.({
@@ -156,19 +183,19 @@ export function StatsTab({
   return (
     <StatsContentView
       rangeType={rangeType}
+      contentRangeType={contentRangeType}
       onRangeTypeChange={(type) => {
         updateStatsUrl({ range: type, offset: 0 });
       }}
       periodOffset={periodOffset}
       onPeriodOffsetChange={(offset) => updateStatsUrl({ offset })}
-      label={label}
-      startDate={startDate}
-      endDate={endDate}
-      startDateStr={startDateStr}
-      endDateStr={endDateStr}
+      label={contentLabel}
+      startDate={contentStartDate}
+      endDate={contentEndDate}
+      startDateStr={contentStartDateStr}
+      endDateStr={contentEndDateStr}
       stats={hasOversizedResult ? undefined : stats}
       isLoading={statsQuery.isFetching}
-      isPlaceholderData={statsQuery.isPlaceholderData}
       isError={isError || hasOversizedResult}
       onRetry={() => void refetch()}
       chartView={chartView}

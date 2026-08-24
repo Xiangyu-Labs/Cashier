@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Loader2, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ interface SourceDocumentDuplicateReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mainCurrency: string;
+  onBack?: () => void;
+  onExitComplete?: () => void;
 }
 
 export function SourceDocumentDuplicateReviewDialog({
@@ -38,6 +40,8 @@ export function SourceDocumentDuplicateReviewDialog({
   open,
   onOpenChange,
   mainCurrency,
+  onBack,
+  onExitComplete,
 }: SourceDocumentDuplicateReviewDialogProps) {
   const t = useTranslations("DuplicateReview");
   const tCommon = useTranslations("Common");
@@ -130,9 +134,16 @@ export function SourceDocumentDuplicateReviewDialog({
           hideCloseButton={isPending}
           onEscapeKeyDown={(event) => isPending && event.preventDefault()}
           onPointerDownOutside={(event) => isPending && event.preventDefault()}
+          {...(onExitComplete !== undefined ? { onExitComplete } : {})}
         >
           <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
             <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
+              {onBack != null && (
+                <Button type="button" variant="ghost" size="icon" onClick={onBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="sr-only">{tCommon("back")}</span>
+                </Button>
+              )}
               <ShieldCheck className="h-4 w-4 text-warning" />
               {t("title")}
             </DialogTitle>

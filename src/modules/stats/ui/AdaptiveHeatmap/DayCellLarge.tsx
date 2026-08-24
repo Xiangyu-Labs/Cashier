@@ -52,10 +52,8 @@ export function DayCellLarge({
       >
         {/* Day number */}
         <span
-          className={cn(
-            "max-w-full truncate px-0.5 text-xs lg:text-sm font-normal",
-            level >= 4 ? "text-white/70" : "text-muted-foreground"
-          )}
+          className="max-w-full truncate px-0.5 text-xs font-normal lg:text-sm"
+          style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
         >
           {dayNumber}
         </span>
@@ -63,10 +61,8 @@ export function DayCellLarge({
         {/* Amount */}
         {compare(amount, "0") > 0 ? (
           <span
-            className={cn(
-              "max-w-full truncate px-0.5 text-xs font-semibold",
-              level >= 4 ? "text-white" : "text-foreground"
-            )}
+            className="max-w-full truncate px-0.5 text-xs font-semibold"
+            style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
           >
             {formatCellAmount(amount, currency, locale)}
           </span>

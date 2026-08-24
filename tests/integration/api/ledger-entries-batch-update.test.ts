@@ -53,6 +53,7 @@ describe("Batch Update Ledger Entries Action", () => {
           ledgerId: testLedgerId,
           sourceDocumentId: testSourceDocId,
           amount: "100",
+          currency: "CNY",
           itemName: "Item 1",
           description: "Initial description 1",
         },
@@ -60,6 +61,7 @@ describe("Batch Update Ledger Entries Action", () => {
           ledgerId: testLedgerId,
           sourceDocumentId: testSourceDocId,
           amount: "200",
+          currency: "CNY",
           itemName: "Item 2",
           description: "Initial description 2",
         },
@@ -88,6 +90,18 @@ describe("Batch Update Ledger Entries Action", () => {
       expect(entry.categoryId).toBe(testCategoryId);
       expect(entry.currency).toBe("USD");
     });
+  });
+
+  it("normalizes a cleared currency to the ledger main currency", async () => {
+    await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, { currency: null });
+
+    const updatedEntries = await getTestDb()
+      .select()
+      .from(ledgerEntries)
+      .where(inArray(ledgerEntries.id, testEntryIds));
+
+    expect(updatedEntries).toHaveLength(2);
+    expect(updatedEntries.every((entry) => entry.currency === "CNY")).toBe(true);
   });
 
   it("should batch update description", async () => {

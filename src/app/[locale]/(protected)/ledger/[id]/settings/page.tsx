@@ -7,6 +7,8 @@ import { auth } from "@/auth";
 import { getLedgerSettingsBootstrap } from "@/modules/workspace/application/queries/get-ledger-settings-bootstrap";
 import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 import { serverComposition } from "@/application/server-composition-root";
+import { notFound } from "next/navigation";
+import { z } from "zod";
 
 interface SettingsPageProps {
   params: Promise<{ id: string }>;
@@ -14,6 +16,7 @@ interface SettingsPageProps {
 
 export default async function SettingsPage({ params }: SettingsPageProps) {
   const { id: ledgerId } = await params;
+  if (!z.string().uuid().safeParse(ledgerId).success) notFound();
   const [locale, session] = await Promise.all([getLocale(), auth()]);
   const userId = session?.user?.id;
   const ledger =

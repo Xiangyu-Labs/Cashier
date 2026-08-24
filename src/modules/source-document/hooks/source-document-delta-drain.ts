@@ -73,18 +73,21 @@ export function drainSourceDocumentDelta(
   state.lastStartedAt = now;
   const work = (async () => {
     const results: LedgerDeltaResult[] = [];
+    let candidateVersion = state.version;
     for (let page = 0; page < MAX_DRAIN_PAGES; page += 1) {
       const result = await getStreamRefreshAction(ledgerId, {
         ledgerId,
-        afterVersion: state.version,
+        afterVersion: candidateVersion,
       });
       if (timedOut) throw new Error("Source document delta drain timed out");
       results.push(result);
-      state.version = result.toVersion;
+      candidateVersion = result.toVersion;
       if (!result.hasMore || result.resetRequired) break;
     }
     const merged = mergeResults(results);
-    applyStreamRefreshToCache(queryClient, ledgerId, merged);
+    await applyStreamRefreshToCache(queryClient, ledgerId, merged);
+    if (timedOut) throw new Error("Source document delta drain timed out");
+    state.version = candidateVersion;
     return { changed: merged.changed, result: merged };
   })();
   let timer: ReturnType<typeof setTimeout>;
@@ -96,14 +99,23 @@ export function drainSourceDocumentDelta(
   });
   const inFlight = Promise.race([work, timeout]).finally(() => {
     clearTimeout(timer);
-    if (state.inFlight === inFlight) state.inFlight = null;
   });
   state.inFlight = inFlight;
+  void work.then(
+    () => {
+      if (state.inFlight === inFlight) state.inFlight = null;
+    },
+    () => {
+      if (state.inFlight === inFlight) state.inFlight = null;
+    }
+  );
   void inFlight.then(
     (result) => {
       state.lastResult = result;
     },
-    () => undefined
+    () => {
+      state.lastResult = null;
+    }
   );
   return inFlight;
 }

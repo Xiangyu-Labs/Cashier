@@ -12,6 +12,7 @@
     "currencyChanged": "Changed currency for {count} items",
     "loadedOnly": "Only the {count} loaded items are selected",
     "loadedScope": "Only the currently loaded and selected items are affected.",
+    "selectionChanged": "The selection changed. Review the date impact again.",
     "setDate": "Set Date",
     "setDateShort": "Date",
     "split": "Split",

@@ -207,7 +207,7 @@ describe("Enhanced Stats Actions", () => {
       expect(result.chart).toHaveLength(1);
       const januaryPoint = requireFirst(result.chart, "chart point");
       expect(januaryPoint.date).toBe("2024-01-15");
-      expect(januaryPoint.total).toBe(100);
+      expect(januaryPoint.total).toBe("100");
     });
 
     it("keeps ledger/date/deleted constraints inside SQL for entry fetches", async () => {

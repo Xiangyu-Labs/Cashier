@@ -23,6 +23,7 @@ describe("LedgerEntries FK Constraints", () => {
       ledgerId: ledger.id,
       sourceDocumentId: sourceDocId,
       amount: "25.00",
+      currency: "CNY",
       itemName: "Will Be Deleted",
     });
 
@@ -63,6 +64,7 @@ describe("LedgerEntries FK Constraints", () => {
         sourceDocumentId: sourceDocId,
         categoryId: category.id,
         amount: "25.00",
+        currency: "CNY",
         itemName: "午餐",
       })
       .returning();

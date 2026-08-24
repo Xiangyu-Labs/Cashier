@@ -55,6 +55,7 @@ describe("getLedgerEntriesAction", () => {
       categoryId: testCategoryId,
       sourceDocumentId: testSourceDocId,
       amount: "25.50",
+      currency: "CNY",
       itemName: "午餐",
     });
     await activateTestSourceDocumentProjection(db, testSourceDocId);
@@ -86,6 +87,7 @@ describe("getLedgerEntriesAction", () => {
         categoryId: testCategoryId,
         sourceDocumentId: testSourceDocId,
         amount: "10",
+        currency: "CNY",
         itemName: "餐饮交易",
       },
       {
@@ -93,6 +95,7 @@ describe("getLedgerEntriesAction", () => {
         categoryId: otherCategory.id,
         sourceDocumentId: testSourceDocId,
         amount: "20",
+        currency: "CNY",
         itemName: "交通交易",
       },
     ]);
@@ -121,6 +124,7 @@ describe("getLedgerEntriesAction", () => {
         categoryId: testCategoryId,
         sourceDocumentId: activeSourceDocId,
         amount: "30",
+        currency: "CNY",
         itemName: "可见分录",
       },
       {
@@ -128,6 +132,7 @@ describe("getLedgerEntriesAction", () => {
         categoryId: testCategoryId,
         sourceDocumentId: deletedSourceDocId,
         amount: "40",
+        currency: "CNY",
         itemName: "应被隐藏分录",
       },
     ]);

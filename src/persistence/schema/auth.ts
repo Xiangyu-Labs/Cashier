@@ -39,7 +39,7 @@ export const users = pgTable(
   (table) => [
     check("ck_users_auth_version_positive", sql`${table.authVersion} > 0`),
     uniqueIndex("uniq_users_active_email")
-      .on(table.email)
+      .on(sql`lower(${table.email})`)
       .where(sql`${table.deletedAt} IS NULL`),
   ]
 );

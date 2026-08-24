@@ -16,6 +16,7 @@ interface LedgerEntryCardProps {
   mainCurrency?: string;
   selectionMode?: boolean;
   isSelected?: boolean;
+  selectionDisabled?: boolean;
   onToggleSelect?: (id: string) => void;
 }
 
@@ -26,6 +27,7 @@ export const LedgerEntryCard = memo(function LedgerEntryCard({
   mainCurrency = "CNY",
   selectionMode = false,
   isSelected = false,
+  selectionDisabled = false,
   onToggleSelect,
 }: LedgerEntryCardProps) {
   const t = useTranslations("Common");
@@ -35,6 +37,7 @@ export const LedgerEntryCard = memo(function LedgerEntryCard({
     <SelectableCardSurface
       selectionMode={selectionMode}
       selected={isSelected}
+      disabled={selectionDisabled}
       selectionLabel={t("selectItem", { item: ledgerEntry.itemName })}
       onToggleSelection={() => onToggleSelect?.(ledgerEntry.id)}
     >

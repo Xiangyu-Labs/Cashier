@@ -86,9 +86,6 @@ export async function checkSendRateLimitByIP(
   remainingAttempts: number;
   retryAfter?: number;
 }> {
-  if (ip === "unknown") {
-    return { allowed: true, remainingAttempts: getIpMaxAttempts() };
-  }
   try {
     const key = bucketKey(OTP_SEND_IP_PREFIX.slice(0, -1), ip);
     const ipMaxAttempts = getIpMaxAttempts();
@@ -196,7 +193,6 @@ export async function checkVerifyRateLimit(
   ip: string,
   rateLimiter: RateLimitPort
 ): Promise<boolean> {
-  if (ip === "unknown") return true;
   try {
     const key = bucketKey(OTP_VERIFY_PREFIX.slice(0, -1), ip);
     const verifyMaxAttempts = getVerifyMaxAttempts();

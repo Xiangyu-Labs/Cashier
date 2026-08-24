@@ -59,6 +59,8 @@
     "noData": "这个时间段暂无图表数据"
   },
   "StatsTab": {
+    "increase": "增加",
+    "decrease": "减少",
     "throughToday": "截至今日",
     "expenseTrend": "支出趋势",
     "expenseRanking": "支出排行",

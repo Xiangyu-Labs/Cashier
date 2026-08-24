@@ -99,7 +99,8 @@
     "deleteSelectedTitle": "Delete selected items",
     "deleteSelectedDescription": "Delete the selected {count} items? This cannot be undone.",
     "changeDateTitle": "Change transaction date",
-    "changeDateImpact": "{selected} selected items across {documents} receipts. {affected} items will be updated because dates belong to receipts."
+    "changeDateImpact": "{selected} selected items across {documents} receipts. {affected} items will be updated because dates belong to receipts.",
+    "selectionChanged": "The selection changed. Review the date impact again."
   },
   "BatchActions": {
     "selected": "{count} selected",
@@ -114,6 +115,7 @@
     "currencyChanged": "Changed currency for {count} items",
     "loadedOnly": "Only the {count} loaded items are selected",
     "loadedScope": "Only the currently loaded and selected items are affected.",
+    "selectionChanged": "The selection changed. Review the date impact again.",
     "setDate": "Set Date",
     "setDateShort": "Date",
     "split": "Split",
@@ -182,6 +184,8 @@
     "noMatchingResults": "No results match these filters"
   },
   "StatsTab": {
+    "increase": "Increase",
+    "decrease": "Decrease",
     "throughToday": "Through today",
     "expenseTrend": "Expense Trend",
     "expenseRanking": "Expense Ranking",

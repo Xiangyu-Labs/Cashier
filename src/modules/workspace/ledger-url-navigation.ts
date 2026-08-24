@@ -1,4 +1,5 @@
 "use client";
+import { writeLedgerHistory, type LedgerNavigationKind } from "@/lib/navigation/ledger-history";
 import {
   buildLedgerUrl,
   readLedgerDetailSearchParams,
@@ -6,27 +7,6 @@ import {
 } from "./ledger-url-params";
 
 type SearchParamsLike = Pick<URLSearchParams, "toString">;
-export type LedgerNavigationKind = "tab" | "filter" | "stats" | "drilldown" | "detail";
-
-interface CashierHistoryMetadata {
-  cashier?: {
-    ledgerNavigation: true;
-    kind: LedgerNavigationKind;
-  };
-}
-
-function currentCustomHistoryState(): Record<string, unknown> {
-  const state = window.history.state;
-  if (state == null || typeof state !== "object" || Array.isArray(state)) {
-    return {};
-  }
-
-  const customState = { ...(state as Record<string, unknown>) };
-  delete customState.__NA;
-  delete customState._N;
-  delete customState.__PRIVATE_NEXTJS_INTERNALS_TREE;
-  return customState;
-}
 
 export function pushLedgerUrl(
   pathname: string,
@@ -41,12 +21,7 @@ export function pushLedgerUrl(
       ? searchParams
       : setLedgerDetailSearchParams(new URLSearchParams(searchParams.toString()), null);
   const url = buildLedgerUrl(pathname, nextSearchParams);
-  const state: Record<string, unknown> & CashierHistoryMetadata = {
-    ...currentCustomHistoryState(),
-    cashier: { ledgerNavigation: true, kind },
-  };
-  if (leavingDetail) window.history.replaceState(state, "", url);
-  else window.history.pushState(state, "", url);
+  writeLedgerHistory(leavingDetail ? "replace" : "push", url, kind);
   return url;
 }
 
@@ -55,6 +30,6 @@ export function replaceLedgerUrl(
   searchParams: SearchParamsLike | URLSearchParams
 ): string {
   const url = buildLedgerUrl(pathname, searchParams);
-  window.history.replaceState(currentCustomHistoryState(), "", url);
+  writeLedgerHistory("replace", url, "filter");
   return url;
 }

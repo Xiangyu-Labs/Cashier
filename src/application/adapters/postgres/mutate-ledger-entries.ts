@@ -499,7 +499,7 @@ export async function batchUpdateLedgerEntries(input: {
           return {
             ...toProjectionEntry(entry),
             categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
-            currency: input.currency !== undefined ? input.currency : entry.currency,
+            currency: effectiveCurrency,
             amount:
               input.amount !== undefined || input.currency !== undefined
                 ? roundToCurrency(nextAmount, effectiveCurrency)

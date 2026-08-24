@@ -1,15 +1,17 @@
 import type { DateRangeType } from "@/lib/date-utils";
 import { parseDateString } from "@/lib/date-utils";
+import Decimal from "decimal.js";
 
 export interface ChartPoint {
   label: string;
   value: number;
+  total: string;
   /** YYYY-MM-DD for daily granularity, YYYY-MM for yearly granularity. */
   fullDate: string;
 }
 
 export interface BuildChartPointsInput {
-  data: { date: string; total: number }[];
+  data: { date: string; total: string }[];
   rangeType: DateRangeType;
   /** Inclusive civil start date (YYYY-MM-DD). */
   startDate: string;
@@ -57,7 +59,7 @@ export function buildChartPoints({
   }
 
   // First occurrence wins, mirroring the previous find() semantics.
-  const totalsByDate = new Map<string, number>();
+  const totalsByDate = new Map<string, string>();
   for (const point of data) {
     if (!totalsByDate.has(point.date)) {
       totalsByDate.set(point.date, point.total);
@@ -78,16 +80,22 @@ export function buildChartPoints({
       const year = startYear + Math.floor((month - 1) / 12);
       const monthOfYear = ((month - 1) % 12) + 1;
       const monthPrefix = `${year}-${String(monthOfYear).padStart(2, "0")}`;
-      let total = 0;
+      let total = new Decimal(0);
       for (const point of data) {
         if (point.date.startsWith(monthPrefix)) {
-          total += point.total;
+          total = total.plus(point.total);
         }
       }
       const monthLabel = parseDateString(`${monthPrefix}-01`).toLocaleString(locale, {
         month: "short",
       });
-      points.push({ label: monthLabel, value: total, fullDate: monthPrefix });
+      const totalString = total.toFixed();
+      points.push({
+        label: monthLabel,
+        value: finiteCoordinate(totalString),
+        total: totalString,
+        fullDate: monthPrefix,
+      });
     }
     return points;
   }
@@ -96,13 +104,18 @@ export function buildChartPoints({
   let cursor = startDate;
   while (cursor <= endDate) {
     if (points.length >= MAX_CHART_POINTS) return [];
-    const total = totalsByDate.get(cursor) ?? 0;
+    const total = totalsByDate.get(cursor) ?? "0";
     const label =
       rangeType === "week"
         ? parseDateString(cursor).toLocaleString(locale, { weekday: "short" })
         : String(Number(cursor.slice(8, 10)));
-    points.push({ label, value: total, fullDate: cursor });
+    points.push({ label, value: finiteCoordinate(total), total, fullDate: cursor });
     cursor = addCivilDays(cursor, 1);
   }
   return points;
+}
+
+function finiteCoordinate(value: string): number {
+  const coordinate = new Decimal(value).toNumber();
+  return Number.isFinite(coordinate) ? coordinate : Number.MAX_VALUE;
 }

@@ -1,11 +1,11 @@
 export interface SourceDocumentCardCurrencyBreakdown {
   currency: string;
-  amount: number;
-  convertedAmount?: number;
+  amount: string;
+  convertedAmount?: string;
 }
 
 export interface SourceDocumentCardTotals {
-  subtotalsByCurrency: Record<string, number>;
-  totalInMainCurrency: number;
+  subtotalsByCurrency: Record<string, string>;
+  totalInMainCurrency: string;
   breakdownData: SourceDocumentCardCurrencyBreakdown[];
 }

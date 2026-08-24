@@ -26,6 +26,27 @@ describe("password authentication", () => {
     await expect(verifyPassword("wrong-password-9", hash)).resolves.toBe(false);
   });
 
+  it("rejects malformed and unsupported bcrypt hashes without comparing", async () => {
+    const compare = vi.spyOn(bcrypt, "compare");
+
+    await expect(verifyPassword("valid-password-1", "$2b$09$invalid")).resolves.toBe(false);
+    await expect(
+      verifyPassword(
+        "valid-password-1",
+        "$2b$15$E.Rov9WCSx5iCVVlYJTgLOGGjHYsuet/YKxmEZ03AXS8OY.ivReI2"
+      )
+    ).resolves.toBe(false);
+    await expect(
+      verifyPassword(
+        "valid-password-1",
+        "$2x$12$E.Rov9WCSx5iCVVlYJTgLOGGjHYsuet/YKxmEZ03AXS8OY.ivReI2"
+      )
+    ).resolves.toBe(false);
+
+    expect(compare).not.toHaveBeenCalled();
+    compare.mockRestore();
+  });
+
   it("enforces the compact password policy", () => {
     expect(() => validatePassword("short1")).toThrow(/8 and 128/);
     expect(() => validatePassword("onlyletters")).toThrow(/letter and one number/);
@@ -35,7 +56,7 @@ describe("password authentication", () => {
   });
 
   it("returns the user for valid credentials and hides failure details", async () => {
-    const passwordHash = await bcrypt.hash("valid-password-1", 4);
+    const passwordHash = await bcrypt.hash("valid-password-1", 10);
     const account = {
       id: "user-id",
       email: "owner@example.com",
@@ -83,7 +104,7 @@ describe("password authentication", () => {
   });
 
   it("releases the reserved rate-limit bucket for a successful password login", async () => {
-    const passwordHash = await bcrypt.hash("valid-password-1", 4);
+    const passwordHash = await bcrypt.hash("valid-password-1", 10);
     const increment = vi.fn().mockResolvedValue({
       success: true,
       remaining: 9,
@@ -113,7 +134,8 @@ describe("password authentication", () => {
       { users, rateLimiter: { ...rateLimiter, increment, releaseIncrement } }
     );
 
-    expect(increment).toHaveBeenCalledOnce();
+    expect(increment).toHaveBeenCalledTimes(2);
+    expect(releaseIncrement).toHaveBeenCalledTimes(2);
     expect(releaseIncrement).toHaveBeenCalledWith(
       "auth:password:email:owner@example.com",
       expect.any(Number),
@@ -193,7 +215,7 @@ describe("password authentication", () => {
     expect(findByEmail).not.toHaveBeenCalled();
   });
 
-  it("skips the shared IP bucket when the client address is unknown", async () => {
+  it("uses a stable hashed IP bucket when the client address is unknown", async () => {
     const increment = vi.fn().mockResolvedValue({
       success: true,
       remaining: 9,
@@ -214,12 +236,14 @@ describe("password authentication", () => {
       )
     ).rejects.toMatchObject({ code: "invalid_credentials" });
 
-    expect(increment).toHaveBeenCalledTimes(1);
+    expect(increment).toHaveBeenCalledTimes(2);
     expect(increment.mock.calls[0]?.[0]).toBe("auth:password:email:owner@example.com");
+    expect(increment.mock.calls[1]?.[0]).toMatch(/^auth:password:ip:ip:[a-f0-9]+$/);
+    expect(increment.mock.calls[1]?.[0]).not.toContain("unknown");
   });
 
   it("atomically caps concurrent password sign-in verification", async () => {
-    const passwordHash = await bcrypt.hash("valid-password-1", 4);
+    const passwordHash = await bcrypt.hash("valid-password-1", 10);
     let count = 0;
     const increment = vi.fn(async (_key: string, limit: number, windowSeconds: number) => {
       count += 1;
@@ -260,7 +284,7 @@ describe("password authentication", () => {
   });
 
   it("atomically caps concurrent current-password verification", async () => {
-    const passwordHash = await bcrypt.hash("current-password-1", 4);
+    const passwordHash = await bcrypt.hash("current-password-1", 10);
     let count = 0;
     const increment = vi.fn(async (_key: string, limit: number, windowSeconds: number) => {
       count += 1;
