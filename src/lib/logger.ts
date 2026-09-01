@@ -12,6 +12,11 @@ const configuredLogLevel = getConfiguredLogLevel();
  */
 export const logger = pino({
   level: configuredLogLevel ?? defaultLevel,
+  // Pino only auto-applies its Error serializer to the `err` key. Almost all
+  // call sites in this codebase log under `error` instead, which without
+  // this would serialize an Error's non-enumerable `message`/`stack` away to
+  // `{}` and make failures undiagnosable from logs alone.
+  serializers: { error: pino.stdSerializers.err },
   ...(isDev && process.env.NEXT_RUNTIME === "nodejs"
     ? {
         transport: {

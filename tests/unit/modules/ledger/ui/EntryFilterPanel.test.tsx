@@ -252,4 +252,25 @@ describe("EntryFilterPanel", () => {
       "thisMonth"
     );
   });
+
+  it("offers a last-month date preset alongside the existing presets", async () => {
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn();
+
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        onFiltersChange={onFiltersChange}
+        periodParams={{ period: "thisMonth" }}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "上个月" }));
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+
+    expect(onFiltersChange).toHaveBeenCalledTimes(1);
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.anything(), "lastMonth");
+  });
 });

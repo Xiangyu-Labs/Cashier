@@ -6,6 +6,14 @@ import { getResendCooldown } from "./otp";
 import type { RateLimitPort } from "../application/ports";
 import { createHmac } from "node:crypto";
 
+// Config reads below (bucketKey and the getXxx() helpers) touch runtimeEnv
+// getters, which re-validate on every access and can throw
+// AppError("STARTUP_ENV_INVALID", ...). Every call site keeps those reads
+// outside its try/catch so a misconfigured env var is never swallowed and
+// relabeled as RateLimitUnavailableError ("sign-in protection is temporarily
+// unavailable") — that message must mean the rate limiter backend actually
+// failed, not that config is broken.
+
 const OTP_SEND_PREFIX = "otp:send:";
 const OTP_SEND_IP_PREFIX = "otp:send:ip:";
 const OTP_RESEND_PREFIX = "otp:resend:";
@@ -45,11 +53,10 @@ export async function checkSendRateLimit(
   remainingAttempts: number;
   retryAfter?: number;
 }> {
+  const key = bucketKey(OTP_SEND_PREFIX.slice(0, -1), email);
+  const sendWindowSeconds = getSendWindowSeconds();
+  const sendMaxAttempts = getSendMaxAttempts();
   try {
-    const key = bucketKey(OTP_SEND_PREFIX.slice(0, -1), email);
-    const sendWindowSeconds = getSendWindowSeconds();
-    const sendMaxAttempts = getSendMaxAttempts();
-
     const result = await rateLimiter.increment(key, sendMaxAttempts, sendWindowSeconds);
 
     if (!result.success) {
@@ -71,7 +78,7 @@ export async function checkSendRateLimit(
     };
   } catch (error) {
     logger.error(
-      { error, subject: logIdentifier("email", email) },
+      { error, subject: logIdentifier("email", email), purpose: "send" },
       "OTP send rate limit check failed"
     );
     throw new RateLimitUnavailableError();
@@ -86,10 +93,9 @@ export async function checkSendRateLimitByIP(
   remainingAttempts: number;
   retryAfter?: number;
 }> {
+  const key = bucketKey(OTP_SEND_IP_PREFIX.slice(0, -1), ip);
+  const ipMaxAttempts = getIpMaxAttempts();
   try {
-    const key = bucketKey(OTP_SEND_IP_PREFIX.slice(0, -1), ip);
-    const ipMaxAttempts = getIpMaxAttempts();
-
     const result = await rateLimiter.increment(key, ipMaxAttempts, IP_WINDOW_SECONDS);
 
     if (!result.success) {
@@ -111,7 +117,7 @@ export async function checkSendRateLimitByIP(
     };
   } catch (error) {
     logger.error(
-      { error, subject: logIdentifier("ip", ip) },
+      { error, subject: logIdentifier("ip", ip), purpose: "send_ip" },
       "OTP send IP rate limit check failed"
     );
     throw new RateLimitUnavailableError();
@@ -126,12 +132,13 @@ export async function acquireResendCooldown(
   acquiredAt: Date;
   retryAfter: number;
 }> {
+  const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
+  const cooldownSeconds = getResendCooldown();
   try {
-    const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
-    return await rateLimiter.acquireCooldown(key, getResendCooldown());
+    return await rateLimiter.acquireCooldown(key, cooldownSeconds);
   } catch (error) {
     logger.error(
-      { error, subject: logIdentifier("email", email) },
+      { error, subject: logIdentifier("email", email), purpose: "resend_cooldown" },
       "OTP resend cooldown check failed"
     );
     throw new RateLimitUnavailableError();
@@ -149,11 +156,10 @@ export async function releaseResendCooldown(
 
 /** @deprecated The send flow uses acquireResendCooldown atomically. */
 export async function checkResendCooldown(email: string, rateLimiter: RateLimitPort) {
+  const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
+  const cooldownSeconds = getResendCooldown();
   try {
-    const remaining = await rateLimiter.getCooldownRemaining(
-      bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email),
-      getResendCooldown()
-    );
+    const remaining = await rateLimiter.getCooldownRemaining(key, cooldownSeconds);
     return remaining <= 0 ? { allowed: true } : { allowed: false, retryAfter: remaining };
   } catch (error) {
     logger.error(
@@ -193,10 +199,9 @@ export async function checkVerifyRateLimit(
   ip: string,
   rateLimiter: RateLimitPort
 ): Promise<boolean> {
+  const key = bucketKey(OTP_VERIFY_PREFIX.slice(0, -1), ip);
+  const verifyMaxAttempts = getVerifyMaxAttempts();
   try {
-    const key = bucketKey(OTP_VERIFY_PREFIX.slice(0, -1), ip);
-    const verifyMaxAttempts = getVerifyMaxAttempts();
-
     const result = await rateLimiter.increment(key, verifyMaxAttempts, VERIFY_WINDOW_SECONDS);
 
     if (!result.success) {
@@ -209,7 +214,10 @@ export async function checkVerifyRateLimit(
 
     return true;
   } catch (error) {
-    logger.error({ error, subject: logIdentifier("ip", ip) }, "OTP verify rate limit check failed");
+    logger.error(
+      { error, subject: logIdentifier("ip", ip), purpose: "verify" },
+      "OTP verify rate limit check failed"
+    );
     throw new RateLimitUnavailableError();
   }
 }

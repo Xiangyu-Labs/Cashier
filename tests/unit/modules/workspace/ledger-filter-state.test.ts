@@ -95,6 +95,36 @@ describe("ledger-filter-state", () => {
     expect(result.periodUpdate).toEqual({ period: "all" });
   });
 
+  it("round-trips a named preset by name instead of reconstructing it as custom", () => {
+    // Regression: previously only "all" round-tripped by name — every other
+    // preset (including lastMonth) was written back as period=custom with
+    // explicit dates, forcing EntryFilterPanel to fuzzy-match dates back to
+    // a preset name on the next read.
+    const result = splitLedgerFilterChange({
+      currentPeriod: { period: "thisMonth" },
+      currentFilters: { startDate: "2026-03-01", endDate: "2026-03-31" },
+      nextFilters: { startDate: "2026-02-01", endDate: "2026-02-28" },
+      requestedPeriod: "lastMonth",
+    });
+
+    expect(result.periodUpdate).toEqual({ period: "lastMonth" });
+  });
+
+  it("still reconstructs custom with explicit dates when requestedPeriod is custom", () => {
+    const result = splitLedgerFilterChange({
+      currentPeriod: { period: "thisMonth" },
+      currentFilters: {},
+      nextFilters: { startDate: "2026-03-01", endDate: "2026-03-31" },
+      requestedPeriod: "custom",
+    });
+
+    expect(result.periodUpdate).toEqual({
+      period: "custom",
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+    });
+  });
+
   describe("STREAM_STATUS_PRESETS", () => {
     it("defines the attention, duplicate, and in-progress presets", () => {
       expect(STREAM_STATUS_PRESETS).toEqual([

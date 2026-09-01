@@ -10,7 +10,7 @@ const { pinoMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("pino", () => ({
-  default: pinoMock,
+  default: Object.assign(pinoMock, { stdSerializers: { err: vi.fn() } }),
 }));
 
 const originalEnv = { ...process.env };

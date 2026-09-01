@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { signIn, type SignInResponse } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
-import { usePathname } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
 import type { SendOTPActionResult } from "@/modules/auth/server-actions/send-otp";
@@ -107,16 +106,24 @@ function getSendOTPErrorMessage(
   t: (key: string, values?: Record<string, string | number>) => string,
   fallbackKey: "sendCodeFailed" | "resendFailed"
 ): string {
-  if (result.code === "rate_limited") {
-    return t("rateLimitedDesc");
+  switch (result.code) {
+    case "rate_limited":
+      return t("rateLimitedDesc");
+    case "rate_limit_unavailable":
+      return t("rateLimitUnavailableDesc");
+    case "config_error":
+      return t("errorConfigurationDesc");
+    case "invalid_email":
+      return t("invalidEmailFormat");
+    case "email_not_configured":
+      return t("emailAuthNotConfigured");
+    case "email_send_failed":
+      return t("emailSendFailed");
+    case "unexpected":
+      return t("unexpectedError");
+    default:
+      return t(fallbackKey);
   }
-  if (result.code === "rate_limit_unavailable") {
-    return t("rateLimitUnavailableDesc");
-  }
-  if (result.code === "unexpected") {
-    return t("unexpectedError");
-  }
-  return t(fallbackKey);
 }
 
 export function useLoginFlow(
@@ -154,6 +161,15 @@ export function useLoginFlow(
     setPassword("");
   }
 
+  // resendPending lives in a module-level store, so if a previous page load's
+  // handleResendOTP was interrupted before its `finally` ran (e.g. unmount
+  // mid-request), it would otherwise stay stuck true and permanently disable
+  // both tabs for the rest of this page load. Clear it on mount.
+  useEffect(() => {
+    setResendPending(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const writeFlowUrl = useCallback(
     (nextMode: LoginMode, nextStep: LoginStep, replace = false) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -163,9 +179,13 @@ export function useLoginFlow(
       else params.set("authStep", nextStep);
       const query = params.toString();
       const url = query === "" ? pathname : `${pathname}?${query}`;
-      const state = window.history.state ?? {};
-      if (replace) window.history.replaceState(state, "", url);
-      else window.history.pushState(state, "", url);
+      // Pass null (not window.history.state) so Next.js's pushState/replaceState
+      // patch does NOT see its own __NA marker echoed back and short-circuit to
+      // the native implementation. Passing null lets Next copy its internal
+      // state itself and dispatch ACTION_RESTORE, which keeps useSearchParams()
+      // in sync without a server round-trip.
+      if (replace) window.history.replaceState(null, "", url);
+      else window.history.pushState(null, "", url);
     },
     [initialMode, pathname, searchParams]
   );

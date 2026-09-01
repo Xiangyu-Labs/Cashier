@@ -13,7 +13,7 @@ import {
 } from "./date-utils";
 
 export type PeriodPreset =
-  "all" | "thisMonth" | "week" | "month" | "3months" | "6months" | "year" | "custom";
+  "all" | "thisMonth" | "lastMonth" | "week" | "month" | "3months" | "6months" | "year" | "custom";
 
 export interface PeriodParams {
   period: PeriodPreset;
@@ -77,6 +77,15 @@ export function periodToDateRange(params: PeriodParams, timeZone?: string): Date
     return {
       startDate: formatDateTimeForApi(monthStart) ?? null,
       endDate: formatDateTimeForApi(monthEnd) ?? null,
+    };
+  }
+
+  if (period === "lastMonth") {
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return {
+      startDate: formatDateTimeForApi(lastMonthStart) ?? null,
+      endDate: formatDateTimeForApi(lastMonthEnd) ?? null,
     };
   }
 
@@ -187,6 +196,7 @@ export function parsePeriodFromSearchParams(
   const validPeriods: PeriodPreset[] = [
     "all",
     "thisMonth",
+    "lastMonth",
     "week",
     "month",
     "3months",

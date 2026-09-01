@@ -111,6 +111,7 @@
     "updateSuccess": "Settings updated successfully",
     "updateFailed": "Update failed. Please try again later.",
     "ratesUnavailable": "Historical rates are missing for some transaction dates. The main currency was not changed.",
+    "ratesUnavailableDates": "Historical rates are missing for these dates, so the main currency was not changed: {dates}",
     "unsupportedCurrency": "The selected currency is not supported by the exchange-rate data.",
     "validationFailed": "The settings are invalid. Check them and try again.",
     "updateConflict": "The settings changed elsewhere. Refresh and try again.",

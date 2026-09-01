@@ -18,7 +18,7 @@ import { useTranslations } from "next-intl";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
-import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
+import { periodToDateRange, type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
@@ -42,7 +42,14 @@ interface EntryFilterPanelProps {
   className?: string;
 }
 
-const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "all", "week", "month", "custom"];
+const VISIBLE_PRESETS: PeriodPreset[] = [
+  "thisMonth",
+  "all",
+  "week",
+  "lastMonth",
+  "month",
+  "custom",
+];
 
 const STATUS_OPTIONS: SourceDocumentStatusType[] = [
   "processing",
@@ -193,28 +200,13 @@ export function EntryFilterPanel({
       delete newFilters.startDate;
       delete newFilters.endDate;
     } else if (preset !== "custom") {
-      const end = new Date();
-      const start = new Date();
-
-      switch (preset) {
-        case "thisMonth":
-          start.setDate(1);
-          start.setHours(0, 0, 0, 0);
-          end.setMonth(end.getMonth() + 1, 0);
-          end.setHours(23, 59, 59, 999);
-          break;
-        case "week":
-          start.setDate(end.getDate() - 7);
-          break;
-        case "month":
-          start.setMonth(end.getMonth() - 1);
-          break;
-      }
-
+      // Delegates to the same date-range math the server and the URL layer
+      // use (period-utils.ts), instead of a second, drifting implementation.
+      const range = periodToDateRange({ period: preset });
       newFilters = {
         ...newFilters,
-        startDate: formatDateTimeForApi(start),
-        endDate: formatDateTimeForApi(end),
+        ...(range.startDate != null ? { startDate: range.startDate } : {}),
+        ...(range.endDate != null ? { endDate: range.endDate } : {}),
       };
     }
 
@@ -330,12 +322,13 @@ export function EntryFilterPanel({
           <CalendarIcon className="h-3 w-3" />
           {t("dateRange")}
         </div>
-        <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
+        <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
           {(
             [
               { preset: "thisMonth", label: tDateRange("thisMonth") },
               { preset: "all", label: t("allTime") },
               { preset: "week", label: tDateRange("pastWeek") },
+              { preset: "lastMonth", label: tDateRange("lastMonth") },
               { preset: "month", label: tDateRange("pastMonth") },
               { preset: "custom", label: tDateRange("customRange") },
             ] as const

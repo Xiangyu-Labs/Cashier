@@ -84,8 +84,13 @@ export function splitLedgerFilterChange(args: {
   const nextEndDate = args.nextFilters.endDate ?? null;
 
   let periodUpdate: PeriodParams | undefined;
-  if (args.requestedPeriod === "all") {
-    periodUpdate = { period: "all" };
+  if (args.requestedPeriod != null && args.requestedPeriod !== "custom") {
+    // A named preset (thisMonth, lastMonth, week, ...) round-trips through
+    // the URL by name instead of being reconstructed as `custom` with
+    // explicit dates — otherwise every non-"all" preset loses its identity
+    // on the next read and has to be fuzzy-matched back from its computed
+    // date range (see EntryFilterPanel's activePreset fallback).
+    periodUpdate = { period: args.requestedPeriod };
   } else if (nextStartDate !== currentStartDate || nextEndDate !== currentEndDate) {
     if (nextStartDate != null || nextEndDate != null) {
       periodUpdate = {

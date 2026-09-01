@@ -8,7 +8,7 @@ import {
   type UpdateLedgerInput,
 } from "@/modules/ledger/contract-schemas";
 import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledger";
-import { toUpdateLedgerActionErrorCode } from "./update-error";
+import { extractUpdateLedgerActionDates, toUpdateLedgerActionErrorCode } from "./update-error";
 import { serverComposition } from "@/application/server-composition-root";
 
 export const updateLedgerSettingsAction = withAuth(
@@ -25,7 +25,8 @@ export const updateLedgerSettingsAction = withAuth(
           userId,
           parseLedgerId(id),
           validated,
-          serverComposition.settings
+          serverComposition.settings,
+          serverComposition.exchangeRates
         ),
       };
     } catch (error) {
@@ -34,7 +35,9 @@ export const updateLedgerSettingsAction = withAuth(
       // callers can keep drafts on known conflicts. Other simple commands
       // continue to throw their typed application errors at the boundary.
       if (code === "unexpected") logError("updateLedgerSettingsAction", error);
-      return { ok: false, code };
+      const dates =
+        code === "rates_unavailable" ? extractUpdateLedgerActionDates(error) : undefined;
+      return { ok: false, code, ...(dates !== undefined ? { dates } : {}) };
     }
   }
 );

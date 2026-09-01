@@ -22,6 +22,7 @@ export type SendOTPActionResult =
         | "invalid_email"
         | "email_not_configured"
         | "email_send_failed"
+        | "config_error"
         | "unexpected";
       retryAfter?: number;
     };
@@ -38,6 +39,13 @@ function sendOTPFailure(error: unknown): SendOTPActionResult {
   if (error instanceof AppError) {
     if (error.code === "AUTH_RATE_LIMIT_UNAVAILABLE") {
       return { ok: false, code: "rate_limit_unavailable" };
+    }
+    // A misconfigured env var (bad AUTH_RATE_LIMIT_MAX, missing
+    // RATE_LIMIT_PEPPER, etc.) is a distinct failure from "the rate limiter
+    // backend is unavailable" or "something unexpected happened" — surface
+    // it as its own code instead of letting it fall through to "unexpected".
+    if (error.code === "STARTUP_ENV_INVALID") {
+      return { ok: false, code: "config_error" };
     }
     switch (error.code) {
       case "VALIDATION_ERROR":

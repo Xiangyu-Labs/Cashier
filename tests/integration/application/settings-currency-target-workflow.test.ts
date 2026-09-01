@@ -1,5 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { updateLedger as updateLedgerUseCase } from "@/modules/ledger/application/use-cases/update-ledger";
 import { serverComposition } from "@/application/server-composition-root";
@@ -23,7 +23,8 @@ const updateLedger = async (userId: string, ledgerId: string, data: UpdateLedger
     userId,
     ledgerId,
     { ...data, expectedUpdatedAt: current.updatedAt.toISOString() },
-    serverComposition.settings
+    serverComposition.settings,
+    serverComposition.exchangeRates
   );
 };
 
@@ -220,50 +221,102 @@ describe("target Settings currency workflow", () => {
     expect(entry?.exchangeRate).toBe("1.000000000000");
   });
 
-  it("rolls back the entire main-currency change when a historical rate is missing", async () => {
-    await createEntry();
-    const db = getTestDb();
-    const sourceDocumentId = crypto.randomUUID();
-    const activeRevisionId = crypto.randomUUID();
-    await db.insert(sourceDocuments).values({
-      id: sourceDocumentId,
-      ledgerId,
-      entryDate: "2026-07-14",
-    });
-    await db.insert(sourceDocumentRevisions).values({
-      id: activeRevisionId,
-      ledgerId,
-      sourceDocumentId,
-      revisionNumber: 1,
-      outcome: "completed",
-      finalizedAt: new Date(),
-    });
-    await db
-      .update(sourceDocuments)
-      .set({ activeRevisionId })
-      .where(eq(sourceDocuments.id, sourceDocumentId));
-    await db.insert(ledgerEntries).values({
-      ledgerId,
-      sourceDocumentId,
-      sourceDocumentRevisionId: activeRevisionId,
-      amount: "40.00",
-      currency: "CNY",
-      itemName: "Missing historical rate",
-      convertedAmount: "40.00",
-      exchangeRate: "1.000000",
+  describe("historical rate gaps", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
-    await expect(
-      updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } })
-    ).rejects.toMatchObject({ code: "EXCHANGE_RATES_UNAVAILABLE" });
+    /**
+     * Inserts a second, main-currency-only entry dated `entryDate`, which by
+     * construction has no currency_rates row (rates are only ever cached as
+     * a side effect of a *cross-currency* conversion — see entry-builder.ts
+     * and ExchangeRateService.getRates), then attempts the main-currency
+     * change.
+     */
+    async function addMainCurrencyOnlyEntry(entryDate: string) {
+      const db = getTestDb();
+      const sourceDocumentId = crypto.randomUUID();
+      const activeRevisionId = crypto.randomUUID();
+      await db.insert(sourceDocuments).values({ id: sourceDocumentId, ledgerId, entryDate });
+      await db.insert(sourceDocumentRevisions).values({
+        id: activeRevisionId,
+        ledgerId,
+        sourceDocumentId,
+        revisionNumber: 1,
+        outcome: "completed",
+        finalizedAt: new Date(),
+      });
+      await db
+        .update(sourceDocuments)
+        .set({ activeRevisionId })
+        .where(eq(sourceDocuments.id, sourceDocumentId));
+      await db.insert(ledgerEntries).values({
+        ledgerId,
+        sourceDocumentId,
+        sourceDocumentRevisionId: activeRevisionId,
+        amount: "40.00",
+        currency: "CNY",
+        itemName: "Main-currency-only entry",
+        convertedAmount: "40.00",
+        exchangeRate: "1.000000",
+      });
+    }
 
-    const [storedLedger, entries] = await Promise.all([
-      db.query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }),
-      db.query.ledgerEntries.findMany({ where: eq(ledgerEntries.ledgerId, ledgerId) }),
-    ]);
-    expect(storedLedger?.mainCurrency).toBe("CNY");
-    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.000", "80.000"]);
-    expect(entries.every((entry) => entry.exchangeRate === "1.000000000000")).toBe(true);
+    it("auto-fetches a missing but available historical rate instead of rejecting the change", async () => {
+      await createEntry();
+      await addMainCurrencyOnlyEntry("2026-07-14");
+      const db = getTestDb();
+
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ base: "EUR", date: "2026-07-14", rates: { CNY: 8, USD: 1 } }),
+      } as Response);
+
+      const updated = await updateLedger(TEST_USER_ID, ledgerId, {
+        settings: { mainCurrency: "USD" },
+      });
+
+      expect(updated.settings.mainCurrency).toBe("USD");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining("2026-07-14"),
+        expect.anything()
+      );
+      const storedRate = await db.query.currencyRates.findFirst({
+        where: eq(currencyRates.date, "2026-07-14"),
+      });
+      expect(storedRate).not.toBeNull();
+      const entries = await db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.ledgerId, ledgerId),
+      });
+      expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.000", "5.000"]);
+    });
+
+    it("rolls back the entire main-currency change when the provider genuinely has no rate", async () => {
+      await createEntry();
+      // Before the ECB reference series' earliest date: the provider returns
+      // 404 for this regardless of network availability.
+      await addMainCurrencyOnlyEntry("1990-01-01");
+      const db = getTestDb();
+
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        json: async () => ({}),
+      } as Response);
+
+      await expect(
+        updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } })
+      ).rejects.toMatchObject({ code: "EXCHANGE_RATES_UNAVAILABLE" });
+
+      const [storedLedger, entries] = await Promise.all([
+        db.query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }),
+        db.query.ledgerEntries.findMany({ where: eq(ledgerEntries.ledgerId, ledgerId) }),
+      ]);
+      expect(storedLedger?.mainCurrency).toBe("CNY");
+      expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.000", "80.000"]);
+      expect(entries.every((entry) => entry.exchangeRate === "1.000000000000")).toBe(true);
+    });
   });
 
   it("accepts exactly one of two concurrent settings writes", async () => {
@@ -276,8 +329,20 @@ describe("target Settings currency workflow", () => {
     } as const;
 
     const results = await Promise.allSettled([
-      updateLedgerUseCase(TEST_USER_ID, ledgerId, input, serverComposition.settings),
-      updateLedgerUseCase(TEST_USER_ID, ledgerId, input, serverComposition.settings),
+      updateLedgerUseCase(
+        TEST_USER_ID,
+        ledgerId,
+        input,
+        serverComposition.settings,
+        serverComposition.exchangeRates
+      ),
+      updateLedgerUseCase(
+        TEST_USER_ID,
+        ledgerId,
+        input,
+        serverComposition.settings,
+        serverComposition.exchangeRates
+      ),
     ]);
 
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);

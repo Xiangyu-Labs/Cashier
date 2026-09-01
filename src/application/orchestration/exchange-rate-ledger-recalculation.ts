@@ -11,6 +11,7 @@ import {
   type ClaimedExchangeRateRecalculation,
 } from "@/application/adapters/postgres/exchange-rate-recalculation-jobs";
 import { logger } from "@/lib/logger";
+import { runWithConcurrency } from "@/lib/concurrency";
 import type { ExchangeRatesStoredEvent } from "@/modules/currency/application/ports";
 import { registerExchangeRatesStoredHandler } from "@/modules/currency/events";
 
@@ -155,20 +156,4 @@ async function processRecalculationJob(
 
 function maskLedgerId(ledgerId: string): string {
   return createHash("sha256").update(ledgerId).digest("hex").slice(0, 16);
-}
-
-async function runWithConcurrency<T>(
-  items: readonly T[],
-  limit: number,
-  worker: (item: T) => Promise<void>
-): Promise<void> {
-  let cursor = 0;
-  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (cursor < items.length) {
-      const item = items[cursor]!;
-      cursor += 1;
-      await worker(item);
-    }
-  });
-  await Promise.all(runners);
 }

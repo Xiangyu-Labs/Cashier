@@ -53,17 +53,39 @@ describe("source document detail conversion view model", () => {
     expect(result.totalInMainCurrency).toBe("2.47");
   });
 
-  it("excludes a foreign entry when its date changes and no new rate exists", () => {
+  it("marks a foreign entry as pending recalculation (not missing a rate) when its date changes", () => {
+    // A date edit invalidates the persisted conversion without ever
+    // consulting a rate for the new date, so this must not be reported as a
+    // real "missing exchange rate" (unconvertedCount) — it's expected to
+    // resolve once the entry is saved and recalculated server-side.
     const result = build("2026-08-02");
     expect(result.displayEntries[0]).toMatchObject({ exchangeRate: null, convertedAmount: null });
     expect(result.totalInMainCurrency).toBe("0");
-    expect(result.unconvertedCount).toBe(1);
+    expect(result.unconvertedCount).toBe(0);
+    expect(result.staleConversionCount).toBe(1);
   });
 
-  it("excludes a foreign entry when its edited currency changes", () => {
+  it("marks a foreign entry as pending recalculation when its edited currency changes", () => {
     const result = build("2026-08-01", { "entry-1": { currency: "EUR" } });
     expect(result.displayEntries[0]).toMatchObject({ currency: "EUR", convertedAmount: null });
+    expect(result.unconvertedCount).toBe(0);
+    expect(result.staleConversionCount).toBe(1);
+  });
+
+  it("reports a real missing exchange rate when identity is unchanged but no rate is stored", () => {
+    const result = build("2026-08-01", {}, "CNY", {
+      ...entry,
+      convertedAmount: null,
+      exchangeRate: null,
+    });
+    expect(result.displayEntries[0]).toMatchObject({ convertedAmount: null });
     expect(result.unconvertedCount).toBe(1);
+    expect(result.staleConversionCount).toBe(0);
+  });
+
+  it("does not flag a same-currency entry as pending recalculation on a date change", () => {
+    const result = build("2026-08-02", {}, "USD", { ...entry, currency: "USD" });
+    expect(result.staleConversionCount).toBe(0);
   });
 
   it("rounds recalculated conversions to zero-decimal main currencies", () => {

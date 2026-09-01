@@ -47,4 +47,13 @@ describe("DateFilter", () => {
     expect(onChange).toHaveBeenCalledWith(null);
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
+
+  it("does not render a clear button when disabled, even with a value selected", () => {
+    // Regression: a disabled DateFilter (e.g. a read-only detail view)
+    // previously still rendered the X button, just visually greyed out and
+    // non-functional, instead of omitting it entirely.
+    render(<DateFilter value="2026-07-28" onChange={() => {}} disabled />);
+
+    expect(screen.queryByRole("button", { name: "clear" })).not.toBeInTheDocument();
+  });
 });

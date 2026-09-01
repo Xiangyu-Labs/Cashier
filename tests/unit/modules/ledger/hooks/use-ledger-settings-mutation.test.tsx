@@ -92,4 +92,21 @@ describe("useLedgerSettingsMutation", () => {
     expect(toastError).toHaveBeenCalledWith("缺少部分交易日的历史汇率，主货币未更改");
     expect(invalidate).not.toHaveBeenCalled();
   });
+
+  it("includes the specific missing dates when the server reports them", async () => {
+    updateLedgerSettingsAction.mockResolvedValueOnce({
+      ok: false,
+      code: "rates_unavailable",
+      dates: ["1990-01-01"],
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ mainCurrency: "USD" })).rejects.toThrow(
+        "以下日期缺少历史汇率，主货币未更改：1990-01-01"
+      );
+    });
+
+    expect(toastError).toHaveBeenCalledWith("以下日期缺少历史汇率，主货币未更改：1990-01-01");
+  });
 });

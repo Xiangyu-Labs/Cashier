@@ -15,6 +15,7 @@ export interface SourceDocumentDetailDisplayEntry extends Omit<
   convertedAmount: string | null;
   exchangeRate: string | null;
   currency: string;
+  conversionIdentityChanged: boolean;
 }
 
 interface BuildSourceDocumentDetailViewModelInput {
@@ -36,6 +37,11 @@ export function buildSourceDocumentDetailViewModel({
     const change = pendingChanges.entries[entry.id] ?? {};
     const currency = change.currency ?? entry.currency ?? mainCurrency;
     const amount = new Decimal(change.amount ?? entry.amount).toFixed();
+    // "Identity changed" means the currency or entry date that produced the
+    // persisted convertedAmount no longer matches the current draft, so that
+    // persisted value can't be reused. This is expected while an edit is
+    // pending (it resolves once the entry is saved and recalculated) and
+    // must not be reported as a missing exchange rate.
     const conversionIdentityChanged =
       currency !== (entry.currency ?? mainCurrency) || entryDate !== originalEntryDate;
     const exchangeRate =
@@ -62,6 +68,7 @@ export function buildSourceDocumentDetailViewModel({
       currency,
       convertedAmount,
       exchangeRate,
+      conversionIdentityChanged,
     };
   });
 
@@ -73,12 +80,24 @@ export function buildSourceDocumentDetailViewModel({
   const totalInMainCurrency = displayEntries
     .reduce((total, entry) => total.plus(entry.convertedAmount ?? 0), new Decimal(0))
     .toFixed();
-  const unconvertedCount = displayEntries.filter((entry) => entry.convertedAmount == null).length;
+  // A null convertedAmount has two distinct causes that must not be conflated:
+  //  - the entry's conversion identity changed and hasn't been recomputed
+  //    yet (staleConversionCount below) — expected while an edit is pending,
+  //    resolves on save, and is NOT a missing exchange rate;
+  //  - the identity is unchanged but no persisted/derivable rate exists
+  //    (unconvertedCount) — this is the real "missing exchange rate" case.
+  const unconvertedCount = displayEntries.filter(
+    (entry) => !entry.conversionIdentityChanged && entry.convertedAmount == null
+  ).length;
+  const staleConversionCount = displayEntries.filter(
+    (entry) => entry.conversionIdentityChanged && entry.currency !== mainCurrency
+  ).length;
 
   return {
     displayEntries,
     subtotalsByCurrency,
     totalInMainCurrency,
     unconvertedCount,
+    staleConversionCount,
   };
 }

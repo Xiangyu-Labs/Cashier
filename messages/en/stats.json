@@ -39,6 +39,7 @@
     "selectRange": "Select date range",
     "commonRanges": "Common Ranges",
     "thisMonth": "This Month",
+    "lastMonth": "Last Month",
     "pastWeek": "Past 7 Days",
     "pastMonth": "Past 30 Days",
     "past3Months": "Past 3 Months",

@@ -87,7 +87,7 @@ export function DateFilter({
             className={cn(
               "w-full justify-start text-left font-normal",
               isSmall ? "h-8 px-2" : "h-10 px-3",
-              showClear && dateValue && (isSmall ? "pr-8" : "pr-10"),
+              showClear && dateValue && !disabled && (isSmall ? "pr-8" : "pr-10"),
               !dateValue && "text-muted-foreground"
             )}
           >
@@ -106,11 +106,10 @@ export function DateFilter({
             />
           </Button>
         </PopoverTrigger>
-        {showClear && dateValue ? (
+        {showClear && dateValue && !disabled ? (
           <button
             type="button"
             onClick={handleClear}
-            disabled={disabled}
             aria-label={t("clear")}
             className={cn(
               "absolute right-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-sm opacity-60 hover:bg-accent hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

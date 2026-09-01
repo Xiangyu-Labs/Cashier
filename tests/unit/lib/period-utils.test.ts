@@ -129,6 +129,26 @@ describe("period-utils", () => {
         endDate: "2024-02-29",
       });
     });
+
+    it('returns the full previous calendar month for "lastMonth"', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 8, 15, 12)); // September 15, 2026
+
+      expect(periodToDateRange({ period: "lastMonth" })).toEqual({
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      });
+    });
+
+    it('rolls "lastMonth" back across a year boundary', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 0, 15, 12)); // January 15, 2026
+
+      expect(periodToDateRange({ period: "lastMonth" })).toEqual({
+        startDate: "2025-12-01",
+        endDate: "2025-12-31",
+      });
+    });
   });
 
   describe("parsePeriodFromSearchParams", () => {
@@ -200,7 +220,7 @@ describe("period-utils", () => {
     });
 
     it("should validate period against allowed values", () => {
-      const validPeriods = ["all", "thisMonth", "week"];
+      const validPeriods = ["all", "thisMonth", "lastMonth", "week"];
 
       validPeriods.forEach((period) => {
         const searchParams = new URLSearchParams(`period=${period}`);

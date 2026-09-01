@@ -812,6 +812,38 @@ export const postgresSettingsAdapter: SettingsPort = {
     return ledger == null ? null : mapLedgerSettings(ledger as typeof ledgers.$inferSelect);
   },
 
+  async getRequiredExchangeRateDates(ledgerId, userId) {
+    const ledger = await db.query.ledgers.findFirst({
+      where: and(eq(ledgers.id, ledgerId), eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
+      columns: { mainCurrency: true },
+    });
+    if (ledger == null) return null;
+
+    // Mirrors the entries join in recalculateCurrentEntries (below) with no
+    // entryDate filter, matching the full-ledger recalculation a
+    // main-currency change triggers.
+    const rows = await db
+      .selectDistinct({ entryDate: sourceDocuments.entryDate })
+      .from(ledgerEntries)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.ledgerId, ledgerId),
+          eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+          or(
+            eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+            eq(sourceDocuments.pendingRevisionId, ledgerEntries.sourceDocumentRevisionId)
+          ),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
+
+    const dates = rows.map((row) => row.entryDate).filter((date): date is string => date != null);
+
+    return { currentMainCurrency: ledger.mainCurrency, dates };
+  },
+
   async updateWithCurrencyRecalculation(input) {
     return db.transaction(async (tx) => {
       // Lock the ledger row to serialise with concurrent first-entry creation.

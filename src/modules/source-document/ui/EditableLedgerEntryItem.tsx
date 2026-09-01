@@ -46,8 +46,16 @@ export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVa
   className?: string;
   onChange?: (data: Partial<EntryEditData>) => void;
   pendingChanges?: Partial<EntryEditData>;
-  /** The entryDate of the parent source document, used to detect date differences */
+  /** The (possibly pending-edited) entryDate of the parent source document, used to detect date differences */
   sourceDocumentEntryDate?: string;
+  /**
+   * The parent source document's persisted entryDate. `ledgerEntry` here is
+   * always the embedded, sourceDocument-less DTO
+   * (`LedgerEntryEmbeddedViewDto`), so this must be passed explicitly rather
+   * than read off `ledgerEntry.sourceDocument?.entryDate` — that field is
+   * structurally never present on this DTO and would silently read as "".
+   */
+  originalEntryDate: string;
   readOnly?: boolean;
   /** When provided, a delete affordance is shown for this entry (edit mode only). */
   onDelete?: (() => void) | undefined;
@@ -64,6 +72,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   onChange,
   pendingChanges,
   sourceDocumentEntryDate,
+  originalEntryDate,
   readOnly = false,
   onDelete,
 }: EditableLedgerEntryItemProps) {
@@ -87,7 +96,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   const dateHasPendingChange =
     sourceDocumentEntryDate != null &&
     sourceDocumentEntryDate !== "" &&
-    sourceDocumentEntryDate !== (ledgerEntry.sourceDocument?.entryDate ?? "");
+    sourceDocumentEntryDate !== originalEntryDate;
   const persistedConvertedAmount =
     !hasPendingValueChanges && !dateHasPendingChange ? ledgerEntry.convertedAmount : null;
 

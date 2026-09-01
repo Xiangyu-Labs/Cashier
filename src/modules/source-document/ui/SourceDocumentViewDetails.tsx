@@ -1,5 +1,10 @@
 "use client";
-import type { LedgerEntry, EntryCategory, LedgerDto } from "@/modules/ledger/contracts";
+import type {
+  LedgerEntry,
+  LedgerEntryEmbeddedViewDto,
+  EntryCategory,
+  LedgerDto,
+} from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
@@ -76,7 +81,11 @@ export interface PendingChanges {
 
 interface SourceDocumentViewDetailsProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
-  ledgerEntries: LedgerEntry[];
+  // These entries are always the embedded, sourceDocument-less view (see
+  // listLedgerEntryViewsBySourceDocumentIds); typing this as the wider
+  // LedgerEntry would let `.sourceDocument` type-check while silently
+  // reading undefined at runtime.
+  ledgerEntries: LedgerEntryEmbeddedViewDto[];
   categories: EntryCategory[];
   preferredCurrencies?: string[];
   mainCurrency?: string;
@@ -133,7 +142,13 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
   const fieldsDisabled = readOnly || !isEditMode;
 
-  const { displayEntries, subtotalsByCurrency, totalInMainCurrency, unconvertedCount } = useMemo(
+  const {
+    displayEntries,
+    subtotalsByCurrency,
+    totalInMainCurrency,
+    unconvertedCount,
+    staleConversionCount,
+  } = useMemo(
     () =>
       buildSourceDocumentDetailViewModel({
         ledgerEntries,
@@ -221,11 +236,16 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           <Wallet className="h-3.5 w-3.5 text-primary/60" />
           <span className="text-xs font-medium text-muted-foreground/60">{t("totalAmount")}:</span>
           <AmountText variant="summary">
+            {staleConversionCount > 0 ? "≈ " : ""}
             {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
           </AmountText>
           {unconvertedCount > 0 ? (
             <span className="text-xs text-warning" role="status">
               {tCommon("incompleteAccountingProjection")}
+            </span>
+          ) : staleConversionCount > 0 ? (
+            <span className="text-xs text-muted-foreground" role="status">
+              {t("pendingRecalculation")}
             </span>
           ) : null}
           {uniqueCurrencies.length > 1 && (
@@ -285,6 +305,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 onEntryChange={onEntryChange}
                 onSelectEntry={onSelectEntry}
                 sourceDocumentEntryDate={displayEntryDate}
+                originalEntryDate={sourceDocument.entryDate ?? ""}
                 readOnly={fieldsDisabled}
                 onDelete={
                   !readOnly && isEditMode && onDeleteEntry != null
@@ -455,6 +476,7 @@ interface SelectableEditableEntryCardProps {
   onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
   onSelectEntry: (entryId: string, selected: boolean) => void;
   sourceDocumentEntryDate: string;
+  originalEntryDate: string;
   readOnly: boolean;
   onDelete?: (() => void) | undefined;
   pendingChanges?: Partial<EntryEditData>;
@@ -472,6 +494,7 @@ const SelectableEditableEntryCard = memo(function SelectableEditableEntryCard({
   onEntryChange,
   onSelectEntry,
   sourceDocumentEntryDate,
+  originalEntryDate,
   readOnly,
   onDelete,
   pendingChanges,
@@ -499,6 +522,7 @@ const SelectableEditableEntryCard = memo(function SelectableEditableEntryCard({
           className={cn(selectionMode && "pl-11")}
           onChange={(changes) => onEntryChange(entry.id, changes)}
           sourceDocumentEntryDate={sourceDocumentEntryDate}
+          originalEntryDate={originalEntryDate}
           readOnly={readOnly}
           onDelete={onDelete}
           {...(pendingChanges !== undefined ? { pendingChanges } : {})}

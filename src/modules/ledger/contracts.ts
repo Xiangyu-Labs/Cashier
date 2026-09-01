@@ -26,7 +26,8 @@ export type UpdateLedgerActionErrorCode =
   "rates_unavailable" | "unsupported_currency" | "validation_failed" | "conflict" | "unexpected";
 
 export type UpdateLedgerActionResult =
-  { ok: true; ledger: LedgerDto } | { ok: false; code: UpdateLedgerActionErrorCode };
+  | { ok: true; ledger: LedgerDto }
+  | { ok: false; code: UpdateLedgerActionErrorCode; dates?: string[] };
 
 export type ServiceCredentialDto = {
   id: string;
