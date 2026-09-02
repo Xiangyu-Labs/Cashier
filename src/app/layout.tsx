@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: ["/favicon.ico", "/icon.png"],
+    apple: "/apple-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
 };
 
 const withSerwist = withSerwistInit({
-  swSrc: "worker/index.ts",
+  swSrc: "src/service-worker.ts",
   swDest: "public/sw.js",
   swUrl: "/sw.js",
   cacheOnNavigation: false,

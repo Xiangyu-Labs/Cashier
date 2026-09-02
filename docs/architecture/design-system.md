@@ -26,7 +26,7 @@ Locked design system. Future UI work reads this file first and amends it intenti
 
 ## Spacing And Shape
 
-- Use the existing 4/8pt named scale in `tokens.css` and `src/app/globals.css`
+- Use the existing 4/8pt named scale in `src/app/design-tokens.css` and `src/app/globals.css`
 - Information density: medium; controls remain at least 44px on touch screens
 - Cards and desktop dialogs: radius at or below 8px; mobile long flows are square full-screen surfaces
 
@@ -51,6 +51,6 @@ Locked design system. Future UI work reads this file first and amends it intenti
 
 ## Exports
 
-- CSS variables: `tokens.css`
+- CSS variables: `src/app/design-tokens.css`
 - Tailwind v4 and shadcn mappings: `src/app/globals.css`
 - Primary: `#10a37f`; destructive: `#b24c5a`; warning: `#9a6b1f`; info: `#4f6f7a`; success: `#24836e`

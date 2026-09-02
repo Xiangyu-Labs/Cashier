@@ -41,7 +41,7 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/src/persistence/postgres-migrations ./src/persistence/postgres-migrations
 COPY --from=runtime-deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --chmod=755 scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /app/config && chown -R node:node /app/config
 USER node

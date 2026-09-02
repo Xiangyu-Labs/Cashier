@@ -52,7 +52,9 @@ const vitestArgs = [
   "scripts/run-vitest.mjs",
   "run",
   "--config",
-  "vitest.integration.config.mts",
+  "vitest.config.mts",
+  "--project=integration-node",
+  "--project=integration-dom",
   "--reporter=dot",
 ];
 

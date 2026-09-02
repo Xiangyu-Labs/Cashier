@@ -31,7 +31,7 @@ describe("PWA policy", () => {
 
   it("precaches only immutable static assets and keeps the update prompt", () => {
     const config = read("next.config.ts");
-    const worker = read("worker/index.ts");
+    const worker = read("src/service-worker.ts");
     expect(config).toContain('withSerwistInit from "@serwist/next"');
     expect(config).toContain("cacheOnNavigation: false");
     expect(config).toContain("/chunks\\/app\\/api\\//");

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "src/instrumentation.ts",
+    "src/proxy.ts",
+    "src/service-worker.ts",
+    "scripts/**/*.mjs",
+    "tests/**/*.{ts,tsx}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs", "tests/**/*.{ts,tsx}", "*.{ts,mts}"],
+  "ignoreDependencies": ["pino-pretty", "tailwindcss", "tw-animate-css"]
+}
