@@ -60,8 +60,8 @@ npm run check
 ```
 
 This runs formatting, architecture checks, lint, type checking, tests, coverage, production build,
-and translation validation. Coverage thresholds are 50% for lines, statements, functions, and
-branches.
+and translation validation. Coverage thresholds are 70% for lines, 68% for statements, 65% for
+functions, and 60% for branches.
 
 ## Commits and pull requests
 

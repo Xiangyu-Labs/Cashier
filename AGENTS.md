@@ -38,7 +38,7 @@ Vitest runs unit tests in `tests/unit/` and integration workflows in `tests/inte
 Testing Library covers UI. Database-backed tests require the PostgreSQL test service and
 are prepared automatically by the npm test scripts. Add regression coverage beside the affected
 area and run a focused file with `npx vitest run tests/unit/path/to/file.test.ts`. Coverage
-thresholds are 50% for lines, statements, functions, and branches.
+thresholds are 70% for lines, 68% for statements, 65% for functions, and 60% for branches.
 
 ## Commit & Pull Request Guidelines
 
@@ -49,6 +49,7 @@ Include screenshots or recordings for UI changes and keep CI checks passing.
 
 ## Security & Configuration
 
-Copy `.env.example` for local configuration, but never commit `.env` or provider credentials.
+Use `.env.local.example` for the built-in PostgreSQL/MinIO stack and `.env.example` for external
+service deployments, but never commit `.env` or provider credentials.
 Keep tenant queries scoped by `ledgerId`, avoid logging tokens or raw personal data, and treat
 storage/database cleanup commands as destructive until their dry-run output is reviewed.

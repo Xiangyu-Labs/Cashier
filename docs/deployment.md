@@ -95,6 +95,15 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 
 容器启动时会自动执行数据库迁移。不要在没有数据库备份的情况下跳过多个版本升级。
 
+早期版本曾以明文保存服务凭证。仅在恢复或核验这类历史数据库时使用专项工具：
+
+```bash
+npm run db:migrate:credentials -- <backfill|verify|clear-plaintext>
+```
+
+它不是常规启动迁移，不应在普通升级中重复执行。运行前先备份数据库，并按顺序完成
+`backfill`、`verify`，确认无误后才可考虑 `clear-plaintext`。
+
 ## 备份与恢复
 
 完整备份必须同时包含：
