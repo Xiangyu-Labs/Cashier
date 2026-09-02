@@ -7,23 +7,21 @@ import type {
 } from "@/modules/source-document/contracts";
 import { memo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { EditableField } from "@/components/ui/editable-field";
-import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
-import { AddLedgerEntryDialog } from "./AddLedgerEntryDialog";
 import type { AddEntryData } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { PendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
-import { SourceDocumentSplitDialog } from "./SourceDocumentSplitDialog";
 import { useSourceDocumentDetailState } from "@/modules/source-document/hooks/useSourceDocumentDetailState";
 import { useSourceDocumentDetailActions } from "@/modules/source-document/hooks/useSourceDocumentDetailActions";
 import { SourceDocumentDetailFooterActions } from "./SourceDocumentDetailFooterActions";
 import { SourceDocumentDetailStatusPanels } from "./SourceDocumentDetailStatusPanels";
+import { SourceDocumentDetailConfirmDialogs } from "./SourceDocumentDetailConfirmDialogs";
+import { SourceDocumentDetailOverlays } from "./SourceDocumentDetailOverlays";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;
@@ -304,44 +302,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             />
           )}
 
-          <ConfirmDialog
-            open={showBatchModePendingConfirm}
-            onOpenChange={setShowBatchModePendingConfirm}
-            title={t("batchModePendingTitle")}
-            description={t("batchModePendingDescription")}
-            onConfirm={() => setShowBatchModePendingConfirm(false)}
-            cancelLabel={tCommon("cancel")}
-            onSave={handleSaveAndEnterBatchMode}
-            saveLabel={tCommon("save")}
-            onDiscard={handleDiscardAndEnterBatchMode}
-            discardLabel={t("discardChanges")}
-          />
-
-          <ConfirmDialog
-            open={showBatchDeleteConfirm}
-            onOpenChange={setShowBatchDeleteConfirm}
-            title={t("batchDeleteTitle")}
-            description={t("batchDeleteDescription", { count: selectedIds.length })}
-            variant="destructive"
-            confirmLabel={tCommon("delete")}
-            onConfirm={handleBatchDelete}
-          />
-
-          <ConfirmDialog
-            open={pendingDeleteEntryId != null}
-            onOpenChange={(nextOpen) => {
-              if (!nextOpen) setPendingDeleteEntryId(null);
-            }}
-            title={t("deleteEntryTitle")}
-            description={t("deleteEntryDescription")}
-            variant="destructive"
-            confirmLabel={tCommon("delete")}
-            onConfirm={async () => {
-              if (pendingDeleteEntryId == null) return false;
-              return handleDeleteEntry(pendingDeleteEntryId);
-            }}
-          />
-
           {!readOnly && (
             <SourceDocumentDetailFooterActions
               sourceDocument={sourceDocument}
@@ -366,76 +326,56 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           )}
         </DialogContent>
 
-        <ConfirmDialog
-          open={showDeleteConfirm}
-          onOpenChange={setShowDeleteConfirm}
-          title={tCommon("delete")}
-          description={t("deleteConfirmDesc")}
-          onConfirm={handleDeleteDocument}
-          variant="destructive"
-          confirmLabel={tCommon("delete")}
+        <SourceDocumentDetailConfirmDialogs
+          t={t}
+          tCommon={tCommon}
+          showBatchModePendingConfirm={showBatchModePendingConfirm}
+          setShowBatchModePendingConfirm={setShowBatchModePendingConfirm}
+          handleSaveAndEnterBatchMode={handleSaveAndEnterBatchMode}
+          handleDiscardAndEnterBatchMode={handleDiscardAndEnterBatchMode}
+          showBatchDeleteConfirm={showBatchDeleteConfirm}
+          setShowBatchDeleteConfirm={setShowBatchDeleteConfirm}
+          selectedCount={selectedIds.length}
+          handleBatchDelete={handleBatchDelete}
+          pendingDeleteEntryId={pendingDeleteEntryId}
+          setPendingDeleteEntryId={setPendingDeleteEntryId}
+          handleDeleteEntry={handleDeleteEntry}
+          showDeleteConfirm={showDeleteConfirm}
+          setShowDeleteConfirm={setShowDeleteConfirm}
+          handleDeleteDocument={handleDeleteDocument}
+          saveAndContinueGate={saveAndContinueGate}
+          handleSaveAllAndClose={handleSaveAllAndClose}
+          unsavedGuard={unsavedGuard}
+          handleDiscardAndClose={handleDiscardAndClose}
         />
-
-        <ConfirmDialog
-          open={saveAndContinueGate.confirmOpen}
-          onOpenChange={saveAndContinueGate.setConfirmOpen}
-          title={t("saveBeforeActionTitle")}
-          description={t("saveBeforeActionDescription")}
-          onConfirm={saveAndContinueGate.confirmSaveAndContinue}
-          confirmLabel={t("saveAndContinue")}
-          cancelLabel={tCommon("continueEditing")}
-          onDiscard={saveAndContinueGate.confirmDiscardAndContinue}
-          discardLabel={t("discardChanges")}
-        />
-
-        <ConfirmDialog
-          open={unsavedGuard.confirmOpen}
-          onOpenChange={unsavedGuard.setConfirmOpen}
-          title={t("unsavedChanges")}
-          description={t("unsavedChangesDesc")}
-          onConfirm={() => unsavedGuard.setConfirmOpen(false)}
-          cancelLabel={tCommon("cancel")}
-          onSave={handleSaveAllAndClose}
-          saveLabel={tCommon("save")}
-          onDiscard={handleDiscardAndClose}
-          discardLabel={t("discardChanges")}
-        />
-
-        {sourceDocument && !readOnly && (
-          <SourceDocumentEditRetryDialog
-            ledgerId={ledgerId}
-            sourceDocument={sourceDocument}
-            open={showRetryDialog}
-            onOpenChange={setShowRetryDialog}
-            onPendingChange={state.setIsRetrying}
-            onSuccess={() => {
-              setShowRetryDialog(false);
-              onClose();
-            }}
-          />
-        )}
       </Dialog>
-      {showSplitDialog ? (
-        <SourceDocumentSplitDialog
-          open
-          selectedEntries={ledgerEntries.filter((entry) => selectedIds.includes(entry.id))}
-          initialDate={splitInitialDate}
-          isSubmitting={isSplitting}
-          onOpenChange={setShowSplitDialog}
-          onSubmit={handleSplit}
-        />
-      ) : null}
-      {showAddEntryDialog && onAddEntry != null ? (
-        <AddLedgerEntryDialog
-          open
-          categories={categories}
-          preferredCurrencies={preferredCurrencies}
-          mainCurrency={mainCurrency}
-          isSubmitting={state.isSaving}
-          onOpenChange={setShowAddEntryDialog}
-          onSubmit={handleAddEntrySubmit}
-        />
-      ) : null}
+      <SourceDocumentDetailOverlays
+        ledgerId={ledgerId}
+        sourceDocument={sourceDocument}
+        readOnly={readOnly}
+        showRetryDialog={showRetryDialog}
+        setShowRetryDialog={setShowRetryDialog}
+        onRetryPendingChange={state.setIsRetrying}
+        onRetrySuccess={() => {
+          setShowRetryDialog(false);
+          onClose();
+        }}
+        ledgerEntries={ledgerEntries}
+        selectedIds={selectedIds}
+        splitInitialDate={splitInitialDate}
+        isSplitting={isSplitting}
+        showSplitDialog={showSplitDialog}
+        setShowSplitDialog={setShowSplitDialog}
+        handleSplit={handleSplit}
+        showAddEntryDialog={showAddEntryDialog}
+        onAddEntry={onAddEntry}
+        categories={categories}
+        preferredCurrencies={preferredCurrencies}
+        mainCurrency={mainCurrency}
+        isSaving={state.isSaving}
+        setShowAddEntryDialog={setShowAddEntryDialog}
+        handleAddEntrySubmit={handleAddEntrySubmit}
+      />
     </>
   );
 });

@@ -1,32 +1,23 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { useSelection } from "@/hooks/use-selection";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
-import {
-  useBatchSourceDocumentActions,
-  useSourceDocumentStream,
-} from "@/modules/source-document/hooks";
-import { getStreamTotalAction } from "@/modules/source-document/actions";
 import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
-import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
-import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
+import { LedgerEntriesStreamBody } from "./LedgerEntriesStreamBody";
 import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
-import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
+import { useLedgerEntriesStreamData } from "@/modules/workspace/hooks/useLedgerEntriesStreamData";
+import { useLedgerEntriesSelection } from "@/modules/workspace/hooks/useLedgerEntriesSelection";
 import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { previewSourceDocumentDateImpactAction } from "@/modules/workspace/server-actions/date-impact";
-import { Button } from "@/components/ui/button";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -67,41 +58,6 @@ export function LedgerEntriesTab({
     null
   );
 
-  const streamQueryDescriptor = useMemo(
-    () =>
-      buildStreamQueryDescriptor({
-        ledgerId,
-        startDate: startDateStr,
-        endDate: endDateStr,
-        minAmount: filters.minAmount,
-        maxAmount: filters.maxAmount,
-        statuses: filters.statuses,
-        search: filters.search,
-      }),
-    [
-      endDateStr,
-      filters.maxAmount,
-      filters.minAmount,
-      filters.search,
-      filters.statuses,
-      ledgerId,
-      startDateStr,
-    ]
-  );
-  const streamTotalQuery = useQuery({
-    queryKey: streamQueryDescriptor.totalQueryKey,
-    queryFn: () => getStreamTotalAction(ledgerId, streamQueryDescriptor.totalInput),
-  });
-  const { data: streamTotalData } = streamTotalQuery;
-  const filteredTotal = streamTotalData?.total;
-  const hasActiveFilters =
-    filters.startDate != null ||
-    filters.endDate != null ||
-    filters.minAmount != null ||
-    filters.maxAmount != null ||
-    (filters.statuses?.length ?? 0) > 0 ||
-    (filters.search?.trim().length ?? 0) > 0;
-
   const {
     deleteConfirm,
     setDeleteConfirm,
@@ -113,146 +69,21 @@ export function LedgerEntriesTab({
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
 
-  // Use the unified stream hook with paginated all-statuses results
-  const {
-    streamGroups,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    queryKey,
-    queryStatus,
-    queryIsFetching,
-    queryHasData,
-  } = useSourceDocumentStream(ledgerId, {
-    mainCurrency,
-    dateRange: {
-      ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
-      ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
-    },
-    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
-    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
-    ...(filters.statuses != null && filters.statuses.length > 0
-      ? { statuses: filters.statuses }
-      : {}),
-    ...(filters.search != null ? { search: filters.search } : {}),
-    queryDescriptor: streamQueryDescriptor,
-  });
-  const streamQueryStatus =
-    queryStatus === "error" || streamTotalQuery.status === "error"
-      ? "error"
-      : queryStatus === "pending" || streamTotalQuery.status === "pending"
-        ? "pending"
-        : "success";
-  const streamQueryIsFetching = queryIsFetching || streamTotalQuery.isFetching;
-  // The total query is auxiliary; only page data counts as list data for the
-  // error-with-data versus error-empty decision.
-  const streamQueryHasData = queryHasData;
-  useEffect(() => {
-    onQueryStateChange?.({
-      ledgerId,
-      tab: "stream",
-      queryKey,
-      status: streamQueryStatus,
-      isFetching: streamQueryIsFetching,
-      hasData: streamQueryHasData,
-    });
-  }, [
+  const streamData = useLedgerEntriesStreamData({
     ledgerId,
+    mainCurrency,
+    filters,
+    startDateStr,
+    endDateStr,
     onQueryStateChange,
-    queryKey,
-    streamQueryHasData,
-    streamQueryIsFetching,
-    streamQueryStatus,
-  ]);
+  });
 
-  // Selection uses unified stream groups
-  const allSourceDocumentIds = useMemo(
-    () => streamGroups.flatMap((g) => g.items.map((i) => i.sourceDocument.id)),
-    [streamGroups]
-  );
-  const queryFingerprint = useMemo(
-    () =>
-      JSON.stringify({
-        tab: "stream",
-        period: periodParams,
-        filters: advancedFilters,
-      }),
-    [advancedFilters, periodParams]
-  );
-
-  const {
-    isSelectionMode,
-    toggleSelectionMode,
-    selectedIds,
-    toggleSelection,
-    selectAll,
-    clearSelection,
-    retainSelection,
-    isAllSelected,
-    isSelectionLimitReached,
-    selectableCount,
-  } = useSelection({ allIds: allSourceDocumentIds, queryFingerprint });
-
-  const {
-    deleteSourceDocument,
-    batchUpdateDates,
-    batchDelete,
-    batchRetry,
-    batchKeepDuplicates,
-    batchDiscardDuplicates,
-  } = useBatchSourceDocumentActions(ledgerId, clearSelection, retainSelection);
-  const selectedDuplicateIds = useMemo(() => {
-    if (selectedIds.length === 0) return [];
-    const statusById = new Map(
-      streamGroups.flatMap((group) =>
-        group.items.map((item) => [item.sourceDocument.id, item.sourceDocument.status] as const)
-      )
-    );
-    return selectedIds.filter((id) => statusById.get(id) === "duplicate_pending");
-  }, [selectedIds, streamGroups]);
-  const selectedDuplicateCount = selectedDuplicateIds.length;
-  const selectedOrdinaryIds = useMemo(() => {
-    const duplicateIds = new Set(selectedDuplicateIds);
-    return selectedIds.filter((id) => !duplicateIds.has(id));
-  }, [selectedDuplicateIds, selectedIds]);
-  const selectedEntryIds = useMemo(() => {
-    const selected = new Set(selectedIds);
-    return [
-      ...new Set(
-        streamGroups.flatMap((group) =>
-          group.items.flatMap((item) =>
-            selected.has(item.sourceDocument.id) ? item.ledgerEntries.map((entry) => entry.id) : []
-          )
-        )
-      ),
-    ];
-  }, [selectedIds, streamGroups]);
-  const isBatchPending =
-    batchUpdateDates.isPending ||
-    batchDelete.isPending ||
-    batchRetry.isPending ||
-    batchKeepDuplicates.isPending ||
-    batchDiscardDuplicates.isPending;
-  useEffect(() => {
-    document.documentElement.dataset.batchSelection = String(isSelectionMode);
-    return () => {
-      delete document.documentElement.dataset.batchSelection;
-    };
-  }, [isSelectionMode]);
-
-  const handleToggleSelectionMode = useCallback(() => {
-    if (isBatchPending) return;
-    toggleSelectionMode();
-  }, [isBatchPending, toggleSelectionMode]);
-
-  const handleToggleSelection = useCallback(
-    (id: string) => {
-      if (!isBatchPending) toggleSelection(id);
-    },
-    [isBatchPending, toggleSelection]
-  );
+  const selection = useLedgerEntriesSelection({
+    ledgerId,
+    streamGroups: streamData.streamGroups,
+    periodParams,
+    advancedFilters,
+  });
 
   const handleViewSourceDetail = useCallback(
     (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
@@ -286,79 +117,78 @@ export function LedgerEntriesTab({
   const handleDeleteConfirmAction = useCallback(async () => {
     if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
     if (deleteConfirm.type === "sourceDocument") {
-      await deleteSourceDocument.mutateAsync(deleteConfirm.id);
+      await selection.deleteSourceDocument.mutateAsync(deleteConfirm.id);
     } else if (deleteConfirm.type === "ledgerEntry") {
       await deleteEntry.mutateAsync(deleteConfirm.id);
     }
-  }, [deleteConfirm, deleteSourceDocument, deleteEntry]);
-
-  const handleBatchUpdateDates = useCallback(
-    (date: string, ids: string[]) => batchUpdateDates.mutate({ ids, entryDate: date }),
-    [batchUpdateDates]
-  );
+  }, [deleteConfirm, selection.deleteSourceDocument, deleteEntry]);
 
   const sentinelRef = useInfiniteScroll({
-    hasNextPage,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    fetchNextPage,
+    hasNextPage: streamData.hasNextPage,
+    isFetchingNextPage: streamData.isFetchingNextPage,
+    isFetchNextPageError: streamData.isFetchNextPageError,
+    fetchNextPage: streamData.fetchNextPage,
     rootMargin: "400px",
   });
 
   return (
     <>
       <LedgerEntriesToolbar
-        isSelectionMode={isSelectionMode}
-        isAllSelected={isAllSelected}
-        hasMoreData={hasNextPage || allSourceDocumentIds.length > selectableCount}
-        selectedCount={selectedIds.length}
-        queryFingerprint={queryFingerprint}
-        selectedSourceDocumentIds={selectedIds}
-        selectedEntryIds={selectedEntryIds}
-        selectedDuplicateCount={selectedDuplicateCount}
-        onToggleSelectionMode={handleToggleSelectionMode}
-        onSelectAll={() => !isBatchPending && selectAll()}
-        onClearSelection={() => !isBatchPending && clearSelection()}
-        onUpdateDates={handleBatchUpdateDates}
+        isSelectionMode={selection.isSelectionMode}
+        isAllSelected={selection.isAllSelected}
+        hasMoreData={
+          streamData.hasNextPage ||
+          selection.allSourceDocumentIds.length > selection.selectableCount
+        }
+        selectedCount={selection.selectedIds.length}
+        queryFingerprint={selection.queryFingerprint}
+        selectedSourceDocumentIds={selection.selectedIds}
+        selectedEntryIds={selection.selectedEntryIds}
+        selectedDuplicateCount={selection.selectedDuplicateCount}
+        onToggleSelectionMode={selection.handleToggleSelectionMode}
+        onSelectAll={() => !selection.isBatchPending && selection.selectAll()}
+        onClearSelection={() => !selection.isBatchPending && selection.clearSelection()}
+        onUpdateDates={selection.handleBatchUpdateDates}
         onPreviewDateImpact={(sourceDocumentIds, entryIds) =>
           previewSourceDocumentDateImpactAction(ledgerId, {
             sourceDocumentIds,
             ledgerEntryIds: entryIds,
           })
         }
-        isUpdatingDates={batchUpdateDates.isPending}
+        isUpdatingDates={selection.batchUpdateDates.isPending}
         onRetry={async () => {
-          await batchRetry.mutateAsync(selectedIds);
+          await selection.batchRetry.mutateAsync(selection.selectedIds);
         }}
         onDelete={async () => {
-          await batchDelete.mutateAsync(selectedIds);
+          await selection.batchDelete.mutateAsync(selection.selectedIds);
         }}
-        isRetrying={batchRetry.isPending}
-        isDeleting={batchDelete.isPending}
+        isRetrying={selection.batchRetry.isPending}
+        isDeleting={selection.batchDelete.isPending}
         onKeepDuplicates={async () => {
-          await batchKeepDuplicates.mutateAsync({
-            ids: selectedDuplicateIds,
-            preserveIds: selectedOrdinaryIds,
+          await selection.batchKeepDuplicates.mutateAsync({
+            ids: selection.selectedDuplicateIds,
+            preserveIds: selection.selectedOrdinaryIds,
           });
         }}
         onDiscardDuplicates={async () => {
-          await batchDiscardDuplicates.mutateAsync({
-            ids: selectedDuplicateIds,
-            preserveIds: selectedOrdinaryIds,
+          await selection.batchDiscardDuplicates.mutateAsync({
+            ids: selection.selectedDuplicateIds,
+            preserveIds: selection.selectedOrdinaryIds,
           });
         }}
-        isKeepingDuplicates={batchKeepDuplicates.isPending}
-        isDiscardingDuplicates={batchDiscardDuplicates.isPending}
-        isProcessing={isBatchPending}
+        isKeepingDuplicates={selection.batchKeepDuplicates.isPending}
+        isDiscardingDuplicates={selection.batchDiscardDuplicates.isPending}
+        isProcessing={selection.isBatchPending}
         filters={filters}
         onFiltersChange={onFiltersChange}
         periodParams={periodParams}
-        {...(!hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
+        {...(!streamData.hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
         mainCurrency={mainCurrency}
-        {...(filteredTotal === undefined ? {} : { filteredTotal })}
+        {...(streamData.filteredTotal === undefined ? {} : { filteredTotal: streamData.filteredTotal })}
         {...(timeZone != null ? { timeZone } : {})}
       />
-      {streamTotalData?.unconvertedCount != null && streamTotalData.unconvertedCount > 0 ? (
+      {streamData.streamTotalData?.unconvertedCount != null &&
+      streamData.streamTotalData.unconvertedCount > 0 ? (
         <div
           role="status"
           className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
@@ -366,72 +196,28 @@ export function LedgerEntriesTab({
           {tCommon("incompleteAccountingProjection")}
         </div>
       ) : null}
-      <div className="space-y-4">
-        {isLoading ? (
-          <LedgerEntriesLoading />
-        ) : (
-          <>
-            {/* Unified stream groups — all states in a single chronological sequence */}
-            {streamGroups.length > 0 && (
-              <LedgerEntriesUnifiedGroups
-                streamGroups={streamGroups}
-                mainCurrency={mainCurrency}
-                onViewLedgerEntry={handleViewLedgerEntry}
-                onViewSourceDetail={handleViewSourceDetail}
-                onEditRetry={setRetrySourceDocument}
-                onDeleteSourceConfirm={handleDeleteSourceConfirm}
-                isSelectionMode={isSelectionMode}
-                selectedIds={selectedIds}
-                disableUnselected={isSelectionLimitReached}
-                onToggleSelection={handleToggleSelection}
-                noRecordsText={tCommon("noRecords")}
-                getItemProps={() => ({})}
-                {...(timeZone != null ? { timeZone } : {})}
-                collapseEntriesDefault={collapseEntriesDefault}
-              />
-            )}
 
-            {/* No records state */}
-            {!isLoading && streamGroups.length === 0 && (
-              <div className="space-y-6 px-2 pt-2">
-                <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
-                  <span>
-                    {filters.search != null ||
-                    filters.minAmount != null ||
-                    filters.maxAmount != null ||
-                    (filters.statuses?.length ?? 0) > 0
-                      ? tFilter("noMatchingResults")
-                      : tCommon("noRecords")}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Load completed history before the user reaches the list end. */}
-            {hasNextPage && (
-              <div ref={sentinelRef} className="flex h-12 justify-center py-4" aria-live="polite">
-                {isFetchNextPageError ? (
-                  <Button variant="outline" size="sm" onClick={() => void fetchNextPage()}>
-                    {t("loadMoreFailed")}
-                  </Button>
-                ) : isFetchingNextPage ? (
-                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {t("loadingMore")}
-                  </span>
-                ) : null}
-              </div>
-            )}
-
-            {/* End of list indicator when no more pages */}
-            {!hasNextPage && streamGroups.length > 0 && (
-              <div className="flex justify-center py-4">
-                <span className="text-xs text-muted-foreground/50">- {t("noMore")} -</span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      <LedgerEntriesStreamBody
+        isLoading={streamData.isLoading}
+        streamGroups={streamData.streamGroups}
+        mainCurrency={mainCurrency}
+        filters={filters}
+        onViewLedgerEntry={handleViewLedgerEntry}
+        onViewSourceDetail={handleViewSourceDetail}
+        onEditRetry={setRetrySourceDocument}
+        onDeleteSourceConfirm={handleDeleteSourceConfirm}
+        isSelectionMode={selection.isSelectionMode}
+        selectedIds={selection.selectedIds}
+        disableUnselected={selection.isSelectionLimitReached}
+        onToggleSelection={selection.handleToggleSelection}
+        timeZone={timeZone}
+        collapseEntriesDefault={collapseEntriesDefault}
+        hasNextPage={streamData.hasNextPage}
+        isFetchingNextPage={streamData.isFetchingNextPage}
+        isFetchNextPageError={streamData.isFetchNextPageError}
+        fetchNextPage={streamData.fetchNextPage}
+        sentinelRef={sentinelRef}
+      />
 
       <LedgerEntriesOverlays
         deleteConfirm={deleteConfirm}

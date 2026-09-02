@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/ui/amount-input";
 import {
   Select,
   SelectContent,
@@ -192,17 +193,10 @@ export function QuickEntryForm({
       <div>
         <p className="mb-2 text-sm text-muted-foreground">{t("amount")}</p>
         <div className="relative">
-          <Input
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            pattern="[0-9]*[.,]?[0-9]{0,2}"
+          <AmountInput
             value={amount}
+            onChange={setAmount}
             disabled={isPending}
-            onChange={(event) => {
-              const next = event.target.value.replace(",", ".");
-              if (/^\d*(?:\.\d{0,2})?$/.test(next)) setAmount(next);
-            }}
             aria-label={t("amount")}
             placeholder="0.00"
             className="h-12 pr-16 text-right text-lg font-semibold tabular-nums"

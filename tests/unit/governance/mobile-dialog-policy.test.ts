@@ -9,7 +9,7 @@ describe("mobile long-flow dialog policy", () => {
   it.each([
     "src/modules/source-document/ui/SourceDocumentEditRetryDialog.tsx",
     "src/modules/source-document/ui/SourceDocumentCandidateReviewDialog.tsx",
-    "src/modules/workspace/ui/LedgerPageClient.tsx",
+    "src/modules/workspace/ui/NewRecordDialog.tsx",
     "src/modules/auth/ui/EmailChangeForm.tsx",
     "src/modules/auth/ui/PasswordForm.tsx",
   ])("uses a 100dvh mobile surface in %s", (path) => {

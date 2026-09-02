@@ -95,16 +95,20 @@ describe("PWA policy", () => {
   it("caches document images on demand with LRU limits and cached preview URLs", () => {
     const imageCache = read("src/modules/source-document/image-cache.ts");
     const viewDetails = read("src/modules/source-document/ui/SourceDocumentViewDetails.tsx");
+    const rawEvidence = read(
+      "src/modules/source-document/ui/SourceDocumentViewDetails/components/SourceDocumentRawEvidence.tsx"
+    );
     const groups = read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx");
     const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
     expect(imageCache).toContain("CACHED_IMAGE_COUNT_LIMIT = 100");
     expect(imageCache).toContain("CACHED_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024");
     expect(imageCache).toContain("storedFileReadUrl");
     expect(imageCache).not.toContain("cacheOfflineImages");
-    expect(viewDetails).toContain("useCachedSourceImages");
     expect(viewDetails).toContain("cachedImageUrls");
-    expect(viewDetails).not.toContain("cacheOfflineImage");
-    expect(viewDetails).not.toContain("rememberViewedDocument");
+    expect(rawEvidence).toContain("useCachedSourceImages");
+    expect(rawEvidence).toContain("cachedImageUrls");
+    expect(rawEvidence).not.toContain("cacheOfflineImage");
+    expect(rawEvidence).not.toContain("rememberViewedDocument");
     // Original vouchers belong to the detail view only; list cards never
     // render cached image previews.
     expect(groups).not.toContain("cachedImageUrls");

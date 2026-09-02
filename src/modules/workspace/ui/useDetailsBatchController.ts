@@ -62,7 +62,7 @@ export function useDetailsBatchController(
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("error"),
     onSuccess: (result) => {
-      toast.success(t("batchUpdated", { count: result.affectedCount }));
+      if (result.affectedCount > 0) toast.success(t("batchUpdated", { count: result.affectedCount }));
       selection.clearSelection();
     },
   });
@@ -78,7 +78,8 @@ export function useDetailsBatchController(
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
       if (unresolved.length > 0) selection.retainSelection(unresolved);
       else selection.clearSelection();
-      toast.success(t("batchDeleted", { count: result.succeededIds.length }));
+      if (result.succeededIds.length > 0)
+        toast.success(t("batchDeleted", { count: result.succeededIds.length }));
       if (unresolved.length > 0) toast.warning(t("batchUnresolved", { count: unresolved.length }));
       setDeleteDialogOpen(false);
     },

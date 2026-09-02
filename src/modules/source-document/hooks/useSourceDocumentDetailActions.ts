@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 import type { useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -10,11 +10,12 @@ import type {
   SplitSourceDocumentInput,
   SplitSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
-import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useSaveAndContinueGate } from "./useSaveAndContinueGate";
 import type { AddEntryData } from "./useSourceDocumentDetailMutations";
 import type { PendingChanges } from "./usePendingChanges";
 import type { SourceDocumentDetailState } from "./useSourceDocumentDetailState";
+import { useSourceDocumentBatchActions } from "./useSourceDocumentBatchActions";
+import { useSourceDocumentEntryActions } from "./useSourceDocumentEntryActions";
 
 interface UseSourceDocumentDetailActionsOptions {
   ledgerId: string;
@@ -72,12 +73,6 @@ export function useSourceDocumentDetailActions({
   t,
   tCommon,
 }: UseSourceDocumentDetailActionsOptions) {
-  const splitIdentityRef = useRef<{
-    operationId: string;
-    newSourceDocumentId: string;
-    payloadKey: string;
-  } | null>(null);
-
   const {
     busy,
     interactionDisabled,
@@ -140,8 +135,7 @@ export function useSourceDocumentDetailActions({
       discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pendingChangesCount }));
       return true;
-    } catch (error) {
-      console.error("Failed to save changes:", error);
+    } catch {
       toast.error(t("saveAllFailed"));
       return false;
     } finally {
@@ -177,50 +171,6 @@ export function useSourceDocumentDetailActions({
     if (saved) setIsEditMode(false);
     return saved;
   }, [handleSaveAll, setIsEditMode]);
-
-  const enterBatchSelectionMode = useCallback(() => {
-    discardAllChanges();
-    setIsEditMode(false);
-    setSelectionMode(true);
-  }, [discardAllChanges, setIsEditMode, setSelectionMode]);
-
-  const handleToggleSelectionMode = useCallback(() => {
-    if (busy || readOnly || sourceDocument == null || ledgerEntries.length === 0) return;
-    if (isSelectionMode) {
-      setSelectionMode(false);
-      return;
-    }
-    if (!state.isEditMode || !hasPendingChanges) {
-      enterBatchSelectionMode();
-      return;
-    }
-    setShowBatchModePendingConfirm(true);
-  }, [
-    busy,
-    enterBatchSelectionMode,
-    hasPendingChanges,
-    isSelectionMode,
-    ledgerEntries.length,
-    readOnly,
-    setSelectionMode,
-    setShowBatchModePendingConfirm,
-    sourceDocument,
-    state.isEditMode,
-  ]);
-
-  const handleSaveAndEnterBatchMode = useCallback(async () => {
-    const saved = await handleSaveAll();
-    if (!saved) return false;
-    setIsEditMode(false);
-    setSelectionMode(true);
-    setShowBatchModePendingConfirm(false);
-    return true;
-  }, [handleSaveAll, setIsEditMode, setSelectionMode, setShowBatchModePendingConfirm]);
-
-  const handleDiscardAndEnterBatchMode = useCallback(() => {
-    enterBatchSelectionMode();
-    setShowBatchModePendingConfirm(false);
-  }, [enterBatchSelectionMode, setShowBatchModePendingConfirm]);
 
   const handleSaveAllAndClose = useCallback(async () => {
     const saved = await handleSaveAll();
@@ -269,156 +219,74 @@ export function useSourceDocumentDetailActions({
     confirmDiscardAndContinue,
   };
 
-  const performBatchCategory = async (categoryId: string | null) => {
-    if (selectedIds.length === 0 || busy) return;
-    setIsSaving(true);
-    try {
-      const result = await onBatchUpdate(selectedIds, { categoryId });
-      toast.success(t("batchUpdateSuccess", { count: result?.affectedCount ?? 0 }));
-      clearSelection();
-    } catch {
-      toast.error(t("batchUpdateError"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  const handleBatchCategory = (categoryId: string | null) =>
-    requestAction(() => performBatchCategory(categoryId));
+  const {
+    handleToggleSelectionMode,
+    handleSaveAndEnterBatchMode,
+    handleDiscardAndEnterBatchMode,
+    performBatchCategory,
+    performBatchCurrency,
+    handleBatchDelete,
+  } = useSourceDocumentBatchActions({
+    busy,
+    readOnly,
+    sourceDocument,
+    ledgerEntries,
+    isSelectionMode,
+    isEditMode: state.isEditMode,
+    hasPendingChanges,
+    selectedIds,
+    setSelectionMode,
+    setIsEditMode,
+    setShowBatchModePendingConfirm,
+    setShowBatchDeleteConfirm,
+    setIsSaving,
+    discardAllChanges,
+    clearSelection,
+    retainSelection,
+    handleSaveAll,
+    onBatchUpdate,
+    onBatchDeleteEntries,
+    t,
+  });
+  const handleBatchCategory = useCallback(
+    (categoryId: string | null) => requestAction(() => performBatchCategory(categoryId)),
+    [requestAction, performBatchCategory]
+  );
+  const handleBatchCurrency = useCallback(
+    (currency: string) => requestAction(() => performBatchCurrency(currency)),
+    [requestAction, performBatchCurrency]
+  );
 
-  const performBatchCurrency = async (currency: string) => {
-    if (selectedIds.length === 0 || busy) return;
-    setIsSaving(true);
-    try {
-      const result = await onBatchUpdate(selectedIds, { currency });
-      toast.success(t("batchUpdateSuccess", { count: result?.affectedCount ?? 0 }));
-      clearSelection();
-    } catch {
-      toast.error(t("batchUpdateError"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  const handleBatchCurrency = (currency: string) =>
-    requestAction(() => performBatchCurrency(currency));
-
-  const handleBatchDelete = async () => {
-    if (busy) return;
-    setIsSaving(true);
-    try {
-      const failed = await onBatchDeleteEntries(selectedIds);
-      if (failed.length === 0) clearSelection();
-      else retainSelection(failed);
-      toast.success(t("batchDeleteSuccess", { count: selectedIds.length - failed.length }));
-      if (failed.length > 0) toast.error(t("batchDeletePartial", { count: failed.length }));
-      setShowBatchDeleteConfirm(false);
-    } catch {
-      toast.error(t("batchDeleteError"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleOpenSplit = () => {
-    if (busy || selectedIds.length === 0) return;
-    if (selectedIds.length >= ledgerEntries.length) {
-      toast.error(t("splitKeepOne"));
-      return;
-    }
-    requestAction(() => setShowSplitDialog(true));
-  };
-
-  const handleSplit = async (entryDate: string) => {
-    const expectedRevisionId = sourceDocument?.activeRevisionId;
-    if (expectedRevisionId == null || expectedRevisionId === "" || onSplit == null) {
-      toast.error(t("splitFailed"));
-      return;
-    }
-    const payloadKey = JSON.stringify({
-      expectedRevisionId,
-      ledgerEntryIds: [...selectedIds].sort(),
-      entryDate,
-    });
-    if (splitIdentityRef.current?.payloadKey !== payloadKey) {
-      splitIdentityRef.current = {
-        operationId: crypto.randomUUID(),
-        newSourceDocumentId: crypto.randomUUID(),
-        payloadKey,
-      };
-    }
-    setIsSplitting(true);
-    try {
-      const result = await onSplit({
-        expectedRevisionId,
-        operationId: splitIdentityRef.current.operationId,
-        newSourceDocumentId: splitIdentityRef.current.newSourceDocumentId,
-        ledgerEntryIds: selectedIds,
-        entryDate,
-      });
-      splitIdentityRef.current = null;
-      setShowSplitDialog(false);
-      clearSelection();
-      toast.success(t("splitSuccess", { count: result.movedEntryCount }), {
-        action: {
-          label: t("viewSplitBill"),
-          onClick: () =>
-            openLedgerDetail({
-              type: "source-document",
-              id: result.splitSourceDocumentId,
-              ledgerId,
-            }),
-        },
-      });
-    } catch {
-      toast.error(t("splitFailed"));
-    } finally {
-      setIsSplitting(false);
-    }
-  };
-
-  const handleOpenAddEntry = () => requestAction(() => setShowAddEntryDialog(true));
-
-  const handleAddEntrySubmit = async (data: AddEntryData): Promise<boolean> => {
-    if (onAddEntry == null || busy) return false;
-    setIsSaving(true);
-    try {
-      await onAddEntry(data);
-      toast.success(t("addEntrySuccess"));
-      return true;
-    } catch {
-      toast.error(t("addEntryError"));
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteEntry = async (entryId: string): Promise<boolean> => {
-    if (onDeleteEntry == null || busy) return false;
-    setIsSaving(true);
-    try {
-      await onDeleteEntry(entryId);
-      toast.success(tCommon("deleteSuccess"));
-      return true;
-    } catch {
-      toast.error(tCommon("deleteFailed"));
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRequestDeleteEntry = (entryId: string) =>
-    requestAction(() => setPendingDeleteEntryId(entryId));
-
-  const handleDeleteDocument = async () => {
-    if (interactionDisabled) return;
-    setIsDeleting(true);
-    try {
-      await onDelete?.();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  const {
+    handleOpenSplit,
+    handleSplit,
+    handleOpenAddEntry,
+    handleAddEntrySubmit,
+    handleDeleteEntry,
+    handleRequestDeleteEntry,
+    handleDeleteDocument,
+  } = useSourceDocumentEntryActions({
+    ledgerId,
+    sourceDocument,
+    busy,
+    interactionDisabled,
+    selectedIds,
+    ledgerEntries,
+    requestAction,
+    setIsSaving,
+    setIsSplitting,
+    setIsDeleting,
+    setShowSplitDialog,
+    setShowAddEntryDialog,
+    setPendingDeleteEntryId,
+    clearSelection,
+    onSplit,
+    onAddEntry,
+    onDeleteEntry,
+    onDelete,
+    t,
+    tCommon,
+  });
 
   return {
     handleClose,

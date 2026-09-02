@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -108,16 +109,12 @@ export function AddLedgerEntryDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="add-entry-amount">{t("addEntryAmount")}</Label>
-            <Input
+            <AmountInput
               id="add-entry-amount"
-              type="number"
-              inputMode="decimal"
-              min={0.01}
-              step={0.01}
               value={amount}
+              onChange={setAmount}
               disabled={isSubmitting}
               placeholder="0.00"
-              onChange={(event) => setAmount(event.target.value)}
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

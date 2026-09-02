@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
@@ -12,12 +12,8 @@ import type {
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
 } from "./source-document-input-controller.types";
-import {
-  SourceDocumentSubmissionUploadError,
-  type SourceDocumentSubmissionProgress,
-  uploadSourceDocumentSubmissionImages,
-} from "./source-document-submission-upload";
-import { toast } from "sonner";
+import { uploadSourceDocumentSubmissionImages } from "./source-document-submission-upload";
+import { useSubmitProgress } from "./source-document-submit-progress";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,53 +62,21 @@ export function useSourceDocumentSubmitMutations({
   onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
   const tCommon = useTranslations("Common");
-  const [progress, setProgress] = useState<SourceDocumentSubmissionProgress | null>(null);
-  const uploadControllerRef = useRef<AbortController | null>(null);
+  const {
+    progress,
+    setProgress,
+    uploadControllerRef,
+    setMonotonicProgress,
+    handleSubmitError,
+    finishUpload,
+    canCancel,
+    cancel,
+  } = useSubmitProgress(messages);
   const submissionIdentityRef = useRef({
     fingerprint: "",
     createId: crypto.randomUUID(),
     retryId: crypto.randomUUID(),
   });
-  useEffect(() => () => uploadControllerRef.current?.abort(), []);
-  const setMonotonicProgress = (next: SourceDocumentSubmissionProgress) => {
-    setProgress((current) => {
-      if (current?.phase === "cancelling") return current;
-      return current != null && current.percent > next.percent
-        ? { ...next, percent: current.percent }
-        : next;
-    });
-  };
-
-  const handleSubmitError = (error: Error, fallbackMessage: string) => {
-    if (error instanceof DOMException && error.name === "AbortError") return;
-    console.error("Source document submission failed:", error);
-    if (error instanceof SourceDocumentSubmissionUploadError) {
-      toast.error(error.stage === "prepare" ? messages.imageReadError : messages.imageUploadError);
-      return;
-    }
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error(messages.networkError);
-      return;
-    }
-    if (
-      error instanceof TypeError ||
-      /network|fetch failed|request (?:was )?aborted|connection/i.test(error.message)
-    ) {
-      toast.error(messages.networkError);
-      return;
-    }
-    if (/validation|invalid|required|must be/i.test(error.message)) {
-      toast.error(messages.validationError);
-      return;
-    }
-    toast.error(fallbackMessage);
-  };
-  const finishUpload = (signal: AbortSignal) => {
-    if (uploadControllerRef.current?.signal === signal) {
-      uploadControllerRef.current = null;
-    }
-    setProgress(null);
-  };
 
   // -----------------------------------------------------------------------
   // Create mutation
@@ -218,10 +182,6 @@ export function useSourceDocumentSubmitMutations({
   // -----------------------------------------------------------------------
 
   const activeMutation = mode === "retry" ? retryMutation : createMutation;
-  const canCancel =
-    progress?.phase === "preparing" ||
-    progress?.phase === "planning" ||
-    progress?.phase === "uploading";
 
   const submit = (payload: SourceDocumentSubmitPayload) => {
     if (mode === "retry" && sourceDocumentId == null) return false;
@@ -276,12 +236,6 @@ export function useSourceDocumentSubmitMutations({
     progress,
     submit,
     canCancel,
-    cancel: () => {
-      if (!canCancel) return;
-      uploadControllerRef.current?.abort();
-      setProgress((current) =>
-        current == null ? null : { ...current, phase: "cancelling" as const }
-      );
-    },
+    cancel,
   };
 }

@@ -1,65 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { useTranslations } from "next-intl";
 import type { EntryCategory, SaveEntryCategoriesInput } from "@/modules/ledger/contracts";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import { computeCategoryCollectionRevision } from "@/modules/ledger/category-collection-revision";
+import { categoryDraftsEqual, toCategoryDraft, type CategoryDraft } from "./category-draft-model";
+import { useCategoryEditSession } from "./useCategoryEditSession";
+import { useCategoryDraftSync } from "./useCategoryDraftSync";
 
-export interface CategoryDraft {
-  key: string;
-  id?: string;
-  clientId?: string;
-  name: string;
-  description: string;
-  icon: string | null;
-  entryCount?: number;
-}
-
-export interface EditDraft {
-  key: string;
-  name: string;
-  description: string;
-  icon: string | null;
-}
-
-export interface EditSession {
-  original: EditDraft;
-  draft: EditDraft;
-}
-
-function toCategoryDraft(category: EntryCategory): CategoryDraft {
-  return {
-    key: category.id,
-    id: category.id,
-    name: category.name,
-    description: category.description ?? "",
-    icon: category.icon,
-    ...("entryCount" in category && typeof category.entryCount === "number"
-      ? { entryCount: category.entryCount }
-      : {}),
-  };
-}
-
-function categoryDraftsEqual(left: CategoryDraft[], right: CategoryDraft[]): boolean {
-  if (left.length !== right.length) return false;
-  return left.every((category, index) => {
-    const other = right[index];
-    return (
-      other != null &&
-      category.key === other.key &&
-      category.name === other.name &&
-      category.description === other.description &&
-      category.icon === other.icon
-    );
-  });
-}
-
-export function editDraftEqual(left: EditDraft, right: EditDraft): boolean {
-  return (
-    left.name === right.name && left.description === right.description && left.icon === right.icon
-  );
-}
+export type { CategoryDraft, EditDraft, EditSession } from "./category-draft-model";
 
 interface UseCategoryManagementDraftOptions {
   categories: EntryCategory[];
@@ -81,29 +31,26 @@ export function useCategoryManagementDraft({
   const [serverDraft, setServerDraft] = useState<CategoryDraft[]>([]);
   const [draftOrder, setDraftOrder] = useState<CategoryDraft[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [editSession, setEditSession] = useState<EditSession | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CategoryDraft | null>(null);
   const [discardManagementOpen, setDiscardManagementOpen] = useState(false);
-  const [discardEditOpen, setDiscardEditOpen] = useState(false);
-  const [serverChanged, setServerChanged] = useState(false);
-  const [revisionConflict, setRevisionConflict] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const incomingDraft = useMemo(() => categories.map(toCategoryDraft), [categories]);
+
   const dirty = managing && !categoryDraftsEqual(serverDraft, draftOrder);
-  const editDirty = editSession != null && !editDraftEqual(editSession.original, editSession.draft);
+
+  const { editSession, setEditSession, discardEditOpen, setDiscardEditOpen, editDirty, requestEditClose, startEditing, commitEdit } =
+    useCategoryEditSession({ setDraftOrder, setSaveError });
+
   const hasCategoryDraft = dirty || newCategoryName.trim() !== "" || editDirty;
 
-  if (managing && !categoryDraftsEqual(serverDraft, incomingDraft)) {
-    setServerDraft(incomingDraft);
-    if (hasCategoryDraft) {
-      setServerChanged(true);
-      setRevisionConflict(true);
-    } else {
-      setDraftOrder(incomingDraft);
-      setServerChanged(false);
-      setRevisionConflict(false);
-    }
-  }
+  const { incomingDraft, serverChanged, setServerChanged, revisionConflict, setRevisionConflict, resetSyncState } =
+    useCategoryDraftSync({
+      categories,
+      managing,
+      serverDraft,
+      setServerDraft,
+      setDraftOrder,
+      hasCategoryDraft,
+    });
 
   useEffect(() => {
     const key = "settings:categories";
@@ -117,8 +64,7 @@ export function useCategoryManagementDraft({
     setServerDraft(incomingDraft);
     setDraftOrder(incomingDraft);
     setManaging(true);
-    setServerChanged(false);
-    setRevisionConflict(false);
+    resetSyncState();
     setSaveError(null);
   };
 
@@ -153,44 +99,6 @@ export function useCategoryManagementDraft({
     setSaveError(null);
   };
 
-  const requestEditClose = () => {
-    if (editSession == null) return;
-    if (editDraftEqual(editSession.original, editSession.draft)) {
-      setEditSession(null);
-    } else {
-      setDiscardEditOpen(true);
-    }
-  };
-
-  const startEditing = (category: CategoryDraft) => {
-    const draft = {
-      key: category.key,
-      name: category.name,
-      description: category.description,
-      icon: category.icon,
-    };
-    setEditSession({ original: draft, draft });
-  };
-
-  const commitEdit = () => {
-    if (editSession == null) return;
-    const updated = editSession.draft;
-    setDraftOrder((current) =>
-      current.map((category) =>
-        category.key === updated.key
-          ? {
-              ...category,
-              name: updated.name.trim(),
-              description: updated.description,
-              icon: updated.icon,
-            }
-          : category
-      )
-    );
-    setEditSession(null);
-    setSaveError(null);
-  };
-
   const cancelManagement = () => {
     if (hasCategoryDraft) setDiscardManagementOpen(true);
     else setManaging(false);
@@ -201,8 +109,7 @@ export function useCategoryManagementDraft({
     setNewCategoryName("");
     setEditSession(null);
     setManaging(false);
-    setServerChanged(false);
-    setRevisionConflict(false);
+    resetSyncState();
     setSaveError(null);
   };
 
@@ -231,8 +138,7 @@ export function useCategoryManagementDraft({
       setServerDraft(savedDraft);
       setDraftOrder(savedDraft);
       setManaging(false);
-      setServerChanged(false);
-      setRevisionConflict(false);
+      resetSyncState();
     } catch (error) {
       const errorCode =
         typeof error === "object" && error != null && "code" in error
@@ -258,8 +164,7 @@ export function useCategoryManagementDraft({
       setNewCategoryName("");
       setEditSession(null);
       setManaging(false);
-      setServerChanged(false);
-      setRevisionConflict(false);
+      resetSyncState();
       setSaveError(null);
     } catch {
       setSaveError(t("saveCategoriesFailed"));

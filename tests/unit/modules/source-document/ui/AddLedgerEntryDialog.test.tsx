@@ -24,7 +24,7 @@ describe("AddLedgerEntryDialog", () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(nameInput).toHaveValue("Lunch");
-    expect(amountInput).toHaveValue(12.5);
+    expect(amountInput).toHaveValue("12.50");
   });
 
   it("clears and closes only after a successful submission", async () => {
@@ -49,6 +49,6 @@ describe("AddLedgerEntryDialog", () => {
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(nameInput).toHaveValue("");
-    expect(amountInput).toHaveValue(null);
+    expect(amountInput).toHaveValue("");
   });
 });

@@ -4,25 +4,21 @@ import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Check, Loader2, ShieldCheck, Trash2 } from "lucide-react";
-import Image from "next/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui/amount-text";
-import { cn } from "@/lib/utils";
 import {
   discardDuplicateSourceDocumentAction,
   getSourceDocumentDuplicateReviewAction,
   keepDuplicateSourceDocumentAction,
 } from "@/modules/source-document/actions";
-import type { SourceDocumentDuplicateReviewDetailDto } from "@/modules/source-document/contracts";
-import { storedFileReadUrl } from "../stored-file-read";
 import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { add } from "@/lib/money/decimal";
+import { summarizeReviewEntries } from "./source-document-duplicate-review.utils";
+import { ReviewPanel } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanel";
+import { ReviewPanelSkeleton } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanelSkeleton";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -249,204 +245,5 @@ export function SourceDocumentDuplicateReviewDialog({
         onConfirm={() => discardMutation.mutate({ operationId: crypto.randomUUID() })}
       />
     </>
-  );
-}
-
-function ReviewPanelSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-        <Skeleton className="h-5 w-20" />
-      </div>
-      <div className="space-y-0 divide-y divide-border">
-        {[0, 1, 2].map((row) => (
-          <div key={row} className="flex items-center gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-2/3" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
-            <Skeleton className="h-4 w-16 shrink-0" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cn("animate-pulse rounded bg-surface2", className)} />;
-}
-
-interface ReviewSide {
-  id: string;
-  title: string | null;
-  entryDate: string | null;
-  createdAt: string;
-  entries: SourceDocumentDuplicateReviewDetailDto["duplicate"]["entries"];
-  files: SourceDocumentDuplicateReviewDetailDto["duplicate"]["files"];
-}
-
-function summarizeReviewEntries(
-  entries: ReviewSide["entries"],
-  mainCurrency: string
-): { total: string; unconvertedCount: number; currencyTotals: Record<string, string> } {
-  let total = "0";
-  let unconvertedCount = 0;
-  const currencyTotals: Record<string, string> = {};
-  for (const entry of entries) {
-    const currency = (entry.currency ?? mainCurrency).trim().toUpperCase();
-    if (entry.convertedAmount != null && entry.convertedAmount !== "") {
-      total = add(total, entry.convertedAmount);
-    } else if (currency === mainCurrency.trim().toUpperCase()) {
-      total = add(total, entry.amount);
-    } else {
-      unconvertedCount += 1;
-      currencyTotals[currency] = add(currencyTotals[currency] ?? "0", entry.amount);
-    }
-  }
-  return { total, unconvertedCount, currencyTotals };
-}
-
-function ReviewPanel({
-  side,
-  label,
-  tone,
-  badge,
-  mainCurrency,
-  locale,
-}: {
-  side: ReviewSide;
-  label: string;
-  tone: "original" | "candidate";
-  badge?: string;
-  mainCurrency: string;
-  locale: string;
-}) {
-  const t = useTranslations("DuplicateReview");
-  const [imageViewer, setImageViewer] = useState<{ open: boolean; index: number }>({
-    open: false,
-    index: 0,
-  });
-  const summary = summarizeReviewEntries(side.entries, mainCurrency);
-
-  return (
-    <section
-      className={cn(
-        "min-w-0 overflow-hidden rounded-lg border bg-surface",
-        tone === "candidate" ? "border-primary/40" : "border-border"
-      )}
-    >
-      <header
-        className={cn(
-          "flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3",
-          tone === "candidate" ? "bg-primary/5" : "bg-surface2/50"
-        )}
-      >
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className={cn("text-sm font-semibold", tone === "candidate" && "text-primary")}>
-              {label}
-            </h3>
-            {badge != null && (
-              <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">
-                {badge}
-              </span>
-            )}
-          </div>
-          <p className="truncate text-xs text-muted-foreground">
-            {side.title?.trim() || t("untitled")}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t("date", { date: side.entryDate ?? side.createdAt.slice(0, 10) })}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <AmountText variant="summary">
-            {formatCurrencyAmount(summary.total, mainCurrency, locale)}
-          </AmountText>
-          {Object.entries(summary.currencyTotals).map(([currency, total]) => (
-            <AmountText key={currency} variant="secondary">
-              {formatCurrencyAmount(total, currency, locale)}
-            </AmountText>
-          ))}
-          {summary.unconvertedCount > 0 && (
-            <p className="text-[11px] text-muted-foreground">
-              {t("unconverted", { count: summary.unconvertedCount })}
-            </p>
-          )}
-        </div>
-      </header>
-
-      {side.files.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto border-b border-border px-4 py-3">
-          {side.files.map((file, index) => (
-            <button
-              key={file.id}
-              type="button"
-              className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              onClick={() => setImageViewer({ open: true, index })}
-              aria-label={t("viewImage", {
-                filename: file.originalFilename ?? t("image"),
-              })}
-            >
-              <Image
-                src={storedFileReadUrl(file.id)}
-                alt={file.originalFilename ?? t("image")}
-                width={64}
-                height={64}
-                unoptimized
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="divide-y divide-border">
-        {side.entries.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("noEntries")}</p>
-        ) : (
-          side.entries.map((entry) => {
-            const currency = entry.currency ?? mainCurrency;
-            return (
-              <div key={entry.id} className="flex min-w-0 items-start gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm font-medium text-text">{entry.itemName}</p>
-                  {entry.description != null && entry.description !== "" && (
-                    <p className="break-words text-xs text-muted-foreground">{entry.description}</p>
-                  )}
-                </div>
-                <div className="shrink-0 text-right">
-                  <AmountText variant="item">
-                    {formatCurrencyAmount(entry.amount, currency, locale)}
-                  </AmountText>
-                  {entry.convertedAmount != null && currency !== mainCurrency && (
-                    <AmountText variant="secondary">
-                      {formatCurrencyAmount(entry.convertedAmount, mainCurrency, locale)}
-                    </AmountText>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <SourceDocumentImageModal
-        images={side.files.map((file) => ({
-          data: "",
-          mimeType: file.contentType,
-          storedFileId: file.id,
-        }))}
-        initialIndex={imageViewer.index}
-        open={imageViewer.open}
-        onOpenChange={(open) => setImageViewer((previous) => ({ ...previous, open }))}
-      />
-    </section>
   );
 }
