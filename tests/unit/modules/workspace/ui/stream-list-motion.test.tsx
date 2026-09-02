@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { computeStreamListMotionDiff } from "@/modules/workspace/ui/stream-list-motion";
-import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/LedgerEntriesCompletedGroups";
+import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/UnifiedStreamGroups";
 
-vi.mock("@/modules/source-document/ui", () => ({
+vi.mock("@/modules/source-document/ui/SourceDocumentCard", () => ({
   SourceDocumentCard: ({ sourceDocument }: { sourceDocument: { id: string } }) => (
     <div data-testid={`card-${sourceDocument.id}`}>{sourceDocument.id}</div>
   ),

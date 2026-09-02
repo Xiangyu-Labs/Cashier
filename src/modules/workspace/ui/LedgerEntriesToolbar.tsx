@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { PeriodParams, PeriodPreset } from "@/lib/period-utils";
-import { SourceDocumentActions } from "@/modules/source-document/ui";
+import { SourceDocumentActions } from "@/modules/source-document/ui/batch-action-toolbar/SourceDocumentActions";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";

@@ -1,9 +1,7 @@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  SourceDocumentCandidateReviewDialog,
-  SourceDocumentDuplicateReviewDialog,
-  SourceDocumentEditRetryDialog,
-} from "@/modules/source-document/ui";
+import { SourceDocumentCandidateReviewDialog } from "@/modules/source-document/ui/SourceDocumentCandidateReviewDialog";
+import { SourceDocumentDuplicateReviewDialog } from "@/modules/source-document/ui/SourceDocumentDuplicateReviewDialog";
+import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui/SourceDocumentEditRetryDialog";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { LedgerEntriesDeleteConfirmState } from "./useLedgerEntriesTabState";
 

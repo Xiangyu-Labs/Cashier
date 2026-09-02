@@ -25,7 +25,6 @@ import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/
 import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 import { serverComposition } from "@/application/server-composition-root";
 import type { LedgerDto } from "@/modules/ledger/contracts";
-import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { LedgerTab } from "@/lib/ledger-tabs";
 
@@ -36,7 +35,6 @@ interface ActiveTabBootstrapProps {
   ledgerId: string;
   ledgerDto: LedgerDto;
   activeTab: LedgerTab;
-  periodParams: PeriodParams;
   advancedFilters: LedgerAdvancedFilters;
   session: AuthenticatedHomeContext["session"];
 }
@@ -120,7 +118,6 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
             ledgerId={ledgerId}
             ledgerDto={ledgerDto}
             activeTab={activeTab}
-            periodParams={periodParams}
             advancedFilters={advancedFilters}
             session={session}
           />
@@ -135,7 +132,6 @@ async function ActiveTabBootstrap({
   ledgerId,
   ledgerDto,
   activeTab,
-  periodParams,
   advancedFilters,
   session,
 }: ActiveTabBootstrapProps) {
@@ -156,7 +152,6 @@ async function ActiveTabBootstrap({
         ledgerId={ledgerId}
         ledgerDto={ledgerDto}
         initialTab={activeTab}
-        periodParams={periodParams}
         advancedFilters={advancedFilters}
         {...(pageData?.initialCategories !== undefined
           ? { initialCategories: pageData.initialCategories }

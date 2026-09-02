@@ -57,11 +57,11 @@ describe("useCategoryMutations", () => {
     metadataAction.mockResolvedValue({ categoryId: category.id });
   });
 
-  it("does not invalidate server state after a failed write", async () => {
+  it("invalidates server state after a failed write", async () => {
     const { queryClient, wrapper } = setup();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     createAction.mockRejectedValue(new Error("create failed"));
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
+    const { result } = renderHook(() => useCategoryMutations("ledger-1"), { wrapper });
 
     await act(async () => {
       await expect(result.current.createCategory.mutateAsync({ name: "New" })).rejects.toThrow(
@@ -69,7 +69,7 @@ describe("useCategoryMutations", () => {
       );
     });
 
-    expect(invalidate).not.toHaveBeenCalled();
+    expect(invalidate).toHaveBeenCalled();
   });
 
   it("keeps cached categories unchanged and broadly invalidates after update", async () => {
@@ -79,7 +79,7 @@ describe("useCategoryMutations", () => {
     ]);
     updateAction.mockResolvedValue({ ...category, name: "Dining" });
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
+    const { result } = renderHook(() => useCategoryMutations("ledger-1"), { wrapper });
 
     await act(async () => {
       await result.current.updateCategory.mutateAsync({
@@ -108,7 +108,7 @@ describe("useCategoryMutations", () => {
     });
     vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(refresh);
     saveAction.mockResolvedValue([{ ...category, name: "Dining" }]);
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
+    const { result } = renderHook(() => useCategoryMutations("ledger-1"), { wrapper });
 
     let mutation!: Promise<EntryCategory[]>;
     act(() => {
@@ -129,7 +129,7 @@ describe("useCategoryMutations", () => {
   it("tracks metadata generation until its invalidation finishes", async () => {
     const { queryClient, wrapper } = setup();
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
+    const { result } = renderHook(() => useCategoryMutations("ledger-1"), { wrapper });
 
     act(() => result.current.retryCategoryMetadata(category.id));
     expect(result.current.generatingCategoryIds.has(category.id)).toBe(true);
@@ -143,7 +143,7 @@ describe("useCategoryMutations", () => {
     const onMetadataGenerated = vi.fn();
     const { result } = renderHook(
       () =>
-        useCategoryMutations("ledger-1", [category], {
+        useCategoryMutations("ledger-1", {
           onMetadataGenerated,
         }),
       { wrapper }

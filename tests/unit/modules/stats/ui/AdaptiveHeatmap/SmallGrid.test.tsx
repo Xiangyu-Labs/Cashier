@@ -19,6 +19,8 @@ describe("SmallGridHeatmap", () => {
           { date: "2026-08-06", totalAmount: "0", entryCount: 0, currencies: [] },
         ]}
         stats={heatmapStats}
+        currency="CNY"
+        locale="zh-CN"
         onDayClick={onDayClick}
         queryRange={{ startDate: "2026-08-05", endDate: "2026-08-07" }}
       />

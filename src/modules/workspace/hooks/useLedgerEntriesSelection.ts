@@ -4,7 +4,7 @@ import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { useSelection } from "@/hooks/use-selection";
-import { useBatchSourceDocumentActions } from "@/modules/source-document/hooks";
+import { useBatchSourceDocumentActions } from "@/modules/source-document/hooks/useBatchSourceDocumentActions";
 
 interface UseLedgerEntriesSelectionOptions {
   ledgerId: string;

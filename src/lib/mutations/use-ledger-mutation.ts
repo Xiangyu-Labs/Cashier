@@ -46,32 +46,37 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
       }
 
       if (successMessage != null) toast.success(successMessage);
-
-      if (ledgerId != null && ledgerId !== "") {
-        try {
-          await invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups);
-        } catch (error) {
-          console.error("[useLedgerMutation] resource invalidation failed", { ledgerId, error });
-          if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
-          globalThis.setTimeout(() => {
-            void invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups).catch(
-              (retryError) => {
-                console.error("[useLedgerMutation] resource invalidation retry failed", {
-                  ledgerId,
-                  error: retryError,
-                });
-              }
-            );
-          }, 1_000);
-        }
-      }
     },
     onError: (error, variables) => {
       if (errorMessage != null) toast.error(errorMessage);
       onError?.(error, variables);
     },
     onSettled: async (data, error, variables) => {
-      await onSettled?.(data, error, variables);
+      try {
+        await onSettled?.(data, error, variables);
+      } finally {
+        if (ledgerId != null && ledgerId !== "") {
+          try {
+            await invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups);
+          } catch (invalidationError) {
+            console.error("[useLedgerMutation] resource invalidation failed", {
+              ledgerId,
+              error: invalidationError,
+            });
+            if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
+            globalThis.setTimeout(() => {
+              void invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups).catch(
+                (retryError) => {
+                  console.error("[useLedgerMutation] resource invalidation retry failed", {
+                    ledgerId,
+                    error: retryError,
+                  });
+                }
+              );
+            }, 1_000);
+          }
+        }
+      }
     },
   });
 }

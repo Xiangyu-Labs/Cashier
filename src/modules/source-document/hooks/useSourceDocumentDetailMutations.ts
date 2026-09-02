@@ -51,7 +51,6 @@ export function useSourceDocumentDetailMutations({
   });
 
   const { batchUpdateMutation, batchDeleteMutation } = useSourceDocumentEntryMutations({
-    id,
     ledgerId,
   });
 

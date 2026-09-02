@@ -5,19 +5,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { changePasswordAction, setPasswordAction } from "@/modules/auth/actions";
 import type { PasswordMutationActionErrorCode } from "@/modules/auth/contracts";
+import { CredentialChangeDialog } from "./CredentialChangeDialog";
 
 function PasswordField(props: {
   id: string;
@@ -108,6 +100,10 @@ export function PasswordForm({
     setConfirmPassword("");
     setError(null);
   };
+  const close = () => {
+    setOpen(false);
+    reset();
+  };
 
   const submit = async () => {
     setIsLoading(true);
@@ -152,81 +148,66 @@ export function PasswordForm({
               ),
             })}
       </span>
-      <Dialog
+      <CredentialChangeDialog
         open={open}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen && isLoading) return;
           setOpen(nextOpen);
           if (!nextOpen) reset();
         }}
-      >
-        <DialogTrigger asChild>
-          <Button variant="outline">
-            {savedHasPassword ? t("changePasswordButton") : t("setPasswordButton")}
-          </Button>
-        </DialogTrigger>
-        <DialogContent
-          variant="detail"
-          hideCloseButton={isLoading}
-          onEscapeKeyDown={(event) => isLoading && event.preventDefault()}
-          onPointerDownOutside={(event) => isLoading && event.preventDefault()}
-          className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-md sm:rounded-lg"
-        >
-          <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
-            <DialogTitle>
-              {savedHasPassword ? t("changePasswordTitle") : t("setPasswordTitle")}
-            </DialogTitle>
-            <DialogDescription>{t("passwordRequirements")}</DialogDescription>
-          </DialogHeader>
-          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6">
-            {savedHasPassword ? (
-              <PasswordField
-                id="current-password"
-                label={t("currentPassword")}
-                value={currentPassword}
-                onChange={setCurrentPassword}
-                autoComplete="current-password"
-                disabled={isLoading}
-              />
-            ) : null}
-            <PasswordField
-              id="new-password"
-              label={t("newPassword")}
-              value={newPassword}
-              onChange={setNewPassword}
-              autoComplete="new-password"
-              disabled={isLoading}
-            />
-            <PasswordField
-              id="confirm-password"
-              label={t("confirmPassword")}
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              autoComplete="new-password"
-              disabled={isLoading}
-            />
-            {confirmPassword !== "" && !matches ? (
-              <p role="alert" className="text-sm text-destructive">
-                {t("passwordsDoNotMatch")}
-              </p>
-            ) : null}
-            {error != null ? (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            ) : null}
-          </div>
-          <DialogFooter className="shrink-0 gap-2 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-4">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+        pending={isLoading}
+        triggerLabel={savedHasPassword ? t("changePasswordButton") : t("setPasswordButton")}
+        title={savedHasPassword ? t("changePasswordTitle") : t("setPasswordTitle")}
+        description={t("passwordRequirements")}
+        desktopWidth="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={close} disabled={isLoading}>
               {t("cancel")}
             </Button>
             <Button onClick={submit} disabled={!canSubmit || isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("savePassword")}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        {savedHasPassword ? (
+          <PasswordField
+            id="current-password"
+            label={t("currentPassword")}
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            autoComplete="current-password"
+            disabled={isLoading}
+          />
+        ) : null}
+        <PasswordField
+          id="new-password"
+          label={t("newPassword")}
+          value={newPassword}
+          onChange={setNewPassword}
+          autoComplete="new-password"
+          disabled={isLoading}
+        />
+        <PasswordField
+          id="confirm-password"
+          label={t("confirmPassword")}
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          autoComplete="new-password"
+          disabled={isLoading}
+        />
+        {confirmPassword !== "" && !matches ? (
+          <p role="alert" className="text-sm text-destructive">
+            {t("passwordsDoNotMatch")}
+          </p>
+        ) : null}
+        {error != null ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+      </CredentialChangeDialog>
     </div>
   );
 }

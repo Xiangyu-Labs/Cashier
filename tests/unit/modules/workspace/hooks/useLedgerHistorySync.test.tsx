@@ -48,6 +48,7 @@ describe("useLedgerHistorySync", () => {
         searchParams: new URLSearchParams(detailSearch),
         legacyScope: "stream",
         ledgerId,
+        locale: "en",
       })
     );
 

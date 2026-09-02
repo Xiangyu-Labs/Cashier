@@ -1,4 +1,3 @@
-/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V3 */
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { memo, useId, useMemo, useState } from "react";

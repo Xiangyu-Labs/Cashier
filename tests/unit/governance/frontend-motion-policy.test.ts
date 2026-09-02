@@ -25,7 +25,7 @@ describe("frontend motion policy", () => {
 
   it("does not reintroduce nested layout animation in ledger lists", () => {
     const source = [
-      read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx"),
+      read("src/modules/workspace/ui/UnifiedStreamGroups.tsx"),
       read("src/modules/workspace/ui/DetailsTab.tsx"),
     ].join("\n");
     expect(source).not.toContain("AnimatePresence");
@@ -44,9 +44,7 @@ describe("frontend motion policy", () => {
   });
 
   it("uses the shared group header across ledger list views", () => {
-    expect(read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx")).toContain(
-      "<EntryGroupHeader"
-    );
+    expect(read("src/modules/workspace/ui/UnifiedStreamGroups.tsx")).toContain("<EntryGroupHeader");
     expect(read("src/modules/ledger/ui/LedgerEntryGroupsView.tsx")).toContain("<EntryGroupHeader");
     expect(read("src/modules/workspace/ui/DetailsTabView.tsx")).toContain("<LedgerEntryGroupsView");
   });

@@ -6,7 +6,7 @@
  */
 
 import type { CalendarHeatmapStats, HeatmapLevel } from "../types";
-import { formatCompactNumberAmount } from "@/lib/format/currency";
+import { formatCompactCurrencyAmount } from "@/lib/format/currency";
 import Decimal from "decimal.js";
 
 // Heatmap color configuration using CSS custom property tokens
@@ -64,6 +64,6 @@ export function getHeatmapLegend() {
 /**
  * Format amount for display in cell (abbreviated, localized currency symbol)
  */
-export function formatCellAmount(amount: string, _currency = "CNY", locale = "zh-CN"): string {
-  return formatCompactNumberAmount(amount, locale);
+export function formatCellAmount(amount: string, currency: string, locale: string): string {
+  return formatCompactCurrencyAmount(amount, currency, locale);
 }

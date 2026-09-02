@@ -17,8 +17,8 @@ interface AdaptiveHeatmapProps {
   stats: CalendarHeatmapStats;
   onDayClick?: (date: string) => void;
   className?: string;
-  currency?: string;
-  locale?: string;
+  currency: string;
+  locale: string;
   /**
    * Query range for the heatmap display.
    * If not provided, falls back to data-driven range.
@@ -35,8 +35,8 @@ export function AdaptiveHeatmap({
   onDayClick,
   className,
   queryRange,
-  currency = "CNY",
-  locale = "zh-CN",
+  currency,
+  locale,
 }: AdaptiveHeatmapProps) {
   const dayCount = generateHeatmapDateKeys(resolveHeatmapRange(days, queryRange)).length;
   const optionalProps = {

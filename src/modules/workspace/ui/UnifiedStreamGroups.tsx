@@ -1,8 +1,8 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
-import { SourceDocumentCard } from "@/modules/source-document/ui";
-import { useLocale } from "next-intl";
+import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
+import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { EntryGroupHeader } from "@/components/EntryGroupHeader";
@@ -396,9 +396,6 @@ function formatLocalizedDate(
   if (value === toLocalKey(yesterday)) return yesterdayLabel;
   return date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
 }
-
-// Inline translations to avoid hook ordering issues when composited with mobile/narrow layouts
-import { useTranslations } from "next-intl";
 
 function useGroupHeaderStrings() {
   const t = useTranslations("SourceDocumentCard");

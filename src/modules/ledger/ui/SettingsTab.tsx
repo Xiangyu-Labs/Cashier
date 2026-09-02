@@ -152,7 +152,7 @@ export function SettingsTab({
   const settingsLedger = reactiveLedger || ledger;
 
   const { saveCategories, generatingCategoryIds, failedCategoryIds, retryCategoryMetadata } =
-    useCategoryMutations(ledgerId, categories, {
+    useCategoryMutations(ledgerId, {
       onMetadataGenerated: () => setMetadataPollingSession((session) => session + 1),
     });
 

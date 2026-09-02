@@ -36,7 +36,7 @@ export interface FilterParams {
 interface UsePeriodFilterParams {
   pathname: string;
   searchParams: URLSearchParams;
-  initialPeriod: PeriodParams;
+  locale: string;
   scope?: LedgerFilterScope;
   timeZone?: string;
 }
@@ -76,7 +76,7 @@ function buildPeriodUrlUpdate(
 export function usePeriodFilter({
   pathname,
   searchParams,
-  initialPeriod: _initialPeriod,
+  locale,
   scope = "stream",
   timeZone,
 }: UsePeriodFilterParams): UsePeriodFilterReturn {
@@ -114,17 +114,17 @@ export function usePeriodFilter({
       if (options?.skipUrlUpdate) return;
 
       const params = updateLedgerSearchParams(searchParams, buildPeriodUrlUpdate(newPeriod), scope);
-      pushLedgerUrl(pathname, params, "filter");
+      pushLedgerUrl(pathname, params, locale, "filter");
     },
-    [pathname, scope, searchParams]
+    [locale, pathname, scope, searchParams]
   );
 
   const handleAdvancedFiltersChange = useCallback(
     (newFilters: LedgerAdvancedFilters) => {
       const params = updateLedgerSearchParams(searchParams, newFilters, scope);
-      pushLedgerUrl(pathname, params, "filter");
+      pushLedgerUrl(pathname, params, locale, "filter");
     },
-    [pathname, scope, searchParams]
+    [locale, pathname, scope, searchParams]
   );
 
   const handleFiltersChange = useCallback(
@@ -144,9 +144,9 @@ export function usePeriodFilter({
         scope
       );
 
-      pushLedgerUrl(pathname, params, "filter");
+      pushLedgerUrl(pathname, params, locale, "filter");
     },
-    [filters, pathname, periodParams, scope, searchParams]
+    [filters, locale, pathname, periodParams, scope, searchParams]
   );
 
   const applyStreamStatusPreset = useCallback(
@@ -163,9 +163,9 @@ export function usePeriodFilter({
         },
         "stream"
       );
-      pushLedgerUrl(pathname, params, "filter");
+      pushLedgerUrl(pathname, params, locale, "filter");
     },
-    [pathname, searchParams]
+    [locale, pathname, searchParams]
   );
 
   const resetFilters = useCallback(() => {
@@ -182,8 +182,8 @@ export function usePeriodFilter({
       },
       scope
     );
-    pushLedgerUrl(pathname, params, "filter");
-  }, [pathname, scope, searchParams]);
+    pushLedgerUrl(pathname, params, locale, "filter");
+  }, [locale, pathname, scope, searchParams]);
 
   return {
     periodParams,

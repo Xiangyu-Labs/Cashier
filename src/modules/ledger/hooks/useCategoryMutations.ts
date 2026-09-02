@@ -24,11 +24,7 @@ interface UseCategoryMutationsOptions {
   onMetadataGenerated?: () => void;
 }
 
-export function useCategoryMutations(
-  ledgerId: string,
-  _categories: EntryCategory[],
-  options: UseCategoryMutationsOptions = {}
-) {
+export function useCategoryMutations(ledgerId: string, options: UseCategoryMutationsOptions = {}) {
   const t = useTranslations("Settings");
   const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();

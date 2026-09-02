@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";
-import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
+import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui/SourceDocumentDetailWrapper";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { closeLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";

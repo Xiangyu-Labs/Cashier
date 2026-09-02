@@ -147,7 +147,7 @@ describe("useLedgerMutation", () => {
     }
   });
 
-  it("reports a server write failure without invalidating resources", async () => {
+  it("reports a server write failure and still invalidates resources", async () => {
     const { queryClient, wrapper } = setup();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     const onError = vi.fn();
@@ -172,6 +172,6 @@ describe("useLedgerMutation", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(toastErrorMock).toHaveBeenCalledWith("Failed");
     expect(onError).toHaveBeenCalledWith(expect.any(Error), undefined);
-    expect(invalidate).not.toHaveBeenCalled();
+    expect(invalidate).toHaveBeenCalled();
   });
 });

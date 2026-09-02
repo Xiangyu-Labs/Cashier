@@ -8,6 +8,7 @@ interface UseLedgerTabsOptions {
   initialTab?: LedgerTab;
   searchParams: URLSearchParams;
   pathname: string;
+  locale: string;
 }
 
 interface UseLedgerTabsResult {
@@ -19,6 +20,7 @@ export function useLedgerTabs({
   initialTab = "stream",
   searchParams,
   pathname,
+  locale,
 }: UseLedgerTabsOptions): UseLedgerTabsResult {
   const activeTab = useMemo(
     () => parseLedgerTab(searchParams, initialTab),
@@ -28,9 +30,9 @@ export function useLedgerTabs({
   const handleTabChange = useCallback(
     (value: string) => {
       const params = updateLedgerSearchParams(searchParams, { tab: value });
-      pushLedgerUrl(pathname, params, "tab");
+      pushLedgerUrl(pathname, params, locale, "tab");
     },
-    [searchParams, pathname]
+    [locale, pathname, searchParams]
   );
 
   return {

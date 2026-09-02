@@ -1,5 +1,4 @@
 "use client";
-import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
@@ -12,7 +11,7 @@ type UpdateVariables = {
   ledgerEntryId: string;
   data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number };
 };
-export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCategory[]) {
+export function useLedgerEntriesMutations(ledgerId: string) {
   const tCommon = useTranslations("Common");
   const updateEntry = useLedgerMutation<UpdateEntryResult, UpdateVariables>(ledgerId, {
     mutationFn: async ({ ledgerEntryId, data }) => {

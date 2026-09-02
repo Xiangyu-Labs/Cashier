@@ -9,12 +9,10 @@ import type { BatchActionResult } from "@/lib/batch-ids";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
 
 interface UseSourceDocumentEntryMutationsOptions {
-  id: string;
   ledgerId: string | undefined;
 }
 
 export function useSourceDocumentEntryMutations({
-  id: _id,
   ledgerId,
 }: UseSourceDocumentEntryMutationsOptions) {
   const tCommon = useTranslations("Common");

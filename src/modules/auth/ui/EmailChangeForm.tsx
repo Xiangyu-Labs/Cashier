@@ -10,15 +10,7 @@ import { ResendCountdown } from "./resend-countdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { CredentialChangeDialog } from "./CredentialChangeDialog";
 
 export function EmailChangeForm({
   currentEmail,
@@ -131,87 +123,19 @@ export function EmailChangeForm({
       data-tab-swipe-ignore
     >
       <span className="min-w-0 truncate text-sm text-muted-foreground">{currentEmail}</span>
-      <Dialog
+      <CredentialChangeDialog
         open={open}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen && pending) return;
           setOpen(nextOpen);
           if (!nextOpen) reset();
         }}
-      >
-        <DialogTrigger asChild>
-          <Button variant="outline">{t("changeEmailButton")}</Button>
-        </DialogTrigger>
-        <DialogContent
-          variant="detail"
-          hideCloseButton={pending}
-          onEscapeKeyDown={(event) => pending && event.preventDefault()}
-          onPointerDownOutside={(event) => pending && event.preventDefault()}
-          className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:rounded-lg"
-        >
-          <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
-            <DialogTitle>{t("changeEmailTitle")}</DialogTitle>
-            <DialogDescription>{t("emailSectionDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6">
-            <div className="grid gap-2">
-              <Label htmlFor="new-account-email">{t("newEmail")}</Label>
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
-                <Input
-                  id="new-account-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setSent(false);
-                    setCode("");
-                    setError(null);
-                  }}
-                  disabled={pending}
-                  className="h-11 min-w-0 flex-1"
-                />
-                {sent ? (
-                  <ResendCountdown
-                    canResendAt={canResendAt}
-                    disabled={pending || email.trim() === ""}
-                    onResend={send}
-                  />
-                ) : (
-                  <Button
-                    variant="outline"
-                    disabled={pending || email.trim() === ""}
-                    onClick={send}
-                  >
-                    {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    {t("sendCode")}
-                  </Button>
-                )}
-              </div>
-            </div>
-            {sent ? (
-              <div className="grid gap-2">
-                <Label htmlFor="email-verification-code">{t("verificationCode")}</Label>
-                <Input
-                  id="email-verification-code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  value={code}
-                  onChange={(event) => {
-                    setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
-                    setError(null);
-                  }}
-                  disabled={pending}
-                  className="h-11"
-                />
-              </div>
-            ) : null}
-            {error != null ? (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            ) : null}
-          </div>
-          <DialogFooter className="shrink-0 gap-2 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-4">
+        pending={pending}
+        triggerLabel={t("changeEmailButton")}
+        title={t("changeEmailTitle")}
+        description={t("emailSectionDesc")}
+        desktopWidth="lg"
+        footer={
+          <>
             <Button variant="outline" onClick={close} disabled={pending}>
               {t("cancel")}
             </Button>
@@ -221,9 +145,62 @@ export function EmailChangeForm({
                 {t("verifyEmail")}
               </Button>
             ) : null}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="grid gap-2">
+          <Label htmlFor="new-account-email">{t("newEmail")}</Label>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+            <Input
+              id="new-account-email"
+              type="email"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setSent(false);
+                setCode("");
+                setError(null);
+              }}
+              disabled={pending}
+              className="h-11 min-w-0 flex-1"
+            />
+            {sent ? (
+              <ResendCountdown
+                canResendAt={canResendAt}
+                disabled={pending || email.trim() === ""}
+                onResend={send}
+              />
+            ) : (
+              <Button variant="outline" disabled={pending || email.trim() === ""} onClick={send}>
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {t("sendCode")}
+              </Button>
+            )}
+          </div>
+        </div>
+        {sent ? (
+          <div className="grid gap-2">
+            <Label htmlFor="email-verification-code">{t("verificationCode")}</Label>
+            <Input
+              id="email-verification-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(event) => {
+                setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                setError(null);
+              }}
+              disabled={pending}
+              className="h-11"
+            />
+          </div>
+        ) : null}
+        {error != null ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+      </CredentialChangeDialog>
     </div>
   );
 }

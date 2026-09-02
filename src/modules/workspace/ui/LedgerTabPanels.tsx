@@ -85,7 +85,6 @@ export function LedgerTabPanels({
           <DeferredFeatureMessages feature="stream" locale={locale} fallback={null}>
             <LedgerEntriesTab
               ledgerId={ledgerId}
-              categories={categories.length > 0 ? categories : []}
               ledger={ledger}
               periodParams={periodParams}
               onFiltersChange={onFiltersChange}
@@ -100,7 +99,11 @@ export function LedgerTabPanels({
 
       {activeTab === "details" && (
         <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-          <DeferredFeatureMessages feature="details" locale={locale} fallback={<DetailsTabSkeleton />}>
+          <DeferredFeatureMessages
+            feature="details"
+            locale={locale}
+            fallback={<DetailsTabSkeleton />}
+          >
             <DetailsTab
               ledgerId={ledgerId}
               categories={categories.length > 0 ? categories : []}
@@ -133,7 +136,11 @@ export function LedgerTabPanels({
 
       {activeTab === "settings" && (
         <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-          <DeferredFeatureMessages feature="settings" locale={locale} fallback={<SettingsTabSkeleton />}>
+          <DeferredFeatureMessages
+            feature="settings"
+            locale={locale}
+            fallback={<SettingsTabSkeleton />}
+          >
             <SettingsTab
               ledgerId={ledgerId}
               ledger={ledger}

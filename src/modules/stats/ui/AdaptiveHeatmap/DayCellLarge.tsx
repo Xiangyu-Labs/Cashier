@@ -3,8 +3,8 @@
  */
 
 "use client";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getHeatmapColor, formatCellAmount } from "../../lib/heatmap-colors";
 import type { HeatmapLevel } from "../../types";
@@ -16,8 +16,8 @@ interface DayCellLargeProps {
   amount: string;
   level: HeatmapLevel;
   onClick?: () => void;
-  currency?: string;
-  locale?: string;
+  currency: string;
+  locale: string;
 }
 
 export function DayCellLarge({
@@ -26,52 +26,47 @@ export function DayCellLarge({
   amount,
   level,
   onClick,
-  currency = "CNY",
-  locale = "zh-CN",
+  currency,
+  locale,
 }: DayCellLargeProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const t = useTranslations("Calendar");
 
   return (
     <div className="relative min-w-0 overflow-visible">
-      <button
-        type="button"
-        aria-label={`${date}, ${compare(amount, "0") > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
-        onClick={onClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className={cn(
-          "aspect-square w-full min-w-0 overflow-hidden rounded-lg transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
-          "flex flex-col items-center justify-center gap-0.5",
-          "hover:ring-1 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        )}
-        style={{
-          backgroundColor: getHeatmapColor(level),
-          minHeight: "40px",
-        }}
-      >
-        {/* Day number */}
-        <span
-          className="max-w-full truncate px-0.5 text-xs font-normal lg:text-sm"
-          style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
-        >
-          {dayNumber}
-        </span>
-
-        {/* Amount */}
-        {compare(amount, "0") > 0 ? (
-          <span
-            className="max-w-full truncate px-0.5 text-xs font-semibold"
-            style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={`${date}, ${compare(amount, "0") > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
+            onClick={onClick}
+            className={cn(
+              "aspect-square w-full min-w-0 overflow-hidden rounded-lg transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
+              "flex flex-col items-center justify-center gap-0.5",
+              "hover:ring-1 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            )}
+            style={{
+              backgroundColor: getHeatmapColor(level),
+              minHeight: "40px",
+            }}
           >
-            {formatCellAmount(amount, currency, locale)}
-          </span>
-        ) : null}
-      </button>
+            <span
+              className="max-w-full truncate px-0.5 text-xs font-normal lg:text-sm"
+              style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
+            >
+              {dayNumber}
+            </span>
 
-      {/* Tooltip */}
-      {isHovered && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-tooltip pointer-events-none">
+            {compare(amount, "0") > 0 ? (
+              <span
+                className="max-w-full truncate px-0.5 text-xs font-semibold"
+                style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
+              >
+                {formatCellAmount(amount, currency, locale)}
+              </span>
+            ) : null}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="center">
           <div className="font-medium">{date}</div>
           {compare(amount, "0") > 0 ? (
             <div>
@@ -80,8 +75,8 @@ export function DayCellLarge({
           ) : (
             <div className="text-muted-foreground">{t("noConsumption")}</div>
           )}
-        </div>
-      )}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

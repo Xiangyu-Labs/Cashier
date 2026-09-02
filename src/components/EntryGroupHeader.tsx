@@ -1,3 +1,5 @@
+import { AmountText } from "@/modules/currency/ui/amount-text";
+
 interface EntryGroupHeaderProps {
   title: string;
   totalLabel?: string;
@@ -21,4 +23,3 @@ export function EntryGroupHeader({ title, totalLabel, subtitle }: EntryGroupHead
     </div>
   );
 }
-import { AmountText } from "@/modules/currency/ui/amount-text";

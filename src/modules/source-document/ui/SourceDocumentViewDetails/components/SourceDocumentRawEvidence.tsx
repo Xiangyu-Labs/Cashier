@@ -8,7 +8,7 @@ import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/query-keys";
-import { useCachedSourceImages } from "@/modules/source-document/hooks";
+import { useCachedSourceImages } from "@/modules/source-document/hooks/use-cached-source-images";
 import { storedFileReadUrl } from "../../../stored-file-read";
 import { SourceDocumentImageModal } from "../../SourceDocumentImageModal";
 

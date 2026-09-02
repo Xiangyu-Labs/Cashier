@@ -17,6 +17,7 @@ interface UseLedgerHistorySyncOptions {
   searchParams: URLSearchParams;
   legacyScope: LedgerFilterScope;
   ledgerId: string;
+  locale: string;
 }
 
 export function useLedgerHistorySync({
@@ -24,6 +25,7 @@ export function useLedgerHistorySync({
   searchParams,
   legacyScope,
   ledgerId,
+  locale,
 }: UseLedgerHistorySyncOptions): void {
   const blockSyncRef = useRef(false);
   const restoringRef = useRef(false);
@@ -47,9 +49,9 @@ export function useLedgerHistorySync({
     const normalized = normalizeLedgerUrlSearchParams(migrated ?? searchParams);
     const next = normalized ?? migrated;
     if (next != null && next.toString() !== searchParams.toString()) {
-      replaceLedgerUrl(pathname, next);
+      replaceLedgerUrl(pathname, next, locale);
     }
-  }, [legacyScope, pathname, searchParams]);
+  }, [legacyScope, locale, pathname, searchParams]);
 
   useEffect(() => {
     if (blockSyncRef.current) return;

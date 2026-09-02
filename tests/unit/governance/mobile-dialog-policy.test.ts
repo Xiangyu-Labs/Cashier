@@ -10,8 +10,7 @@ describe("mobile long-flow dialog policy", () => {
     "src/modules/source-document/ui/SourceDocumentEditRetryDialog.tsx",
     "src/modules/source-document/ui/SourceDocumentCandidateReviewDialog.tsx",
     "src/modules/workspace/ui/NewRecordDialog.tsx",
-    "src/modules/auth/ui/EmailChangeForm.tsx",
-    "src/modules/auth/ui/PasswordForm.tsx",
+    "src/modules/auth/ui/CredentialChangeDialog.tsx",
   ])("uses a 100dvh mobile surface in %s", (path) => {
     const source = read(path);
     expect(source).toContain("h-[100dvh]");
@@ -45,10 +44,7 @@ describe("mobile long-flow dialog policy", () => {
   it("keeps mobile close controls touch-sized and account dialogs safely scrollable", () => {
     const dialog = read("src/components/ui/dialog.tsx");
     expect(dialog).toContain("size-11");
-    for (const path of [
-      "src/modules/auth/ui/EmailChangeForm.tsx",
-      "src/modules/auth/ui/PasswordForm.tsx",
-    ]) {
+    for (const path of ["src/modules/auth/ui/CredentialChangeDialog.tsx"]) {
       const source = read(path);
       expect(source).toContain("min-h-0 flex-1");
       expect(source).toContain("overflow-y-auto");

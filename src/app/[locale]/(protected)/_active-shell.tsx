@@ -6,7 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { AppShell } from "@/modules/workspace/ui/AppShell";
 import { SwipeTabSurface } from "@/modules/workspace/ui/SwipeTabSurface";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
-import { useLedgerTabs, useTabScrollRestoration } from "@/modules/workspace/hooks";
+import { useLedgerTabs } from "@/modules/workspace/hooks/useLedgerTabs";
+import { useTabScrollRestoration } from "@/modules/workspace/hooks/useTabScrollRestoration";
 import {
   ShellControllerProvider,
   useShellController,
@@ -65,6 +66,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const { activeTab, handleTabChange } = useLedgerTabs({
     searchParams,
     pathname,
+    locale,
   });
   useTabScrollRestoration(ledgerId, activeTab);
 

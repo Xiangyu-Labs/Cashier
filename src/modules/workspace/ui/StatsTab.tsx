@@ -11,7 +11,7 @@ import {
   parseDateString,
   type DateRangeType,
 } from "@/lib/date-utils";
-import { StatsContentView } from "@/modules/stats/ui";
+import { StatsContentView } from "@/modules/stats/ui/StatsContentView";
 import { useLocale } from "next-intl";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { MAX_CHART_POINTS } from "@/modules/stats/lib/chart-points";
@@ -90,9 +90,9 @@ export function StatsTab({
         offset: update.offset ?? statsUrlState.offset,
         view: update.view ?? statsUrlState.view,
       });
-      pushLedgerUrl(pathname, params, "stats");
+      pushLedgerUrl(pathname, params, locale, "stats");
     },
-    [pathname, searchParams, statsUrlState]
+    [locale, pathname, searchParams, statsUrlState]
   );
 
   const statsDescriptor = useMemo(

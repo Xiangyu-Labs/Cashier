@@ -98,7 +98,7 @@ describe("PWA policy", () => {
     const rawEvidence = read(
       "src/modules/source-document/ui/SourceDocumentViewDetails/components/SourceDocumentRawEvidence.tsx"
     );
-    const groups = read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx");
+    const groups = read("src/modules/workspace/ui/UnifiedStreamGroups.tsx");
     const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
     expect(imageCache).toContain("CACHED_IMAGE_COUNT_LIMIT = 100");
     expect(imageCache).toContain("CACHED_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024");

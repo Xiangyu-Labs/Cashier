@@ -4,15 +4,12 @@ import { useSearchParams } from "next/navigation";
 import { useLocale, useMessages, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
-import { type PeriodParams } from "@/lib/period-utils";
 import { FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { useFeatureMessages } from "@/i18n/use-feature-messages";
-import {
-  useDrilldownNavigation,
-  useLedgerHistorySync,
-  useLedgerTabs,
-  usePeriodFilter,
-} from "../hooks";
+import { useDrilldownNavigation } from "../hooks/useDrilldownNavigation";
+import { useLedgerHistorySync } from "../hooks/useLedgerHistorySync";
+import { useLedgerTabs } from "../hooks/useLedgerTabs";
+import { usePeriodFilter } from "../hooks/usePeriodFilter";
 import { useActiveTabQueryState } from "../hooks/useActiveTabQueryState";
 import { useNewRecordDialogState } from "../hooks/useNewRecordDialogState";
 import { useLedgerPageEnvironment } from "../hooks/useLedgerPageEnvironment";
@@ -40,7 +37,6 @@ interface LedgerPageClientProps {
   ledgerId: string;
   initialLedger?: LedgerDto;
   initialTab: LedgerTab;
-  initialPeriod: PeriodParams;
   ledgerToday?: string;
   initialCategories?: EntryCategoryWithCount[];
   /** Server-derived user email for the Settings tab (avoids useSession). */
@@ -68,7 +64,6 @@ export function LedgerPageClient({
   ledgerId,
   initialLedger,
   initialTab,
-  initialPeriod,
   ledgerToday,
   initialCategories,
   userEmail,
@@ -86,11 +81,13 @@ export function LedgerPageClient({
     initialTab,
     searchParams,
     pathname,
+    locale,
   });
   useLedgerHistorySync({
     pathname,
     searchParams,
     ledgerId,
+    locale,
     legacyScope: activeTab === "details" ? "details" : "stream",
   });
 
@@ -146,7 +143,7 @@ export function LedgerPageClient({
   const { periodParams, filters, filterParams, handleFiltersChange } = usePeriodFilter({
     pathname,
     searchParams,
-    initialPeriod,
+    locale,
     scope: activeTab === "details" ? "details" : "stream",
     ...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {}),
   });
@@ -163,6 +160,7 @@ export function LedgerPageClient({
     searchParams,
     pathname,
     ledgerId,
+    locale,
   });
 
   if (ledger == null) {

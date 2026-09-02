@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
-import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/LedgerEntriesCompletedGroups";
+import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/UnifiedStreamGroups";
 
 const cardProps = vi.fn();
-vi.mock("@/modules/source-document/ui", () => ({
+vi.mock("@/modules/source-document/ui/SourceDocumentCard", () => ({
   SourceDocumentCard: (props: unknown) => {
     cardProps(props);
     return <div>Source document</div>;

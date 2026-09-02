@@ -11,6 +11,7 @@ type SearchParamsLike = Pick<URLSearchParams, "toString">;
 export function pushLedgerUrl(
   pathname: string,
   searchParams: SearchParamsLike | URLSearchParams,
+  locale: string,
   kind: LedgerNavigationKind
 ): string {
   const leavingDetail =
@@ -20,16 +21,17 @@ export function pushLedgerUrl(
     kind === "detail"
       ? searchParams
       : setLedgerDetailSearchParams(new URLSearchParams(searchParams.toString()), null);
-  const url = buildLedgerUrl(pathname, nextSearchParams);
+  const url = buildLedgerUrl(pathname, nextSearchParams, locale);
   writeLedgerHistory(leavingDetail ? "replace" : "push", url, kind);
   return url;
 }
 
 export function replaceLedgerUrl(
   pathname: string,
-  searchParams: SearchParamsLike | URLSearchParams
+  searchParams: SearchParamsLike | URLSearchParams,
+  locale: string
 ): string {
-  const url = buildLedgerUrl(pathname, searchParams);
+  const url = buildLedgerUrl(pathname, searchParams, locale);
   writeLedgerHistory("replace", url, "filter");
   return url;
 }

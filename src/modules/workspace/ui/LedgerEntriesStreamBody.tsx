@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
-import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
+import { LedgerEntriesUnifiedGroups } from "./UnifiedStreamGroups";
 
 interface LedgerEntriesStreamBodyProps {
   isLoading: boolean;
@@ -15,7 +15,10 @@ interface LedgerEntriesStreamBodyProps {
   mainCurrency: string;
   filters: EntryFilters;
   onViewLedgerEntry: (entry: LedgerEntry) => void;
-  onViewSourceDetail: (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => void;
+  onViewSourceDetail: (group: {
+    sourceDocument: SourceDocument;
+    ledgerEntries: LedgerEntry[];
+  }) => void;
   onEditRetry: (doc: SourceDocument) => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;

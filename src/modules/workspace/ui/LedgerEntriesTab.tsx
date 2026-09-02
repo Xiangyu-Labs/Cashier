@@ -3,7 +3,6 @@ import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type PeriodParams } from "@/lib/period-utils";
-import type { EntryCategory } from "@/modules/ledger/contracts";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
@@ -21,7 +20,6 @@ import { previewSourceDocumentDateImpactAction } from "@/modules/workspace/serve
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
-  categories: EntryCategory[];
   ledger?: Ledger;
   periodParams: PeriodParams;
   onFiltersChange: (filters: EntryFilters) => void;
@@ -33,7 +31,6 @@ interface LedgerEntriesTabProps {
 
 export function LedgerEntriesTab({
   ledgerId,
-  categories,
   ledger,
   periodParams,
   onFiltersChange,
@@ -67,7 +64,7 @@ export function LedgerEntriesTab({
     closeRetrySourceDocument,
   } = useLedgerEntriesTabState();
 
-  const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
+  const { deleteEntry } = useLedgerEntriesMutations(ledgerId);
 
   const streamData = useLedgerEntriesStreamData({
     ledgerId,
@@ -184,7 +181,9 @@ export function LedgerEntriesTab({
         periodParams={periodParams}
         {...(!streamData.hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
         mainCurrency={mainCurrency}
-        {...(streamData.filteredTotal === undefined ? {} : { filteredTotal: streamData.filteredTotal })}
+        {...(streamData.filteredTotal === undefined
+          ? {}
+          : { filteredTotal: streamData.filteredTotal })}
         {...(timeZone != null ? { timeZone } : {})}
       />
       {streamData.streamTotalData?.unconvertedCount != null &&

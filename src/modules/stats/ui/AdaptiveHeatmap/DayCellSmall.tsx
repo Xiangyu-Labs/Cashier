@@ -17,8 +17,8 @@ interface DayCellSmallProps {
   count: number;
   level: HeatmapLevel;
   onClick?: () => void;
-  currency?: string;
-  locale?: string;
+  currency: string;
+  locale: string;
 }
 
 export function DayCellSmall({
@@ -27,8 +27,8 @@ export function DayCellSmall({
   count,
   level,
   onClick,
-  currency = "CNY",
-  locale = "zh-CN",
+  currency,
+  locale,
 }: DayCellSmallProps) {
   const t = useTranslations("Calendar");
 

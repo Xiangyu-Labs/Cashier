@@ -246,7 +246,6 @@ describe("protected home streaming boundary", () => {
       ledgerId: "ledger-1",
       ledgerDto,
       initialTab: "stream",
-      periodParams: { period: "thisMonth" },
       advancedFilters: {
         categoryId: null,
         currency: null,
@@ -272,7 +271,6 @@ describe("protected home streaming boundary", () => {
       ledgerId: "ledger-1",
       ledgerDto,
       initialTab: "stream",
-      periodParams: { period: "thisMonth" },
       advancedFilters: {
         categoryId: null,
         currency: null,

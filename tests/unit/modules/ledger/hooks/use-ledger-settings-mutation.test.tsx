@@ -79,7 +79,7 @@ describe("useLedgerSettingsMutation", () => {
     });
   });
 
-  it("localizes action failures and does not invalidate queries", async () => {
+  it("localizes action failures and invalidates queries", async () => {
     updateLedgerSettingsAction.mockResolvedValueOnce({ ok: false, code: "rates_unavailable" });
     const { result, invalidate } = setup();
 
@@ -90,7 +90,7 @@ describe("useLedgerSettingsMutation", () => {
     });
 
     expect(toastError).toHaveBeenCalledWith("缺少部分交易日的历史汇率，主货币未更改");
-    expect(invalidate).not.toHaveBeenCalled();
+    expect(invalidate).toHaveBeenCalled();
   });
 
   it("includes the specific missing dates when the server reports them", async () => {

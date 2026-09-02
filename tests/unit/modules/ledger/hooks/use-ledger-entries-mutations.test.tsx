@@ -53,7 +53,7 @@ describe("useLedgerEntriesMutations", () => {
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
     updateLedgerEntryActionMock.mockResolvedValueOnce({ id: "entry-1" });
-    const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1", []), { wrapper });
+    const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1"), { wrapper });
 
     let mutation!: Promise<unknown>;
     act(() => {
@@ -77,7 +77,7 @@ describe("useLedgerEntriesMutations", () => {
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
     deleteLedgerEntryActionMock.mockResolvedValueOnce({ sourceDocumentDeleted: false });
-    const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1", []), { wrapper });
+    const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1"), { wrapper });
 
     let mutation!: Promise<unknown>;
     act(() => {

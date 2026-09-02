@@ -3,11 +3,9 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useCallback } from "react";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import { SourceDocumentDuplicateReviewDialog } from "./SourceDocumentDuplicateReviewDialog";
-import {
-  useSourceDocumentDetailData,
-  useSourceDocumentDetailMutations,
-  useSourceDocumentRecoveryMutations,
-} from "@/modules/source-document/hooks";
+import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
+import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
+import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
 interface SourceDocumentDetailWrapperProps {

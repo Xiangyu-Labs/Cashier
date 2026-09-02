@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import { toast } from "sonner";
 import type { useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type {
@@ -16,6 +15,7 @@ import type { PendingChanges } from "./usePendingChanges";
 import type { SourceDocumentDetailState } from "./useSourceDocumentDetailState";
 import { useSourceDocumentBatchActions } from "./useSourceDocumentBatchActions";
 import { useSourceDocumentEntryActions } from "./useSourceDocumentEntryActions";
+import { useSourceDocumentDetailLifecycle } from "./useSourceDocumentDetailLifecycle";
 
 interface UseSourceDocumentDetailActionsOptions {
   ledgerId: string;
@@ -76,23 +76,15 @@ export function useSourceDocumentDetailActions({
   const {
     busy,
     interactionDisabled,
-    hasPendingChanges,
     hasRevisionConflict,
-    draftRevisionIdRef,
-    saveOperationIdRef,
-    pendingChanges,
-    pendingChangesCount,
     discardAllChanges,
     selectedIds,
     isSelectionMode,
     clearSelection,
     retainSelection,
     setSelectionMode,
-    unsavedGuard,
     setIsSaving,
     setIsDeleting,
-    setIsReloading,
-    setReloadError,
     setIsEditMode,
     setIsSplitting,
     setShowSplitDialog,
@@ -102,116 +94,38 @@ export function useSourceDocumentDetailActions({
     setShowBatchDeleteConfirm,
   } = state;
 
-  const handleClose = useCallback(() => {
-    if (busy) return;
-    if (hasPendingChanges) {
-      unsavedGuard.requestLeave(null);
-    } else {
-      onClose();
-    }
-  }, [busy, hasPendingChanges, onClose, unsavedGuard]);
-
-  const handleSaveAll = useCallback(async (): Promise<boolean> => {
-    if (busy) return false;
-    const expectedRevisionId = draftRevisionIdRef.current ?? sourceDocument?.activeRevisionId;
-    if (
-      expectedRevisionId == null ||
-      expectedRevisionId === "" ||
-      onSaveAll == null ||
-      hasRevisionConflict
-    ) {
-      toast.error(t("saveAllFailed"));
-      return false;
-    }
-    setIsSaving(true);
-    try {
-      saveOperationIdRef.current ??= crypto.randomUUID();
-      await onSaveAll({
-        expectedRevisionId,
-        operationId: saveOperationIdRef.current,
-        changes: pendingChanges,
-      });
-      saveOperationIdRef.current = null;
-      discardAllChanges();
-      toast.success(t("saveAllSuccess", { count: pendingChangesCount }));
-      return true;
-    } catch {
-      toast.error(t("saveAllFailed"));
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    busy,
-    draftRevisionIdRef,
-    sourceDocument?.activeRevisionId,
-    hasRevisionConflict,
-    saveOperationIdRef,
-    pendingChanges,
+  const {
+    handleClose,
+    handleSaveAll,
+    handleEnterEditMode,
+    handleCancelEditMode,
+    handleEditSave,
+    handleSaveAllAndClose,
+    handleDiscardAndClose,
+    handleReload,
+  } = useSourceDocumentDetailLifecycle({
+    sourceDocument,
+    state,
+    onClose,
+    onReload,
     onSaveAll,
-    pendingChangesCount,
     t,
-    discardAllChanges,
-    setIsSaving,
-  ]);
+  });
 
-  const handleEnterEditMode = useCallback(() => {
-    if (interactionDisabled || isSelectionMode) return;
-    setIsEditMode(true);
-  }, [interactionDisabled, isSelectionMode, setIsEditMode]);
+  const { hasPendingChanges } = state;
 
-  const handleCancelEditMode = useCallback(() => {
-    if (busy) return;
-    discardAllChanges();
-    setIsEditMode(false);
-  }, [busy, discardAllChanges, setIsEditMode]);
-
-  const handleEditSave = useCallback(async (): Promise<boolean> => {
-    const saved = await handleSaveAll();
-    if (saved) setIsEditMode(false);
-    return saved;
-  }, [handleSaveAll, setIsEditMode]);
-
-  const handleSaveAllAndClose = useCallback(async () => {
-    const saved = await handleSaveAll();
-    if (!saved) return false;
-    const continueNavigation = unsavedGuard.resolveLeave();
-    if (continueNavigation != null) continueNavigation();
-    else onClose();
-    return true;
-  }, [handleSaveAll, onClose, unsavedGuard]);
-
-  const handleDiscardAndClose = useCallback(() => {
-    discardAllChanges();
-    const continueNavigation = unsavedGuard.resolveLeave();
-    if (continueNavigation != null) continueNavigation();
-    else onClose();
-  }, [discardAllChanges, onClose, unsavedGuard]);
-
-  const handleReload = useCallback(async () => {
-    if (onReload == null || state.isReloading) return false;
-    setIsReloading(true);
-    setReloadError(false);
-    try {
-      await onReload();
-      discardAllChanges();
-      clearSelection();
-      return true;
-    } catch {
-      setReloadError(true);
-      return false;
-    } finally {
-      setIsReloading(false);
-    }
-  }, [clearSelection, discardAllChanges, onReload, setIsReloading, setReloadError, state.isReloading]);
-
-  const { requestAction, confirmOpen, setConfirmOpen, confirmSaveAndContinue, confirmDiscardAndContinue } =
-    useSaveAndContinueGate({
-      disabled: interactionDisabled || hasRevisionConflict,
-      hasPendingChanges,
-      onSave: handleSaveAll,
-      onDiscard: discardAllChanges,
-    });
+  const {
+    requestAction,
+    confirmOpen,
+    setConfirmOpen,
+    confirmSaveAndContinue,
+    confirmDiscardAndContinue,
+  } = useSaveAndContinueGate({
+    disabled: interactionDisabled || hasRevisionConflict,
+    hasPendingChanges,
+    onSave: handleSaveAll,
+    onDiscard: discardAllChanges,
+  });
   const saveAndContinueGate = {
     confirmOpen,
     setConfirmOpen,

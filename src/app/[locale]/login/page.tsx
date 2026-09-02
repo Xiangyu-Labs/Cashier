@@ -1,4 +1,4 @@
-import { AuthLoginPage } from "@/modules/auth/ui";
+import { AuthLoginPage } from "@/modules/auth/ui/login-page";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { isDevAuthBypassEnabled } from "@/modules/auth/dev-auth";
 

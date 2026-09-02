@@ -17,7 +17,7 @@ describe("usePeriodFilter", () => {
       usePeriodFilter({
         pathname: "/ledger/test",
         searchParams,
-        initialPeriod: { period: "thisMonth" },
+        locale: "en",
       })
     );
 
@@ -30,7 +30,7 @@ describe("usePeriodFilter", () => {
       usePeriodFilter({
         pathname: "/ledger/test",
         searchParams,
-        initialPeriod: { period: "thisMonth" },
+        locale: "en",
       })
     );
 
@@ -43,7 +43,7 @@ describe("usePeriodFilter", () => {
       usePeriodFilter({
         pathname: "/ledger/test",
         searchParams,
-        initialPeriod: { period: "thisMonth" },
+        locale: "en",
       })
     );
 
@@ -58,7 +58,7 @@ describe("usePeriodFilter", () => {
         usePeriodFilter({
           pathname: "/ledger/test",
           searchParams,
-          initialPeriod: { period: "thisMonth" },
+          locale: "en",
         })
       );
 
@@ -92,7 +92,7 @@ describe("usePeriodFilter", () => {
         usePeriodFilter({
           pathname: "/ledger/test",
           searchParams,
-          initialPeriod: { period: "thisMonth" },
+          locale: "en",
         })
       );
 
@@ -120,7 +120,7 @@ describe("usePeriodFilter", () => {
         usePeriodFilter({
           pathname: "/ledger/test",
           searchParams,
-          initialPeriod: { period: "thisMonth" },
+          locale: "en",
         })
       );
 
