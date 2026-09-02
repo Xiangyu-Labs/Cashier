@@ -1,11 +1,8 @@
 export {
   ACTIVE_SOURCE_DOCUMENT_STATUSES,
   canonicalizeSourceDocumentStatuses,
-  SOURCE_DOCUMENT_STATUSES,
-  SOURCE_DOCUMENT_TYPES,
   SourceDocumentStatus,
   SourceDocumentType,
-  type ActiveSourceDocumentStatusType,
   type SourceDocumentStatusType,
   type SourceDocumentTypeValue,
 } from "@/lib/source-document-values";

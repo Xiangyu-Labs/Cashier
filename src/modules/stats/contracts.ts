@@ -1,6 +1,6 @@
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
-export type EnhancedCategoryStatDto = {
+type EnhancedCategoryStatDto = {
   id: string | null;
   name: string;
   icon: string | null;

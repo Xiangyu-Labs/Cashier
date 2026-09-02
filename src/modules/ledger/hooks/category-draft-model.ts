@@ -10,7 +10,7 @@ export interface CategoryDraft {
   entryCount?: number;
 }
 
-export interface EditDraft {
+interface EditDraft {
   key: string;
   name: string;
   description: string;

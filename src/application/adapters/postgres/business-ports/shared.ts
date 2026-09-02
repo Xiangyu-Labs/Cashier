@@ -9,6 +9,7 @@ import {
   sourceDocuments,
 } from "@/persistence";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import type { LedgerSettingsContract } from "@/application/contracts";
 
 /** lastUsedAt updates are throttled to once per five minutes per credential. */
 export const SERVICE_CREDENTIAL_LAST_USED_STALE_MS = 5 * 60 * 1000;
@@ -29,9 +30,7 @@ export function mapLedgerSettings(row: typeof ledgers.$inferSelect) {
   };
 }
 
-export function settingsColumns(
-  settings: Partial<import("@/application/contracts").LedgerSettingsContract>
-) {
+export function settingsColumns(settings: Partial<LedgerSettingsContract>) {
   return {
     ...(settings.aiLanguage === undefined ? {} : { aiLanguage: settings.aiLanguage }),
     ...(settings.currencies === undefined ? {} : { preferredCurrencies: settings.currencies }),

@@ -1,34 +1,14 @@
 import { compare } from "@/lib/money/decimal";
 import type {
   EntryCategoryDto,
-  LedgerDto,
   LedgerEntryEmbeddedViewDto,
   LedgerEntryDto,
-  ServiceCredentialDto,
   SourceDocumentReferenceDto,
 } from "@/modules/ledger/contracts";
 
 type DateFields = { createdAt: Date; updatedAt: Date; deletedAt: Date | null };
-type LedgerRow = {
-  id: string;
-  userId: string;
-  aiLanguage: string;
-  preferredCurrencies: string[];
-  mainCurrency: string;
-  collapseEntriesDefault: boolean;
-  aiCustomPrompt: string;
-  duplicateDetectionEnabled: boolean;
-  timeZone: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
 type EntryCategoryRow = Omit<EntryCategoryDto, "createdAt" | "updatedAt" | "deletedAt"> &
   DateFields;
-type ServiceCredentialRow = Omit<ServiceCredentialDto, "createdAt" | "lastUsedAt" | "deletedAt"> & {
-  createdAt: Date;
-  lastUsedAt: Date | null;
-  deletedAt: Date | null;
-};
 type SourceDocumentRow = Pick<
   SourceDocumentReferenceDto,
   "id" | "ledgerId" | "title" | "type" | "entryDate"
@@ -51,25 +31,7 @@ function mapExchangeRate(value: string | null): string | null {
   return value != null && compare(value, "1") === 0 ? "1" : value;
 }
 
-export function mapLedgerDto(ledger: LedgerRow): LedgerDto {
-  return {
-    id: ledger.id,
-    userId: ledger.userId,
-    settings: {
-      aiLanguage: ledger.aiLanguage,
-      currencies: ledger.preferredCurrencies,
-      mainCurrency: ledger.mainCurrency,
-      collapseEntriesDefault: ledger.collapseEntriesDefault,
-      aiCustomPrompt: ledger.aiCustomPrompt,
-      duplicateDetectionEnabled: ledger.duplicateDetectionEnabled,
-      timeZone: ledger.timeZone,
-    },
-    createdAt: toIso(ledger.createdAt)!,
-    updatedAt: toIso(ledger.updatedAt)!,
-  };
-}
-
-export function mapEntryCategoryDto(category: EntryCategoryRow): EntryCategoryDto {
+function mapEntryCategoryDto(category: EntryCategoryRow): EntryCategoryDto {
   return {
     id: category.id,
     ledgerId: category.ledgerId,
@@ -83,20 +45,7 @@ export function mapEntryCategoryDto(category: EntryCategoryRow): EntryCategoryDt
   };
 }
 
-export function mapServiceCredentialDto(credential: ServiceCredentialRow): ServiceCredentialDto {
-  return {
-    id: credential.id,
-    tokenPrefix: credential.tokenPrefix ?? "",
-    tokenSuffix: credential.tokenSuffix ?? "",
-    ledgerId: credential.ledgerId,
-    name: credential.name,
-    createdAt: toIso(credential.createdAt)!,
-    lastUsedAt: toIso(credential.lastUsedAt),
-    deletedAt: toIso(credential.deletedAt),
-  };
-}
-
-export function mapSourceDocumentReferenceDto(
+function mapSourceDocumentReferenceDto(
   doc: Pick<
     SourceDocumentRow,
     | "id"

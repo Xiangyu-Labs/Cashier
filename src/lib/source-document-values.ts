@@ -1,4 +1,4 @@
-export const SOURCE_DOCUMENT_STATUSES = [
+const SOURCE_DOCUMENT_STATUSES = [
   "processing",
   "completed",
   "anomaly",
@@ -40,7 +40,7 @@ export function canonicalizeSourceDocumentStatuses(
   return [...new Set(statuses)].sort();
 }
 
-export const SOURCE_DOCUMENT_TYPES = ["ai_parsed", "manual"] as const;
+const SOURCE_DOCUMENT_TYPES = ["ai_parsed", "manual"] as const;
 
 export const SourceDocumentType = {
   AiParsed: SOURCE_DOCUMENT_TYPES[0],

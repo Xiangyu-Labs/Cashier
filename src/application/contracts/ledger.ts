@@ -20,9 +20,6 @@ export interface LedgerPort {
     userId: string
   ): Promise<"deleted" | "already_deleted" | "forbidden" | "not_found">;
 }
-export interface StatsPort {
-  getSummary(ledgerId: LedgerId): Promise<unknown>;
-}
 export interface CategoryPort {
   list(ledgerId: LedgerId): Promise<readonly CategoryContract[]>;
   get(ledgerId: LedgerId, categoryId: string): Promise<CategoryContract | null>;
@@ -78,14 +75,14 @@ export interface SettingsPort {
   ): Promise<{ currentMainCurrency: string; dates: string[] } | null>;
 }
 
-export interface CategoryMutationContract {
+interface CategoryMutationContract {
   name: string;
   description?: string | null;
   icon?: string | null;
   sortOrder?: number;
 }
 
-export interface CategoryTargetContract {
+interface CategoryTargetContract {
   id?: string;
   clientId?: string;
   name: string;
@@ -94,7 +91,7 @@ export interface CategoryTargetContract {
   sortOrder: number;
 }
 
-export interface CategoryContract {
+interface CategoryContract {
   id: string;
   ledgerId: LedgerId;
   name: string;
@@ -105,7 +102,7 @@ export interface CategoryContract {
   updatedAt: string;
 }
 
-export interface CategoryWithCountContract extends CategoryContract {
+interface CategoryWithCountContract extends CategoryContract {
   entryCount: number;
 }
 
@@ -119,7 +116,7 @@ export interface LedgerSettingsContract {
   timeZone?: string | null;
 }
 
-export interface LedgerContract {
+interface LedgerContract {
   id: LedgerId;
   userId: string;
   settings: LedgerSettingsContract;

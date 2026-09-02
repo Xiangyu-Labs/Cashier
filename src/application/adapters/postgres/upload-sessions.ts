@@ -4,7 +4,7 @@ import { AppError, NotFoundError } from "@/lib/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { ledgers, uploadSessionFiles, uploadSessions } from "@/persistence";
 
-export interface CreateUploadSessionInput {
+interface CreateUploadSessionInput {
   id: string;
   ledgerId: string;
   finalizationTokenHash: string;

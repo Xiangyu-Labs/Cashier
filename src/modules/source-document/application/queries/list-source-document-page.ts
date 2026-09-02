@@ -33,7 +33,7 @@ export interface ListSourceDocumentsParams {
   includeFiles?: boolean;
 }
 
-export async function listEntriesBySourceDocumentIds(
+async function listEntriesBySourceDocumentIds(
   ledgerId: string,
   sourceDocumentIds: string[],
   ports: SourceDocumentQueryPorts

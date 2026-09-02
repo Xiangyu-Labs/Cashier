@@ -38,13 +38,13 @@ export interface AIGenerateOptions {
 /**
  * AI message content part
  */
-export type AIMessageContentPart =
+type AIMessageContentPart =
   { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 
 /**
  * AI message
  */
-export interface AIMessage {
+interface AIMessage {
   role: "user" | "assistant";
   content: string | AIMessageContentPart[];
 }

@@ -16,7 +16,7 @@ export interface LedgerQuery extends LedgerEntryFilterParams {
   statuses?: SourceDocumentStatusType[];
 }
 
-export interface DetailsInitialQueryState {
+interface DetailsInitialQueryState {
   startDateStr: string | null;
   endDateStr: string | null;
   filterKey: string | null;
@@ -27,7 +27,7 @@ function nonBlank(value: string | null | undefined): string | null {
   return trimmed == null || trimmed === "" ? null : trimmed;
 }
 
-export function normalizeLedgerQuery(query: LedgerQuery): LedgerQuery {
+function normalizeLedgerQuery(query: LedgerQuery): LedgerQuery {
   const statuses = canonicalizeSourceDocumentStatuses(query.statuses);
   return {
     ...(nonBlank(query.startDate) != null ? { startDate: nonBlank(query.startDate) } : {}),

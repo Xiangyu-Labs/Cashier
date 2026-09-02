@@ -149,18 +149,3 @@ export async function executeSingleProcessingIntent(
 
   return true;
 }
-
-/**
- * Fires revision processing for the given intent asynchronously.
- *
- * Note: previously this dispatched via the legacy drain-loop; it now delegates
- * to executeSingleProcessingIntent (no unrelated row draining).
- */
-export function triggerRevisionProcessingIntent(intent: ProcessingIntentContract): void {
-  void executeSingleProcessingIntent(intent).catch((error: unknown) => {
-    logger.error(
-      { error, processingIntentId: intent.id },
-      "Failed to execute single processing intent"
-    );
-  });
-}

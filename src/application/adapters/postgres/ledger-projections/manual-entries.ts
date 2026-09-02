@@ -188,7 +188,7 @@ export async function replaceManualProjection(
   }
 }
 
-export async function nextRevisionNumber(
+async function nextRevisionNumber(
   tx: PostgresTransaction,
   sourceDocumentId: string
 ): Promise<number> {

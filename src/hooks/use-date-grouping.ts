@@ -3,7 +3,7 @@ import { useMemo, useCallback } from "react";
 import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import { add as addDecimal } from "@/lib/money/decimal";
 
-export interface DateGroup<T> {
+interface DateGroup<T> {
   title: string;
   timestamp: number;
   items: T[];

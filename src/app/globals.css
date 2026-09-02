@@ -1,4 +1,4 @@
-/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: docs/architecture/design-system.md · designed-as-app */
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design rules: docs/architecture/coding-patterns.md */
 @import "./design-tokens.css";
 @import "tailwindcss";
 @import "tw-animate-css";

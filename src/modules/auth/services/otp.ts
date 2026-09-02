@@ -2,8 +2,6 @@ import crypto from "crypto";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { OTP_LENGTH } from "../constants";
 
-export { OTP_LENGTH };
-
 const DEFAULT_OTP_EXPIRES_SECONDS = 300;
 const DEFAULT_LOCKOUT_MINUTES = 15;
 const DEFAULT_MAX_ATTEMPTS = 5;

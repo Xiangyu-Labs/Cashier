@@ -7,7 +7,6 @@ import {
 export {
   buildDetailsFilterKey,
   getDetailsInitialQueryState,
-  type DetailsInitialQueryState,
   type LedgerAdvancedFilters,
 } from "@/modules/ledger/ledger-query";
 

@@ -1,8 +1,6 @@
 "use server";
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
-import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
-import { getSourceDocumentCountsQuery } from "@/modules/source-document/application/queries/get-source-document-counts";
 import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
@@ -10,8 +8,6 @@ import { listStreamPage } from "@/modules/source-document/application/queries/li
 import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
 import {
   PendingSourceDocumentsResponseDto,
-  SourceDocumentAttentionDto,
-  SourceDocumentCountsDto,
   SourceDocumentFullDto,
   SourceDocumentPageDto,
   StreamPage,
@@ -57,29 +53,6 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
       limit: parsed.data.limit,
       ...(parsed.data.cursor != null ? { cursor: parsed.data.cursor } : {}),
     });
-  }
-);
-
-/**
- * Get attention source documents (processing, candidate_pending, anomaly, failed).
- * Bounded independently; returns items + total count.
- */
-export const getSourceDocumentAttentionAction = withLedgerAccess(
-  async (ledgerId: string): Promise<SourceDocumentAttentionDto> => {
-    // Schedule processing recovery alongside attention reads
-    scheduleProcessingRecoveryAfter(ledgerId);
-    return getSourceDocumentAttentionQuery(ledgerId, queryPorts.documents);
-  }
-);
-
-/**
- * Get lightweight processing and attention counts for the header.
- */
-export const getSourceDocumentCountsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<SourceDocumentCountsDto> => {
-    // Schedule processing recovery alongside count reads
-    scheduleProcessingRecoveryAfter(ledgerId);
-    return getSourceDocumentCountsQuery(ledgerId, queryPorts.documents);
   }
 );
 

@@ -43,7 +43,7 @@ export class OTPRateLimitedSignInError extends AuthSignInError {
   }
 }
 
-export class OTPRateLimitUnavailableSignInError extends AuthSignInError {
+class OTPRateLimitUnavailableSignInError extends AuthSignInError {
   constructor() {
     super(AUTH_ERROR_CODES.AUTH_RATE_LIMIT_UNAVAILABLE);
   }

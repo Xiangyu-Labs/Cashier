@@ -32,7 +32,7 @@ function normalizedSearch(search: StreamFilterPolicy["search"]): string | undefi
   return normalizeSearchTerm(search);
 }
 
-export function hasStreamEntryFilters(filters: StreamFilterPolicy): boolean {
+function hasStreamEntryFilters(filters: StreamFilterPolicy): boolean {
   return (
     filters.minAmount != null ||
     filters.maxAmount != null ||
@@ -44,7 +44,7 @@ export function hasStreamEntryFilters(filters: StreamFilterPolicy): boolean {
  * SQL baseConditions() applies amount and search predicates to one EXISTS
  * subquery. Keep the same all-predicates-on-one-entry semantics on the client.
  */
-export function matchesStreamEntry(
+function matchesStreamEntry(
   entry: NonNullable<SourceDocumentListItemDto["ledgerEntries"]>[number],
   filters: Pick<StreamFilterPolicy, "minAmount" | "maxAmount" | "search">
 ): boolean {

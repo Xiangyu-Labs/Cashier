@@ -19,30 +19,10 @@ export interface ParsedLedgerEntry {
   isAdjustment?: boolean; // true for order_adjustments rows (discounts, fees, etc.)
 }
 
-export interface ProcessingResult {
-  ledgerEntries: ParsedLedgerEntry[];
-  isValid?: boolean;
-  title?: string;
-  rawResponse: string; // AI 原始返回，用于调试
-  usage?: { promptTokens: number; completionTokens: number };
-}
-
 export interface CategoryInfo {
   id: string;
   name: string;
   description: string | null;
-}
-
-export interface ProcessorContext {
-  categories: CategoryInfo[];
-
-  aiLanguage?: string;
-  preferredCurrencies?: string[];
-  aiCustomPrompt?: string;
-}
-
-export interface SourceDocumentProcessor {
-  process(input: SourceDocumentInput, context: ProcessorContext): Promise<ProcessingResult>;
 }
 
 export type SourceType = "text" | "image" | "mixed";

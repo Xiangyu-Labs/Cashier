@@ -25,7 +25,7 @@ export interface S3ObjectMetadata {
   metadata: Readonly<Record<string, string>>;
 }
 
-export interface S3ListedObject {
+interface S3ListedObject {
   key: string;
   byteSize: number;
   lastModified: Date | null;
@@ -59,7 +59,7 @@ function storageError(message: string, code: string, key: string, cause?: unknow
   });
 }
 
-export function createS3ClientConfig(): S3ClientConfig {
+function createS3ClientConfig(): S3ClientConfig {
   return {
     region: runtimeEnv.s3Region,
     endpoint: runtimeEnv.s3Endpoint,

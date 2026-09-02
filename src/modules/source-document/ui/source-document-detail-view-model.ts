@@ -3,7 +3,7 @@ import { roundToCurrency } from "@/lib/money/currency-precision";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
 
-export interface SourceDocumentDetailPendingChanges {
+interface SourceDocumentDetailPendingChanges {
   entries: Record<string, Partial<EntryEditData>>;
 }
 

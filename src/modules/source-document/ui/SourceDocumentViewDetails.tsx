@@ -10,12 +10,6 @@ import { SourceDocumentEntriesList } from "./SourceDocumentViewDetails/component
 import { SourceDocumentRawEvidence } from "./SourceDocumentViewDetails/components/SourceDocumentRawEvidence";
 import type { PendingChanges, SourceDocPendingChanges } from "./source-document-view-details-types";
 
-export type {
-  SourceDocPendingChanges,
-  EntriesPendingChanges,
-  PendingChanges,
-} from "./source-document-view-details-types";
-
 interface SourceDocumentViewDetailsProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
   // These entries are always the embedded, sourceDocument-less view (see

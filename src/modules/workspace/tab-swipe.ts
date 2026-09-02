@@ -1,8 +1,8 @@
 import type { LedgerTab } from "@/lib/ledger-tabs";
 
 export const LEDGER_TAB_ORDER: LedgerTab[] = ["stream", "details", "stats", "settings"];
-export const SWIPE_DISTANCE_THRESHOLD = 72;
-export const SWIPE_VELOCITY_THRESHOLD = 0.5;
+const SWIPE_DISTANCE_THRESHOLD = 72;
+const SWIPE_VELOCITY_THRESHOLD = 0.5;
 
 export function resolveSwipeDestination(
   tab: LedgerTab,

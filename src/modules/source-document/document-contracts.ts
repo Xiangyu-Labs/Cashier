@@ -12,7 +12,7 @@ export interface SourceDocumentStoredFileDto {
   originalFilename: string | null;
 }
 
-export type SourceDocumentEntryCategoryDto = {
+type SourceDocumentEntryCategoryDto = {
   id: string;
   ledgerId: string;
   name: string;
@@ -219,11 +219,6 @@ export interface SourceDocumentAttentionDto {
 export interface SourceDocumentCountsDto {
   processingCount: number;
   attentionCount: number;
-}
-
-export interface SourceDocumentCompletedPageDto {
-  items: SourceDocumentListItemDto[];
-  nextCursor: string | null;
 }
 
 export interface SourceDocumentFullDto {

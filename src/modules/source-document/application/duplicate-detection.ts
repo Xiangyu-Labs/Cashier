@@ -3,10 +3,7 @@ import { add as decimalAdd, normalize as normalizeDecimal } from "@/lib/money/de
 import type { AiContextContract, AiMessageContentPart } from "./parse-source-document/contracts";
 import { normalizeDuplicateReason } from "../duplicate-reason";
 
-export {
-  normalizeDuplicateReason,
-  type DuplicateReasonNormalizationInput,
-} from "../duplicate-reason";
+export { normalizeDuplicateReason } from "../duplicate-reason";
 
 /**
  * Best-effort duplicate detection for first-parsed AI source documents.
@@ -23,7 +20,7 @@ const MAX_IMAGES_PER_DOCUMENT = 2;
 const TEXT_SHORTLIST_TIMEOUT_MS = 20_000;
 const VISUAL_TIMEOUT_MS = 40_000;
 
-export interface DuplicateCandidateEntry {
+interface DuplicateCandidateEntry {
   itemName: string;
   amount: string;
   currency: string | null;
@@ -75,7 +72,7 @@ export interface DuplicateDetectionResult {
   candidatesConsidered: number;
 }
 
-export interface DuplicateVerdict {
+interface DuplicateVerdict {
   duplicate: boolean;
   matchedSourceDocumentId: string | null;
   confidence: number | null;

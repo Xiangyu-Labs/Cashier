@@ -30,5 +30,3 @@ export const logger = pino({
       }
     : {}),
 });
-
-export default logger;

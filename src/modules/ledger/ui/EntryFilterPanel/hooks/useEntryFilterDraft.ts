@@ -10,7 +10,7 @@ import {
 } from "@/modules/ledger/filters";
 import { compare, DECIMAL_STRING_PATTERN } from "@/lib/money/decimal";
 
-export const VISIBLE_PRESETS: PeriodPreset[] = [
+const VISIBLE_PRESETS: PeriodPreset[] = [
   "thisMonth",
   "all",
   "week",

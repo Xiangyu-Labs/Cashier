@@ -115,9 +115,6 @@ function normalizeQueryParams(params?: QueryKeyParams | null): Readonly<Record<s
   );
 }
 
-// Type helper for extracting query key type
-export type QueryKeys = typeof queryKeys;
-
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
 function isQueryKeyPrefixMatch(queryKey: readonly unknown[], prefix: readonly unknown[]) {
@@ -207,13 +204,6 @@ export function invalidateCalendar(ledgerId: string): QueryPredicate {
     const key = query.queryKey;
     return Array.isArray(key) && key[0] === "calendar" && key[2] === ledgerId;
   };
-}
-
-/**
- * Helper to match all ledger entries queries for a ledger.
- */
-export function matchLedgerEntries(ledgerId: string): QueryPredicate {
-  return invalidateLedgerEntries(ledgerId);
 }
 
 /**

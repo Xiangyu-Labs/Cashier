@@ -5,7 +5,7 @@ export interface ExchangeRates {
 }
 
 export type ExchangeRatesStoredEvent = ExchangeRates;
-export type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => void | Promise<void>;
+type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => void | Promise<void>;
 
 export interface FxRateBook {
   getRates(date?: Date | string): Promise<ExchangeRates>;

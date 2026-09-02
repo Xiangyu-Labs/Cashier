@@ -1,8 +1,6 @@
 export {
   getSourceDocumentFullAction,
   getSourceDocumentsAction,
-  getSourceDocumentAttentionAction,
-  getSourceDocumentCountsAction,
   getPendingSourceDocumentsAction,
   listStreamPageAction,
   getStreamTotalAction,

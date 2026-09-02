@@ -9,7 +9,7 @@ import { categoryDraftsEqual, toCategoryDraft, type CategoryDraft } from "./cate
 import { useCategoryEditSession } from "./useCategoryEditSession";
 import { useCategoryDraftSync } from "./useCategoryDraftSync";
 
-export type { CategoryDraft, EditDraft, EditSession } from "./category-draft-model";
+export type { CategoryDraft, EditSession } from "./category-draft-model";
 
 interface UseCategoryManagementDraftOptions {
   categories: EntryCategory[];

@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 import type { EnhancedStatsDto, StatsComparisonMode } from "@/modules/stats/contracts";
 
-export interface EnhancedStatsBucketCategory {
+interface EnhancedStatsBucketCategory {
   id: string | null;
   name: string;
   icon: string | null;
@@ -10,7 +10,7 @@ export interface EnhancedStatsBucketCategory {
   count: number;
 }
 
-export interface EnhancedStatsBucketDay {
+interface EnhancedStatsBucketDay {
   total: Decimal;
   count: number;
   currencies: Set<string>;

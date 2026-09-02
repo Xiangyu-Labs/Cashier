@@ -12,8 +12,8 @@ import crypto from "crypto";
 import { getStartupEnvValue } from "@/lib/env/startup";
 
 export const DOMAIN_PREFIX = "credential:v1:";
-export const TOKEN_PREFIX = "sk_live_";
-export const TOKEN_HEX_LENGTH = 48; // 24 random bytes => 48 hex chars
+const TOKEN_PREFIX = "sk_live_";
+const TOKEN_HEX_LENGTH = 48; // 24 random bytes => 48 hex chars
 export const DISPLAY_PREFIX_LENGTH = 8;
 export const DISPLAY_SUFFIX_LENGTH = 4;
 

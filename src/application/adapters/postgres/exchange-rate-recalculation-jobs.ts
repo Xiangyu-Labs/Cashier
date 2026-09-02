@@ -15,9 +15,9 @@ export interface ClaimedExchangeRateRecalculation {
   attempts: number;
 }
 
-export const MAX_EXCHANGE_RATE_RECALCULATION_ATTEMPTS = 8;
-export const DEFAULT_EXCHANGE_RATE_CLAIM_LIMIT = 25;
-export const DEFAULT_EXCHANGE_RATE_CLAIM_LEASE_MS = 300_000;
+const MAX_EXCHANGE_RATE_RECALCULATION_ATTEMPTS = 8;
+const DEFAULT_EXCHANGE_RATE_CLAIM_LIMIT = 25;
+const DEFAULT_EXCHANGE_RATE_CLAIM_LEASE_MS = 300_000;
 
 /**
  * Insert one pending job per active ledger that has active or pending entries

@@ -56,4 +56,4 @@ export function AdaptiveHeatmap({
 }
 
 // Re-export sub-components for direct usage
-export { LargeGridHeatmap, SmallGridHeatmap };
+export { SmallGridHeatmap };

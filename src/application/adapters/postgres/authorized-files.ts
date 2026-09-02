@@ -8,7 +8,7 @@ import {
   storedFiles,
 } from "@/persistence";
 
-export type AuthorizedStoredFileRecord = typeof storedFiles.$inferSelect;
+type AuthorizedStoredFileRecord = typeof storedFiles.$inferSelect;
 
 export interface AuthorizedFileRepository {
   findForLedger(ledgerId: string, fileId: string): Promise<AuthorizedStoredFileRecord | null>;

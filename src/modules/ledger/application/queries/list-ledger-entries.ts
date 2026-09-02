@@ -37,7 +37,7 @@ export async function listLedgerEntries(
   );
 }
 
-export async function listLedgerEntriesFromValidatedInput(
+async function listLedgerEntriesFromValidatedInput(
   ledgerId: string,
   validated: ListLedgerEntriesValidatedInput,
   options: { uncategorizedOnly?: boolean } | undefined,

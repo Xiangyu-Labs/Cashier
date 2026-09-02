@@ -24,7 +24,7 @@ import {
 } from "../ledger-filter-state";
 import type { LedgerAdvancedFilters } from "../initial-query-state";
 
-export interface FilterParams {
+interface FilterParams {
   categoryId: string | null;
   currency: string | null;
   minAmount: string | null;

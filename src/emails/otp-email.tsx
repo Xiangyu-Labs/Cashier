@@ -11,7 +11,7 @@ import {
 import * as React from "react";
 import type { SupportedLocale } from "@/i18n/locales";
 
-export interface OTPEmailCopy {
+interface OTPEmailCopy {
   preview: string;
   heading: string;
   intro: string;

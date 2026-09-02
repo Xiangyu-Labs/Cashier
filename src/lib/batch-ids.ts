@@ -16,7 +16,7 @@ export function parseBatchIds(input: unknown): string[] {
   return ids as string[];
 }
 
-export interface BatchActionIssue {
+interface BatchActionIssue {
   id: string;
   reason: string;
 }

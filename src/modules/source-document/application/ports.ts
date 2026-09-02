@@ -23,7 +23,7 @@ import type {
   UpdateSourceDocumentResultDto,
 } from "../contracts";
 
-export interface SourceDocumentFilterInput {
+interface SourceDocumentFilterInput {
   ledgerId: string;
   ids?: readonly string[];
   statuses?: readonly SourceDocumentStatusType[];
@@ -39,7 +39,7 @@ export interface PendingDuplicateReviewContract {
   revisionId: string;
 }
 
-export interface SourceDocumentListInput extends SourceDocumentFilterInput {
+interface SourceDocumentListInput extends SourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
   includeFiles?: boolean;
@@ -210,7 +210,7 @@ export interface CredentialSourceDocumentReadPort {
   ): Promise<CredentialSourceDocumentStatusResult | null>;
 }
 
-export interface LedgerChangeBatchContract {
+interface LedgerChangeBatchContract {
   version: bigint;
   resetRequired: boolean;
   countsChanged: boolean;

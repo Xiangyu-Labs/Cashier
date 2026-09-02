@@ -1,4 +1,4 @@
-export const LEDGER_TABS = ["stream", "details", "stats", "settings"] as const;
+const LEDGER_TABS = ["stream", "details", "stats", "settings"] as const;
 
 export type LedgerTab = (typeof LEDGER_TABS)[number];
 

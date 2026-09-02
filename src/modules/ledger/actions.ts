@@ -1,4 +1,4 @@
-export { getLedgerAction, getLedgersAction } from "./server-actions/get";
+export { getLedgerAction } from "./server-actions/get";
 export { createLedgerAction } from "./server-actions/create";
 export { updateLedgerSettingsAction } from "./server-actions/update";
 export { deleteLedgerAction } from "./server-actions/delete";

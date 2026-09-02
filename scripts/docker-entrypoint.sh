@@ -22,8 +22,9 @@ load_or_create_secret() {
 
 AUTH_SECRET=$(load_or_create_secret "${AUTH_SECRET:-}" "$CONFIG_DIR/auth-secret")
 API_KEY_PEPPER=$(load_or_create_secret "${API_KEY_PEPPER:-}" "$CONFIG_DIR/api-key-pepper")
+RATE_LIMIT_PEPPER=$(load_or_create_secret "${RATE_LIMIT_PEPPER:-}" "$CONFIG_DIR/rate-limit-pepper")
 AUTH_OTP_PEPPER=$(load_or_create_secret "${AUTH_OTP_PEPPER:-}" "$CONFIG_DIR/auth-otp-pepper")
-export AUTH_SECRET API_KEY_PEPPER AUTH_OTP_PEPPER
+export AUTH_SECRET API_KEY_PEPPER RATE_LIMIT_PEPPER AUTH_OTP_PEPPER
 
 case "${DATABASE_URL:-}" in
     postgres://*|postgresql://*) ;;

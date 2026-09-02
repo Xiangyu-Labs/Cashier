@@ -1,6 +1,6 @@
 import type { LedgerId, StoredFileId, UploadSessionId } from "./source-documents";
 
-export interface TrustedFileMetadata {
+interface TrustedFileMetadata {
   contentType: string;
   byteSize: number;
   originalFilename: string | null;
@@ -14,7 +14,7 @@ export interface StoredFileContract {
   createdAt: string;
 }
 
-export interface UploadTargetContract {
+interface UploadTargetContract {
   id: string;
   method: "PUT" | "POST";
   url: string;
@@ -49,18 +49,18 @@ export interface AuthorizedFileReadContract {
   body: Uint8Array;
 }
 
-export interface UploadPlanningPort {
+interface UploadPlanningPort {
   createUploadPlan(
     ledgerId: LedgerId,
     files?: readonly UploadFileRequestContract[]
   ): Promise<UploadPlanContract>;
 }
 
-export interface UploadFinalizationPort {
+interface UploadFinalizationPort {
   finalizeUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]>;
 }
 
-export interface AuthorizedStoredFilePort {
+interface AuthorizedStoredFilePort {
   readAuthorized(
     ledgerId: LedgerId,
     fileId: StoredFileId

@@ -16,10 +16,7 @@ import {
 
 const STREAM_PAGE_LIMIT = 20;
 
-export {
-  buildDetailsQueryDescriptor,
-  type DetailsQueryDescriptor,
-} from "@/modules/ledger/ledger-query-descriptor";
+export { buildDetailsQueryDescriptor } from "@/modules/ledger/ledger-query-descriptor";
 
 export interface StreamQueryDescriptor {
   queryKey: readonly unknown[];

@@ -42,4 +42,25 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
 - Derive render state directly, use functional state updates, and avoid module barrel imports in
   client entrypoints.
 
+### Design baseline
+
+- Keep the interface modern-minimal, dense, practical, and workbench-oriented. Use the existing
+  tokens in `src/app/design-tokens.css` and `src/app/globals.css` rather than introducing a parallel
+  theme system.
+- Use `#10a37f` for primary actions and focus, not decoration. Keep surfaces neutral and reserve
+  semantic colors for state: danger `#b24c5a`, warning `#9a6b1f`, info `#4f6f7a`, and success
+  `#24836e`. Dark surfaces use the existing near-black neutral scale.
+- Use the operating-system sans-serif stack with local Chinese fallbacks. Do not remotely load web
+  fonts, and keep letter spacing at `0`.
+- Follow the 4/8pt spacing scale. Touch controls remain at least 44px; cards and desktop dialogs use
+  at most an 8px radius; long mobile flows use square full-screen surfaces with `100dvh`, safe-area
+  padding, fixed headers and footers, and a scrollable body.
+- Keep motion functional and low-key: opacity and transform only, 160-280ms transitions, CSS
+  spinners for processing, and near-instant reduced-motion states.
+- Use Lucide icons for commands and navigation. Empty or explanatory states do not need decorative
+  icons. Mobile filters use bottom drawers; date pickers, calculators, and confirmations use compact
+  dialogs.
+- Filtered ledger results show the amount without a `Filtered total` prefix. Unfiltered results may
+  show `Total` / `合计`; missing bill titles use `Untitled Bill` / `未命名账单`.
+
 Run `npm run check:architecture` locally. CI must reject import cycles.

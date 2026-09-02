@@ -13,6 +13,8 @@ services:
       AUTH_TRUST_HOST: "true"
       AUTH_SECRET: ${AUTH_SECRET:-}
       API_KEY_PEPPER: ${API_KEY_PEPPER:-}
+      RATE_LIMIT_PEPPER: ${RATE_LIMIT_PEPPER:-}
+      AUTH_OTP_PEPPER: ${AUTH_OTP_PEPPER:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:

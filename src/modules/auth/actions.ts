@@ -5,7 +5,3 @@ export {
   sendEmailChangeCodeAction,
   verifyEmailChangeCodeAction,
 } from "./server-actions/change-email";
-export {
-  getUserPreferencesAction,
-  updateUserPreferencesAction,
-} from "./server-actions/user-preferences";

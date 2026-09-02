@@ -6,7 +6,6 @@ export type {
   SourceDocumentMetadata,
   SourceDocumentStatusType,
   SourceDocumentTypeValue,
-  EntryEditData,
 } from "./types";
 export type {
   SourceDocumentAttentionDto,
@@ -15,14 +14,11 @@ export type {
   SourceDocumentCandidateReviewEntryDto,
   SourceDocumentCandidateReviewRevisionDto,
   SourceDocumentCandidateProjectionSummary,
-  SourceDocumentCompletedPageDto,
   SourceDocumentCountsDto,
   SourceDocumentDto,
-  SourceDocumentEntryCategoryDto,
   SourceDocumentDuplicateReviewDto,
   SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentFullDto,
-  SourceDocumentGroupDto,
   SourceDocumentLedgerEntryDto,
   SourceDocumentLightDto,
   SourceDocumentLightWithEntriesDto,
@@ -36,15 +32,6 @@ export type {
   SourceDocumentDto as SourceDocument,
   SourceDocumentLightDto as SourceDocumentLight,
 } from "./document-contracts";
-
-export interface CreateSourceDocumentInput {
-  text?: string;
-  storedFileIds?: string[];
-  images?: { data: string; mimeType: string }[];
-  originalImages?: { data: string; mimeType: string }[];
-  entryDate?: string;
-  timezone?: string;
-}
 
 export interface CreateSourceDocumentResponseDto {
   sourceDocumentId: string;

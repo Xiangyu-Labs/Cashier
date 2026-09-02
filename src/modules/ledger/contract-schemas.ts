@@ -12,7 +12,7 @@ import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
 import { compare, DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
-export const ledgerIdSchema = uuidSchema;
+const ledgerIdSchema = uuidSchema;
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
 const nonEmptyStrictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -57,11 +57,11 @@ function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
-export const createLedgerInputSchema = strictObjectSchema({
+const createLedgerInputSchema = strictObjectSchema({
   aiLanguage: aiLanguageSchema.optional(),
 });
 
-export const updateLedgerInputSchema = nonEmptyStrictObjectSchema({
+const updateLedgerInputSchema = nonEmptyStrictObjectSchema({
   expectedUpdatedAt: z.string().datetime({ offset: true }),
   settings: nonEmptyStrictObjectSchema({
     aiLanguage: aiLanguageSchema.optional(),
@@ -79,25 +79,25 @@ export const updateLedgerInputSchema = nonEmptyStrictObjectSchema({
   }),
 });
 
-export const createEntryCategoryInputSchema = strictObjectSchema({
+const createEntryCategoryInputSchema = strictObjectSchema({
   name: z.string().trim().min(1).max(100),
   description: z.string().max(500).optional(),
   icon: z.string().max(100).optional(),
   sortOrder: z.number().int().min(0).optional(),
 });
 
-export const updateEntryCategoryInputSchema = nonEmptyStrictObjectSchema({
+const updateEntryCategoryInputSchema = nonEmptyStrictObjectSchema({
   name: z.string().trim().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
   icon: z.string().max(100).nullable().optional(),
   sortOrder: z.number().int().min(0).optional(),
 });
 
-export const reorderEntryCategoriesInputSchema = z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE);
-export const categoryCollectionRevisionSchema = z
+const reorderEntryCategoriesInputSchema = z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE);
+const categoryCollectionRevisionSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/, "Invalid category collection revision");
-export const saveEntryCategoriesInputSchema = strictObjectSchema({
+const saveEntryCategoriesInputSchema = strictObjectSchema({
   expectedRevision: categoryCollectionRevisionSchema,
   categories: z
     .array(
@@ -124,15 +124,15 @@ export const saveEntryCategoriesInputSchema = strictObjectSchema({
       }
     }),
 });
-export const ledgerEntryIdSchema = uuidSchema;
-export const ledgerEntryIdsSchema = z.preprocess(
+const ledgerEntryIdSchema = uuidSchema;
+const ledgerEntryIdsSchema = z.preprocess(
   (value) => (Array.isArray(value) ? [...new Set(value)] : value),
   z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
 );
-export const entryCategoryIdSchema = uuidSchema;
-export const serviceCredentialIdSchema = uuidSchema;
+const entryCategoryIdSchema = uuidSchema;
+const serviceCredentialIdSchema = uuidSchema;
 
-export const createLedgerEntryInputSchema = strictObjectSchema({
+const createLedgerEntryInputSchema = strictObjectSchema({
   amount: positiveDecimalSchema,
   currency: optionalCurrencyCodeSchema,
   itemName: z.string().trim().min(1).max(200),
@@ -149,7 +149,7 @@ export const updateLedgerEntryInputSchema = nonEmptyStrictObjectSchema({
   description: z.string().max(500).nullable().optional(),
 });
 
-export const batchUpdateLedgerEntriesInputSchema = nonEmptyStrictObjectSchema({
+const batchUpdateLedgerEntriesInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
   currency: nullableCurrencyCodeSchema,
   amount: positiveDecimalSchema.optional(),
@@ -157,12 +157,12 @@ export const batchUpdateLedgerEntriesInputSchema = nonEmptyStrictObjectSchema({
   itemName: z.string().trim().min(1).max(200).optional(),
 });
 
-export const batchUpdateLedgerEntryDatesInputSchema = strictObjectSchema({
+const batchUpdateLedgerEntryDatesInputSchema = strictObjectSchema({
   entryIds: ledgerEntryIdsSchema,
   entryDate: dateStringSchema,
 });
 
-export const createServiceCredentialInputSchema = strictObjectSchema({
+const createServiceCredentialInputSchema = strictObjectSchema({
   name: z.string().trim().min(1).max(100),
 });
 
@@ -260,9 +260,6 @@ export type SaveEntryCategoriesInput = z.infer<typeof saveEntryCategoriesInputSc
 export type CreateLedgerEntryInput = z.infer<typeof createLedgerEntryInputSchema>;
 export type UpdateLedgerEntryInput = z.infer<typeof updateLedgerEntryInputSchema>;
 export type BatchUpdateLedgerEntriesInput = z.infer<typeof batchUpdateLedgerEntriesInputSchema>;
-export type BatchUpdateLedgerEntryDatesInput = z.infer<
-  typeof batchUpdateLedgerEntryDatesInputSchema
->;
 export type CreateServiceCredentialInput = z.infer<typeof createServiceCredentialInputSchema>;
 export type ListLedgerEntriesInput = z.input<typeof listLedgerEntriesInputSchema>;
 export type ListLedgerEntriesValidatedInput = z.infer<typeof listLedgerEntriesInputSchema>;

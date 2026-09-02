@@ -10,15 +10,8 @@ export type StoredFileId = string;
 export type UploadSessionId = string;
 export type ProcessingIntentId = string;
 
-export const REVISION_OUTCOMES = [
-  "processing",
-  "completed",
-  "anomaly",
-  "failed",
-  "cancelled",
-  "abandoned",
-] as const;
-export type RevisionOutcome = (typeof REVISION_OUTCOMES)[number];
+export type RevisionOutcome =
+  "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "abandoned";
 
 export type SupportedSourceDocumentAction =
   | "retry"
@@ -112,9 +105,7 @@ export interface ProcessingLeaseContract {
   claimToken: string;
 }
 
-export type ProcessingRetryClassification = "retryable" | "permanent" | "anomaly";
-
-export interface ProcessingDiagnostic {
+interface ProcessingDiagnostic {
   correlationId: string;
   code: ApplicationErrorCode;
   stableCode?: AnomalyCode | ProcessingFailureCode;
@@ -152,7 +143,7 @@ export type ApplicationErrorCode =
  * Stable, user-facing anomaly codes for documents that parsed but need user attention.
  * These are localized and sanitized before being shown in the UI.
  */
-export const ANOMALY_CODES = [
+const ANOMALY_CODES = [
   "insufficient_evidence",
   "currency_required",
   "amount_conflict",
@@ -252,28 +243,6 @@ export interface ApplicationErrorContract {
   code: ApplicationErrorCode;
   message: string;
   correlationId?: string;
-}
-
-/** Public models are bounded target read contracts. */
-export interface SourceDocumentListContract {
-  id: SourceDocumentId;
-  ledgerId: LedgerId;
-  title: string | null;
-  status: RevisionOutcome | "deleted";
-  entryDate: string | null;
-  hasFiles: boolean;
-  supportedActions: readonly SupportedSourceDocumentAction[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SourceDocumentDetailContract extends SourceDocumentListContract {
-  // Storage metadata is imported lazily to keep the public source-document model bounded.
-  text: string | null;
-  files: readonly Pick<import("./storage").StoredFileContract, "id" | "metadata">[];
-  anomalyReason: string | null;
-  errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
-  stableErrorCode: AnomalyCode | ProcessingFailureCode | null;
 }
 
 export interface SourceDocumentSubmissionContract {

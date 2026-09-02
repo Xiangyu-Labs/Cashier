@@ -3,9 +3,9 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/
 import { DECIMAL_STRING_PATTERN, normalize as normalizeDecimal } from "@/lib/money/decimal";
 import { isValidDateString } from "@/lib/date-utils";
 
-export const STATUSES_URL_PARAM = "statuses";
+const STATUSES_URL_PARAM = "statuses";
 export type LedgerFilterScope = "stream" | "details";
-export type LedgerDetailType = "source-document" | "ledger-entry";
+type LedgerDetailType = "source-document" | "ledger-entry";
 export type StatsRange = "week" | "month" | "year";
 export type StatsView = "heatmap" | "trend";
 

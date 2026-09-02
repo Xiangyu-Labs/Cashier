@@ -12,7 +12,7 @@ import { add } from "@/lib/money/decimal";
 
 export type DateProvenance = "transaction" | "submitted" | "unknown";
 
-export interface UnifiedStreamItem {
+interface UnifiedStreamItem {
   sourceDocument: SourceDocumentListItemDto;
   ledgerEntries: SourceDocumentLedgerEntryDto[];
   /** Effective group date in yyyy-MM-dd, or the sentinel "date_unknown". */

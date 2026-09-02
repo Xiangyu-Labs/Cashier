@@ -36,15 +36,6 @@ export interface RateLimiterPort {
   releaseCooldown(key: string, acquiredAt: Date): Promise<boolean>;
 }
 
-export interface IdempotencyPort {
-  execute<T>(
-    credentialId: string,
-    key: string,
-    operation: () => Promise<T>,
-    contentFingerprint?: string
-  ): Promise<T>;
-}
-
 export interface EmailDeliveryPort {
   send(input: {
     from: string;
@@ -90,7 +81,7 @@ export interface OtpTokenPort {
   cleanupExpired(now: Date): Promise<number>;
 }
 
-export interface UserAccountContract {
+interface UserAccountContract {
   id: string;
   email: string;
   name: string | null;

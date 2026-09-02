@@ -11,7 +11,7 @@ import {
 import * as React from "react";
 import type { SupportedLocale } from "@/i18n/locales";
 
-export interface LoginNotificationEmailCopy {
+interface LoginNotificationEmailCopy {
   preview: string;
   heading: string;
   intro: string;

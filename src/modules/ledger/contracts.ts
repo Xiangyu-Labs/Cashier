@@ -3,7 +3,7 @@ import type {
   SourceDocumentTypeValue as SourceDocumentReferenceType,
 } from "@/modules/source-document/contracts";
 
-export interface LedgerSettings {
+interface LedgerSettings {
   aiLanguage?: string;
   currencies?: string[];
   mainCurrency?: string;
@@ -60,7 +60,7 @@ export type EntryCategory = EntryCategoryDto;
 export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number };
 export type EntryCategoryWithCount = EntryCategoryWithCountDto;
 
-export interface SaveEntryCategoryTargetDto {
+interface SaveEntryCategoryTargetDto {
   id?: string;
   clientId?: string;
   name: string;
@@ -106,7 +106,7 @@ export type LedgerEntry = LedgerEntryDto;
 
 export type LedgerEntryEmbeddedViewDto = Omit<LedgerEntryDto, "sourceDocument">;
 
-export type LedgerSettingsDto = {
+type LedgerSettingsDto = {
   id?: string;
 } & LedgerSettings;
 export type Settings = LedgerSettingsDto;
@@ -151,11 +151,6 @@ export interface DeleteLedgerEntryResultDto {
   ledgerEntryId: string;
   deleted: boolean;
   sourceDocumentId?: string;
-}
-
-export interface BatchLedgerEntriesMutationResultDto {
-  ledgerEntryIds: string[];
-  affectedCount: number;
 }
 
 export interface DeleteEntryCategoryResultDto {

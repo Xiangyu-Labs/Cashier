@@ -28,24 +28,6 @@ async function assertCategoryBelongsToLedger(
   }
 }
 
-export async function createLedgerEntryWithConversion(
-  input: {
-    ledgerId: string;
-    ledgerEntryId?: string;
-    amount: string;
-    currency?: string;
-    itemName: string;
-    categoryId?: string;
-    description?: string | null;
-    sourceDocumentId: string;
-  },
-  dependencies: LedgerEntryMutationDependencies
-) {
-  const { mutations, categories } = resolveDependencies(dependencies);
-  await assertCategoryBelongsToLedger(input.ledgerId, input.categoryId, categories);
-  return mutations.createEntry(input);
-}
-
 export async function updateLedgerEntryWithConversion(
   input: {
     ledgerId: string;

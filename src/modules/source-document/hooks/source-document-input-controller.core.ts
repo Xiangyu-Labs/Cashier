@@ -26,25 +26,6 @@ export function toModalImages(images: EditableInputImage[]): SourceDocumentModal
   }));
 }
 
-export function mergeModalImagesIntoEditableImages(
-  currentImages: EditableInputImage[],
-  updatedImages: SourceDocumentModalImage[]
-) {
-  return currentImages.map((image, index) => {
-    const updatedImage = updatedImages[index];
-    if (updatedImage == null) return image;
-
-    return {
-      ...image,
-      data: updatedImage.data,
-      mimeType: updatedImage.mimeType,
-      isEdited:
-        updatedImage.data !== image.originalData ||
-        updatedImage.mimeType !== image.originalMimeType,
-    };
-  });
-}
-
 export function resolveInitialEntryDate(entryDate?: string, timeZone?: string): Date {
   if (entryDate != null) {
     const parsed = parseDateString(entryDate);

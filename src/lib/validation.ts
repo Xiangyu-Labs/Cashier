@@ -6,7 +6,6 @@
 
 import { z } from "zod";
 import { isValidDateString } from "./date-utils";
-import { ValidationError } from "./errors";
 
 /**
  * UUID v4 validation regex.
@@ -27,18 +26,6 @@ export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{
  */
 export function isValidUuid(id: string): boolean {
   return UUID_REGEX.test(id);
-}
-
-/**
- * Assert that a value is a valid UUID v4
- * @param id - The string to validate
- * @param message - Optional error message
- * @throws Error if not a valid UUID v4
- */
-export function assertValidUuid(id: string, message?: string): void {
-  if (isValidUuid(id) === false) {
-    throw new ValidationError(message ?? `Invalid UUID: ${id}`);
-  }
 }
 
 /**
@@ -67,28 +54,12 @@ type WithoutUndefinedValues<T extends object> = {
   [K in keyof T]?: Exclude<T[K], undefined>;
 };
 
-type WithoutNullishValues<T extends object> = {
-  [K in keyof T]?: Exclude<T[K], null | undefined>;
-};
-
 export function omitUndefinedProperties<T extends object>(input: T): WithoutUndefinedValues<T> {
   const result: WithoutUndefinedValues<T> = {};
 
   for (const [key, value] of Object.entries(input) as Array<[keyof T, T[keyof T]]>) {
     if (value !== undefined) {
       result[key] = value as Exclude<T[keyof T], undefined>;
-    }
-  }
-
-  return result;
-}
-
-export function omitNullishProperties<T extends object>(input: T): WithoutNullishValues<T> {
-  const result: WithoutNullishValues<T> = {};
-
-  for (const [key, value] of Object.entries(input) as Array<[keyof T, T[keyof T]]>) {
-    if (value !== undefined && value !== null) {
-      result[key] = value as Exclude<T[keyof T], null | undefined>;
     }
   }
 

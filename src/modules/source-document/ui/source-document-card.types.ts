@@ -1,4 +1,4 @@
-export interface SourceDocumentCardCurrencyBreakdown {
+interface SourceDocumentCardCurrencyBreakdown {
   currency: string;
   amount: string;
   convertedAmount?: string;

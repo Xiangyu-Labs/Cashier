@@ -53,15 +53,6 @@ export function formatCompactCurrencyAmount(
   });
 }
 
-export function formatCompactNumberAmount(amount: string | number, locale?: string): string {
-  const formatter = getNumberFormatter(locale, {
-    notation: "compact",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  });
-  return (formatter.format as (value: string | number) => string)(amount);
-}
-
 export function getCurrencySymbol(currency: string, locale?: string): string {
   if (currency === "" || currency === "unknown") return "?";
 

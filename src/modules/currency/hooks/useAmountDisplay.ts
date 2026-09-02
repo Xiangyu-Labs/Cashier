@@ -17,7 +17,7 @@ interface UseAmountDisplayOptions {
   persistedConvertedAmount?: string | null;
 }
 
-export type UseAmountDisplayStatus = "idle" | "loading" | "success" | "error";
+type UseAmountDisplayStatus = "idle" | "loading" | "success" | "error";
 
 const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 

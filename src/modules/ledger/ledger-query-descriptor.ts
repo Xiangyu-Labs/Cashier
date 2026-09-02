@@ -22,7 +22,7 @@ function normalizeAdvancedFilters(filters: LedgerAdvancedFilters = {}): LedgerAd
   };
 }
 
-export interface DetailsQueryDescriptor {
+interface DetailsQueryDescriptor {
   startDateStr: string | null;
   endDateStr: string | null;
   filterKey: string | null;

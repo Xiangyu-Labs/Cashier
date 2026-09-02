@@ -11,7 +11,7 @@ import {
 } from "@/lib/client-cache";
 import { storedFileReadUrl } from "./stored-file-read";
 
-export const CACHED_IMAGE_COUNT_LIMIT = 100;
+const CACHED_IMAGE_COUNT_LIMIT = 100;
 export const CACHED_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024;
 
 export interface CachedImageRecord {

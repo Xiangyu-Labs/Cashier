@@ -1,6 +1,6 @@
 import type { SourceDocumentStatusType } from "./types";
 
-export interface SourceDocumentGroup<T> {
+interface SourceDocumentGroup<T> {
   sourceDocument: T;
   ledgerEntries: T extends { ledgerEntries?: infer E } ? Exclude<E, null | undefined> : never[];
 }

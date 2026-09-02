@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { FEATURE_MESSAGES, pickMessages } from "./client-feature-messages";
 import { FEATURE_MESSAGE_VERSION } from "./feature-message-version";
 
-export type FeatureMessageStatus = "loading" | "success" | "error";
+type FeatureMessageStatus = "loading" | "success" | "error";
 
 export interface FeatureMessagesState {
   status: FeatureMessageStatus;

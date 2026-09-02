@@ -1,4 +1,4 @@
-export type TabQueryStatus = "pending" | "success" | "error";
+type TabQueryStatus = "pending" | "success" | "error";
 
 export interface TabQueryStateReport {
   ledgerId: string;

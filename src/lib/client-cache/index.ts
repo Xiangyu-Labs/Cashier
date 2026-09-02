@@ -121,7 +121,7 @@ function hashIdentifier(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-export function reportClientCacheError(
+function reportClientCacheError(
   error: unknown,
   identifiers: { userId?: string; ledgerId?: string },
   message: string

@@ -64,8 +64,6 @@ export const SUPPORTED_MIME_TYPES = [
 /** Set form of SUPPORTED_MIME_TYPES for fast lookups. */
 export const SUPPORTED_MIME_SET: ReadonlySet<string> = new Set(SUPPORTED_MIME_TYPES);
 
-export type SupportedMimeType = (typeof SUPPORTED_MIME_TYPES)[number];
-
 // ---------------------------------------------------------------------------
 // Validators
 // ---------------------------------------------------------------------------

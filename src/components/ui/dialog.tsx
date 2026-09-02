@@ -41,7 +41,7 @@ const DialogOverlay = React.forwardRef<
 });
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-export type DialogLayout = "modal" | "sheet" | "detail" | "viewer";
+type DialogLayout = "modal" | "sheet" | "detail" | "viewer";
 
 const dialogLayoutClasses: Record<DialogLayout, string> = {
   modal:

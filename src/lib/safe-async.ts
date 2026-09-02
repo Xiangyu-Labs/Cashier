@@ -29,32 +29,3 @@ export function fireAndForget<T>(
     options?.onError?.(error);
   });
 }
-
-/**
- * Wraps a function to make it safe for fire-and-forget usage
- *
- * Usage:
- *   const safeInvalidate = makeFireAndForget(queryClient.invalidateQueries.bind(queryClient));
- *   safeInvalidate();
- */
-export function makeFireAndForget<T extends unknown[], R>(
-  fn: (...args: T) => Promise<R>,
-  options?: {
-    context?: string;
-    onError?: (error: unknown) => void;
-  }
-): (...args: T) => void {
-  return (...args: T) => {
-    fireAndForget(fn(...args), options);
-  };
-}
-
-/**
- * Use this when you truly don't care about the result (rare!)
- * Still logs at debug level for troubleshooting
- */
-export function fireAndForgetSilent<T>(promise: Promise<T>): void {
-  promise.catch((error) => {
-    logger.debug("Silent async error (ignored):", error);
-  });
-}

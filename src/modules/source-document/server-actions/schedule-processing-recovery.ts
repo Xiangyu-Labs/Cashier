@@ -16,7 +16,7 @@ import { serverComposition } from "@/application/server-composition-root";
  * This is a server-only utility — not a "use server" action, because it is
  * invoked from within other server contexts, not directly from the client.
  */
-export async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
+async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
   const config = {
     maxBatch: runtimeEnv.processingRecoveryMaxBatch,
     maxAttempts: runtimeEnv.processingRecoveryMaxAttempts,

@@ -334,10 +334,6 @@ export const preparedApiV1SourceDocumentInputSchema = strictObjectSchema({
   entryDate: optionalDateStringSchema,
 });
 
-export type PreparedApiV1SourceDocumentInputContract = z.infer<
-  typeof preparedApiV1SourceDocumentInputSchema
->;
-
 export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
 
 export const createSourceDocumentUploadPlanInputSchema = z
@@ -529,17 +525,6 @@ export function parseOperationIdentity(input: unknown): z.infer<typeof operation
   return parseSourceDocumentContract(operationIdentitySchema, input);
 }
 
-export function parseCreateSourceDocumentInput(input: unknown): CreateSourceDocumentInputContract {
-  const result = createSourceDocumentInputSchema.safeParse(input);
-  if (!result.success) {
-    throw new ValidationError(result.error.issues[0]?.message ?? "Invalid source document input", {
-      issues: result.error.issues,
-    });
-  }
-
-  return result.data;
-}
-
 export const parseListSourceDocumentsInput = (input: unknown) =>
   parseSourceDocumentContract(listSourceDocumentsInputSchema, input);
 
@@ -552,11 +537,6 @@ export type FinalizeSourceDocumentUploadInput = z.infer<
   typeof finalizeSourceDocumentUploadInputSchema
 >;
 export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
-export type ListSourceDocumentsValidatedInput = z.infer<typeof listSourceDocumentsInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
-export type SaveSourceDocumentChangesInputContract = z.infer<
-  typeof saveSourceDocumentChangesInputSchema
->;
-export type SplitSourceDocumentInputContract = z.infer<typeof splitSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

@@ -21,11 +21,3 @@ export async function getSourceDocumentFullQuery(
     createdAt: document.createdAt,
   };
 }
-
-export async function getSourceDocumentFull(
-  ledgerId: string,
-  sourceDocumentId: string,
-  documents: Pick<SourceDocumentReadPort, "get">
-): Promise<SourceDocumentFullDto> {
-  return getSourceDocumentFullQuery(ledgerId, sourceDocumentId, documents);
-}

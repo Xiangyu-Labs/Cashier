@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 import { storedFileAdapter } from "@/application/adapters/storage";
 import { validateStoredImageBytes } from "@/lib/storage/image-processing";
 
-export async function loadStoredFileForAI(ledgerId: string, storedFileId: string): Promise<string> {
+async function loadStoredFileForAI(ledgerId: string, storedFileId: string): Promise<string> {
   try {
     const read = await storedFileAdapter.readAuthorized(ledgerId, storedFileId);
     if (read == null) throw new ValidationError("Stored image is not available for this revision");

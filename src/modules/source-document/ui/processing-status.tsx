@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
-export type ProcessingStatusType =
+type ProcessingStatusType =
   "processing" | "completed" | "error" | "candidate_pending" | "duplicate_pending" | "cancelled";
 
 interface ProcessingStatusProps {

@@ -4,7 +4,7 @@ import { convertWithRates } from "../services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 
-export const MAX_CONCURRENT_RATE_LOOKUPS = 8;
+const MAX_CONCURRENT_RATE_LOOKUPS = 8;
 const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 
 export interface CurrencyBatchConversionItem {

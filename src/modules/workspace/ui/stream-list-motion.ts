@@ -20,7 +20,7 @@ export interface StreamListMotionItem {
   revision: string;
 }
 
-export interface StreamListMotionExit {
+interface StreamListMotionExit {
   id: string;
   date: string;
   /** Index in the previous flat card list, used to place the exit copy. */

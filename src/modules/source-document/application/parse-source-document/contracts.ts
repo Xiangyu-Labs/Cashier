@@ -27,7 +27,7 @@ export interface ParseSourceDocumentInput {
   preferredCurrencies?: string[];
 }
 
-export interface ParseEvidence {
+interface ParseEvidence {
   images: readonly { dataUrl: string }[];
 }
 

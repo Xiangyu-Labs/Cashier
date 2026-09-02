@@ -25,7 +25,7 @@ const decimalAmountSchema = z
   .refine(isValidDecimal, "Amount must be a valid decimal string")
   .transform(normalize);
 
-export const convertCurrencyInputSchema = z.object({
+const convertCurrencyInputSchema = z.object({
   amount: decimalAmountSchema,
   from: currencyCodeSchema,
   to: currencyCodeSchema,
@@ -43,15 +43,13 @@ export function parseConvertCurrencyInput(input: unknown): ConvertCurrencyInput 
   return result.data;
 }
 
-export const batchConvertCurrencyItemSchema = z.object({
+const batchConvertCurrencyItemSchema = z.object({
   amount: decimalAmountSchema,
   currency: currencyCodeSchema,
   date: optionalDateStringSchema,
 });
 
-export type BatchConvertCurrencyItemInput = z.infer<typeof batchConvertCurrencyItemSchema>;
-
-export const batchConvertCurrencyInputSchema = z.object({
+const batchConvertCurrencyInputSchema = z.object({
   items: z.array(batchConvertCurrencyItemSchema).min(1).max(500),
   targetCurrency: currencyCodeSchema,
 });
