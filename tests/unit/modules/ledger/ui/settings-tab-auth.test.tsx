@@ -75,15 +75,6 @@ vi.mock("@/modules/ledger/ui/ExportSection", () => ({
   ExportSection: () => <div>Export data</div>,
 }));
 
-vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
-  CollapsibleSection: ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section>
-      <h2>{title}</h2>
-      {children}
-    </section>
-  ),
-}));
-
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 
 describe("SettingsTab account authentication controls", () => {

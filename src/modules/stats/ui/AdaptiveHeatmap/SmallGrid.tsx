@@ -6,8 +6,8 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { formatDateTimeForApi as formatDate, parseDateString as parseDate } from "@/lib/date-utils";
 import { getHeatmapLevel } from "../../lib/heatmap-colors";
-import { formatDate, parseDate } from "../../lib/date-utils";
 import { resolveHeatmapRange } from "../../lib/heatmap-range";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";

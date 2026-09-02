@@ -2,9 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   checkSendRateLimit as checkSendRateLimitUseCase,
   checkSendRateLimitByIP as checkSendRateLimitByIPUseCase,
-  checkResendCooldown as checkResendCooldownUseCase,
-  setResendCooldown as setResendCooldownUseCase,
-  getCanResendAt as getCanResendAtUseCase,
+  acquireResendCooldown as acquireResendCooldownUseCase,
+  releaseResendCooldown as releaseResendCooldownUseCase,
   checkVerifyRateLimit as checkVerifyRateLimitUseCase,
 } from "@/modules/auth/services/otp-rate-limit";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
@@ -15,10 +14,10 @@ import { sql } from "drizzle-orm";
 const checkSendRateLimit = (value: string) => checkSendRateLimitUseCase(value, postgresRateLimiter);
 const checkSendRateLimitByIP = (value: string) =>
   checkSendRateLimitByIPUseCase(value, postgresRateLimiter);
-const checkResendCooldown = (value: string) =>
-  checkResendCooldownUseCase(value, postgresRateLimiter);
-const setResendCooldown = (value: string) => setResendCooldownUseCase(value, postgresRateLimiter);
-const getCanResendAt = (value: string) => getCanResendAtUseCase(value, postgresRateLimiter);
+const acquireResendCooldown = (value: string) =>
+  acquireResendCooldownUseCase(value, postgresRateLimiter);
+const releaseResendCooldown = (value: string, acquiredAt: Date) =>
+  releaseResendCooldownUseCase(value, acquiredAt, postgresRateLimiter);
 const checkVerifyRateLimit = (value: string) =>
   checkVerifyRateLimitUseCase(value, postgresRateLimiter);
 
@@ -131,76 +130,33 @@ describe("OTP Rate Limiting", () => {
     });
   });
 
-  describe("checkResendCooldown", () => {
-    it("should allow resend when no cooldown is active", async () => {
+  describe("atomic resend cooldown", () => {
+    it("allows only one concurrent acquisition for a normalized email", async () => {
+      const results = await Promise.all([
+        acquireResendCooldown("Test@Example.COM"),
+        acquireResendCooldown("test@example.com"),
+      ]);
+
+      expect(results.filter((result) => result.acquired)).toHaveLength(1);
+      expect(results.filter((result) => !result.acquired)).toHaveLength(1);
+      expect(results.find((result) => !result.acquired)?.retryAfter).toBeGreaterThan(0);
+    });
+
+    it("can release the exact acquisition and acquire again", async () => {
       const email = "test@example.com";
+      const first = await acquireResendCooldown(email);
 
-      const result = await checkResendCooldown(email);
-      expect(result.allowed).toBe(true);
-      expect(result.retryAfter).toBeUndefined();
+      expect(first.acquired).toBe(true);
+      await expect(releaseResendCooldown(email, first.acquiredAt)).resolves.toBe(true);
+      await expect(acquireResendCooldown(email)).resolves.toMatchObject({ acquired: true });
     });
 
-    it("should block resend when cooldown is active", async () => {
-      const email = "test@example.com";
+    it("fails closed when acquisition storage is unavailable", async () => {
+      vi.spyOn(postgresRateLimiter, "acquireCooldown").mockRejectedValue(new Error("DB error"));
 
-      // Set cooldown
-      await setResendCooldown(email);
-
-      // Check cooldown
-      const result = await checkResendCooldown(email);
-      expect(result.allowed).toBe(false);
-      expect(result.retryAfter).toBeGreaterThan(0);
-      expect(result.retryAfter).toBeLessThanOrEqual(60); // Max 60 seconds
-    });
-
-    it("should be case-insensitive for email", async () => {
-      await setResendCooldown("Test@Example.COM");
-
-      const result = await checkResendCooldown("test@example.com");
-      expect(result.allowed).toBe(false);
-    });
-
-    it("should fail closed on error", async () => {
-      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(
-        new Error("DB error")
-      );
-
-      await expect(checkResendCooldown("test@example.com")).rejects.toBeInstanceOf(
+      await expect(acquireResendCooldown("test@example.com")).rejects.toBeInstanceOf(
         RateLimitUnavailableError
       );
-    });
-  });
-
-  describe("getCanResendAt", () => {
-    it("should return null when no cooldown is active", async () => {
-      const email = "test@example.com";
-
-      const canResendAt = await getCanResendAt(email);
-      expect(canResendAt).toBeNull();
-    });
-
-    it("should return future timestamp when cooldown is active", async () => {
-      const email = "test@example.com";
-      const now = Math.floor(Date.now() / 1000);
-
-      await setResendCooldown(email);
-
-      const canResendAt = await getCanResendAt(email);
-      expect(canResendAt).not.toBeNull();
-      expect(canResendAt!).toBeGreaterThan(now);
-      // remaining is capped at the cooldown (60s); re-read the wall clock after
-      // the DB round trips so a second boundary cannot break the upper bound.
-      const nowAtRead = Math.floor(Date.now() / 1000);
-      expect(canResendAt!).toBeLessThanOrEqual(nowAtRead + 60); // Within 60 seconds
-    });
-
-    it("should fail open on error", async () => {
-      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(
-        new Error("DB error")
-      );
-
-      const result = await getCanResendAt("test@example.com");
-      expect(result).toBeNull();
     });
   });
 

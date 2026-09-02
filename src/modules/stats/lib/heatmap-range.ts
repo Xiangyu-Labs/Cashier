@@ -1,5 +1,5 @@
 import type { CalendarDayData } from "../types";
-import { formatDate, parseDate } from "./date-utils";
+import { formatDateTimeForApi as formatDate, parseDateString as parseDate } from "@/lib/date-utils";
 
 export interface HeatmapQueryRange {
   startDate: string;

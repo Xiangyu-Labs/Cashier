@@ -154,47 +154,6 @@ export async function releaseResendCooldown(
   return rateLimiter.releaseCooldown(key, acquiredAt);
 }
 
-/** @deprecated The send flow uses acquireResendCooldown atomically. */
-export async function checkResendCooldown(email: string, rateLimiter: RateLimitPort) {
-  const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
-  const cooldownSeconds = getResendCooldown();
-  try {
-    const remaining = await rateLimiter.getCooldownRemaining(key, cooldownSeconds);
-    return remaining <= 0 ? { allowed: true } : { allowed: false, retryAfter: remaining };
-  } catch (error) {
-    logger.error(
-      { error, subject: logIdentifier("email", email) },
-      "OTP resend cooldown check failed"
-    );
-    throw new RateLimitUnavailableError();
-  }
-}
-
-/** @deprecated The send flow acquires its cooldown before creating a token. */
-export async function setResendCooldown(email: string, rateLimiter: RateLimitPort): Promise<void> {
-  await rateLimiter.setCooldown(
-    bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email),
-    getResendCooldown()
-  );
-}
-
-/** @deprecated Successful sends derive this value from the acquired lease. */
-export async function getCanResendAt(email: string, rateLimiter: RateLimitPort) {
-  try {
-    const remaining = await rateLimiter.getCooldownRemaining(
-      bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email),
-      getResendCooldown()
-    );
-    return remaining <= 0 ? null : Math.floor(Date.now() / 1000) + remaining;
-  } catch (error) {
-    logger.error(
-      { error, subject: logIdentifier("email", email) },
-      "Failed to get canResendAt timestamp"
-    );
-    return null;
-  }
-}
-
 export async function checkVerifyRateLimit(
   ip: string,
   rateLimiter: RateLimitPort

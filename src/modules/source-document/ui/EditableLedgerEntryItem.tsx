@@ -6,7 +6,6 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
-import { parseAmount } from "@/lib/formatters";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
@@ -17,6 +16,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { EntryEditData } from "@/modules/source-document/types";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
+
+function parseAmount(amount: string | null | undefined): number {
+  if (amount == null) return 0;
+  const parsed = parseFloat(amount);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
 
 const itemVariants = cva(
   "flex items-center rounded-lg px-3 py-2 transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",

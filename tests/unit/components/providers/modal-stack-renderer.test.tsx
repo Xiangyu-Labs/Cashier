@@ -23,7 +23,7 @@ vi.mock("@/modules/ledger/ui/LedgerEntryDetailWrapper", () => ({
   ),
 }));
 
-vi.mock("@/modules/source-document/ui", () => ({
+vi.mock("@/modules/source-document/ui/SourceDocumentDetailWrapper", () => ({
   SourceDocumentDetailWrapper: () => null,
 }));
 
