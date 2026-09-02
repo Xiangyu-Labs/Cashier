@@ -83,11 +83,7 @@ export function CategoryEditDialog({
           <Button type="button" variant="outline" onClick={onRequestClose}>
             {common("cancel")}
           </Button>
-          <Button
-            type="button"
-            disabled={editSession?.draft.name.trim() === ""}
-            onClick={onCommit}
-          >
+          <Button type="button" disabled={editSession?.draft.name.trim() === ""} onClick={onCommit}>
             {common("save")}
           </Button>
         </DialogFooter>

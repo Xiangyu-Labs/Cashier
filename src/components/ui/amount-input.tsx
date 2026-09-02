@@ -3,8 +3,10 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 
-export interface AmountInputProps
-  extends Omit<React.ComponentPropsWithoutRef<typeof Input>, "type" | "value" | "onChange"> {
+export interface AmountInputProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof Input>,
+  "type" | "value" | "onChange"
+> {
   value: string;
   onChange: (value: string) => void;
   /** Maximum digits allowed after the decimal separator. */

@@ -37,20 +37,34 @@ export function useCategoryManagementDraft({
 
   const dirty = managing && !categoryDraftsEqual(serverDraft, draftOrder);
 
-  const { editSession, setEditSession, discardEditOpen, setDiscardEditOpen, editDirty, requestEditClose, startEditing, commitEdit } =
-    useCategoryEditSession({ setDraftOrder, setSaveError });
+  const {
+    editSession,
+    setEditSession,
+    discardEditOpen,
+    setDiscardEditOpen,
+    editDirty,
+    requestEditClose,
+    startEditing,
+    commitEdit,
+  } = useCategoryEditSession({ setDraftOrder, setSaveError });
 
   const hasCategoryDraft = dirty || newCategoryName.trim() !== "" || editDirty;
 
-  const { incomingDraft, serverChanged, setServerChanged, revisionConflict, setRevisionConflict, resetSyncState } =
-    useCategoryDraftSync({
-      categories,
-      managing,
-      serverDraft,
-      setServerDraft,
-      setDraftOrder,
-      hasCategoryDraft,
-    });
+  const {
+    incomingDraft,
+    serverChanged,
+    setServerChanged,
+    revisionConflict,
+    setRevisionConflict,
+    resetSyncState,
+  } = useCategoryDraftSync({
+    categories,
+    managing,
+    serverDraft,
+    setServerDraft,
+    setDraftOrder,
+    hasCategoryDraft,
+  });
 
   useEffect(() => {
     const key = "settings:categories";

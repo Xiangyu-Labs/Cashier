@@ -7,7 +7,10 @@ import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import { storedFileReadUrl } from "../../../stored-file-read";
 import { SourceDocumentImageModal } from "../../SourceDocumentImageModal";
-import { summarizeReviewEntries, type ReviewSide } from "../../source-document-duplicate-review.utils";
+import {
+  summarizeReviewEntries,
+  type ReviewSide,
+} from "../../source-document-duplicate-review.utils";
 
 export function ReviewPanel({
   side,

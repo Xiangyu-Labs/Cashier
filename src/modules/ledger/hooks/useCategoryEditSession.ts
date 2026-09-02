@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  editDraftEqual,
-  type CategoryDraft,
-  type EditSession,
-} from "./category-draft-model";
+import { editDraftEqual, type CategoryDraft, type EditSession } from "./category-draft-model";
 
 interface UseCategoryEditSessionOptions {
   setDraftOrder: (updater: (current: CategoryDraft[]) => CategoryDraft[]) => void;
@@ -13,7 +9,10 @@ interface UseCategoryEditSessionOptions {
 }
 
 /** Owns the single-category inline edit dialog's draft-vs-original state machine. */
-export function useCategoryEditSession({ setDraftOrder, setSaveError }: UseCategoryEditSessionOptions) {
+export function useCategoryEditSession({
+  setDraftOrder,
+  setSaveError,
+}: UseCategoryEditSessionOptions) {
   const [editSession, setEditSession] = useState<EditSession | null>(null);
   const [discardEditOpen, setDiscardEditOpen] = useState(false);
   const editDirty = editSession != null && !editDraftEqual(editSession.original, editSession.draft);

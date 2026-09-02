@@ -62,7 +62,8 @@ export function useDetailsBatchController(
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("error"),
     onSuccess: (result) => {
-      if (result.affectedCount > 0) toast.success(t("batchUpdated", { count: result.affectedCount }));
+      if (result.affectedCount > 0)
+        toast.success(t("batchUpdated", { count: result.affectedCount }));
       selection.clearSelection();
     },
   });

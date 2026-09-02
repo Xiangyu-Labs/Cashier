@@ -107,7 +107,11 @@ export function NewRecordDialog({
           </div>
 
           <div>
-            <DeferredFeatureMessages feature="stream" locale={locale} fallback={<InputFormLoadingFallback />}>
+            <DeferredFeatureMessages
+              feature="stream"
+              locale={locale}
+              fallback={<InputFormLoadingFallback />}
+            >
               <NewRecordForms
                 ledgerId={ledgerId}
                 activeTab={activeTab}
