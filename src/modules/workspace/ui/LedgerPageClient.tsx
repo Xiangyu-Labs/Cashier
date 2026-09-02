@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocale, useMessages, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,23 +27,18 @@ import {
   useLedgerTabs,
   usePeriodFilter,
 } from "../hooks";
+import { useActiveTabQueryState } from "../hooks/useActiveTabQueryState";
+import { useNewRecordDialogState } from "../hooks/useNewRecordDialogState";
 import type { LedgerTab } from "@/lib/ledger-tabs";
-import { useLedgerDialogState } from "./useLedgerDialogState";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
-import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerQueryErrorBanner } from "@/modules/workspace/ui/LedgerQueryErrorBanner";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
-import type { EntryFilters } from "@/modules/ledger/filters";
-import type { CreatedRecordResult } from "@/modules/source-document/contracts";
-import type { ActiveTabDataState, TabQueryStateReport } from "@/components/tab-query-state";
+import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
-import {
-  showNewRecordSuccessFeedback,
-  type NewRecordInputMode,
-} from "./new-record-success-feedback";
+import { NewRecordForms, InputFormLoadingFallback, preloadNewRecordModules } from "./NewRecordForms";
+import { ModalStackLoadingFallback } from "./ModalStackLoadingFallback";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { safePrefetch } from "@/lib/safe-prefetch";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -62,154 +57,6 @@ const SettingsTab = dynamic(
   () => import("@/modules/ledger/ui/SettingsTab").then((m) => m.SettingsTab),
   { loading: () => <SettingsTabSkeleton /> }
 );
-// Keep dynamic imports for dialog-only components that aren't on the default path
-const SourceDocumentInput = dynamic(
-  () =>
-    import("@/modules/source-document/ui/SourceDocumentInput").then((m) => ({
-      default: m.SourceDocumentInput,
-    })),
-  { ssr: false, loading: () => <InputFormLoadingFallback /> }
-);
-const QuickEntryForm = dynamic(
-  () =>
-    import("@/modules/source-document/ui/QuickEntryForm").then((m) => ({
-      default: m.QuickEntryForm,
-    })),
-  { ssr: false, loading: () => <InputFormLoadingFallback /> }
-);
-
-export function preloadNewRecordModules() {
-  safePrefetch(
-    import("@/modules/source-document/ui/SourceDocumentInput"),
-    "PREFETCH_SOURCE_DOCUMENT_INPUT_FAILED"
-  );
-  safePrefetch(
-    import("@/modules/source-document/ui/QuickEntryForm"),
-    "PREFETCH_QUICK_ENTRY_FAILED"
-  );
-}
-
-function InputFormLoadingFallback() {
-  return (
-    <div className="space-y-4 pt-1" role="status" aria-busy="true">
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-28 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-9 w-full" />
-    </div>
-  );
-}
-
-interface NewRecordFormsProps {
-  ledgerId: string;
-  activeTab: LedgerTab;
-  committedFilters: EntryFilters;
-  inputMode: NewRecordInputMode;
-  categories: EntryCategoryWithCount[];
-  mainCurrency: string;
-  preferredCurrencies: string[];
-  timeZone?: string;
-  aiDirty: boolean;
-  quickDirty: boolean;
-  setInputMode: (mode: NewRecordInputMode) => void;
-  setInputOpen: (open: boolean) => void;
-  setAiPending: (pending: boolean) => void;
-  setQuickPending: (pending: boolean) => void;
-  setAiDirty: (dirty: boolean) => void;
-  setQuickDirty: (dirty: boolean) => void;
-}
-
-function NewRecordForms({
-  ledgerId,
-  activeTab,
-  committedFilters,
-  inputMode,
-  categories,
-  mainCurrency,
-  preferredCurrencies,
-  timeZone,
-  aiDirty,
-  quickDirty,
-  setInputMode,
-  setInputOpen,
-  setAiPending,
-  setQuickPending,
-  setAiDirty,
-  setQuickDirty,
-}: NewRecordFormsProps) {
-  const tSourceDocument = useTranslations("SourceDocumentInput");
-  const tQuickEntry = useTranslations("QuickEntryForm");
-
-  const handleSuccess = useCallback(
-    (mode: NewRecordInputMode, result: CreatedRecordResult) => {
-      showNewRecordSuccessFeedback({
-        mode,
-        ledgerId,
-        result,
-        activeTab,
-        committedFilters,
-        messages: {
-          aiSuccess: tSourceDocument("uploadSuccess"),
-          quickSuccess: tQuickEntry("quickEntrySuccess"),
-          savedMayBeHidden: tSourceDocument("savedMayBeHidden"),
-          viewRecord: tSourceDocument("viewRecord"),
-        },
-      });
-
-      if (mode === "ai") {
-        if (quickDirty) setInputMode("quick");
-        else setInputOpen(false);
-        return;
-      }
-
-      if (aiDirty) setInputMode("ai");
-      else setInputOpen(false);
-    },
-    [
-      activeTab,
-      aiDirty,
-      committedFilters,
-      ledgerId,
-      quickDirty,
-      setInputMode,
-      setInputOpen,
-      tQuickEntry,
-      tSourceDocument,
-    ]
-  );
-
-  return (
-    <>
-      <div className={inputMode === "ai" ? undefined : "hidden"} aria-hidden={inputMode !== "ai"}>
-        <SourceDocumentInput
-          key={ledgerId}
-          ledgerId={ledgerId}
-          onPendingChange={setAiPending}
-          onDirtyChange={setAiDirty}
-          {...(timeZone != null ? { timeZone } : {})}
-          onSuccess={(result) => handleSuccess("ai", result)}
-        />
-      </div>
-      <div
-        className={inputMode === "quick" ? undefined : "hidden"}
-        aria-hidden={inputMode !== "quick"}
-      >
-        <QuickEntryForm
-          key={ledgerId}
-          ledgerId={ledgerId}
-          categories={categories}
-          mainCurrency={mainCurrency}
-          preferredCurrencies={preferredCurrencies}
-          onPendingChange={setQuickPending}
-          onDirtyChange={setQuickDirty}
-          {...(timeZone != null ? { timeZone } : {})}
-          onSuccess={(result) => handleSuccess("quick", result)}
-        />
-      </div>
-    </>
-  );
-}
 
 const ModalStackRenderer = dynamic(
   () =>
@@ -218,49 +65,6 @@ const ModalStackRenderer = dynamic(
     })),
   { ssr: false, loading: () => <ModalStackLoadingFallback /> }
 );
-
-function ModalStackLoadingFallback() {
-  const item = useModalStackStore((state) => state.stack.at(-1));
-  const closeAll = useModalStackStore((state) => state.closeAll);
-  const tCommon = useTranslations("Common");
-  if (item == null) return null;
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && closeAll()}>
-      <DialogContent
-        variant="detail"
-        className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,800px)] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:rounded-lg"
-        aria-describedby={undefined}
-      >
-        <DialogHeader className="border-b border-border px-4 py-4 sm:px-6">
-          <DialogTitle className="sr-only">{tCommon("loading")}</DialogTitle>
-          <Skeleton className="h-5 w-40" />
-        </DialogHeader>
-        <div
-          className="grid min-h-0 flex-1 gap-5 overflow-hidden p-4 sm:grid-cols-[minmax(0,1fr)_18rem] sm:p-6"
-          role="status"
-          aria-busy="true"
-        >
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-          <Skeleton className="hidden h-full min-h-64 sm:block" />
-        </div>
-        <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
-          <Skeleton className="h-9 w-20" />
-          <Skeleton className="h-9 w-24" />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cn("animate-pulse rounded bg-surface2", className)} />;
-}
 
 interface LedgerPageClientProps {
   ledgerId: string;
@@ -276,6 +80,10 @@ interface LedgerPageClientProps {
   interfaceLanguage?: InterfaceLanguage;
 }
 
+function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cn("animate-pulse rounded bg-surface2", className)} />;
+}
+
 function getFeatureForTab(activeTab: LedgerTab): keyof typeof FEATURE_MESSAGES {
   return activeTab === "details"
     ? "details"
@@ -284,26 +92,6 @@ function getFeatureForTab(activeTab: LedgerTab): keyof typeof FEATURE_MESSAGES {
       : activeTab === "settings"
         ? "settings"
         : "stream";
-}
-
-function getActiveTabQueryState(
-  ledgerId: string,
-  activeTab: LedgerTab,
-  featureStatus: "loading" | "success" | "error",
-  report: TabQueryStateReport | null
-): ActiveTabDataState {
-  const matchingReport =
-    report != null && report.ledgerId === ledgerId && report.tab === activeTab ? report : null;
-  if (featureStatus === "error") {
-    return matchingReport?.hasData === true ? "error-with-data" : "error-empty";
-  }
-  if (featureStatus !== "success" || matchingReport == null) return "initial-loading";
-  if (matchingReport.status === "error") {
-    return matchingReport.hasData ? "error-with-data" : "error-empty";
-  }
-  if (matchingReport.status === "pending" || !matchingReport.hasData) return "initial-loading";
-  if (matchingReport.isFetching) return "refreshing";
-  return "ready";
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -329,7 +117,6 @@ export function LedgerPageClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const queryClient = useQueryClient();
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
     queryFn: () => getLedgerAction(ledgerId),
@@ -390,119 +177,38 @@ export function LedgerPageClient({
   });
 
   const advancedFilters = filterParams;
-  const activeTabQueryState = useMemo(
-    () => getActiveTabQueryState(ledgerId, activeTab, activeFeatureStatus, tabQueryReport),
-    [activeFeatureStatus, activeTab, ledgerId, tabQueryReport]
-  );
-  const retryActiveTab = useCallback(() => {
-    retryFeatureMessages();
-    if (activeTab === "details") {
-      void queryClient.refetchQueries(
-        {
-          predicate: (query) =>
-            (query.queryKey[0] === "ledgerEntries" || query.queryKey[0] === "summary") &&
-            query.queryKey[1] === ledgerId,
-          type: "active",
-        },
-        { throwOnError: true }
-      );
-      return;
-    }
-    if (activeTab === "stream") {
-      void queryClient.refetchQueries(
-        {
-          predicate: (query) =>
-            query.queryKey[0] === "sourceDocuments" && query.queryKey[1] === ledgerId,
-          type: "active",
-        },
-        { throwOnError: true }
-      );
-      return;
-    }
-    if (activeTab === "settings") {
-      void queryClient.refetchQueries(
-        {
-          predicate: (query) =>
-            (query.queryKey[0] === "ledger" ||
-              query.queryKey[0] === "entryCategories" ||
-              query.queryKey[0] === "ledgerSettings") &&
-            query.queryKey[1] === ledgerId,
-          type: "active",
-        },
-        { throwOnError: true }
-      );
-      return;
-    }
-    if (
-      tabQueryReport?.ledgerId === ledgerId &&
-      tabQueryReport.tab === activeTab &&
-      tabQueryReport.queryKey.length > 0
-    ) {
-      void queryClient.refetchQueries({ queryKey: tabQueryReport.queryKey, exact: true });
-    }
-  }, [activeTab, ledgerId, queryClient, retryFeatureMessages, tabQueryReport]);
-  const refreshActiveTab = useCallback(async () => {
-    const matchesActiveTab = (query: { queryKey: readonly unknown[] }) => {
-      const key = query.queryKey;
-      if (activeTab === "stream") {
-        return (
-          key[0] === "sourceDocuments" &&
-          key[1] === ledgerId &&
-          (key[2] === "stream" || key[2] === "streamTotal")
-        );
-      }
-      if (activeTab === "details") {
-        return (key[0] === "ledgerEntries" || key[0] === "summary") && key[1] === ledgerId;
-      }
-      if (activeTab === "stats") return key[0] === "enhanced-stats" && key[1] === ledgerId;
-      return (
-        (key[0] === "ledger" || key[0] === "entryCategories" || key[0] === "ledgerSettings") &&
-        key[1] === ledgerId
-      );
-    };
-    await queryClient.refetchQueries(
-      { predicate: matchesActiveTab, type: "active" },
-      { throwOnError: true }
-    );
-  }, [activeTab, ledgerId, queryClient]);
+  const { activeTabQueryState, retryActiveTab, refreshActiveTab } = useActiveTabQueryState({
+    ledgerId,
+    activeTab,
+    activeFeatureStatus,
+    tabQueryReport,
+    retryFeatureMessages,
+  });
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
     pathname,
     ledgerId,
   });
 
-  const { isInputOpen, setIsInputOpen, inputMode, setInputMode, handleInputDialogChange } =
-    useLedgerDialogState();
-  const [aiPending, setAiPending] = useState(false);
-  const [quickPending, setQuickPending] = useState(false);
-  const [aiDirty, setAiDirty] = useState(false);
-  const [quickDirty, setQuickDirty] = useState(false);
-  const [discardInputOpen, setDiscardInputOpen] = useState(false);
-  const continueInputNavigationRef = useRef<(() => void) | null>(null);
-  const isInputSubmitting = aiPending || quickPending;
-  const hasInputDraft = aiDirty || quickDirty;
-  const setGlobalDirty = useUnsavedChangesStore((state) => state.setDirty);
+  const newRecordDialog = useNewRecordDialogState({ ledgerId });
+  const {
+    isInputOpen,
+    setIsInputOpen,
+    inputMode,
+    setInputMode,
+    setAiPending,
+    setQuickPending,
+    aiDirty,
+    setAiDirty,
+    quickDirty,
+    setQuickDirty,
+    isInputSubmitting,
+    handleDialogOpenChange,
+    discardConfirmOpen,
+    setDiscardConfirmOpen,
+    confirmDiscard,
+  } = newRecordDialog;
   const dirtyChangeCount = useUnsavedChangesStore((state) => state.dirtyKeys.size);
-
-  useEffect(() => {
-    setGlobalDirty(`new-record:${ledgerId}`, hasInputDraft);
-    return () => setGlobalDirty(`new-record:${ledgerId}`, false);
-  }, [hasInputDraft, ledgerId, setGlobalDirty]);
-
-  useEffect(() => {
-    const key = "new-record-navigation";
-    if (!hasInputDraft) {
-      useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
-      return;
-    }
-    useUnsavedChangesStore.getState().registerLeaveGuard(key, {
-      requestLeave: (continueNavigation) => {
-        continueInputNavigationRef.current = continueNavigation;
-        setDiscardInputOpen(true);
-      },
-    });
-    return () => useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
-  }, [hasInputDraft]);
 
   useEffect(() => {
     if (dirtyChangeCount === 0) return;
@@ -650,17 +356,7 @@ export function LedgerPageClient({
           )}
         </div>
 
-        <Dialog
-          open={isInputOpen}
-          onOpenChange={(open) => {
-            if (!open && isInputSubmitting) return;
-            if (!open && hasInputDraft) {
-              setDiscardInputOpen(true);
-              return;
-            }
-            handleInputDialogChange(open);
-          }}
-        >
+        <Dialog open={isInputOpen} onOpenChange={handleDialogOpenChange}>
           <DialogContent
             variant="detail"
             className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-md sm:rounded-lg"
@@ -739,23 +435,13 @@ export function LedgerPageClient({
         </Dialog>
 
         <ConfirmDialog
-          open={discardInputOpen}
-          onOpenChange={(open) => {
-            setDiscardInputOpen(open);
-            if (!open) continueInputNavigationRef.current = null;
-          }}
+          open={discardConfirmOpen}
+          onOpenChange={setDiscardConfirmOpen}
           title={tCommon("unsavedChangesTitle")}
           description={tCommon("unsavedChangesDescription")}
           confirmLabel={tCommon("discard")}
           variant="destructive"
-          onConfirm={() => {
-            const continueNavigation = continueInputNavigationRef.current;
-            continueInputNavigationRef.current = null;
-            setIsInputOpen(false);
-            setAiDirty(false);
-            setQuickDirty(false);
-            continueNavigation?.();
-          }}
+          onConfirm={confirmDiscard}
         />
 
         <ModalStackRenderer

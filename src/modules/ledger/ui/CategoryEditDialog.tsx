@@ -1,0 +1,97 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { IconPicker } from "@/components/ui/icon-picker";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useCategoryIconPickerMessages } from "@/modules/ledger/hooks/useCategoryIconPickerMessages";
+import type { EditSession } from "@/modules/ledger/hooks/useCategoryManagementDraft";
+
+interface CategoryEditDialogProps {
+  editSession: EditSession | null;
+  setEditSession: (updater: (session: EditSession | null) => EditSession | null) => void;
+  onRequestClose: () => void;
+  onCommit: () => void;
+}
+
+export function CategoryEditDialog({
+  editSession,
+  setEditSession,
+  onRequestClose,
+  onCommit,
+}: CategoryEditDialogProps) {
+  const t = useTranslations("Settings");
+  const common = useTranslations("Common");
+  const iconPickerMessages = useCategoryIconPickerMessages();
+
+  return (
+    <Dialog open={editSession != null} onOpenChange={(open) => !open && onRequestClose()}>
+      <DialogContent variant="modal">
+        <DialogHeader>
+          <DialogTitle>{t("editCategoryDialog")}</DialogTitle>
+        </DialogHeader>
+        {editSession == null ? null : (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <IconPicker
+                value={editSession.draft.icon}
+                messages={iconPickerMessages}
+                onChange={(icon) =>
+                  setEditSession((session) =>
+                    session == null ? null : { ...session, draft: { ...session.draft, icon } }
+                  )
+                }
+              />
+              <Input
+                value={editSession.draft.name}
+                onChange={(event) =>
+                  setEditSession((session) =>
+                    session == null
+                      ? null
+                      : { ...session, draft: { ...session.draft, name: event.target.value } }
+                  )
+                }
+                aria-label={t("categoryName")}
+              />
+            </div>
+            <Textarea
+              value={editSession.draft.description}
+              onChange={(event) =>
+                setEditSession((session) =>
+                  session == null
+                    ? null
+                    : {
+                        ...session,
+                        draft: { ...session.draft, description: event.target.value },
+                      }
+                )
+              }
+              aria-label={t("categoryDescription")}
+              className="min-h-24 w-full"
+            />
+          </div>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onRequestClose}>
+            {common("cancel")}
+          </Button>
+          <Button
+            type="button"
+            disabled={editSession?.draft.name.trim() === ""}
+            onClick={onCommit}
+          >
+            {common("save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,24 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { EntryCategory, SaveEntryCategoriesInput } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { IconPicker } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
-import { computeCategoryCollectionRevision } from "@/modules/ledger/category-collection-revision";
+import { useCategoryManagementDraft } from "@/modules/ledger/hooks/useCategoryManagementDraft";
+import { CategoryEditDialog } from "./CategoryEditDialog";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
@@ -29,28 +19,6 @@ interface CategorySectionProps {
   failedCategoryIds?: Set<string>;
   onRetryMetadata?: (id: string) => void;
   isSaving?: boolean;
-}
-
-interface CategoryDraft {
-  key: string;
-  id?: string;
-  clientId?: string;
-  name: string;
-  description: string;
-  icon: string | null;
-  entryCount?: number;
-}
-
-interface EditDraft {
-  key: string;
-  name: string;
-  description: string;
-  icon: string | null;
-}
-
-interface EditSession {
-  original: EditDraft;
-  draft: EditDraft;
 }
 
 export function CategorySection({
@@ -65,145 +33,36 @@ export function CategorySection({
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
   const common = useTranslations("Common");
-  const [managing, setManaging] = useState(false);
-  const [serverDraft, setServerDraft] = useState<CategoryDraft[]>([]);
-  const [draftOrder, setDraftOrder] = useState<CategoryDraft[]>([]);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [editSession, setEditSession] = useState<EditSession | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<CategoryDraft | null>(null);
-  const [discardManagementOpen, setDiscardManagementOpen] = useState(false);
-  const [discardEditOpen, setDiscardEditOpen] = useState(false);
-  const [serverChanged, setServerChanged] = useState(false);
-  const [revisionConflict, setRevisionConflict] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const incomingDraft = useMemo(() => categories.map(toCategoryDraft), [categories]);
-  const dirty = managing && !categoryDraftsEqual(serverDraft, draftOrder);
-  const editDirty = editSession != null && !editDraftEqual(editSession.original, editSession.draft);
-  const hasCategoryDraft = dirty || newCategoryName.trim() !== "" || editDirty;
 
-  useEffect(() => {
-    if (!managing || categoryDraftsEqual(serverDraft, incomingDraft)) return;
-    setServerDraft(incomingDraft);
-    if (hasCategoryDraft) {
-      setServerChanged(true);
-      setRevisionConflict(true);
-    } else {
-      setDraftOrder(incomingDraft);
-      setServerChanged(false);
-      setRevisionConflict(false);
-    }
-  }, [hasCategoryDraft, incomingDraft, managing, serverDraft]);
-
-  useEffect(() => {
-    const key = "settings:categories";
-    useUnsavedChangesStore.getState().setDirty(key, hasCategoryDraft);
-    return () => useUnsavedChangesStore.getState().setDirty(key, false);
-  }, [hasCategoryDraft]);
-
-  const displayedCategories = managing ? draftOrder : incomingDraft;
-
-  const enterManagement = () => {
-    setServerDraft(incomingDraft);
-    setDraftOrder(incomingDraft);
-    setManaging(true);
-    setServerChanged(false);
-    setRevisionConflict(false);
-    setSaveError(null);
-  };
-
-  const move = (index: number, direction: -1 | 1) => {
-    setDraftOrder((current) => {
-      const target = index + direction;
-      if (target < 0 || target >= current.length) return current;
-      const next = [...current];
-      const [item] = next.splice(index, 1);
-      if (item == null) return current;
-      next.splice(target, 0, item);
-      return next;
-    });
-    setSaveError(null);
-  };
-
-  const createCategory = () => {
-    const name = newCategoryName.trim();
-    if (name === "" || isSaving) return;
-    const clientId = crypto.randomUUID();
-    setDraftOrder((current) => [
-      ...current,
-      {
-        key: clientId,
-        clientId,
-        name,
-        description: "",
-        icon: null,
-      },
-    ]);
-    setNewCategoryName("");
-    setSaveError(null);
-  };
-
-  const requestEditClose = () => {
-    if (editSession == null) return;
-    if (editDraftEqual(editSession.original, editSession.draft)) {
-      setEditSession(null);
-    } else {
-      setDiscardEditOpen(true);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!dirty || isSaving || revisionConflict || serverChanged) return;
-    setSaveError(null);
-    try {
-      const expectedRevision = await computeCategoryCollectionRevision(categories);
-      const saved = await onSaveCategories({
-        expectedRevision,
-        categories: draftOrder.map((category) => ({
-          ...(category.id === undefined ? {} : { id: category.id }),
-          ...(category.clientId === undefined ? {} : { clientId: category.clientId }),
-          name: category.name.trim(),
-          description: category.description.trim() || null,
-          icon: category.icon,
-        })),
-      });
-      const savedDraft = saved.map(toCategoryDraft);
-      setServerDraft(savedDraft);
-      setDraftOrder(savedDraft);
-      setManaging(false);
-      setServerChanged(false);
-      setRevisionConflict(false);
-    } catch (error) {
-      const errorCode =
-        typeof error === "object" && error != null && "code" in error
-          ? (error as { code?: unknown }).code
-          : undefined;
-      if (errorCode === "CONFLICT") {
-        setRevisionConflict(true);
-        setServerChanged(true);
-        setSaveError(t("updateConflict"));
-      } else {
-        setSaveError(t("saveCategoriesFailed"));
-      }
-    }
-  };
-
-  const handleReload = async () => {
-    if (onReloadCategories == null) return;
-    try {
-      const latest = await onReloadCategories();
-      const latestDraft = latest.map(toCategoryDraft);
-      setServerDraft(latestDraft);
-      setDraftOrder(latestDraft);
-      setNewCategoryName("");
-      setEditSession(null);
-      setManaging(false);
-      setServerChanged(false);
-      setRevisionConflict(false);
-      setSaveError(null);
-    } catch {
-      setSaveError(t("saveCategoriesFailed"));
-    }
-  };
+  const {
+    managing,
+    newCategoryName,
+    setNewCategoryName,
+    editSession,
+    setEditSession,
+    deleteTarget,
+    setDeleteTarget,
+    discardManagementOpen,
+    setDiscardManagementOpen,
+    discardEditOpen,
+    setDiscardEditOpen,
+    serverChanged,
+    revisionConflict,
+    saveError,
+    dirty,
+    displayedCategories,
+    enterManagement,
+    move,
+    createCategory,
+    requestEditClose,
+    handleSave,
+    handleReload,
+    startEditing,
+    commitEdit,
+    cancelManagement,
+    confirmDiscardManagement,
+    confirmDeleteCategory,
+  } = useCategoryManagementDraft({ categories, onSaveCategories, onReloadCategories, isSaving, t });
 
   return (
     <div className="space-y-4">
@@ -300,15 +159,7 @@ export function CategorySection({
                   size="icon"
                   className="size-11"
                   disabled={isSaving}
-                  onClick={() => {
-                    const draft = {
-                      key: category.key,
-                      name: category.name,
-                      description: category.description,
-                      icon: category.icon,
-                    };
-                    setEditSession({ original: draft, draft });
-                  }}
+                  onClick={() => startEditing(category)}
                   aria-label={t("editCategory", { name: category.name })}
                 >
                   <Pencil className="h-4 w-4" />
@@ -366,15 +217,7 @@ export function CategorySection({
             ) : null}
           </div>
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isSaving}
-              onClick={() => {
-                if (hasCategoryDraft) setDiscardManagementOpen(true);
-                else setManaging(false);
-              }}
-            >
+            <Button type="button" variant="outline" disabled={isSaving} onClick={cancelManagement}>
               {common("cancel")}
             </Button>
             <Button
@@ -388,145 +231,12 @@ export function CategorySection({
         </>
       ) : null}
 
-      <Dialog open={editSession != null} onOpenChange={(open) => !open && requestEditClose()}>
-        <DialogContent variant="modal">
-          <DialogHeader>
-            <DialogTitle>{t("editCategoryDialog")}</DialogTitle>
-          </DialogHeader>
-          {editSession == null ? null : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <IconPicker
-                  value={editSession.draft.icon}
-                  messages={{
-                    select: t("selectIcon"),
-                    selected: (name) => t("selectedIcon", { name }),
-                    list: t("icons"),
-                    iconNames: {
-                      Utensils: t("iconNames.Utensils"),
-                      Coffee: t("iconNames.Coffee"),
-                      Wine: t("iconNames.Wine"),
-                      ShoppingBag: t("iconNames.ShoppingBag"),
-                      ShoppingCart: t("iconNames.ShoppingCart"),
-                      Shirt: t("iconNames.Shirt"),
-                      Gamepad2: t("iconNames.Gamepad2"),
-                      Music: t("iconNames.Music"),
-                      Ticket: t("iconNames.Ticket"),
-                      Film: t("iconNames.Film"),
-                      Bus: t("iconNames.Bus"),
-                      Car: t("iconNames.Car"),
-                      TrainFront: t("iconNames.TrainFront"),
-                      Plane: t("iconNames.Plane"),
-                      Bike: t("iconNames.Bike"),
-                      Stethoscope: t("iconNames.Stethoscope"),
-                      Heart: t("iconNames.Heart"),
-                      House: t("iconNames.House"),
-                      Building: t("iconNames.Building"),
-                      Key: t("iconNames.Key"),
-                      Book: t("iconNames.Book"),
-                      GraduationCap: t("iconNames.GraduationCap"),
-                      Laptop: t("iconNames.Laptop"),
-                      Phone: t("iconNames.Phone"),
-                      Camera: t("iconNames.Camera"),
-                      Headphones: t("iconNames.Headphones"),
-                      Wifi: t("iconNames.Wifi"),
-                      Wallet: t("iconNames.Wallet"),
-                      CreditCard: t("iconNames.CreditCard"),
-                      Banknote: t("iconNames.Banknote"),
-                      Receipt: t("iconNames.Receipt"),
-                      PiggyBank: t("iconNames.PiggyBank"),
-                      Briefcase: t("iconNames.Briefcase"),
-                      Hammer: t("iconNames.Hammer"),
-                      Dumbbell: t("iconNames.Dumbbell"),
-                      Baby: t("iconNames.Baby"),
-                      Dog: t("iconNames.Dog"),
-                      Gift: t("iconNames.Gift"),
-                      Glasses: t("iconNames.Glasses"),
-                      Umbrella: t("iconNames.Umbrella"),
-                      Watch: t("iconNames.Watch"),
-                      Hotel: t("iconNames.Hotel"),
-                      MapPin: t("iconNames.MapPin"),
-                      Luggage: t("iconNames.Luggage"),
-                      Crown: t("iconNames.Crown"),
-                      Star: t("iconNames.Star"),
-                      Lightbulb: t("iconNames.Lightbulb"),
-                      Palette: t("iconNames.Palette"),
-                      Scissors: t("iconNames.Scissors"),
-                      Tag: t("iconNames.Tag"),
-                      Truck: t("iconNames.Truck"),
-                      Zap: t("iconNames.Zap"),
-                      Package: t("iconNames.Package"),
-                    },
-                  }}
-                  onChange={(icon) =>
-                    setEditSession((session) =>
-                      session == null ? null : { ...session, draft: { ...session.draft, icon } }
-                    )
-                  }
-                />
-                <Input
-                  value={editSession.draft.name}
-                  onChange={(event) =>
-                    setEditSession((session) =>
-                      session == null
-                        ? null
-                        : {
-                            ...session,
-                            draft: { ...session.draft, name: event.target.value },
-                          }
-                    )
-                  }
-                  aria-label={t("categoryName")}
-                />
-              </div>
-              <Textarea
-                value={editSession.draft.description}
-                onChange={(event) =>
-                  setEditSession((session) =>
-                    session == null
-                      ? null
-                      : {
-                          ...session,
-                          draft: { ...session.draft, description: event.target.value },
-                        }
-                  )
-                }
-                aria-label={t("categoryDescription")}
-                className="min-h-24 w-full"
-              />
-            </div>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={requestEditClose}>
-              {common("cancel")}
-            </Button>
-            <Button
-              type="button"
-              disabled={editSession?.draft.name.trim() === ""}
-              onClick={() => {
-                if (editSession == null) return;
-                const updated = editSession.draft;
-                setDraftOrder((current) =>
-                  current.map((category) =>
-                    category.key === updated.key
-                      ? {
-                          ...category,
-                          name: updated.name.trim(),
-                          description: updated.description,
-                          icon: updated.icon,
-                        }
-                      : category
-                  )
-                );
-                setEditSession(null);
-                setSaveError(null);
-              }}
-            >
-              {common("save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CategoryEditDialog
+        editSession={editSession}
+        setEditSession={setEditSession}
+        onRequestClose={requestEditClose}
+        onCommit={commitEdit}
+      />
 
       <ConfirmDialog
         open={deleteTarget != null}
@@ -534,13 +244,7 @@ export function CategorySection({
         title={t("deleteCategoryDialog")}
         description={t("deleteCategoryDescription", { name: deleteTarget?.name ?? "" })}
         variant="destructive"
-        onConfirm={() => {
-          if (deleteTarget == null) return;
-          setDraftOrder((current) =>
-            current.filter((category) => category.key !== deleteTarget.key)
-          );
-          setSaveError(null);
-        }}
+        onConfirm={confirmDeleteCategory}
       />
 
       <ConfirmDialog
@@ -550,15 +254,7 @@ export function CategorySection({
         description={t("discardCategoryChangesDescription")}
         variant="destructive"
         confirmLabel={common("discard")}
-        onConfirm={() => {
-          setDraftOrder(serverDraft);
-          setNewCategoryName("");
-          setEditSession(null);
-          setManaging(false);
-          setServerChanged(false);
-          setRevisionConflict(false);
-          setSaveError(null);
-        }}
+        onConfirm={confirmDiscardManagement}
       />
 
       <ConfirmDialog
@@ -571,38 +267,5 @@ export function CategorySection({
         onConfirm={() => setEditSession(null)}
       />
     </div>
-  );
-}
-
-function toCategoryDraft(category: EntryCategory): CategoryDraft {
-  return {
-    key: category.id,
-    id: category.id,
-    name: category.name,
-    description: category.description ?? "",
-    icon: category.icon,
-    ...("entryCount" in category && typeof category.entryCount === "number"
-      ? { entryCount: category.entryCount }
-      : {}),
-  };
-}
-
-function categoryDraftsEqual(left: CategoryDraft[], right: CategoryDraft[]): boolean {
-  if (left.length !== right.length) return false;
-  return left.every((category, index) => {
-    const other = right[index];
-    return (
-      other != null &&
-      category.key === other.key &&
-      category.name === other.name &&
-      category.description === other.description &&
-      category.icon === other.icon
-    );
-  });
-}
-
-function editDraftEqual(left: EditDraft, right: EditDraft): boolean {
-  return (
-    left.name === right.name && left.description === right.description && left.icon === right.icon
   );
 }
