@@ -4,7 +4,7 @@ import {
   collectTargetSourceDocuments,
   countSourceDocumentsByStatus,
   listTargetSourceDocuments,
-} from "@/application/adapters/postgres/read-models";
+} from "@/application/adapters/postgres/source-document-reads";
 import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { createTestSourceDocument } from "tests/helpers/schema-setup";

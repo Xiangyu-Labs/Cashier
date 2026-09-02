@@ -22,7 +22,7 @@ import { postgresLedgerProjectionAdapter } from "./ledger-projections";
 import { replaceActiveProjectionInTransaction } from "./ledger-projections";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { UpdateLedgerEntryInput } from "@/modules/ledger/contract-schemas";
-import { getTargetSourceDocument } from "./read-models";
+import { getTargetSourceDocument } from "./source-document-reads";
 import { listLedgerEntryViewsBySourceDocumentIds } from "./ledger-reads/list-ledger-entry-views-by-source-document-ids";
 import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
 

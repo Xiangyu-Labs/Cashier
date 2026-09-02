@@ -1,0 +1,87 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { getTestDb } from "../../setup";
+import { ledgers, ledgerEntries } from "@/persistence";
+import { sourceDocuments } from "@/persistence/schema/source-document";
+import { v4 as uuidv4 } from "uuid";
+import { eq } from "drizzle-orm";
+
+const { getRatesMock, convertBatchMock } = vi.hoisted(() => ({
+  getRatesMock: vi.fn(async () => ({
+    base: "USD",
+    date: "2026-01-01",
+    rates: { CNY: 1 } as Record<string, number>,
+  })),
+  convertBatchMock: vi.fn(),
+}));
+
+vi.mock("@/application/adapters/postgres/exchange-rate", () => {
+  const rateBook = {
+    getRates: getRatesMock,
+    convertBatch: convertBatchMock,
+  };
+  return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
+});
+import { deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
+
+const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
+
+async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entryDate?: string) {
+  const [doc] = await db
+    .insert(sourceDocuments)
+    .values({
+      id: uuidv4(),
+      ledgerId,
+      currentStatus: "completed",
+      type: "ai_parsed",
+      entryDate: entryDate ?? null,
+    })
+    .returning();
+  expect(doc).toBeDefined();
+  if (doc === undefined) {
+    throw new Error("Expected source document insert to return a row");
+  }
+  await activateTestSourceDocumentProjection(db, doc.id);
+  return doc;
+}
+
+describe("deleteLedgerEntryAction", () => {
+  let ledgerId: string;
+
+  beforeEach(async () => {
+    const db = getTestDb();
+    ledgerId = uuidv4();
+    await db.insert(ledgers).values({
+      id: ledgerId,
+      userId: TEST_USER_ID,
+    });
+  });
+
+  it("soft-deletes an entry", async () => {
+    const db = getTestDb();
+    const doc = await seedDoc(db, ledgerId);
+    const [entry] = await db
+      .insert(ledgerEntries)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Test",
+        amount: "10.00",
+        currency: "CNY",
+      })
+      .returning();
+    expect(entry).toBeDefined();
+    if (entry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
+    await activateTestSourceDocumentProjection(db, doc.id);
+
+    await deleteLedgerEntryAction(ledgerId, entry.id, crypto.randomUUID());
+
+    const updated = await db.query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, entry.id),
+    });
+    expect(updated?.deletedAt).not.toBeNull();
+  });
+});

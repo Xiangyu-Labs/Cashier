@@ -13,7 +13,7 @@ import {
 } from "@/application/adapters/postgres";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import { listDuplicateDetectionCandidates } from "@/application/adapters/postgres/duplicate-candidates";
-import { getSourceDocumentDuplicateReview } from "@/application/adapters/postgres/read-models";
+import { getSourceDocumentDuplicateReview } from "@/application/adapters/postgres/source-document-reads";
 import { duplicateReviews, ledgers, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";

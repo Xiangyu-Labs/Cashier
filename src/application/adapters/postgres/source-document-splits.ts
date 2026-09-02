@@ -13,7 +13,7 @@ import {
   replaceActiveProjectionInTransaction,
 } from "./ledger-projections";
 import { listLedgerEntryViewsBySourceDocumentIds } from "./ledger-reads/list-ledger-entry-views-by-source-document-ids";
-import { getTargetSourceDocument } from "./read-models";
+import { getTargetSourceDocument } from "./source-document-reads";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 
 interface SplitSourceDocumentAdapterInput {
