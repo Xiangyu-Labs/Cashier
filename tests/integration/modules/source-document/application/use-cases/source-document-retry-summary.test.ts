@@ -164,29 +164,29 @@ describe("retry active result summary", () => {
       entries: [
         {
           categoryId: null,
-          amount: "10.00",
+          amount: "9007199254740992.01",
           currency: "CNY",
           itemName: "Item 1",
           description: null,
-          convertedAmount: "10.00",
+          convertedAmount: "9007199254740992.01",
           exchangeRate: "1.000000",
         },
         {
           categoryId: null,
-          amount: "20.00",
+          amount: "0.01",
           currency: "CNY",
           itemName: "Item 2",
           description: null,
-          convertedAmount: "20.00",
+          convertedAmount: "0.01",
           exchangeRate: "1.000000",
         },
         {
           categoryId: null,
-          amount: "30.00",
+          amount: "0.01",
           currency: "CNY",
           itemName: "Item 3",
           description: null,
-          convertedAmount: "30.00",
+          convertedAmount: "0.01",
           exchangeRate: "1.000000",
         },
       ],
@@ -209,7 +209,6 @@ describe("retry active result summary", () => {
     expect(detail?.status).toBe("failed");
     expect(detail?.activeResultSummary).toBeDefined();
     expect(detail?.activeResultSummary?.entryCount).toBe(3);
-    // Total: 10.00 + 20.00 + 30.00 = 60.00
-    expect(detail?.activeResultSummary?.total).toBe("60.00");
+    expect(detail?.activeResultSummary?.total).toBe("9007199254740992.03");
   });
 });

@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { add as decimalAdd, round as decimalRound } from "@/lib/money/decimal";
 import type {
   SourceDocumentStoredFileDto,
   SourceDocumentListItemDto,
@@ -22,12 +23,6 @@ import {
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
-
-function parseAmount(amount: string | null | undefined): number {
-  if (amount == null) return 0;
-  const parsed = parseFloat(amount);
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
 
 export async function loadDuplicateReviewMap(
   rows: readonly SourceDocumentRow[]
@@ -292,16 +287,13 @@ function summarizeProjection(
     convertedAmount: string | null;
   }>
 ): SourceDocumentCandidateProjectionSummary {
-  const total = entries.reduce((sum, entry) => {
-    const amt =
-      entry.convertedAmount != null && entry.convertedAmount !== ""
-        ? parseAmount(entry.convertedAmount)
-        : parseAmount(entry.amount);
-    return sum + amt;
-  }, 0);
+  const total = entries.reduce(
+    (sum, entry) => decimalAdd(sum, entry.convertedAmount ?? entry.amount),
+    "0"
+  );
   return {
     entryCount: entries.length,
-    total: total.toFixed(2),
+    total: decimalRound(total, 2),
   };
 }
 
@@ -377,13 +369,13 @@ export function sanitizedErrorCode(
     "INTERNAL",
   ];
   if (allowed.includes(failureCode as ApplicationErrorCode)) {
-    return failureCode as ProcessingFailureCode;
+    return failureCode as ApplicationErrorCode;
   }
   if (
     failureCode != null &&
     (PROCESSING_FAILURE_CODES as readonly string[]).includes(failureCode)
   ) {
-    return failureCode as ApplicationErrorCode;
+    return failureCode as ProcessingFailureCode;
   }
   return "PROCESSING_UNAVAILABLE";
 }
