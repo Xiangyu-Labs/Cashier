@@ -1,4 +1,3 @@
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
 import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
@@ -6,7 +5,6 @@ import type { SourceDocumentQueryPorts } from "../ports";
 
 function toLightDto(
   document: SourceDocumentDto,
-  ledgerEntries: SourceDocumentLightWithEntriesDto["ledgerEntries"],
   hasImages: boolean
 ): SourceDocumentLightWithEntriesDto {
   return {
@@ -31,7 +29,7 @@ function toLightDto(
     ...(document.duplicateReview !== undefined
       ? { duplicateReview: document.duplicateReview }
       : {}),
-    ledgerEntries,
+    ledgerEntries: document.ledgerEntries ?? [],
   };
 }
 
@@ -50,27 +48,13 @@ export async function getSourceDocumentLight(
     return null;
   }
 
-  const [document, entriesByDocId] = await Promise.all([
-    ports.documents.get(accessContext.ledgerId, sourceDocumentId),
-    listLedgerEntryViewsBySourceDocumentIds(
-      {
-        ledgerId: accessContext.ledgerId,
-        sourceDocumentIds: [sourceDocumentId],
-        includeDuplicatePending: true,
-      },
-      ports.ledgerReads
-    ),
-  ]);
+  const document = await ports.documents.get(accessContext.ledgerId, sourceDocumentId);
 
   if (document == null) {
     return null;
   }
 
-  return toLightDto(
-    document,
-    entriesByDocId.get(document.id) ?? [],
-    document.hasImages ?? accessContext.hasImages
-  );
+  return toLightDto(document, document.hasImages ?? accessContext.hasImages);
 }
 
 export async function getSourceDocumentLightForLedger(
@@ -78,14 +62,8 @@ export async function getSourceDocumentLightForLedger(
   sourceDocumentId: string,
   ports: SourceDocumentQueryPorts
 ): Promise<SourceDocumentLightWithEntriesDto | null> {
-  const [document, entriesByDocId] = await Promise.all([
-    ports.documents.get(ledgerId, sourceDocumentId),
-    listLedgerEntryViewsBySourceDocumentIds(
-      { ledgerId, sourceDocumentIds: [sourceDocumentId], includeDuplicatePending: true },
-      ports.ledgerReads
-    ),
-  ]);
+  const document = await ports.documents.get(ledgerId, sourceDocumentId);
   if (document == null) return null;
 
-  return toLightDto(document, entriesByDocId.get(document.id) ?? [], document.hasImages ?? false);
+  return toLightDto(document, document.hasImages ?? false);
 }

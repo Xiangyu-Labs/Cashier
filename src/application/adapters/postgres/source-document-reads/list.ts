@@ -5,7 +5,6 @@ import type {
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
   SourceDocumentDuplicateReviewDetailDto,
-  SourceDocumentStoredFileDto,
 } from "@/modules/source-document/contracts";
 import type { PendingDuplicateReviewContract } from "@/modules/source-document/application/ports";
 import { add as decimalAdd } from "@/lib/money/decimal";
@@ -28,8 +27,10 @@ import {
   mapDuplicateReviewDto,
   mapListItem,
   mapSourceDocumentDetail,
+  type SourceDocumentLedgerEntryAggregateRow,
   type SourceDocumentHydrationRow,
   type SourceDocumentRow,
+  type SourceDocumentStoredFileAggregateRow,
 } from "./mappers";
 import { loadDuplicateReviewSide } from "./hydration";
 
@@ -414,7 +415,7 @@ async function hydrateSourceDocumentRows(
 ): Promise<SourceDocumentHydrationRow[]> {
   if (documentIds.length === 0) return [];
   const files = includeDetail
-    ? sql<SourceDocumentStoredFileDto[]>`COALESCE((
+    ? sql<SourceDocumentStoredFileAggregateRow[]>`COALESCE((
         SELECT jsonb_agg(jsonb_build_object(
           'id', selected_file.id,
           'contentType', selected_file.content_type,
@@ -436,7 +437,56 @@ async function hydrateSourceDocumentRows(
               AND owned_revision.id = selected_revision_file.revision_id
           )
       ), '[]'::jsonb)`
-    : sql<SourceDocumentStoredFileDto[]>`'[]'::jsonb`;
+    : sql<SourceDocumentStoredFileAggregateRow[]>`'[]'::jsonb`;
+  const selectedLedgerEntries = includeDetail
+    ? sql<SourceDocumentLedgerEntryAggregateRow[]>`COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', selected_entry.id,
+          'ledgerId', selected_entry.ledger_id,
+          'categoryId', selected_entry.category_id,
+          'sourceDocumentId', selected_entry.source_document_id,
+          'amount', selected_entry.amount::text,
+          'currency', selected_entry.currency,
+          'itemName', selected_entry.item_name,
+          'description', selected_entry.description,
+          'convertedAmount', selected_entry.converted_amount::text,
+          'exchangeRate', selected_entry.exchange_rate::text,
+          'createdAt', selected_entry.created_at,
+          'updatedAt', selected_entry.updated_at,
+          'deletedAt', selected_entry.deleted_at,
+          'category', CASE
+            WHEN selected_category.id IS NULL THEN NULL
+            ELSE jsonb_build_object(
+              'id', selected_category.id,
+              'ledgerId', selected_category.ledger_id,
+              'name', selected_category.name,
+              'description', selected_category.description,
+              'icon', selected_category.icon,
+              'sortOrder', selected_category.sort_order,
+              'createdAt', selected_category.created_at,
+              'updatedAt', selected_category.updated_at,
+              'deletedAt', selected_category.deleted_at
+            )
+          END
+        ) ORDER BY selected_entry.position, selected_entry.id)
+        FROM ${ledgerEntries} selected_entry
+        LEFT JOIN ${entryCategories} selected_category
+          ON selected_category.ledger_id = selected_entry.ledger_id
+         AND selected_category.id = selected_entry.category_id
+         AND selected_category.deleted_at IS NULL
+        WHERE selected_entry.ledger_id = ${ledgerId}
+          AND selected_entry.source_document_id = ${sourceDocuments.id}
+          AND selected_entry.source_document_revision_id = ${selectedRevisionId}
+          AND selected_entry.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1
+            FROM ${sourceDocumentRevisions} owned_entry_revision
+            WHERE owned_entry_revision.ledger_id = ${ledgerId}
+              AND owned_entry_revision.source_document_id = ${sourceDocuments.id}
+              AND owned_entry_revision.id = selected_entry.source_document_revision_id
+          )
+      ), '[]'::jsonb)`
+    : sql<SourceDocumentLedgerEntryAggregateRow[]>`'[]'::jsonb`;
   const activeResultSummary = includeDetail
     ? sql<SourceDocumentHydrationRow["activeResultSummary"]>`CASE
         WHEN ${sourceDocuments.currentStatus} IN ('anomaly', 'failed')
@@ -466,7 +516,6 @@ async function hydrateSourceDocumentRows(
   return executor
     .select({
       documentId: sourceDocuments.id,
-      revisionId: sourceDocumentRevisions.id,
       revisionTitle: sourceDocumentRevisions.title,
       submittedText: sourceDocumentRevisions.submittedText,
       revisionOutcome: sourceDocumentRevisions.outcome,
@@ -474,6 +523,7 @@ async function hydrateSourceDocumentRows(
       failureCode: sourceDocumentRevisions.failureCode,
       hasImages: hasSelectedRevisionFiles(ledgerId),
       files,
+      ledgerEntries: selectedLedgerEntries,
       activeResultSummary,
       ...duplicateReviewColumns(),
     })

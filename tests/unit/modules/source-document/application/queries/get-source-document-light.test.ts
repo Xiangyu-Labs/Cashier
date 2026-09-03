@@ -1,20 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  getAccessContextMock,
-  getTargetSourceDocumentMock,
-  requireLedgerAccessMock,
-  listLedgerEntryViewsBySourceDocumentIdsMock,
-} = vi.hoisted(() => ({
-  getAccessContextMock: vi.fn(),
-  getTargetSourceDocumentMock: vi.fn(),
-  requireLedgerAccessMock: vi.fn(),
-  listLedgerEntryViewsBySourceDocumentIdsMock: vi.fn(),
-}));
-
-vi.mock("@/modules/ledger/source-document-queries", () => ({
-  listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
-}));
+const { getAccessContextMock, getTargetSourceDocumentMock, requireLedgerAccessMock } = vi.hoisted(
+  () => ({
+    getAccessContextMock: vi.fn(),
+    getTargetSourceDocumentMock: vi.fn(),
+    requireLedgerAccessMock: vi.fn(),
+  })
+);
 
 import { getSourceDocumentLight } from "@/modules/source-document/application/queries/get-source-document-light";
 import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
@@ -30,13 +22,9 @@ describe("getSourceDocumentLight", () => {
     vi.clearAllMocks();
     requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
     getAccessContextMock.mockResolvedValue({ ledgerId: "ledger-1", hasImages: true });
-    listLedgerEntryViewsBySourceDocumentIdsMock.mockResolvedValue(new Map());
   });
 
   it("returns stored-file identities and entries without a legacy URL field", async () => {
-    listLedgerEntryViewsBySourceDocumentIdsMock.mockResolvedValue(
-      new Map([["doc-1", [{ id: "entry-1", itemName: "Lunch" }]]])
-    );
     getTargetSourceDocumentMock.mockResolvedValue({
       id: "doc-1",
       ledgerId: "ledger-1",
@@ -52,6 +40,7 @@ describe("getSourceDocumentLight", () => {
       updatedAt: "2026-03-20T11:00:00.000Z",
       deletedAt: null,
       hasImages: true,
+      ledgerEntries: [{ id: "entry-1", itemName: "Lunch" }],
       supportedActions: ["retry"],
       errorCode: null,
     });

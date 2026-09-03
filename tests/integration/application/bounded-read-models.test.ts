@@ -136,7 +136,7 @@ async function collectLedgerEntryPages(ledgerId: string, limit: number) {
 }
 
 describe("bounded target read models", () => {
-  it("uses exactly two read statements for source-document list and detail hydration", async () => {
+  it("uses exactly two read statements at the source-document read adapter boundary", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const [document] = await db
@@ -159,6 +159,7 @@ describe("bounded target read models", () => {
 
     expect(listCapture.result.items).toHaveLength(1);
     expect(detailCapture.result?.files).toHaveLength(1);
+    expect(detailCapture.result?.ledgerEntries).toEqual([]);
     expect(readStatements(listCapture.statements)).toHaveLength(2);
     expect(readStatements(detailCapture.statements)).toHaveLength(2);
   });

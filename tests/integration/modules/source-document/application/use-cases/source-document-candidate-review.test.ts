@@ -85,6 +85,27 @@ async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledg
 }
 
 describe("source document candidates", () => {
+  it("hydrates detail entries from the selected pending revision", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-detail-selection");
+    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
+      db,
+      ledgerId
+    );
+
+    const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
+
+    expect(detail?.pendingRevisionId).toBe(candidateRevisionId);
+    expect(detail?.ledgerEntries).toEqual([
+      expect.objectContaining({
+        itemName: "Dinner",
+        amount: "25.000",
+        convertedAmount: "25.000",
+        exchangeRate: "1",
+      }),
+    ]);
+  });
+
   it("returns complete active and candidate projections for review", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-review");

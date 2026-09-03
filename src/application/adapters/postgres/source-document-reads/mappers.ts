@@ -13,7 +13,7 @@ import {
   type ProcessingFailureCode,
   type RevisionOutcome,
 } from "@/application/contracts";
-import { round as decimalRound } from "@/lib/money/decimal";
+import { compare as decimalCompare, round as decimalRound } from "@/lib/money/decimal";
 import type {
   SourceDocumentStatusType,
   SourceDocumentTypeValue,
@@ -46,14 +46,14 @@ interface DuplicateReviewRow {
 
 export interface SourceDocumentHydrationRow {
   documentId: string;
-  revisionId: string | null;
   revisionTitle: string | null;
   submittedText: string | null;
   revisionOutcome: string | null;
   anomalyReason: string | null;
   failureCode: string | null;
   hasImages: boolean;
-  files: SourceDocumentStoredFileDto[];
+  files: SourceDocumentStoredFileAggregateRow[];
+  ledgerEntries: SourceDocumentLedgerEntryAggregateRow[];
   activeResultSummary: SourceDocumentCandidateProjectionSummary | null;
   duplicateSourceDocumentId: string | null;
   duplicateRevisionId: string | null;
@@ -62,6 +62,42 @@ export interface SourceDocumentHydrationRow {
   duplicateStatus: "pending" | "kept" | "discarded" | "staged" | null;
   duplicateReason: string | null;
   duplicateConfidence: string | number | null;
+}
+
+export interface SourceDocumentStoredFileAggregateRow {
+  id: string;
+  contentType: string;
+  byteSize: number;
+  originalFilename: string | null;
+}
+
+interface SourceDocumentEntryCategoryAggregateRow {
+  id: string;
+  ledgerId: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface SourceDocumentLedgerEntryAggregateRow {
+  id: string;
+  ledgerId: string;
+  categoryId: string | null;
+  sourceDocumentId: string;
+  amount: string;
+  currency: string;
+  itemName: string;
+  description: string | null;
+  convertedAmount: string | null;
+  exchangeRate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  category: SourceDocumentEntryCategoryAggregateRow | null;
 }
 
 export function mapDuplicateReviewDto(
@@ -92,6 +128,30 @@ export function mapStoredFileDto(file: {
     contentType: file.contentType,
     byteSize: file.byteSize,
     originalFilename: file.originalFilename,
+  };
+}
+
+function mapLedgerEntryAggregateDto(
+  entry: SourceDocumentLedgerEntryAggregateRow
+): SourceDocumentLedgerEntryDto {
+  return {
+    id: entry.id,
+    ledgerId: entry.ledgerId,
+    categoryId: entry.categoryId,
+    sourceDocumentId: entry.sourceDocumentId,
+    amount: entry.amount,
+    currency: entry.currency,
+    itemName: entry.itemName,
+    description: entry.description,
+    convertedAmount: entry.convertedAmount,
+    exchangeRate:
+      entry.exchangeRate != null && decimalCompare(entry.exchangeRate, "1") === 0
+        ? "1"
+        : entry.exchangeRate,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    deletedAt: entry.deletedAt,
+    ...(entry.category == null ? {} : { category: entry.category }),
   };
 }
 
@@ -208,7 +268,8 @@ export function mapSourceDocumentDetail(
     ledgerId: row.ledgerId,
     title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
     text: hydration.submittedText,
-    files: hydration.files,
+    files: hydration.files.map(mapStoredFileDto),
+    ledgerEntries: hydration.ledgerEntries.map(mapLedgerEntryAggregateDto),
     status: row.currentStatus,
     type: row.type,
     anomalyReason: hydration.anomalyReason,
