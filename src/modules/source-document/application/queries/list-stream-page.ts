@@ -7,6 +7,11 @@ import type { LedgerChangeReadPort, SourceDocumentReadPort } from "../ports";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import { filterStreamEntries } from "../../stream-filter-policy";
 import { createHash } from "node:crypto";
+import {
+  decodeSourceDocumentStreamCursor,
+  encodeSourceDocumentPageCursor,
+  encodeSourceDocumentStreamCursor,
+} from "./source-document-cursor";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -29,55 +34,6 @@ export interface ListStreamPageInput {
  * Decode a versioned stream cursor into its components.
  * Expected format: v2|ledgerId|effectiveDate|createdAt|id
  */
-interface DecodedStreamCursor {
-  ledgerId: string;
-  generation: string;
-  filterHash: string;
-  innerCursor: string;
-}
-
-function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCursor | null {
-  if (cursor == null || cursor === "") return null;
-  const parts = cursor.split("|");
-  if (parts.length !== 7) return null;
-  const [version, decodedLedgerId, generation, filterHash, effectiveDate, createdAt, id] = parts;
-  if (
-    version !== "v3" ||
-    !decodedLedgerId ||
-    !/^\d+$/.test(generation ?? "") ||
-    !/^[a-f0-9]{16}$/.test(filterHash ?? "") ||
-    !effectiveDate ||
-    !createdAt ||
-    !id
-  ) {
-    return null;
-  }
-  // Validate effectiveDate format (YYYY-MM-DD)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) return null;
-  // Validate createdAt is a parseable ISO date string
-  const createdAtMs = Date.parse(createdAt);
-  if (Number.isNaN(createdAtMs)) return null;
-  return {
-    ledgerId: decodedLedgerId,
-    generation: generation!,
-    filterHash: filterHash!,
-    innerCursor: `${effectiveDate}|${createdAt}|${id}`,
-  };
-}
-
-/**
- * Encode a versioned stream cursor from its components.
- */
-function encodeStreamCursor(
-  ledgerId: string,
-  generation: string,
-  filterHash: string,
-  readModelCursor: string | null
-): string | null {
-  if (readModelCursor == null) return null;
-  return `v3|${ledgerId}|${generation}|${filterHash}|${readModelCursor}`;
-}
-
 /**
  * Validate that a cursor is compatible with the current ledger and filter inputs.
  * Returns the decoded inner cursor string for a valid cursor, or null when no
@@ -92,7 +48,7 @@ function validateCursor(
   filterHash: string
 ): string | null {
   if (cursor == null || cursor === "") return null;
-  const decoded = decodeStreamCursor(cursor);
+  const decoded = decodeSourceDocumentStreamCursor(cursor);
   if (decoded == null) {
     throw new ValidationError("Invalid cursor format, restart required");
   }
@@ -102,7 +58,7 @@ function validateCursor(
   if (decoded.generation !== generation || decoded.filterHash !== filterHash) {
     throw new ValidationError("Stale stream cursor, restart required");
   }
-  return decoded.innerCursor;
+  return encodeSourceDocumentPageCursor(decoded.page);
 }
 
 function filterFingerprint(input: ListStreamPageInput, search: string | undefined): string {
@@ -194,7 +150,7 @@ export async function listStreamPage(
 
   return {
     items: items as SourceDocumentListItemDto[],
-    nextCursor: encodeStreamCursor(ledgerId, generation, filterHash, page.nextCursor),
+    nextCursor: encodeSourceDocumentStreamCursor(ledgerId, generation, filterHash, page.nextCursor),
     generation,
   };
 }

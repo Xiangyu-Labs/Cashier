@@ -14,10 +14,8 @@ import {
   duplicateReviews,
   entryCategories,
   ledgerEntries,
-  revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
-  storedFiles,
 } from "@/persistence";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 
@@ -26,14 +24,18 @@ import { baseConditions } from "./filters";
 import { cursorCondition, encodeCursor } from "./cursor";
 import {
   effectiveDocumentTitle,
+  mapDuplicateReviewDto,
+  mapListItem,
+  sanitizedErrorCode,
+} from "./mappers";
+import {
+  hasRevisionFiles,
   loadActiveResultSummaryMap,
   loadDuplicateReviewMap,
   loadDuplicateReviewSide,
   loadFileData,
   loadRevisionFacts,
-  mapListItem,
-  sanitizedErrorCode,
-} from "./mappers";
+} from "./hydration";
 
 export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
   const document = await db.query.sourceDocuments.findFirst({
@@ -42,24 +44,7 @@ export async function getTargetSourceDocumentAccessContext(sourceDocumentId: str
   });
   if (document == null) return null;
   const revisionId = document.pendingRevisionId ?? document.activeRevisionId;
-  const hasFiles =
-    revisionId != null &&
-    (await db
-      .select({ id: revisionFiles.id })
-      .from(revisionFiles)
-      .innerJoin(
-        storedFiles,
-        and(
-          eq(storedFiles.id, revisionFiles.storedFileId),
-          eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-          isNull(storedFiles.deletedAt)
-        )
-      )
-      .where(
-        and(eq(revisionFiles.ledgerId, document.ledgerId), eq(revisionFiles.revisionId, revisionId))
-      )
-      .limit(1)
-      .then((rows) => rows[0])) != null;
+  const hasFiles = revisionId != null && (await hasRevisionFiles(document.ledgerId, revisionId));
   return { ledgerId: document.ledgerId, hasImages: hasFiles };
 }
 
@@ -297,15 +282,7 @@ export async function getSourceDocumentDuplicateReview(
   const matchedCreatedAt = review.matchedCreatedAt;
   if (matchedRevisionId == null || matchedCreatedAt == null) {
     return {
-      review: {
-        sourceDocumentId: review.sourceDocumentId,
-        revisionId: review.revisionId,
-        matchedSourceDocumentId: review.matchedSourceDocumentId,
-        matchedRevisionId: review.matchedRevisionId,
-        status: review.status,
-        reason: review.reason,
-        confidence: review.confidence == null ? null : Number(review.confidence),
-      },
+      review: mapDuplicateReviewDto(review),
       duplicate: {
         id: duplicateDoc.id,
         title: effectiveDocumentTitle(duplicateDoc.title, duplicateRevision?.title),
@@ -341,15 +318,7 @@ export async function getSourceDocumentDuplicateReview(
   ]);
 
   return {
-    review: {
-      sourceDocumentId: review.sourceDocumentId,
-      revisionId: review.revisionId,
-      matchedSourceDocumentId: review.matchedSourceDocumentId,
-      matchedRevisionId: review.matchedRevisionId,
-      status: review.status,
-      reason: review.reason,
-      confidence: review.confidence == null ? null : Number(review.confidence),
-    },
+    review: mapDuplicateReviewDto(review),
     duplicate: {
       id: duplicateDoc.id,
       title: effectiveDocumentTitle(duplicateDoc.title, duplicateRevision?.title),

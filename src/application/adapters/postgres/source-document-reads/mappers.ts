@@ -1,6 +1,3 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { add as decimalAdd, round as decimalRound } from "@/lib/money/decimal";
 import type {
   SourceDocumentStoredFileDto,
   SourceDocumentListItemDto,
@@ -15,115 +12,69 @@ import {
   type ProcessingFailureCode,
   type RevisionOutcome,
 } from "@/application/contracts";
-import {
-  duplicateReviews,
-  ledgerEntries,
-  revisionFiles,
-  sourceDocumentRevisions,
-  sourceDocuments,
-  storedFiles,
-} from "@/persistence";
+import { add as decimalAdd, round as decimalRound } from "@/lib/money/decimal";
+import type { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 
-export async function loadDuplicateReviewMap(
-  rows: readonly SourceDocumentRow[]
-): Promise<Map<string, SourceDocumentDuplicateReviewDto>> {
-  const ids = rows.map((row) => row.id);
-  if (ids.length === 0) return new Map();
-  const reviews = await db
-    .select()
-    .from(duplicateReviews)
-    .where(
-      and(
-        eq(duplicateReviews.ledgerId, rows[0]!.ledgerId),
-        inArray(duplicateReviews.sourceDocumentId, ids)
-      )
-    );
-  const result = new Map<string, SourceDocumentDuplicateReviewDto>();
-  for (const review of reviews) {
-    // Only an unresolved review is surfaced on the DTO; resolved reviews are
-    // no longer actionable in the UI.
-    if (review.status !== "pending") continue;
-    result.set(review.sourceDocumentId, {
-      sourceDocumentId: review.sourceDocumentId,
-      revisionId: review.revisionId,
-      matchedSourceDocumentId: review.matchedSourceDocumentId,
-      matchedRevisionId: review.matchedRevisionId,
-      status: review.status,
-      reason: review.reason,
-      confidence: review.confidence == null ? null : Number(review.confidence),
-    });
+export type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
+type SourceDocumentRevisionRow = typeof sourceDocumentRevisions.$inferSelect;
+type DuplicateReviewRow = typeof duplicateReviews.$inferSelect;
+
+export function mapDuplicateReviewDto(
+  review: DuplicateReviewRow
+): SourceDocumentDuplicateReviewDto {
+  if (review.status === "staged") {
+    throw new Error("Staged duplicate reviews are not client-visible");
   }
-  return result;
+  return {
+    sourceDocumentId: review.sourceDocumentId,
+    revisionId: review.revisionId,
+    matchedSourceDocumentId: review.matchedSourceDocumentId,
+    matchedRevisionId: review.matchedRevisionId,
+    status: review.status,
+    reason: review.reason,
+    confidence: review.confidence == null ? null : Number(review.confidence),
+  };
 }
 
-export async function loadDuplicateReviewSide(
-  ledgerId: string,
-  revisionId: string,
-  options: { includeDeletedEntries?: boolean } = {}
-): Promise<{
-  entries: SourceDocumentLedgerEntryDto[];
-  files: SourceDocumentStoredFileDto[];
-}> {
-  const [entries, files] = await Promise.all([
-    db
-      .select({
-        id: ledgerEntries.id,
-        itemName: ledgerEntries.itemName,
-        description: ledgerEntries.description,
-        amount: ledgerEntries.amount,
-        currency: ledgerEntries.currency,
-        convertedAmount: ledgerEntries.convertedAmount,
-      })
-      .from(ledgerEntries)
-      .where(
-        and(
-          eq(ledgerEntries.ledgerId, ledgerId),
-          eq(ledgerEntries.sourceDocumentRevisionId, revisionId),
-          ...(options.includeDeletedEntries === true ? [] : [isNull(ledgerEntries.deletedAt)])
-        )
-      )
-      .orderBy(asc(ledgerEntries.position)),
-    db
-      .select({
-        id: storedFiles.id,
-        contentType: storedFiles.contentType,
-        byteSize: storedFiles.byteSize,
-        originalFilename: storedFiles.originalFilename,
-      })
-      .from(revisionFiles)
-      .innerJoin(
-        storedFiles,
-        and(
-          eq(storedFiles.id, revisionFiles.storedFileId),
-          eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-          isNull(storedFiles.deletedAt)
-        )
-      )
-      .where(and(eq(revisionFiles.ledgerId, ledgerId), eq(revisionFiles.revisionId, revisionId)))
-      .orderBy(asc(revisionFiles.position)),
-  ]);
+export function mapStoredFileDto(file: {
+  id: string;
+  contentType: string;
+  byteSize: number;
+  originalFilename: string | null;
+}): SourceDocumentStoredFileDto {
   return {
-    entries: entries.map((entry) => ({
-      id: entry.id,
-      ledgerId,
-      categoryId: null,
-      sourceDocumentId: null,
-      amount: entry.amount,
-      currency: entry.currency,
-      itemName: entry.itemName,
-      description: entry.description,
-      convertedAmount: entry.convertedAmount,
-      exchangeRate: null,
-      createdAt: "",
-      updatedAt: "",
-      deletedAt: null,
-    })),
-    files: files.map((file) => ({
-      id: file.id,
-      contentType: file.contentType,
-      byteSize: file.byteSize,
-      originalFilename: file.originalFilename,
-    })),
+    id: file.id,
+    contentType: file.contentType,
+    byteSize: file.byteSize,
+    originalFilename: file.originalFilename,
+  };
+}
+
+export function mapDuplicateReviewEntryDto(
+  entry: {
+    id: string;
+    itemName: string;
+    description: string | null;
+    amount: string;
+    currency: string | null;
+    convertedAmount: string | null;
+  },
+  ledgerId: string
+): SourceDocumentLedgerEntryDto {
+  return {
+    id: entry.id,
+    ledgerId,
+    categoryId: null,
+    sourceDocumentId: null,
+    amount: entry.amount,
+    currency: entry.currency,
+    itemName: entry.itemName,
+    description: entry.description,
+    convertedAmount: entry.convertedAmount,
+    exchangeRate: null,
+    createdAt: "",
+    updatedAt: "",
+    deletedAt: null,
   };
 }
 
@@ -138,118 +89,9 @@ export function effectiveDocumentTitle(
   return null;
 }
 
-export type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
-
-export async function loadRevisionFacts(rows: readonly SourceDocumentRow[]) {
-  const revisionIds = [
-    ...new Set(
-      rows.flatMap((row) =>
-        [row.activeRevisionId, row.pendingRevisionId].filter(
-          (value): value is string => value != null
-        )
-      )
-    ),
-  ];
-  if (revisionIds.length === 0)
-    return new Map<string, typeof sourceDocumentRevisions.$inferSelect>();
-  const revisions = await db
-    .select()
-    .from(sourceDocumentRevisions)
-    .where(inArray(sourceDocumentRevisions.id, revisionIds));
-  return new Map(revisions.map((revision) => [revision.id, revision]));
-}
-
-async function loadFiles(
-  rows: readonly SourceDocumentRow[]
-): Promise<Map<string, SourceDocumentStoredFileDto[]>> {
-  const selected = new Map(
-    rows.flatMap((row) => {
-      const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
-      return revisionId == null ? [] : [[revisionId, row.id] as const];
-    })
-  );
-  if (selected.size === 0) return new Map();
-  const files = await db
-    .select({
-      revisionId: revisionFiles.revisionId,
-      id: revisionFiles.storedFileId,
-      contentType: storedFiles.contentType,
-      byteSize: storedFiles.byteSize,
-      originalFilename: storedFiles.originalFilename,
-    })
-    .from(revisionFiles)
-    .innerJoin(
-      storedFiles,
-      and(
-        eq(storedFiles.id, revisionFiles.storedFileId),
-        eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-        isNull(storedFiles.deletedAt)
-      )
-    )
-    .where(inArray(revisionFiles.revisionId, [...selected.keys()]))
-    .orderBy(revisionFiles.position);
-  const result = new Map<string, SourceDocumentStoredFileDto[]>();
-  for (const file of files) {
-    const documentId = selected.get(file.revisionId);
-    if (documentId == null) continue;
-    const ids = result.get(documentId) ?? [];
-    ids.push({
-      id: file.id,
-      contentType: file.contentType,
-      byteSize: file.byteSize,
-      originalFilename: file.originalFilename,
-    });
-    result.set(documentId, ids);
-  }
-  return result;
-}
-
-export async function loadFileData(
-  rows: readonly SourceDocumentRow[],
-  includeFiles: boolean
-): Promise<{
-  files: Map<string, SourceDocumentStoredFileDto[]>;
-  hasImages: Map<string, boolean>;
-}> {
-  if (includeFiles) {
-    const files = await loadFiles(rows);
-    return {
-      files,
-      hasImages: new Map(rows.map((row) => [row.id, (files.get(row.id)?.length ?? 0) > 0])),
-    };
-  }
-
-  const selected = new Map(
-    rows.flatMap((row) => {
-      const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
-      return revisionId == null ? [] : [[revisionId, row.id] as const];
-    })
-  );
-  if (selected.size === 0) return { files: new Map(), hasImages: new Map() };
-
-  const revisionsWithFiles = await db
-    .selectDistinct({ revisionId: revisionFiles.revisionId })
-    .from(revisionFiles)
-    .innerJoin(
-      storedFiles,
-      and(
-        eq(storedFiles.id, revisionFiles.storedFileId),
-        eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-        isNull(storedFiles.deletedAt)
-      )
-    )
-    .where(inArray(revisionFiles.revisionId, [...selected.keys()]));
-  const revisionIds = new Set(revisionsWithFiles.map((row) => row.revisionId));
-  const hasImages = new Map<string, boolean>();
-  for (const [revisionId, documentId] of selected) {
-    if (revisionIds.has(revisionId)) hasImages.set(documentId, true);
-  }
-  return { files: new Map(), hasImages };
-}
-
 export function mapListItem(
   row: SourceDocumentRow,
-  revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>,
+  revisions: ReadonlyMap<string, SourceDocumentRevisionRow>,
   hasImages: ReadonlyMap<string, boolean>
 ): SourceDocumentListItemDto {
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
@@ -280,7 +122,7 @@ export function mapListItem(
   };
 }
 
-function summarizeProjection(
+export function summarizeProjection(
   entries: Array<{
     amount: string;
     currency: string | null;
@@ -295,60 +137,6 @@ function summarizeProjection(
     entryCount: entries.length,
     total: decimalRound(total, 2),
   };
-}
-
-export async function loadActiveResultSummaryMap(
-  rows: readonly SourceDocumentRow[]
-): Promise<Map<string, SourceDocumentCandidateProjectionSummary>> {
-  const activeTargetIds = rows
-    .filter((row) => {
-      if (row.activeRevisionId == null) return false;
-      const status = row.currentStatus;
-      return status === "anomaly" || status === "failed";
-    })
-    .map((row) => row.activeRevisionId!)
-    .filter((id): id is string => id != null);
-
-  if (activeTargetIds.length === 0) return new Map();
-
-  const uniqueIds = [...new Set(activeTargetIds)];
-
-  const entries = await db
-    .select({
-      revisionId: ledgerEntries.sourceDocumentRevisionId,
-      amount: ledgerEntries.amount,
-      currency: ledgerEntries.currency,
-      convertedAmount: ledgerEntries.convertedAmount,
-    })
-    .from(ledgerEntries)
-    .where(
-      and(
-        inArray(ledgerEntries.sourceDocumentRevisionId, uniqueIds),
-        isNull(ledgerEntries.deletedAt)
-      )
-    );
-
-  const entriesByRevision = new Map<
-    string,
-    Array<{ amount: string; currency: string | null; convertedAmount: string | null }>
-  >();
-  for (const entry of entries) {
-    if (entry.revisionId == null) continue;
-    const group = entriesByRevision.get(entry.revisionId) ?? [];
-    group.push(entry);
-    entriesByRevision.set(entry.revisionId, group);
-  }
-
-  const result = new Map<string, SourceDocumentCandidateProjectionSummary>();
-  for (const row of rows) {
-    if (row.activeRevisionId == null) continue;
-    const status = row.currentStatus;
-    if (status !== "anomaly" && status !== "failed") continue;
-    const activeEntries = entriesByRevision.get(row.activeRevisionId) ?? [];
-    result.set(row.id, summarizeProjection(activeEntries));
-  }
-
-  return result;
 }
 
 export function sanitizedErrorCode(
