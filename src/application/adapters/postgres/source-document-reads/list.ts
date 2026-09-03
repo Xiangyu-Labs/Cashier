@@ -26,14 +26,12 @@ import { cursorCondition, encodeCursor } from "./cursor";
 import {
   effectiveDocumentTitle,
   loadActiveResultSummaryMap,
-  loadCandidateComparisonMap,
   loadDuplicateReviewMap,
   loadDuplicateReviewSide,
   loadFileData,
   loadRevisionFacts,
   mapListItem,
   sanitizedErrorCode,
-  statusForRow,
 } from "./mappers";
 
 export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
@@ -386,35 +384,13 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
   const [revisions, fileData] = await Promise.all([
     loadRevisionFacts(pageRows),
-    loadFileData(pageRows, input.includeFiles === true),
+    loadFileData(pageRows, false),
   ]);
-  const [candidateComparisonMap, activeResultSummaryMap, duplicateReviewMap] = await Promise.all([
-    loadCandidateComparisonMap(pageRows, revisions),
-    loadActiveResultSummaryMap(pageRows, revisions),
-    loadDuplicateReviewMap(pageRows),
-  ]);
+  const duplicateReviewMap = await loadDuplicateReviewMap(pageRows);
   const last = pageRows.at(-1);
   return {
     items: pageRows.map((row) => {
-      const item = mapListItem(
-        row,
-        revisions,
-        fileData.files,
-        fileData.hasImages,
-        input.includeFiles === true
-      );
-      if (item.status === "candidate_pending") {
-        const comparison = candidateComparisonMap.get(row.id);
-        if (comparison !== undefined) {
-          item.candidateComparison = comparison;
-        }
-      }
-      if ((item.status === "anomaly" || item.status === "failed") && row.activeRevisionId != null) {
-        const summary = activeResultSummaryMap.get(row.id);
-        if (summary !== undefined) {
-          item.activeResultSummary = summary;
-        }
-      }
+      const item = mapListItem(row, revisions, fileData.hasImages);
       const duplicateReview = duplicateReviewMap.get(row.id);
       if (duplicateReview !== undefined) {
         item.duplicateReview = duplicateReview;
@@ -446,12 +422,12 @@ export async function getTargetSourceDocument(
   const selectedRevision =
     selectedRevisionId == null ? null : (revisions.get(selectedRevisionId) ?? null);
   const files = fileData.files.get(row.id) ?? [];
-  const status = statusForRow(row, revisions);
+  const status = row.currentStatus;
 
   // Load active result summary for anomaly/failed documents with an active revision
   let activeResultSummary: SourceDocumentCandidateProjectionSummary | undefined;
   if ((status === "anomaly" || status === "failed") && row.activeRevisionId != null) {
-    const summaryMap = await loadActiveResultSummaryMap([row], revisions);
+    const summaryMap = await loadActiveResultSummaryMap([row]);
     activeResultSummary = summaryMap.get(row.id);
   }
   const duplicateReview = duplicateReviewMap.get(row.id);

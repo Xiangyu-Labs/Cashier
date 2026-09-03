@@ -8,7 +8,6 @@ import type { SourceDocument, SourceDocumentLight } from "@/modules/source-docum
 
 interface UseSourceDocumentBatchActionsOptions {
   busy: boolean;
-  readOnly: boolean;
   sourceDocument: SourceDocument | SourceDocumentLight | null;
   ledgerEntries: LedgerEntry[];
   isSelectionMode: boolean;
@@ -40,7 +39,6 @@ interface UseSourceDocumentBatchActionsOptions {
 /** Owns entering/leaving batch-selection mode and the batch category/currency/delete mutations. */
 export function useSourceDocumentBatchActions({
   busy,
-  readOnly,
   sourceDocument,
   ledgerEntries,
   isSelectionMode,
@@ -67,7 +65,7 @@ export function useSourceDocumentBatchActions({
   }, [discardAllChanges, setIsEditMode, setSelectionMode]);
 
   const handleToggleSelectionMode = useCallback(() => {
-    if (busy || readOnly || sourceDocument == null || ledgerEntries.length === 0) return;
+    if (busy || sourceDocument == null || ledgerEntries.length === 0) return;
     if (isSelectionMode) {
       setSelectionMode(false);
       return;
@@ -84,7 +82,6 @@ export function useSourceDocumentBatchActions({
     isEditMode,
     isSelectionMode,
     ledgerEntries.length,
-    readOnly,
     setSelectionMode,
     setShowBatchModePendingConfirm,
     sourceDocument,

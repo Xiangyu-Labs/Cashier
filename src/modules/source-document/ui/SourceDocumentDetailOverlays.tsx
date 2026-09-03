@@ -9,7 +9,6 @@ import type { AddEntryData } from "@/modules/source-document/hooks/useSourceDocu
 interface SourceDocumentDetailOverlaysProps {
   ledgerId: string;
   sourceDocument: SourceDocument | SourceDocumentLight | null;
-  readOnly: boolean;
   showRetryDialog: boolean;
   setShowRetryDialog: (open: boolean) => void;
   onRetryPendingChange: (pending: boolean) => void;
@@ -35,7 +34,6 @@ interface SourceDocumentDetailOverlaysProps {
 export function SourceDocumentDetailOverlays({
   ledgerId,
   sourceDocument,
-  readOnly,
   showRetryDialog,
   setShowRetryDialog,
   onRetryPendingChange,
@@ -58,7 +56,7 @@ export function SourceDocumentDetailOverlays({
 }: SourceDocumentDetailOverlaysProps) {
   return (
     <>
-      {sourceDocument && !readOnly && (
+      {sourceDocument && (
         <SourceDocumentEditRetryDialog
           ledgerId={ledgerId}
           sourceDocument={sourceDocument}

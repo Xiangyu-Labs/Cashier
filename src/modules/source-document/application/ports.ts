@@ -25,7 +25,6 @@ import type {
 
 interface SourceDocumentFilterInput {
   ledgerId: string;
-  ids?: readonly string[];
   statuses?: readonly SourceDocumentStatusType[];
   startDate?: string | null;
   endDate?: string | null;
@@ -42,7 +41,6 @@ export interface PendingDuplicateReviewContract {
 interface SourceDocumentListInput extends SourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
-  includeFiles?: boolean;
 }
 
 export interface SourceDocumentReadPort {

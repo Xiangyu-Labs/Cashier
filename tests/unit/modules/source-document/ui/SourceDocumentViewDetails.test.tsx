@@ -101,9 +101,8 @@ function renderDetails(count: number, isLoadingImages = false) {
       onSourceDocChange={vi.fn()}
       onEntryChange={vi.fn()}
       onSelectEntry={vi.fn()}
-      onSelectAllEntries={vi.fn()}
       onToggleSelectionMode={vi.fn()}
-      readOnly
+      interactionDisabled
     />
   );
 }
@@ -172,7 +171,6 @@ describe("SourceDocumentViewDetails selection", () => {
         onSourceDocChange={vi.fn()}
         onEntryChange={vi.fn()}
         onSelectEntry={vi.fn()}
-        onSelectAllEntries={vi.fn()}
         onToggleSelectionMode={onToggleSelectionMode}
       />
     );
@@ -211,7 +209,6 @@ describe("SourceDocumentViewDetails selection", () => {
       onSourceDocChange: vi.fn(),
       onEntryChange: vi.fn(),
       onSelectEntry,
-      onSelectAllEntries: vi.fn(),
       onToggleSelectionMode: vi.fn(),
     };
     const queryClient = new QueryClient();

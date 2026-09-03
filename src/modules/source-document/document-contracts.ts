@@ -44,12 +44,6 @@ export interface SourceDocumentCandidateProjectionSummary {
   total: string;
 }
 
-export interface SourceDocumentCandidateComparisonDto {
-  active: SourceDocumentCandidateProjectionSummary;
-  candidate: SourceDocumentCandidateProjectionSummary;
-  changed: boolean;
-}
-
 export interface SourceDocumentCandidateReviewEntryDto {
   id: string;
   itemName: string;
@@ -113,13 +107,18 @@ export interface SourceDocumentDuplicateReviewDetailDto {
 
 export type SourceDocumentListItemDto = Omit<
   SourceDocumentDto,
-  "text" | "metadata" | "ledgerEntries" | "hasImages" | "activeRevisionId"
+  | "text"
+  | "files"
+  | "metadata"
+  | "ledgerEntries"
+  | "hasImages"
+  | "activeRevisionId"
+  | "activeResultSummary"
+  | "deletedAt"
 > & {
   text: null;
-  metadata: Record<string, never>;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages: boolean;
-  candidateComparison?: SourceDocumentCandidateComparisonDto;
 };
 
 export type SourceDocumentLightDto = Pick<

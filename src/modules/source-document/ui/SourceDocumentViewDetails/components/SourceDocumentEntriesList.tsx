@@ -14,7 +14,7 @@ interface SourceDocumentEntriesListProps {
   mainCurrency: string;
   selectedEntryIds: string[];
   isSelectionMode: boolean;
-  readOnly: boolean;
+  interactionDisabled: boolean;
   fieldsDisabled: boolean;
   isEditMode: boolean;
   onToggleSelectionMode: () => void;
@@ -34,7 +34,7 @@ export function SourceDocumentEntriesList({
   mainCurrency,
   selectedEntryIds,
   isSelectionMode,
-  readOnly,
+  interactionDisabled,
   fieldsDisabled,
   isEditMode,
   onToggleSelectionMode,
@@ -53,7 +53,7 @@ export function SourceDocumentEntriesList({
     <div className="min-w-0">
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="flex items-center gap-2">
-          {entries.length > 0 && !readOnly && (
+          {entries.length > 0 && !interactionDisabled && (
             <Button
               variant={isSelectionMode ? "secondary" : "ghost"}
               size="icon"
@@ -93,7 +93,7 @@ export function SourceDocumentEntriesList({
               originalEntryDate={originalEntryDate}
               readOnly={fieldsDisabled}
               onDelete={
-                !readOnly && isEditMode && onDeleteEntry != null
+                !interactionDisabled && isEditMode && onDeleteEntry != null
                   ? () => onDeleteEntry(entry.id)
                   : undefined
               }
@@ -103,7 +103,7 @@ export function SourceDocumentEntriesList({
             />
           ))
         )}
-        {!readOnly && isEditMode && onAddEntry != null ? (
+        {!interactionDisabled && isEditMode && onAddEntry != null ? (
           <Button
             type="button"
             variant="outline"

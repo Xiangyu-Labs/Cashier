@@ -27,11 +27,9 @@ interface SourceDocumentViewDetailsProps {
   onSourceDocChange: (changes: SourceDocPendingChanges) => void;
   onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
   onSelectEntry: (entryId: string, selected: boolean) => void;
-  onSelectAllEntries: (selected: boolean) => void;
   onToggleSelectionMode: () => void;
-  readOnly?: boolean;
-  /** When true the entry/date fields are editable. Independent of `readOnly` so
-   * batch selection and image browsing stay available in read mode. */
+  interactionDisabled?: boolean;
+  /** When true the entry/date fields are editable. */
   isEditMode?: boolean;
   /** Opens the add-entry dialog; the "add entry" button only shows in edit mode. */
   onAddEntry?: () => void;
@@ -52,16 +50,15 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   onSourceDocChange,
   onEntryChange,
   onSelectEntry,
-  onSelectAllEntries: _onSelectAllEntries,
   onToggleSelectionMode,
-  readOnly = false,
+  interactionDisabled = false,
   isEditMode = false,
   onAddEntry,
   onDeleteEntry,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
-  const fieldsDisabled = readOnly || !isEditMode;
+  const fieldsDisabled = interactionDisabled || !isEditMode;
 
   const {
     displayEntries,
@@ -124,7 +121,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         mainCurrency={mainCurrency}
         selectedEntryIds={selectedEntryIds}
         isSelectionMode={isSelectionMode}
-        readOnly={readOnly}
+        interactionDisabled={interactionDisabled}
         fieldsDisabled={fieldsDisabled}
         isEditMode={isEditMode}
         onToggleSelectionMode={onToggleSelectionMode}

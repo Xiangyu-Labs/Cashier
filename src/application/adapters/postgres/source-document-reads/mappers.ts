@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 import type {
   SourceDocumentStoredFileDto,
   SourceDocumentListItemDto,
-  SourceDocumentStatusType,
-  SourceDocumentCandidateComparisonDto,
   SourceDocumentCandidateProjectionSummary,
   SourceDocumentDuplicateReviewDto,
   SourceDocumentLedgerEntryDto,
@@ -166,13 +164,6 @@ export async function loadRevisionFacts(rows: readonly SourceDocumentRow[]) {
   return new Map(revisions.map((revision) => [revision.id, revision]));
 }
 
-export function statusForRow(
-  row: SourceDocumentRow,
-  _revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
-): SourceDocumentStatusType {
-  return row.currentStatus;
-}
-
 async function loadFiles(
   rows: readonly SourceDocumentRow[]
 ): Promise<Map<string, SourceDocumentStoredFileDto[]>> {
@@ -264,9 +255,7 @@ export async function loadFileData(
 export function mapListItem(
   row: SourceDocumentRow,
   revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>,
-  files: ReadonlyMap<string, readonly SourceDocumentStoredFileDto[]>,
-  hasImages: ReadonlyMap<string, boolean>,
-  includeFiles = false
+  hasImages: ReadonlyMap<string, boolean>
 ): SourceDocumentListItemDto {
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const revision = revisionId == null ? null : revisions.get(revisionId);
@@ -275,16 +264,13 @@ export function mapListItem(
     ledgerId: row.ledgerId,
     title: effectiveDocumentTitle(row.title, revision?.title),
     text: null,
-    files: includeFiles ? [...(files.get(row.id) ?? [])] : [],
-    status: statusForRow(row, revisions),
+    status: row.currentStatus,
     type: row.type,
     anomalyReason: revision?.anomalyReason ?? null,
     entryDate: row.entryDate,
-    metadata: {},
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    deletedAt: null,
-    hasImages: hasImages.get(row.id) ?? (files.get(row.id)?.length ?? 0) > 0,
+    hasImages: hasImages.get(row.id) ?? false,
     supportedActions: [
       ...supportedSourceDocumentActions({
         activeRevisionId: row.activeRevisionId,
@@ -320,13 +306,12 @@ function summarizeProjection(
 }
 
 export async function loadActiveResultSummaryMap(
-  rows: readonly SourceDocumentRow[],
-  revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
+  rows: readonly SourceDocumentRow[]
 ): Promise<Map<string, SourceDocumentCandidateProjectionSummary>> {
   const activeTargetIds = rows
     .filter((row) => {
       if (row.activeRevisionId == null) return false;
-      const status = statusForRow(row, revisions);
+      const status = row.currentStatus;
       return status === "anomaly" || status === "failed";
     })
     .map((row) => row.activeRevisionId!)
@@ -365,74 +350,10 @@ export async function loadActiveResultSummaryMap(
   const result = new Map<string, SourceDocumentCandidateProjectionSummary>();
   for (const row of rows) {
     if (row.activeRevisionId == null) continue;
-    const status = statusForRow(row, revisions);
+    const status = row.currentStatus;
     if (status !== "anomaly" && status !== "failed") continue;
     const activeEntries = entriesByRevision.get(row.activeRevisionId) ?? [];
     result.set(row.id, summarizeProjection(activeEntries));
-  }
-
-  return result;
-}
-
-export async function loadCandidateComparisonMap(
-  rows: readonly SourceDocumentRow[],
-  revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
-): Promise<Map<string, SourceDocumentCandidateComparisonDto>> {
-  const candidatePairs = rows
-    .filter((row) => {
-      if (row.activeRevisionId == null || row.pendingRevisionId == null) return false;
-      const pendingOutcome = revisions.get(row.pendingRevisionId)?.outcome;
-      return pendingOutcome === "completed";
-    })
-    .map((row) => ({
-      sourceDocumentId: row.id,
-      activeRevisionId: row.activeRevisionId!,
-      pendingRevisionId: row.pendingRevisionId!,
-    }));
-
-  if (candidatePairs.length === 0) return new Map();
-
-  const allRevisionIds = [
-    ...new Set(candidatePairs.flatMap((p) => [p.activeRevisionId, p.pendingRevisionId])),
-  ];
-
-  const entries = await db
-    .select({
-      revisionId: ledgerEntries.sourceDocumentRevisionId,
-      amount: ledgerEntries.amount,
-      currency: ledgerEntries.currency,
-      convertedAmount: ledgerEntries.convertedAmount,
-    })
-    .from(ledgerEntries)
-    .where(
-      and(
-        inArray(ledgerEntries.sourceDocumentRevisionId, allRevisionIds),
-        isNull(ledgerEntries.deletedAt)
-      )
-    );
-
-  const entriesByRevision = new Map<
-    string,
-    Array<{ amount: string; currency: string | null; convertedAmount: string | null }>
-  >();
-  for (const entry of entries) {
-    if (entry.revisionId == null) continue;
-    const group = entriesByRevision.get(entry.revisionId) ?? [];
-    group.push(entry);
-    entriesByRevision.set(entry.revisionId, group);
-  }
-
-  const result = new Map<string, SourceDocumentCandidateComparisonDto>();
-  for (const pair of candidatePairs) {
-    const activeEntries = entriesByRevision.get(pair.activeRevisionId) ?? [];
-    const candidateEntries = entriesByRevision.get(pair.pendingRevisionId) ?? [];
-    const active = summarizeProjection(activeEntries);
-    const candidate = summarizeProjection(candidateEntries);
-    result.set(pair.sourceDocumentId, {
-      active,
-      candidate,
-      changed: active.total !== candidate.total || active.entryCount !== candidate.entryCount,
-    });
   }
 
   return result;

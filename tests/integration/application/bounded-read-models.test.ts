@@ -27,15 +27,12 @@ const getSourceDocumentFullQuery = (ledgerId: string, sourceDocumentId: string) 
 const SOURCE_LIST_KEYS = [
   "anomalyReason",
   "createdAt",
-  "deletedAt",
   "entryDate",
   "errorCode",
-  "files",
   "hasImages",
   "id",
   "ledgerEntries",
   "ledgerId",
-  "metadata",
   "pendingRevisionId",
   "status",
   "supportedActions",
@@ -125,9 +122,7 @@ describe("bounded target read models", () => {
     expect(history.items).toHaveLength(historySize);
     expect(new Set(history.items.map((item) => item.id))).toHaveLength(historySize);
     expect(history.pageSizes).toEqual([7, 7, 7, 7, 3]);
-    expect(firstPage.items.every((item) => item.text === null && item.files.length === 0)).toBe(
-      true
-    );
+    expect(firstPage.items.every((item) => item.text === null)).toBe(true);
     expect(Object.keys(firstPage.items[0]!).sort()).toEqual([...SOURCE_LIST_KEYS].sort());
     expect(serialized.length).toBeLessThan(10_000);
     for (const forbidden of [

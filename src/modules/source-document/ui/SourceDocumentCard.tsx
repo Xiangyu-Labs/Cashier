@@ -1,5 +1,9 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
+import type {
+  SourceDocument,
+  SourceDocumentLight,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 import { memo, useId, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
@@ -13,7 +17,7 @@ import { sortSourceDocumentEntries } from "./source-document-card.utils";
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 
 interface SourceDocumentCardProps {
-  sourceDocument: SourceDocument | SourceDocumentLight;
+  sourceDocument: SourceDocument | SourceDocumentLight | SourceDocumentListItemDto;
   ledgerEntries: LedgerEntry[];
   mainCurrency?: string;
   onDelete?: () => void;
@@ -98,9 +102,7 @@ function SourceDocumentCardBody({
     (status === "completed" || status === "duplicate_pending") && sortedEntries.length > 0;
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
     ? []
-    : "supportedActions" in sourceDocument
-      ? ((sourceDocument as SourceDocument).supportedActions ?? [])
-      : ((sourceDocument as SourceDocumentLight).supportedActions ?? []);
+    : sourceDocument.supportedActions;
 
   async function handleDirectRetry() {
     await recovery.retry();

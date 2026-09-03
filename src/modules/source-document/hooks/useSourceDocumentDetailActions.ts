@@ -49,7 +49,6 @@ interface UseSourceDocumentDetailActionsOptions {
   onAddEntry?: ((data: AddEntryData) => Promise<unknown>) | undefined;
   onDeleteEntry?: ((entryId: string) => Promise<unknown>) | undefined;
   onDelete?: (() => void | Promise<void>) | undefined;
-  readOnly: boolean;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
 }
@@ -69,7 +68,6 @@ export function useSourceDocumentDetailActions({
   onAddEntry,
   onDeleteEntry,
   onDelete,
-  readOnly,
   t,
   tCommon,
 }: UseSourceDocumentDetailActionsOptions) {
@@ -142,7 +140,6 @@ export function useSourceDocumentDetailActions({
     handleBatchDelete,
   } = useSourceDocumentBatchActions({
     busy,
-    readOnly,
     sourceDocument,
     ledgerEntries,
     isSelectionMode,

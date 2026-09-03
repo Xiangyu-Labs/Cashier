@@ -2,6 +2,7 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type {
   SourceDocument,
   SourceDocumentLight,
+  SourceDocumentListItemDto,
   SourceDocumentStatusType,
 } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
@@ -33,7 +34,7 @@ import { toStableFailureCode, toStableAnomalyCode } from "@/application/contract
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
 interface SourceDocumentCardHeaderProps {
-  sourceDocument: SourceDocument | SourceDocumentLight;
+  sourceDocument: SourceDocument | SourceDocumentLight | SourceDocumentListItemDto;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null | undefined;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;

@@ -13,7 +13,6 @@ export type {
   SourceDocumentTypeValue,
 } from "./types";
 export type {
-  SourceDocumentCandidateComparisonDto,
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
   SourceDocumentCandidateReviewRevisionDto,

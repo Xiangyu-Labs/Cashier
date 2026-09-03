@@ -1,14 +1,8 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import {
-  postgresLedgerProjectionAdapter,
-  storeCandidateRevision,
-} from "@/application/adapters/postgres";
+import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
-import {
-  getTargetSourceDocument,
-  listTargetSourceDocuments,
-} from "@/application/adapters/postgres/source-document-reads";
+import { getTargetSourceDocument } from "@/application/adapters/postgres/source-document-reads";
 import { sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
@@ -22,62 +16,6 @@ const activeEntry = {
   convertedAmount: "12.50",
   exchangeRate: "1.000000",
 } as const;
-
-const candidateEntry = {
-  categoryId: null,
-  amount: "25.00",
-  currency: "CNY",
-  itemName: "Dinner",
-  description: null,
-  convertedAmount: "25.00",
-  exchangeRate: "1.000000",
-} as const;
-
-/**
- * Set up a document with an active revision and a completed candidate revision.
- */
-async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledgerId: string) {
-  // Step 1: Create a document with an active revision and entries
-  const created = await postgresLedgerProjectionAdapter.createManual({
-    expectedMainCurrency: "CNY",
-    ledgerId,
-    title: "Original",
-    entryDate: "2026-07-15",
-    submittedText: "Original text",
-    entries: [activeEntry],
-  });
-  const originalActiveRevisionId = created.revisionId;
-
-  // Step 2: Create a pending revision (processing)
-  const pending = await db.transaction(async (tx) => {
-    return createPendingRevisionInTransaction(tx, {
-      ledgerId,
-      sourceDocumentId: created.sourceDocumentId,
-      submittedText: "Updated text",
-    });
-  });
-
-  // Step 3: Mark as processing and store as candidate (simulating successful reparse)
-  await db
-    .update(sourceDocumentRevisions)
-    .set({ outcome: "processing" })
-    .where(eq(sourceDocumentRevisions.id, pending.revision.id));
-
-  const stored = await storeCandidateRevision(
-    ledgerId,
-    created.sourceDocumentId,
-    pending.revision.id,
-    "Updated Title",
-    [candidateEntry]
-  );
-  expect(stored).toBe(true);
-
-  return {
-    sourceDocumentId: created.sourceDocumentId,
-    originalActiveRevisionId,
-    candidateRevisionId: pending.revision.id,
-  };
-}
 
 /**
  * Set up a document with an active revision and a failed/anomalous pending revision.
@@ -159,24 +97,6 @@ async function setupDocumentWithFirstParseFailure(
 }
 
 describe("retry active result summary", () => {
-  it("anomalous retry with active revision includes activeResultSummary in list", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-anomaly-list");
-
-    const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, "anomaly");
-
-    const listed = await listTargetSourceDocuments({ ledgerId, limit: 10 });
-    const item = listed.items.find((i) => i.id === sourceDocumentId);
-    expect(item).not.toBeUndefined();
-    expect(item?.status).toBe("anomaly");
-
-    // Must have activeResultSummary with the active entry's data
-    expect(item?.activeResultSummary).toBeDefined();
-    expect(item?.activeResultSummary?.entryCount).toBe(1);
-    // activeEntry has amount "12.50", convertedAmount "12.50"
-    expect(item?.activeResultSummary?.total).toBe("12.50");
-  });
-
   it("anomalous retry with active revision includes activeResultSummary in detail", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "retry-anomaly-detail");
@@ -190,22 +110,6 @@ describe("retry active result summary", () => {
     expect(detail?.activeResultSummary).toBeDefined();
     expect(detail?.activeResultSummary?.entryCount).toBe(1);
     expect(detail?.activeResultSummary?.total).toBe("12.50");
-  });
-
-  it("failed retry with active revision includes activeResultSummary in list", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-failed-list");
-
-    const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, "failed");
-
-    const listed = await listTargetSourceDocuments({ ledgerId, limit: 10 });
-    const item = listed.items.find((i) => i.id === sourceDocumentId);
-    expect(item).not.toBeUndefined();
-    expect(item?.status).toBe("failed");
-
-    expect(item?.activeResultSummary).toBeDefined();
-    expect(item?.activeResultSummary?.entryCount).toBe(1);
-    expect(item?.activeResultSummary?.total).toBe("12.50");
   });
 
   it("failed retry with active revision includes activeResultSummary in detail", async () => {
@@ -229,14 +133,6 @@ describe("retry active result summary", () => {
 
     const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, "anomaly");
 
-    const listed = await listTargetSourceDocuments({ ledgerId, limit: 10 });
-    const item = listed.items.find((i) => i.id === sourceDocumentId);
-    expect(item).not.toBeUndefined();
-    expect(item?.status).toBe("anomaly");
-
-    // No active revision, so no activeResultSummary
-    expect(item?.activeResultSummary).toBeUndefined();
-
     const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
     if (detail != null) {
       expect(detail.activeResultSummary).toBeUndefined();
@@ -249,28 +145,9 @@ describe("retry active result summary", () => {
 
     const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, "failed");
 
-    const listed = await listTargetSourceDocuments({ ledgerId, limit: 10 });
-    const item = listed.items.find((i) => i.id === sourceDocumentId);
-    expect(item).not.toBeUndefined();
-    expect(item?.status).toBe("failed");
-
-    expect(item?.activeResultSummary).toBeUndefined();
-  });
-
-  it("candidate_pending document does NOT include activeResultSummary", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-candidate");
-
-    const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
-
-    const listed = await listTargetSourceDocuments({ ledgerId, limit: 10 });
-    const item = listed.items.find((i) => i.id === sourceDocumentId);
-    expect(item).not.toBeUndefined();
-    expect(item?.status).toBe("candidate_pending");
-
-    // candidate_pending documents use candidateComparison, not activeResultSummary
-    expect(item?.activeResultSummary).toBeUndefined();
-    expect(item?.candidateComparison).toBeDefined();
+    const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
+    expect(detail?.status).toBe("failed");
+    expect(detail?.activeResultSummary).toBeUndefined();
   });
 
   it("activeResultSummary reflects accurate count and total with multiple entries", async () => {
@@ -328,14 +205,11 @@ describe("retry active result summary", () => {
       .set({ outcome: "failed", finalizedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, pending.revision.id));
 
-    const listed = await listTargetSourceDocuments({ ledgerId, limit: 10 });
-    const item = listed.items.find((i) => i.id === created.sourceDocumentId);
-    expect(item).not.toBeUndefined();
-    expect(item?.status).toBe("failed");
-
-    expect(item?.activeResultSummary).toBeDefined();
-    expect(item?.activeResultSummary?.entryCount).toBe(3);
+    const detail = await getTargetSourceDocument(ledgerId, created.sourceDocumentId);
+    expect(detail?.status).toBe("failed");
+    expect(detail?.activeResultSummary).toBeDefined();
+    expect(detail?.activeResultSummary?.entryCount).toBe(3);
     // Total: 10.00 + 20.00 + 30.00 = 60.00
-    expect(item?.activeResultSummary?.total).toBe("60.00");
+    expect(detail?.activeResultSummary?.total).toBe("60.00");
   });
 });

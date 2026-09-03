@@ -7,7 +7,6 @@ import { ledgerEntries, sourceDocuments } from "@/persistence";
 
 export interface TargetSourceDocumentFilterInput {
   ledgerId: string;
-  ids?: readonly string[];
   statuses?: readonly SourceDocumentStatusType[];
   startDate?: string | null;
   endDate?: string | null;
@@ -19,7 +18,6 @@ export interface TargetSourceDocumentFilterInput {
 export interface TargetSourceDocumentListInput extends TargetSourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
-  includeFiles?: boolean;
 }
 
 export function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] {
@@ -27,10 +25,6 @@ export function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unkn
     eq(sourceDocuments.ledgerId, input.ledgerId),
     isNull(sourceDocuments.deletedAt),
   ];
-  if (input.ids != null) {
-    conditions.push(input.ids.length === 0 ? sql`false` : inArray(sourceDocuments.id, input.ids));
-  }
-
   if (input.statuses != null && input.statuses.length > 0) {
     conditions.push(inArray(sourceDocuments.currentStatus, input.statuses));
   }

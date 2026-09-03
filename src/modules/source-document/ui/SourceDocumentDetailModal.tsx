@@ -66,7 +66,6 @@ interface SourceDocumentDetailModalProps {
   isAccepting?: boolean;
   isAbandoning?: boolean;
   isCancelling?: boolean;
-  readOnly?: boolean;
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
@@ -97,7 +96,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   isAccepting = false,
   isAbandoning = false,
   isCancelling = false,
-  readOnly = false,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -126,7 +124,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     onAddEntry,
     onDeleteEntry,
     onDelete,
-    readOnly,
     t,
     tCommon,
   });
@@ -234,7 +231,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 placeholder={t("untitled")}
                 displayClassName="font-semibold text-text text-base truncate"
                 inputClassName="font-semibold text-base"
-                disabled={readOnly || busy || !isEditMode}
+                disabled={busy || !isEditMode}
               />
             </div>
           </DialogHeader>
@@ -266,9 +263,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   onSourceDocChange={handleSourceDocChange}
                   onEntryChange={handleEntryChange}
                   onSelectEntry={handleSelectEntry}
-                  onSelectAllEntries={handleSelectAllEntries}
                   onToggleSelectionMode={handleToggleSelectionMode}
-                  readOnly={readOnly || busy}
+                  interactionDisabled={busy}
                   isEditMode={isEditMode}
                   onAddEntry={handleOpenAddEntry}
                   onDeleteEntry={handleRequestDeleteEntry}
@@ -277,7 +273,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             )}
           </div>
 
-          {!readOnly && isSelectionMode && (
+          {isSelectionMode && (
             <LedgerEntriesBatchActionToolbar
               selectedCount={selectedIds.length}
               totalCount={ledgerEntries.length}
@@ -299,28 +295,26 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             />
           )}
 
-          {!readOnly && (
-            <SourceDocumentDetailFooterActions
-              sourceDocument={sourceDocument}
-              isEditMode={isEditMode}
-              isSelectionMode={isSelectionMode}
-              busy={busy}
-              interactionDisabled={interactionDisabled}
-              hasPendingChanges={hasPendingChanges}
-              hasRevisionConflict={hasRevisionConflict}
-              pendingChangesCount={pendingChangesCount}
-              isAccepting={isAccepting}
-              {...(onAcceptCandidate != null ? { onAcceptCandidate } : {})}
-              {...(onAbandonCandidate != null ? { onAbandonCandidate } : {})}
-              {...(onCancelProcessing != null ? { onCancelProcessing } : {})}
-              requestAction={requestAction}
-              onOpenRetryDialog={() => setShowRetryDialog(true)}
-              onRequestDelete={() => setShowDeleteConfirm(true)}
-              onCancelEditMode={handleCancelEditMode}
-              onEditSave={handleEditSave}
-              onEnterEditMode={handleEnterEditMode}
-            />
-          )}
+          <SourceDocumentDetailFooterActions
+            sourceDocument={sourceDocument}
+            isEditMode={isEditMode}
+            isSelectionMode={isSelectionMode}
+            busy={busy}
+            interactionDisabled={interactionDisabled}
+            hasPendingChanges={hasPendingChanges}
+            hasRevisionConflict={hasRevisionConflict}
+            pendingChangesCount={pendingChangesCount}
+            isAccepting={isAccepting}
+            {...(onAcceptCandidate != null ? { onAcceptCandidate } : {})}
+            {...(onAbandonCandidate != null ? { onAbandonCandidate } : {})}
+            {...(onCancelProcessing != null ? { onCancelProcessing } : {})}
+            requestAction={requestAction}
+            onOpenRetryDialog={() => setShowRetryDialog(true)}
+            onRequestDelete={() => setShowDeleteConfirm(true)}
+            onCancelEditMode={handleCancelEditMode}
+            onEditSave={handleEditSave}
+            onEnterEditMode={handleEnterEditMode}
+          />
         </DialogContent>
 
         <SourceDocumentDetailConfirmDialogs
@@ -349,7 +343,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       <SourceDocumentDetailOverlays
         ledgerId={ledgerId}
         sourceDocument={sourceDocument}
-        readOnly={readOnly}
         showRetryDialog={showRetryDialog}
         setShowRetryDialog={setShowRetryDialog}
         onRetryPendingChange={state.setIsRetrying}
