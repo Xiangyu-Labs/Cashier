@@ -330,7 +330,7 @@ export async function discardDuplicatePendingRevision(
       .where(and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)))
       .for("update")
       .then((rows) => rows[0]);
-    if (document == null) throw new NotFoundError("Source document");
+    if (document == null) return false;
 
     const review = await tx
       .select()
@@ -351,7 +351,7 @@ export async function discardDuplicatePendingRevision(
     ) {
       return true;
     }
-    if (document.deletedAt != null) throw new NotFoundError("Duplicate review");
+    if (document.deletedAt != null) return false;
     if (review == null || review.status !== "pending" || review.revisionId !== revisionId) {
       throw new ConflictError("Duplicate review is no longer pending");
     }

@@ -399,5 +399,25 @@ describe("duplicate review lifecycle", () => {
       decision: "superseded",
     });
     await expect(getSourceDocumentDuplicateReview(ledgerId, sourceDocumentId)).rejects.toThrow();
+    await expect(
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
+    ).resolves.toBe(false);
+    await expect(
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
+    ).resolves.toBe(false);
+  });
+
+  it("returns false for a missing duplicate document", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "duplicate-missing");
+    const sourceDocumentId = crypto.randomUUID();
+    const revisionId = crypto.randomUUID();
+
+    await expect(
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
+    ).resolves.toBe(false);
+    await expect(
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
+    ).resolves.toBe(false);
   });
 });
