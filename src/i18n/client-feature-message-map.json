@@ -17,6 +17,7 @@
     "Calendar",
     "CandidateReview",
     "CandidateAction",
+    "ReviewDialog",
     "DateFilter",
     "DateRangeFilter",
     "DiagnosticCode",
@@ -31,7 +32,8 @@
     "SourceDocumentEditRetryDialog",
     "SourceDocumentImageModal",
     "SourceDocumentInput",
-    "DuplicateReview"
+    "DuplicateReview",
+    "ReviewDialog"
   ],
   "details": [
     "BatchActions",
@@ -51,7 +53,8 @@
     "SourceDocumentDetail",
     "SourceDocumentEditRetryDialog",
     "SourceDocumentImageModal",
-    "DuplicateReview"
+    "DuplicateReview",
+    "ReviewDialog"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
   "settings": ["LedgerError", "ServiceCredentials", "Settings"]

@@ -702,7 +702,6 @@
     "matchedDeleted": "This bill was deleted after detection. The version used for detection is shown below.",
     "untitled": "Untitled",
     "date": "Date: {date}",
-    "noEntries": "No entries",
     "unconverted": "{count} unconverted",
     "keep": "Keep this bill",
     "discard": "Delete duplicate",
@@ -710,9 +709,12 @@
     "discardConfirmDescription": "This deletes the bill dated {date}, all {count} entries, and its total of {amount}. This cannot be undone.",
     "keepSuccess": "Bill kept",
     "discardSuccess": "Duplicate deleted",
-    "cancel": "Cancel",
+    "actionFailed": "Action failed, please retry."
+  },
+  "ReviewDialog": {
+    "loading": "Loading comparison",
     "loadError": "The review is no longer available.",
     "reload": "Reload",
-    "actionFailed": "Action failed, please retry."
+    "noEntries": "No entries"
   }
 }

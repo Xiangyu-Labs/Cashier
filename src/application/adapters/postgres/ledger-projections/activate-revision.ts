@@ -13,7 +13,11 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "../transaction-locks";
+import {
+  lockLedgerForUpdate,
+  lockSourceDocumentForUpdate,
+  type PostgresTransaction,
+} from "../transaction-locks";
 import { completeProcessingLeaseInTransaction } from "../processing-terminal";
 
 import {
@@ -225,6 +229,37 @@ export async function storeDuplicatePendingRevision(
  * document status. The active projection is already in place, so this must
  * never insert entries or activate a second revision.
  */
+async function updateResolvedDuplicateDocument(
+  tx: PostgresTransaction,
+  input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    revisionId: string;
+    now: Date;
+    resolution: "keep" | "discard";
+  }
+) {
+  const updated = await tx
+    .update(sourceDocuments)
+    .set(
+      input.resolution === "keep"
+        ? { updatedAt: input.now }
+        : { deletedAt: input.now, updatedAt: input.now }
+    )
+    .where(
+      and(
+        activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
+        eq(sourceDocuments.activeRevisionId, input.revisionId),
+        isNull(sourceDocuments.pendingRevisionId)
+      )
+    )
+    .returning({ id: sourceDocuments.id })
+    .then((rows) => rows[0]);
+  if (updated == null) {
+    throw new ConflictError(`Source document changed during duplicate ${input.resolution}`);
+  }
+}
+
 export async function activateDuplicatePendingRevision(
   ledgerId: string,
   sourceDocumentId: string,
@@ -292,21 +327,13 @@ export async function activateDuplicatePendingRevision(
       .update(duplicateReviews)
       .set({ status: "kept", decision: "keep_duplicate", decidedAt: now, updatedAt: now })
       .where(eq(duplicateReviews.id, review.id));
-    const updated = await tx
-      .update(sourceDocuments)
-      .set({ updatedAt: now })
-      .where(
-        and(
-          activeDocumentWhere(ledgerId, sourceDocumentId),
-          eq(sourceDocuments.activeRevisionId, revisionId),
-          isNull(sourceDocuments.pendingRevisionId)
-        )
-      )
-      .returning({ id: sourceDocuments.id })
-      .then((rows) => rows[0]);
-    if (updated == null) {
-      throw new ConflictError("Source document changed during duplicate keep");
-    }
+    await updateResolvedDuplicateDocument(tx, {
+      ledgerId,
+      sourceDocumentId,
+      revisionId,
+      now,
+      resolution: "keep",
+    });
     return true;
   });
 }
@@ -364,22 +391,13 @@ export async function discardDuplicatePendingRevision(
       .update(duplicateReviews)
       .set({ status: "discarded", decision: "discard_duplicate", decidedAt: now, updatedAt: now })
       .where(eq(duplicateReviews.id, review.id));
-    const deleted = await tx
-      .update(sourceDocuments)
-      .set({ deletedAt: now, updatedAt: now })
-      .where(
-        and(
-          activeDocumentWhere(ledgerId, sourceDocumentId),
-          eq(sourceDocuments.activeRevisionId, revisionId),
-          isNull(sourceDocuments.pendingRevisionId),
-          isNull(sourceDocuments.deletedAt)
-        )
-      )
-      .returning({ id: sourceDocuments.id })
-      .then((rows) => rows[0]);
-    if (deleted == null) {
-      throw new ConflictError("Source document changed during duplicate discard");
-    }
+    await updateResolvedDuplicateDocument(tx, {
+      ledgerId,
+      sourceDocumentId,
+      revisionId,
+      now,
+      resolution: "discard",
+    });
     return true;
   });
 }

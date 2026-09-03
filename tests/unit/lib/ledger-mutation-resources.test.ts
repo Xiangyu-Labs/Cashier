@@ -18,6 +18,12 @@ describe("ledger mutation resource groups", () => {
   it("targets document views and derived ledger resources", () => {
     expect(matches(["documents"], queryKeys.sourceDocumentStream("ledger-1"))).toBe(true);
     expect(matches(["documents"], queryKeys.sourceDocument("ledger-1", "doc-1"))).toBe(true);
+    expect(
+      matches(["documents"], queryKeys.sourceDocumentCandidateReview("ledger-1", "doc-1"))
+    ).toBe(true);
+    expect(
+      matches(["documents"], queryKeys.sourceDocumentDuplicateReview("ledger-1", "doc-1"))
+    ).toBe(true);
     expect(matches(["documents"], queryKeys.sourceDocumentRefresh("ledger-1"))).toBe(true);
     expect(matches(["documents"], queryKeys.ledgerEntries("ledger-1"))).toBe(true);
     expect(matches(["documents"], queryKeys.ledgerEntry("ledger-1", "entry-1"))).toBe(true);

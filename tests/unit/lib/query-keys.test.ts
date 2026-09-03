@@ -109,6 +109,32 @@ describe("queryKeys", () => {
       ]);
     });
 
+    it("generates ledger-scoped source document review keys", () => {
+      expect(queryKeys.sourceDocumentCandidateReview("ledger-1", "doc-789")).toEqual([
+        "ledger",
+        "ledger-1",
+        "source-document",
+        "doc-789",
+        "review",
+        "candidate",
+      ]);
+      expect(queryKeys.sourceDocumentDuplicateReview("ledger-1", "doc-789")).toEqual([
+        "ledger",
+        "ledger-1",
+        "source-document",
+        "doc-789",
+        "review",
+        "duplicate",
+      ]);
+      expect(queryKeys.sourceDocumentFull("ledger-1", "doc-789")).toEqual([
+        "ledger",
+        "ledger-1",
+        "source-document",
+        "doc-789",
+        "full",
+      ]);
+    });
+
     it("生成不同ledger下的不同sourceDocument key", () => {
       expect(queryKeys.sourceDocument("ledger-1", "doc-789")).not.toEqual(
         queryKeys.sourceDocument("ledger-2", "doc-789")

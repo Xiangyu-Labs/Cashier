@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Loader2, RotateCcw } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -15,8 +16,10 @@ import type {
   SourceDocumentCandidateReviewRevisionDto,
 } from "@/modules/source-document/contracts";
 import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
-import { ReviewPanelSkeleton } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanelSkeleton";
 import { SourceDocumentReviewDialogContent } from "./SourceDocumentReviewDialogContent";
+import { queryKeys } from "@/lib/query-keys";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SourceDocumentReviewEntryAmount } from "./SourceDocumentReviewEntryAmount";
 
 interface SourceDocumentCandidateReviewDialogProps {
   ledgerId: string;
@@ -34,9 +37,12 @@ export function SourceDocumentCandidateReviewDialog({
   mainCurrency,
 }: SourceDocumentCandidateReviewDialogProps) {
   const t = useTranslations("CandidateReview");
+  const tReview = useTranslations("ReviewDialog");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
+  const [abandonConfirmOpen, setAbandonConfirmOpen] = useState(false);
   const reviewQuery = useQuery({
-    queryKey: ["sourceDocument", "candidateReview", ledgerId, sourceDocumentId],
+    queryKey: queryKeys.sourceDocumentCandidateReview(ledgerId, sourceDocumentId),
     queryFn: () => getSourceDocumentCandidateReviewAction(ledgerId, sourceDocumentId),
     enabled: open,
     staleTime: 0,
@@ -51,31 +57,46 @@ export function SourceDocumentCandidateReviewDialog({
   const isPending = recovery.isReviewing;
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
-      <SourceDocumentReviewDialogContent isPending={isPending}>
-        <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
-          <DialogTitle className="text-base">{t("title")}</DialogTitle>
-        </DialogHeader>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          {reviewQuery.isLoading ? (
-            <div
-              className="grid min-w-0 gap-4 md:grid-cols-2"
-              aria-busy="true"
-              aria-label={t("loading")}
-            >
-              <ReviewPanelSkeleton />
-              <ReviewPanelSkeleton />
-            </div>
-          ) : reviewQuery.isError || reviewQuery.data == null ? (
-            <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
-              <p className="text-sm text-danger">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => reviewQuery.refetch()}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {t("reload")}
+    <>
+      <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
+        <SourceDocumentReviewDialogContent
+          isPending={isPending}
+          isLoading={reviewQuery.isLoading}
+          loadingLabel={tReview("loading")}
+          hasError={reviewQuery.isError || reviewQuery.data == null}
+          errorMessage={tReview("loadError")}
+          reloadLabel={tReview("reload")}
+          onReload={() => void reviewQuery.refetch()}
+          header={
+            <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
+              <DialogTitle className="text-base">{t("title")}</DialogTitle>
+            </DialogHeader>
+          }
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setAbandonConfirmOpen(true)}
+                disabled={isPending || reviewQuery.data == null}
+              >
+                {recovery.isAbandoning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t("keepOriginal")}
               </Button>
-            </div>
-          ) : (
+              <Button
+                onClick={() => recovery.acceptCandidate()}
+                disabled={isPending || reviewQuery.data == null}
+              >
+                {recovery.isAccepting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="mr-2 h-4 w-4" />
+                )}
+                {t("acceptCandidate")}
+              </Button>
+            </>
+          }
+        >
+          {reviewQuery.data != null ? (
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
               <RevisionPanel
                 revision={reviewQuery.data.active}
@@ -83,7 +104,7 @@ export function SourceDocumentCandidateReviewDialog({
                 tone="original"
                 mainCurrency={mainCurrency}
                 locale={locale}
-                emptyLabel={t("noEntries")}
+                emptyLabel={tReview("noEntries")}
                 entryCountLabel={t("entryCount", { count: reviewQuery.data.active.entryCount })}
               />
               <RevisionPanel
@@ -92,40 +113,25 @@ export function SourceDocumentCandidateReviewDialog({
                 tone="candidate"
                 mainCurrency={mainCurrency}
                 locale={locale}
-                emptyLabel={t("noEntries")}
-                entryCountLabel={t("entryCount", { count: reviewQuery.data.candidate.entryCount })}
+                emptyLabel={tReview("noEntries")}
+                entryCountLabel={t("entryCount", {
+                  count: reviewQuery.data.candidate.entryCount,
+                })}
               />
             </div>
-          )}
-        </div>
-
-        <div className="flex shrink-0 flex-wrap-reverse justify-end gap-2 border-t bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-3">
-          <Button
-            variant="outline"
-            onClick={() => recovery.abandonCandidate()}
-            disabled={isPending || reviewQuery.data == null}
-          >
-            {recovery.isAbandoning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t("keepOriginal")}
-          </Button>
-          <Button
-            onClick={() => recovery.acceptCandidate()}
-            disabled={isPending || reviewQuery.data == null}
-          >
-            {recovery.isAccepting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="mr-2 h-4 w-4" />
-            )}
-            {t("acceptCandidate")}
-          </Button>
-        </div>
-
-        {isPending && (
-          <div className="absolute inset-0 z-50 cursor-wait bg-surface/20" aria-hidden />
-        )}
-      </SourceDocumentReviewDialogContent>
-    </Dialog>
+          ) : null}
+        </SourceDocumentReviewDialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={abandonConfirmOpen}
+        onOpenChange={(nextOpen) => !isPending && setAbandonConfirmOpen(nextOpen)}
+        title={t("abandonConfirmTitle")}
+        description={t("abandonConfirmDescription")}
+        confirmLabel={t("keepOriginal")}
+        cancelLabel={tCommon("cancel")}
+        onConfirm={() => recovery.abandonCandidate()}
+      />
+    </>
   );
 }
 
@@ -191,7 +197,6 @@ function ReviewEntry({
   mainCurrency: string;
   locale: string;
 }) {
-  const currency = entry.currency ?? mainCurrency;
   return (
     <div className="flex min-w-0 items-start gap-3 px-4 py-3">
       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface2">
@@ -204,16 +209,13 @@ function ReviewEntry({
           {entry.description != null && entry.description !== "" ? ` · ${entry.description}` : ""}
         </p>
       </div>
-      <div className="shrink-0 text-right">
-        <AmountText variant="item">
-          {formatCurrencyAmount(entry.amount, currency, locale)}
-        </AmountText>
-        {entry.convertedAmount != null && currency !== mainCurrency && (
-          <AmountText variant="secondary">
-            {formatCurrencyAmount(entry.convertedAmount, mainCurrency, locale)}
-          </AmountText>
-        )}
-      </div>
+      <SourceDocumentReviewEntryAmount
+        amount={entry.amount}
+        currency={entry.currency}
+        convertedAmount={entry.convertedAmount}
+        mainCurrency={mainCurrency}
+        locale={locale}
+      />
     </div>
   );
 }

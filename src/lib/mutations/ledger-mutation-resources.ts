@@ -16,8 +16,7 @@ type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
 function matchesSourceDocumentDetails(ledgerId: string): QueryPredicate {
   return ({ queryKey }) =>
-    (queryKey[0] === "ledger" && queryKey[1] === ledgerId && queryKey[2] === "source-document") ||
-    (queryKey[0] === "sourceDocument" && queryKey[2] === ledgerId);
+    queryKey[0] === "ledger" && queryKey[1] === ledgerId && queryKey[2] === "source-document";
 }
 
 function matchesLedgerEntryDetails(ledgerId: string): QueryPredicate {

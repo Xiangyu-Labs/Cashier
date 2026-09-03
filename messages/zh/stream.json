@@ -80,15 +80,13 @@
   },
   "CandidateReview": {
     "title": "审核解析结果",
-    "loading": "正在加载对比",
-    "loadError": "该候选结果已不可用。",
-    "reload": "重新加载",
     "original": "原来的解析结果",
     "candidate": "新的解析结果",
     "entryCount": "共 {count} 条",
-    "noEntries": "暂无条目",
     "keepOriginal": "保留原结果",
-    "acceptCandidate": "接受新结果"
+    "acceptCandidate": "接受新结果",
+    "abandonConfirmTitle": "保留原解析结果？",
+    "abandonConfirmDescription": "新的解析结果将被丢弃，当前账目不会改变。"
   },
   "CandidateAction": {
     "accept": "确认候选",
@@ -106,6 +104,12 @@
     "retrySuccessDescription": "正在重新解析此凭证。",
     "retryError": "重试失败",
     "retryErrorDescription": "原结果未改变，请稍后重试。"
+  },
+  "ReviewDialog": {
+    "loading": "正在加载对比",
+    "loadError": "该审核已不可用。",
+    "reload": "重新加载",
+    "noEntries": "暂无条目"
   },
   "DateFilter": {
     "selectDate": "选择日期",
@@ -711,7 +715,6 @@
     "matchedDeleted": "该账单在检测后已删除；下方仍展示检测时版本。",
     "untitled": "未命名",
     "date": "日期：{date}",
-    "noEntries": "暂无明细",
     "unconverted": "{count} 条未换算",
     "keep": "仍然保留",
     "discard": "删除重复",
@@ -719,9 +722,6 @@
     "discardConfirmDescription": "这将删除日期为 {date}、金额为 {amount} 的整张单据及其全部 {count} 条明细，且无法撤销。",
     "keepSuccess": "已保留账单",
     "discardSuccess": "已删除重复账单",
-    "cancel": "取消",
-    "loadError": "该重复审查已不可用。",
-    "reload": "重新加载",
     "actionFailed": "操作失败，请重试。"
   }
 }

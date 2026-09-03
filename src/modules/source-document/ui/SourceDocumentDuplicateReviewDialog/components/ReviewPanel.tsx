@@ -7,6 +7,7 @@ import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import { storedFileReadUrl } from "../../../stored-file-read";
 import { SourceDocumentImageModal } from "../../SourceDocumentImageModal";
+import { SourceDocumentReviewEntryAmount } from "../../SourceDocumentReviewEntryAmount";
 import {
   summarizeReviewEntries,
   type ReviewSide,
@@ -28,6 +29,7 @@ export function ReviewPanel({
   locale: string;
 }) {
   const t = useTranslations("DuplicateReview");
+  const tReview = useTranslations("ReviewDialog");
   const [imageViewer, setImageViewer] = useState<{ open: boolean; index: number }>({
     open: false,
     index: 0,
@@ -110,10 +112,11 @@ export function ReviewPanel({
 
       <div className="divide-y divide-border">
         {side.entries.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("noEntries")}</p>
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            {tReview("noEntries")}
+          </p>
         ) : (
           side.entries.map((entry) => {
-            const currency = entry.currency ?? mainCurrency;
             return (
               <div key={entry.id} className="flex min-w-0 items-start gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
@@ -122,16 +125,13 @@ export function ReviewPanel({
                     <p className="break-words text-xs text-muted-foreground">{entry.description}</p>
                   )}
                 </div>
-                <div className="shrink-0 text-right">
-                  <AmountText variant="item">
-                    {formatCurrencyAmount(entry.amount, currency, locale)}
-                  </AmountText>
-                  {entry.convertedAmount != null && currency !== mainCurrency && (
-                    <AmountText variant="secondary">
-                      {formatCurrencyAmount(entry.convertedAmount, mainCurrency, locale)}
-                    </AmountText>
-                  )}
-                </div>
+                <SourceDocumentReviewEntryAmount
+                  amount={entry.amount}
+                  currency={entry.currency}
+                  convertedAmount={entry.convertedAmount}
+                  mainCurrency={mainCurrency}
+                  locale={locale}
+                />
               </div>
             );
           })

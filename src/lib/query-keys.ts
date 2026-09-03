@@ -51,10 +51,12 @@ export const queryKeys = {
     ["ledger", ledgerId, "source-document", documentId, "detail"] as const,
   sourceDocumentLight: (ledgerId: string, documentId: string) =>
     ["ledger", ledgerId, "source-document", documentId, "light"] as const,
+  sourceDocumentCandidateReview: (ledgerId: string, id: string) =>
+    ["ledger", ledgerId, "source-document", id, "review", "candidate"] as const,
   sourceDocumentDuplicateReview: (ledgerId: string, id: string) =>
-    ["sourceDocument", "duplicateReview", ledgerId, id] as const,
+    ["ledger", ledgerId, "source-document", id, "review", "duplicate"] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>
-    ["sourceDocument", "full", ledgerId, id] as const,
+    ["ledger", ledgerId, "source-document", id, "full"] as const,
   sourceDocumentRefresh: (ledgerId: string) => ["sourceDocumentRefresh", ledgerId] as const,
 
   // === Categories ===

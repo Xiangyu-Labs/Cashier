@@ -80,15 +80,13 @@
   },
   "CandidateReview": {
     "title": "Review parsing result",
-    "loading": "Loading comparison",
-    "loadError": "The comparison is no longer available.",
-    "reload": "Reload",
     "original": "Original parsing result",
     "candidate": "New parsing result",
     "entryCount": "{count} entries",
-    "noEntries": "No entries",
     "keepOriginal": "Keep original result",
-    "acceptCandidate": "Accept new result"
+    "acceptCandidate": "Accept new result",
+    "abandonConfirmTitle": "Keep the original result?",
+    "abandonConfirmDescription": "The new parsing result will be discarded. The current ledger entries will remain unchanged."
   },
   "CandidateAction": {
     "accept": "Accept",
@@ -106,6 +104,12 @@
     "retrySuccessDescription": "The document is being parsed again.",
     "retryError": "Retry failed",
     "retryErrorDescription": "The original result was kept. Please try again."
+  },
+  "ReviewDialog": {
+    "loading": "Loading comparison",
+    "loadError": "The review is no longer available.",
+    "reload": "Reload",
+    "noEntries": "No entries"
   },
   "DateFilter": {
     "selectDate": "Select date",
@@ -711,7 +715,6 @@
     "matchedDeleted": "This bill was deleted after detection. The version used for detection is shown below.",
     "untitled": "Untitled",
     "date": "Date: {date}",
-    "noEntries": "No entries",
     "unconverted": "{count} unconverted",
     "keep": "Keep this bill",
     "discard": "Delete duplicate",
@@ -719,9 +722,6 @@
     "discardConfirmDescription": "This deletes the bill dated {date}, all {count} entries, and its total of {amount}. This cannot be undone.",
     "keepSuccess": "Bill kept",
     "discardSuccess": "Duplicate deleted",
-    "cancel": "Cancel",
-    "loadError": "The review is no longer available.",
-    "reload": "Reload",
     "actionFailed": "Action failed, please retry."
   }
 }

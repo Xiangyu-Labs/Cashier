@@ -702,7 +702,6 @@
     "matchedDeleted": "该账单在检测后已删除；下方仍展示检测时版本。",
     "untitled": "未命名",
     "date": "日期：{date}",
-    "noEntries": "暂无明细",
     "unconverted": "{count} 条未换算",
     "keep": "仍然保留",
     "discard": "删除重复",
@@ -710,9 +709,12 @@
     "discardConfirmDescription": "这将删除日期为 {date}、金额为 {amount} 的整张单据及其全部 {count} 条明细，且无法撤销。",
     "keepSuccess": "已保留账单",
     "discardSuccess": "已删除重复账单",
-    "cancel": "取消",
-    "loadError": "该重复审查已不可用。",
-    "reload": "重新加载",
     "actionFailed": "操作失败，请重试。"
+  },
+  "ReviewDialog": {
+    "loading": "正在加载对比",
+    "loadError": "该审核已不可用。",
+    "reload": "重新加载",
+    "noEntries": "暂无条目"
   }
 }
