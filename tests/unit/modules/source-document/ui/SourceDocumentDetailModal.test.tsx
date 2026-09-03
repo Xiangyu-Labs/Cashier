@@ -351,6 +351,19 @@ describe("SourceDocumentDetailModal batch mode", () => {
         ),
     },
     {
+      name: "pending revision",
+      changeContext: ({ rerender }: ReturnType<typeof render>) =>
+        rerender(
+          modal(
+            undefined,
+            { ...sourceDocument, pendingRevisionId: "pending-revision-2" },
+            {
+              onAddEntry: vi.fn(async () => undefined),
+            }
+          )
+        ),
+    },
+    {
       name: "entry set",
       changeContext: ({ rerender }: ReturnType<typeof render>) =>
         rerender(

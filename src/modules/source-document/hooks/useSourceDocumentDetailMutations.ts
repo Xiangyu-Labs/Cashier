@@ -67,10 +67,12 @@ export function useSourceDocumentDetailMutations({
         ...(Object.keys(changes.sourceDoc).length === 0
           ? {}
           : { sourceDocument: changes.sourceDoc }),
-        entries: Object.entries(changes.entries).map(([ledgerEntryId, data]) => ({
-          ledgerEntryId,
-          data,
-        })),
+        entries: Object.entries(changes.entries)
+          .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
+          .map(([ledgerEntryId, data]) => ({
+            ledgerEntryId,
+            data,
+          })),
       });
     },
     successMessage: null,

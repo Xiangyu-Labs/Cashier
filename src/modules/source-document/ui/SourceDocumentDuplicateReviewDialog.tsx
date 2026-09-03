@@ -45,6 +45,7 @@ export function SourceDocumentDuplicateReviewDialog({
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [discardRevisionId, setDiscardRevisionId] = useState<string | null>(null);
   const reviewQueryKey = queryKeys.sourceDocumentDuplicateReview(ledgerId, sourceDocumentId);
   const reviewQuery = useQuery({
     queryKey: reviewQueryKey,
@@ -68,6 +69,7 @@ export function SourceDocumentDuplicateReviewDialog({
   const closeResolvedReview = useCallback(() => {
     removeResolvedDocumentQueries();
     setDiscardConfirmOpen(false);
+    setDiscardRevisionId(null);
     onOpenChange(false);
   }, [onOpenChange, removeResolvedDocumentQueries]);
 
@@ -139,7 +141,11 @@ export function SourceDocumentDuplicateReviewDialog({
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => setDiscardConfirmOpen(true)}
+                onClick={() => {
+                  if (revisionId == null) return;
+                  setDiscardRevisionId(revisionId);
+                  setDiscardConfirmOpen(true);
+                }}
                 disabled={!canAct}
               >
                 {discardMutation.isPending ? (
@@ -199,7 +205,11 @@ export function SourceDocumentDuplicateReviewDialog({
       </Dialog>
       <ConfirmDialog
         open={discardConfirmOpen}
-        onOpenChange={(nextOpen) => !isPending && setDiscardConfirmOpen(nextOpen)}
+        onOpenChange={(nextOpen) => {
+          if (isPending) return;
+          setDiscardConfirmOpen(nextOpen);
+          if (!nextOpen) setDiscardRevisionId(null);
+        }}
         title={t("discardConfirmTitle")}
         description={t("discardConfirmDescription", {
           date: duplicateDate,
@@ -210,6 +220,11 @@ export function SourceDocumentDuplicateReviewDialog({
         variant="destructive"
         onConfirm={async () => {
           if (!canAct) return false;
+          if (revisionId !== discardRevisionId) {
+            setDiscardConfirmOpen(false);
+            setDiscardRevisionId(null);
+            return false;
+          }
           await discardMutation.mutateAsync();
           return true;
         }}

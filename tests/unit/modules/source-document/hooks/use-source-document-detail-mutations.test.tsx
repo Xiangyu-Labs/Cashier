@@ -136,6 +136,48 @@ describe("useSourceDocumentDetailMutations", () => {
     expect(settled).toBe(true);
   });
 
+  it("sends entry patches in canonical ID order", async () => {
+    const { queryClient, wrapper } = setup();
+    saveSourceDocumentChangesActionMock.mockResolvedValue({
+      sourceDocument: { id: "source-1" },
+      ledgerEntries: [],
+    });
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentDetailMutations({
+          id: "source-1",
+          ledgerId: "ledger-1",
+          onClose: vi.fn(),
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      await result.current.saveChanges({
+        expectedRevisionId: "revision-1",
+        operationId: "operation-1",
+        changes: {
+          sourceDoc: {},
+          entries: {
+            "entry-2": { itemName: "Second" },
+            "entry-1": { itemName: "First" },
+          },
+        },
+      });
+    });
+
+    expect(saveSourceDocumentChangesActionMock).toHaveBeenCalledWith(
+      "ledger-1",
+      expect.objectContaining({
+        entries: [
+          { ledgerEntryId: "entry-1", data: { itemName: "First" } },
+          { ledgerEntryId: "entry-2", data: { itemName: "Second" } },
+        ],
+      })
+    );
+  });
+
   it("deletes selected entries in one batch and refreshes each affected resource once", async () => {
     const { queryClient, wrapper } = setup();
     batchDeleteLedgerEntriesActionMock.mockResolvedValue({

@@ -98,4 +98,47 @@ describe("SourceDocumentCandidateReviewDialog", () => {
     await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(3));
     await waitFor(() => expect(accept).not.toBeDisabled());
   });
+
+  it("does not abandon a replacement candidate after confirmation opens", async () => {
+    reviewActionMock
+      .mockResolvedValueOnce({
+        sourceDocumentId: "doc-1",
+        active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
+        candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
+      })
+      .mockResolvedValueOnce({
+        sourceDocumentId: "doc-1",
+        active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
+        candidate: { revisionId: "rev-3", entries: [], entryCount: 0, total: "0" },
+      });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SourceDocumentCandidateReviewDialog
+          ledgerId="ledger-1"
+          sourceDocumentId="doc-1"
+          open
+          onOpenChange={vi.fn()}
+          mainCurrency="CNY"
+        />
+      </QueryClientProvider>
+    );
+
+    const abandon = await screen.findByRole("button", { name: "保留原结果" });
+    await waitFor(() => expect(abandon).not.toBeDisabled());
+    fireEvent.click(abandon);
+    await queryClient.refetchQueries({
+      queryKey: queryKeys.sourceDocumentCandidateReview("ledger-1", "doc-1"),
+    });
+    await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(2));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "保留原结果" }).at(-1)!);
+
+    await waitFor(() =>
+      expect(screen.queryByText("新的解析结果将被丢弃，当前账目不会改变。")).not.toBeInTheDocument()
+    );
+    expect(abandonActionMock).not.toHaveBeenCalled();
+  });
 });

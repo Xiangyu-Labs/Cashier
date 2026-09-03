@@ -117,6 +117,7 @@ export function useSourceDocumentDetailController(
     contextKey: sourceDocumentDeferredContextKey({
       sourceDocumentId: sourceDocument?.id,
       activeRevisionId: sourceDocument?.activeRevisionId,
+      pendingRevisionId: sourceDocument?.pendingRevisionId,
       entryIds: ledgerEntries.map((entry) => entry.id),
       selectedIds: selection.selectedIds,
     }),

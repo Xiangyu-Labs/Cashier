@@ -329,4 +329,28 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(3));
     await waitFor(() => expect(keepButton).not.toBeDisabled());
   });
+
+  it("does not discard a replacement revision after confirmation opens", async () => {
+    reviewActionMock.mockResolvedValueOnce(reviewDetail()).mockResolvedValueOnce({
+      ...reviewDetail(),
+      review: { ...reviewDetail().review, revisionId: "rev-3" },
+    });
+    const queryClient = createQueryClient();
+    renderDialog({ queryClient });
+
+    const discardButton = await screen.findByRole("button", { name: "删除重复" });
+    await waitFor(() => expect(discardButton).not.toBeDisabled());
+    fireEvent.click(discardButton);
+    await queryClient.refetchQueries({
+      queryKey: queryKeys.sourceDocumentDuplicateReview(LEDGER_ID, DUPLICATE_ID),
+    });
+    await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(2));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "删除重复" }).at(-1)!);
+
+    await waitFor(() =>
+      expect(screen.queryByText("确认删除这张重复账单？")).not.toBeInTheDocument()
+    );
+    expect(discardActionMock).not.toHaveBeenCalled();
+  });
 });

@@ -41,6 +41,7 @@ export function SourceDocumentCandidateReviewDialog({
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [abandonConfirmOpen, setAbandonConfirmOpen] = useState(false);
+  const [abandonRevisionId, setAbandonRevisionId] = useState<string | null>(null);
   const reviewQuery = useQuery({
     queryKey: queryKeys.sourceDocumentCandidateReview(ledgerId, sourceDocumentId),
     queryFn: () => getSourceDocumentCandidateReviewAction(ledgerId, sourceDocumentId),
@@ -79,7 +80,11 @@ export function SourceDocumentCandidateReviewDialog({
             <>
               <Button
                 variant="outline"
-                onClick={() => setAbandonConfirmOpen(true)}
+                onClick={() => {
+                  if (revisionId == null) return;
+                  setAbandonRevisionId(revisionId);
+                  setAbandonConfirmOpen(true);
+                }}
                 disabled={!canAct}
               >
                 {recovery.isAbandoning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -124,12 +129,24 @@ export function SourceDocumentCandidateReviewDialog({
       </Dialog>
       <ConfirmDialog
         open={abandonConfirmOpen}
-        onOpenChange={(nextOpen) => !isPending && setAbandonConfirmOpen(nextOpen)}
+        onOpenChange={(nextOpen) => {
+          if (isPending) return;
+          setAbandonConfirmOpen(nextOpen);
+          if (!nextOpen) setAbandonRevisionId(null);
+        }}
         title={t("abandonConfirmTitle")}
         description={t("abandonConfirmDescription")}
         confirmLabel={t("keepOriginal")}
         cancelLabel={tCommon("cancel")}
-        onConfirm={() => (canAct ? recovery.abandonCandidate() : false)}
+        onConfirm={() => {
+          if (!canAct) return false;
+          if (revisionId !== abandonRevisionId) {
+            setAbandonConfirmOpen(false);
+            setAbandonRevisionId(null);
+            return false;
+          }
+          return recovery.abandonCandidate();
+        }}
       />
     </>
   );
