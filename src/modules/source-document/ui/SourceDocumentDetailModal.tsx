@@ -68,7 +68,7 @@ interface SourceDocumentDetailModalProps {
   isCancelling?: boolean;
 }
 
-export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
+function SourceDocumentDetailEditor({
   ledgerId,
   sourceDocument,
   isLoading = false,
@@ -368,4 +368,11 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       />
     </>
   );
+}
+
+export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal(
+  props: SourceDocumentDetailModalProps
+) {
+  const editorKey = props.sourceDocument?.id ?? "empty";
+  return <SourceDocumentDetailEditor key={editorKey} {...props} />;
 });

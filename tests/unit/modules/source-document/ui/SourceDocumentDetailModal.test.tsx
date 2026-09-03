@@ -125,11 +125,14 @@ const sourceDocument: SourceDocumentLight = {
   activeRevisionId: "revision-1",
 };
 
-function renderModal(onSaveAll = vi.fn(async () => undefined)) {
-  render(
+function modal(
+  onSaveAll = vi.fn(async () => undefined),
+  document: SourceDocumentLight = sourceDocument
+) {
+  return (
     <SourceDocumentDetailModal
       ledgerId="ledger-1"
-      sourceDocument={sourceDocument}
+      sourceDocument={document}
       ledgerEntries={[entry]}
       categories={[]}
       mainCurrency="CNY"
@@ -141,7 +144,10 @@ function renderModal(onSaveAll = vi.fn(async () => undefined)) {
       onBatchDeleteEntries={vi.fn(async () => [])}
     />
   );
-  return { onSaveAll };
+}
+
+function renderModal(onSaveAll = vi.fn(async () => undefined)) {
+  return { onSaveAll, ...render(modal(onSaveAll)) };
 }
 
 describe("SourceDocumentDetailModal batch mode", () => {
@@ -189,5 +195,25 @@ describe("SourceDocumentDetailModal batch mode", () => {
     fireEvent.click(screen.getByText("confirm-discard"));
     await waitFor(() => expect(screen.getByText("batch-toolbar")).toBeInTheDocument());
     expect(screen.getByText("viewing")).toBeInTheDocument();
+  });
+
+  it("resets editor state when the selected source document changes", () => {
+    const onSaveAll = vi.fn(async () => undefined);
+    const { rerender } = renderModal(onSaveAll);
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+    expect(screen.getByText("editing")).toBeInTheDocument();
+
+    rerender(
+      modal(onSaveAll, {
+        ...sourceDocument,
+        id: "doc-2",
+        title: "Second receipt",
+        activeRevisionId: "revision-2",
+      })
+    );
+
+    expect(screen.getByText("viewing")).toBeInTheDocument();
+    expect(screen.queryByText("unsavedChanges")).not.toBeInTheDocument();
   });
 });

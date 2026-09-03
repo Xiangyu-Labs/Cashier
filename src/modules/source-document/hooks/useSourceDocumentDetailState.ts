@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { usePendingChanges } from "./usePendingChanges";
@@ -29,7 +29,7 @@ export function useSourceDocumentDetailState({
   isCancelling,
 }: UseSourceDocumentDetailStateOptions) {
   const pendingChangesState = usePendingChanges({ sourceDocument, ledgerEntries });
-  const { hasPendingChanges, pendingChanges, resetChanges } = pendingChangesState;
+  const { hasPendingChanges, pendingChanges } = pendingChangesState;
 
   const selectionState = useSelection({ allIds: ledgerEntries.map((e) => e.id) });
 
@@ -64,12 +64,6 @@ export function useSourceDocumentDetailState({
     isAbandoning ||
     isCancelling;
   const interactionDisabled = busy || sourceDocument == null;
-
-  useEffect(() => {
-    if (open && sourceDocument && !hasPendingChanges) {
-      resetChanges();
-    }
-  }, [open, sourceDocument, hasPendingChanges, resetChanges]);
 
   const revisionGuard = useSourceDocumentRevisionGuard({
     hasPendingChanges,
