@@ -83,6 +83,9 @@ vi.mock("@/modules/source-document/ui/SourceDocumentViewDetails", () => ({
       <button disabled={!isEditMode} onClick={() => onSourceDocChange({ title: "Changed" })}>
         change-draft
       </button>
+      <button disabled={!isEditMode} onClick={() => onSourceDocChange({ title: "Changed again" })}>
+        change-draft-again
+      </button>
       <button onClick={onToggleSelectionMode}>batch-toggle</button>
       <button onClick={() => onSelectEntry("entry-1", true)}>select-first</button>
       <button onClick={onAddEntry}>add-entry</button>
@@ -343,6 +346,26 @@ describe("SourceDocumentDetailModal batch mode", () => {
     await waitFor(() => expect(onSaveAll).toHaveBeenCalledTimes(2));
 
     expect(onSaveAll.mock.calls[0]![0].operationId).toBe(onSaveAll.mock.calls[1]![0].operationId);
+  });
+
+  it("uses a new save operation ID when the payload changes after a failed attempt", async () => {
+    const onSaveAll = vi.fn().mockRejectedValue(new Error("temporary failure"));
+    renderModal(onSaveAll);
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+
+    fireEvent.click(screen.getByText("saveChanges"));
+    await waitFor(() => expect(onSaveAll).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByText("change-draft-again"));
+    fireEvent.click(screen.getByText("saveChanges"));
+    await waitFor(() => expect(onSaveAll).toHaveBeenCalledTimes(2));
+
+    expect(onSaveAll.mock.calls[1]![0]).toMatchObject({
+      changes: { sourceDoc: { title: "Changed again" } },
+    });
+    expect(onSaveAll.mock.calls[1]![0].operationId).not.toBe(
+      onSaveAll.mock.calls[0]![0].operationId
+    );
   });
 
   it("reuses split identities when retrying the same payload", async () => {

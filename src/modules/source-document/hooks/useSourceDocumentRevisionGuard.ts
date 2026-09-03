@@ -7,6 +7,11 @@ interface UseSourceDocumentRevisionGuardOptions {
   activeRevisionId: string | null | undefined;
 }
 
+export interface SaveAttemptIdentity {
+  operationId: string;
+  payloadKey: string;
+}
+
 /**
  * Tracks the revision a draft was started against so a concurrent server-side
  * save can be detected as a conflict. `draftRevisionIdRef` is intentionally set
@@ -19,14 +24,14 @@ export function useSourceDocumentRevisionGuard({
   activeRevisionId,
 }: UseSourceDocumentRevisionGuardOptions) {
   const draftRevisionIdRef = useRef<string | null>(null);
-  const saveOperationIdRef = useRef<string | null>(null);
+  const saveAttemptIdentityRef = useRef<SaveAttemptIdentity | null>(null);
 
   useEffect(() => {
     if (hasPendingChanges) {
       draftRevisionIdRef.current ??= activeRevisionId ?? null;
     } else {
       draftRevisionIdRef.current = null;
-      saveOperationIdRef.current = null;
+      saveAttemptIdentityRef.current = null;
     }
   }, [hasPendingChanges, activeRevisionId]);
 
@@ -36,5 +41,5 @@ export function useSourceDocumentRevisionGuard({
     activeRevisionId != null &&
     draftRevisionIdRef.current !== activeRevisionId;
 
-  return { draftRevisionIdRef, saveOperationIdRef, hasRevisionConflict };
+  return { draftRevisionIdRef, saveAttemptIdentityRef, hasRevisionConflict };
 }

@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "@/auth";
 import { saveSourceDocumentChangesAction } from "@/modules/source-document/actions";
-import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import {
+  idempotencyRecords,
+  ledgerEntries,
+  ledgers,
+  sourceDocumentRevisions,
+  sourceDocuments,
+} from "@/persistence";
 import { getTestDb } from "../../../../../setup";
 import { createLedgerData, createSourceDocumentData } from "../../../../../helpers/factories";
 import { activateTestSourceDocumentProjection } from "../../../../../helpers/schema-setup";
@@ -186,5 +192,76 @@ describe("saveSourceDocumentChangesAction", () => {
       where: eq(sourceDocuments.id, fixture.document.id),
     });
     expect(document?.activeRevisionId).toBe(operationId);
+  });
+
+  it("fails closed when the committed mutation loses its idempotency receipt", async () => {
+    const fixture = await seedDocument();
+    const operationId = crypto.randomUUID();
+    const input = {
+      sourceDocumentId: fixture.document.id,
+      expectedRevisionId: fixture.revisionId,
+      operationId,
+      sourceDocument: { title: "Committed update" },
+      entries: [],
+    };
+
+    await saveSourceDocumentChangesAction(fixture.ledger.id, input);
+    const revisionsBefore = await fixture.db
+      .select({ id: sourceDocumentRevisions.id })
+      .from(sourceDocumentRevisions)
+      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
+    await fixture.db
+      .delete(idempotencyRecords)
+      .where(
+        and(
+          eq(idempotencyRecords.principalType, "user"),
+          eq(idempotencyRecords.principalId, userId),
+          eq(
+            idempotencyRecords.key,
+            `source-document:save:${fixture.ledger.id}:${fixture.document.id}:${operationId}`
+          )
+        )
+      );
+
+    await expect(saveSourceDocumentChangesAction(fixture.ledger.id, input)).rejects.toThrow(
+      /active revision changed/i
+    );
+
+    const revisionsAfter = await fixture.db
+      .select({ id: sourceDocumentRevisions.id })
+      .from(sourceDocumentRevisions)
+      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
+    expect(revisionsAfter).toHaveLength(revisionsBefore.length);
+  });
+
+  it("rejects reusing an operation ID with a different payload", async () => {
+    const fixture = await seedDocument();
+    const operationId = crypto.randomUUID();
+    const baseInput = {
+      sourceDocumentId: fixture.document.id,
+      expectedRevisionId: fixture.revisionId,
+      operationId,
+      sourceDocument: { title: "First payload" },
+      entries: [],
+    };
+
+    await saveSourceDocumentChangesAction(fixture.ledger.id, baseInput);
+    const revisionsBefore = await fixture.db
+      .select({ id: sourceDocumentRevisions.id })
+      .from(sourceDocumentRevisions)
+      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
+
+    await expect(
+      saveSourceDocumentChangesAction(fixture.ledger.id, {
+        ...baseInput,
+        sourceDocument: { title: "Different payload" },
+      })
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+
+    const revisionsAfter = await fixture.db
+      .select({ id: sourceDocumentRevisions.id })
+      .from(sourceDocumentRevisions)
+      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
+    expect(revisionsAfter).toHaveLength(revisionsBefore.length);
   });
 });

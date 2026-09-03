@@ -188,13 +188,6 @@ export async function saveSourceDocumentChangesAtomically(
     }),
   ]);
   if (ledger == null || document == null) throw new NotFoundError("Source document");
-  if (document.activeRevisionId === input.operationId) {
-    return loadAuthoritativeSourceDocument(
-      input.ledgerId,
-      input.sourceDocumentId,
-      input.operationId
-    );
-  }
   if (document.activeRevisionId !== input.expectedRevisionId) {
     throw new ConflictError("Source document active revision changed");
   }
@@ -253,7 +246,6 @@ export async function saveSourceDocumentChangesAtomically(
       input.ledgerId,
       input.sourceDocumentId
     );
-    if (lockedDocument.activeRevisionId === input.operationId) return input.operationId;
     if (lockedDocument.activeRevisionId !== input.expectedRevisionId) {
       throw new ConflictError("Source document active revision changed");
     }

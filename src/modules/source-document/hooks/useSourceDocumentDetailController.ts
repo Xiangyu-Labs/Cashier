@@ -19,6 +19,7 @@ import { usePendingChanges } from "./usePendingChanges";
 import { useSourceDocumentEntryBatchActions } from "./useSourceDocumentEntryBatchActions";
 import { useSourceDocumentEntryActions } from "./useSourceDocumentEntryActions";
 import type { AddEntryData } from "./useSourceDocumentDetailMutations";
+import { sourceDocumentSavePayloadKey } from "./source-document-save-payload-key";
 import { useSourceDocumentRevisionGuard } from "./useSourceDocumentRevisionGuard";
 
 interface UseSourceDocumentDetailControllerOptions {
@@ -144,13 +145,19 @@ export function useSourceDocumentDetailController({
     }
     setIsSaving(true);
     try {
-      revision.saveOperationIdRef.current ??= crypto.randomUUID();
+      const payloadKey = sourceDocumentSavePayloadKey(expectedRevisionId, pending.pendingChanges);
+      if (revision.saveAttemptIdentityRef.current?.payloadKey !== payloadKey) {
+        revision.saveAttemptIdentityRef.current = {
+          operationId: crypto.randomUUID(),
+          payloadKey,
+        };
+      }
       await onSaveAll({
         expectedRevisionId,
-        operationId: revision.saveOperationIdRef.current,
+        operationId: revision.saveAttemptIdentityRef.current.operationId,
         changes: pending.pendingChanges,
       });
-      revision.saveOperationIdRef.current = null;
+      revision.saveAttemptIdentityRef.current = null;
       pending.discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pending.pendingChangesCount }));
       return true;
