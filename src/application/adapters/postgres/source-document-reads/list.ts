@@ -37,9 +37,7 @@ type QueryExecutor = Pick<typeof db, "select">;
 
 const selectedRevisionId = sql<string>`COALESCE(${sourceDocuments.pendingRevisionId}, ${sourceDocuments.activeRevisionId})`;
 
-const hasSelectedRevisionFiles = (
-  ledgerId: string | typeof sourceDocuments.ledgerId
-) => sql<boolean>`EXISTS (
+const hasSelectedRevisionFiles = (ledgerId: string) => sql<boolean>`EXISTS (
   SELECT 1
   FROM ${sourceDocumentRevisions} selected_revision
   INNER JOIN ${revisionFiles} selected_revision_file
@@ -54,11 +52,26 @@ const hasSelectedRevisionFiles = (
     AND selected_revision.id = ${selectedRevisionId}
 )`;
 
+const hasAccessibleSelectedRevisionFiles = sql<boolean>`EXISTS (
+  SELECT 1
+  FROM ${sourceDocumentRevisions} selected_revision
+  INNER JOIN ${revisionFiles} selected_revision_file
+    ON selected_revision_file.ledger_id = selected_revision.ledger_id
+   AND selected_revision_file.revision_id = selected_revision.id
+  INNER JOIN ${storedFiles} selected_file
+    ON selected_file.ledger_id = selected_revision_file.ledger_id
+   AND selected_file.id = selected_revision_file.stored_file_id
+   AND selected_file.deleted_at IS NULL
+  WHERE selected_revision.ledger_id = "source_documents"."ledger_id"
+    AND selected_revision.source_document_id = "source_documents"."id"
+    AND selected_revision.id = ${selectedRevisionId}
+)`;
+
 export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
   const document = await db
     .select({
       ledgerId: sourceDocuments.ledgerId,
-      hasImages: hasSelectedRevisionFiles(sourceDocuments.ledgerId),
+      hasImages: hasAccessibleSelectedRevisionFiles,
     })
     .from(sourceDocuments)
     .where(and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)))
