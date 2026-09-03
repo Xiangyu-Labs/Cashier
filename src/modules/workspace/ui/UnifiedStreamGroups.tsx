@@ -322,6 +322,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         onDelete={() => onDeleteSourceConfirm(sourceDocument)}
         status={item.sourceDocument.status as SourceDocumentStatusType}
         anomalyReason={item.sourceDocument.anomalyReason}
+        errorCode={item.sourceDocument.errorCode}
         selectionMode={selectionMode}
         isSelected={selected}
         selectionDisabled={selectionDisabled}

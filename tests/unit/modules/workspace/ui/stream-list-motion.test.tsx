@@ -7,12 +7,23 @@ import { computeStreamListMotionDiff } from "@/modules/workspace/ui/stream-list-
 import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/UnifiedStreamGroups";
 
 vi.mock("@/modules/source-document/ui/SourceDocumentCard", () => ({
-  SourceDocumentCard: ({ sourceDocument }: { sourceDocument: { id: string } }) => (
-    <div data-testid={`card-${sourceDocument.id}`}>{sourceDocument.id}</div>
+  SourceDocumentCard: ({
+    sourceDocument,
+    errorCode,
+  }: {
+    sourceDocument: { id: string };
+    errorCode?: string | null;
+  }) => (
+    <div data-testid={`card-${sourceDocument.id}`} data-error-code={errorCode ?? ""}>
+      {sourceDocument.id}
+    </div>
   ),
 }));
 
-function card(id: string): SourceDocumentListItemDto {
+function card(
+  id: string,
+  overrides: Partial<SourceDocumentListItemDto> = {}
+): SourceDocumentListItemDto {
   return {
     id,
     ledgerId: "ledger-1",
@@ -28,6 +39,7 @@ function card(id: string): SourceDocumentListItemDto {
     supportedActions: [],
     errorCode: null,
     pendingRevisionId: null,
+    ...overrides,
   };
 }
 
@@ -101,6 +113,33 @@ describe("stream list motion", () => {
     expect(diff.exiting).toEqual([{ id: "c", date: "2026-07-14", index: 2 }]);
     expect([...diff.moving].sort()).toEqual(["a", "b"]);
     expect([...diff.updated]).toEqual(["b"]);
+  });
+
+  it("passes the source-document failure code to the card", () => {
+    const groups = groupsOf(["doc-1"]);
+    groups[0]!.items[0]!.sourceDocument = card("doc-1", {
+      status: "failed",
+      errorCode: "PROCESSING_TIMEOUT",
+    });
+
+    render(
+      <LedgerEntriesUnifiedGroups
+        streamGroups={groups}
+        mainCurrency="CNY"
+        onViewSourceDetail={vi.fn()}
+        onDeleteSourceConfirm={vi.fn()}
+        isSelectionMode={false}
+        selectedIds={[]}
+        onToggleSelection={vi.fn()}
+        noRecordsText="No records"
+        getItemProps={() => ({})}
+      />
+    );
+
+    expect(screen.getByTestId("card-doc-1")).toHaveAttribute(
+      "data-error-code",
+      "PROCESSING_TIMEOUT"
+    );
   });
 
   it("fades new cards in and cleans up after the entrance window", () => {
