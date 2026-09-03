@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { eq } from "drizzle-orm";
 import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../setup";
-import { ledgers, sourceDocuments, users, ledgerEntries, entryCategories } from "@/persistence";
+import {
+  ledgers,
+  sourceDocuments,
+  users,
+  ledgerEntries,
+  entryCategories,
+  revisionFiles,
+  storedFiles,
+} from "@/persistence";
 import {
   createLedgerData,
   createSourceDocumentData,
@@ -11,6 +20,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { NotFoundError } from "@/lib/errors";
 import { activateTestSourceDocumentProjection } from "../helpers/schema-setup";
+import { getTargetSourceDocumentAccessContext } from "@/application/adapters/postgres/source-document-reads";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -77,6 +87,38 @@ describe("getSourceDocumentLightAction", () => {
       expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" }),
     ]);
     expect(result).not.toHaveProperty("imageUrls");
+  });
+
+  it("ignores soft-deleted files in the access context", async () => {
+    const db = getTestDb();
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const docData = createSourceDocumentData(ledgerData.id);
+    await db.insert(sourceDocuments).values(docData);
+    const revisionId = await activateTestSourceDocumentProjection(db, docData.id, {
+      imageUrls: ["data:image/jpeg;base64,/9j/4AAQ..."],
+    });
+
+    expect(await getTargetSourceDocumentAccessContext(docData.id)).toEqual({
+      ledgerId: ledgerData.id,
+      hasImages: true,
+    });
+
+    const fileLink = await db.query.revisionFiles.findFirst({
+      where: eq(revisionFiles.revisionId, revisionId),
+      columns: { storedFileId: true },
+    });
+    expect(fileLink).not.toBeUndefined();
+    await db
+      .update(storedFiles)
+      .set({ deletedAt: new Date() })
+      .where(eq(storedFiles.id, fileLink!.storedFileId));
+
+    expect(await getTargetSourceDocumentAccessContext(docData.id)).toEqual({
+      ledgerId: ledgerData.id,
+      hasImages: false,
+    });
   });
 
   it("should hasImages should be false when no images", async () => {

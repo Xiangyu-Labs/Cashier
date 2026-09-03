@@ -17,6 +17,7 @@ import {
   revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
+  storedFiles,
 } from "@/persistence";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 
@@ -43,13 +44,22 @@ export async function getTargetSourceDocumentAccessContext(sourceDocumentId: str
   const revisionId = document.pendingRevisionId ?? document.activeRevisionId;
   const hasFiles =
     revisionId != null &&
-    (await db.query.revisionFiles.findFirst({
-      where: and(
-        eq(revisionFiles.ledgerId, document.ledgerId),
-        eq(revisionFiles.revisionId, revisionId)
-      ),
-      columns: { id: true },
-    })) != null;
+    (await db
+      .select({ id: revisionFiles.id })
+      .from(revisionFiles)
+      .innerJoin(
+        storedFiles,
+        and(
+          eq(storedFiles.id, revisionFiles.storedFileId),
+          eq(storedFiles.ledgerId, revisionFiles.ledgerId),
+          isNull(storedFiles.deletedAt)
+        )
+      )
+      .where(
+        and(eq(revisionFiles.ledgerId, document.ledgerId), eq(revisionFiles.revisionId, revisionId))
+      )
+      .limit(1)
+      .then((rows) => rows[0])) != null;
   return { ledgerId: document.ledgerId, hasImages: hasFiles };
 }
 
