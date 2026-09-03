@@ -42,6 +42,56 @@ const SOURCE_LIST_KEYS = [
   "updatedAt",
 ];
 
+function normalizeSql(statement: string): string {
+  return statement.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+async function captureSqlStatements<T>(fn: () => Promise<T>) {
+  const dbWithClient = getTestDb() as unknown as {
+    $client?: {
+      query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
+      connect: (...args: unknown[]) => Promise<{
+        query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
+        release: (...args: unknown[]) => void;
+      }>;
+    };
+  };
+  const client = dbWithClient.$client;
+  if (client == null) throw new Error("Expected drizzle client to exist in integration tests");
+  const originalQuery = client.query.bind(client);
+  const originalConnect = client.connect.bind(client);
+  const statements: string[] = [];
+  const record = (query: string | { text?: string }) => {
+    statements.push(typeof query === "string" ? query : (query.text ?? ""));
+  };
+  client.query = ((query: string | { text?: string }, ...args: unknown[]) => {
+    record(query);
+    return originalQuery(query, ...args);
+  }) as typeof client.query;
+  client.connect = (async (...args: unknown[]) => {
+    const connection = await originalConnect(...args);
+    const connectionQuery = connection.query.bind(connection);
+    const connectionRelease = connection.release.bind(connection);
+    connection.query = ((query: string | { text?: string }, ...queryArgs: unknown[]) => {
+      record(query);
+      return connectionQuery(query, ...queryArgs);
+    }) as typeof connection.query;
+    connection.release = ((...releaseArgs: unknown[]) => {
+      connection.query = connectionQuery;
+      connection.release = connectionRelease;
+      connectionRelease(...releaseArgs);
+    }) as typeof connection.release;
+    return connection;
+  }) as typeof client.connect;
+  try {
+    const result = await fn();
+    return { result, statements };
+  } finally {
+    client.query = originalQuery;
+    client.connect = originalConnect;
+  }
+}
+
 const LEDGER_LIST_KEYS = [
   "amount",
   "categoryId",
@@ -86,6 +136,33 @@ async function collectLedgerEntryPages(ledgerId: string, limit: number) {
 }
 
 describe("bounded target read models", () => {
+  it("uses exactly two read statements for source-document list and detail hydration", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const [document] = await db
+      .insert(sourceDocuments)
+      .values({ ledgerId, currentStatus: "completed", entryDate: "2026-09-03" })
+      .returning();
+    await activateTestSourceDocumentProjection(db, document!.id, {
+      text: "bounded evidence",
+      imageUrls: ["/api/uploads/bounded.jpg"],
+    });
+
+    const listCapture = await captureSqlStatements(() =>
+      serverComposition.sourceDocumentReads.list({ ledgerId, limit: 20 })
+    );
+    const detailCapture = await captureSqlStatements(() =>
+      serverComposition.sourceDocumentReads.get(ledgerId, document!.id)
+    );
+    const readStatements = (statements: string[]) =>
+      statements.map(normalizeSql).filter((statement) => /^(select|with)\b/.test(statement));
+
+    expect(listCapture.result.items).toHaveLength(1);
+    expect(detailCapture.result?.files).toHaveLength(1);
+    expect(readStatements(listCapture.statements)).toHaveLength(2);
+    expect(readStatements(detailCapture.statements)).toHaveLength(2);
+  });
+
   it("paginates a large source-document history with a bounded list DTO", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);

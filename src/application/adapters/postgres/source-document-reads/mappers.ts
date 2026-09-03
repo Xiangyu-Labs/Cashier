@@ -1,4 +1,5 @@
 import type {
+  SourceDocumentDto,
   SourceDocumentStoredFileDto,
   SourceDocumentListItemDto,
   SourceDocumentCandidateProjectionSummary,
@@ -12,12 +13,56 @@ import {
   type ProcessingFailureCode,
   type RevisionOutcome,
 } from "@/application/contracts";
-import { add as decimalAdd, round as decimalRound } from "@/lib/money/decimal";
-import type { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
+import { round as decimalRound } from "@/lib/money/decimal";
+import type {
+  SourceDocumentStatusType,
+  SourceDocumentTypeValue,
+} from "@/modules/source-document/types";
 
-export type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
-type SourceDocumentRevisionRow = typeof sourceDocumentRevisions.$inferSelect;
-type DuplicateReviewRow = typeof duplicateReviews.$inferSelect;
+export interface SourceDocumentRow {
+  id: string;
+  ledgerId: string;
+  title: string | null;
+  currentStatus: SourceDocumentStatusType;
+  type: SourceDocumentTypeValue;
+  entryDate: string | null;
+  effectiveDate: string;
+  activeRevisionId: string | null;
+  pendingRevisionId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+}
+
+interface DuplicateReviewRow {
+  sourceDocumentId: string;
+  revisionId: string;
+  matchedSourceDocumentId: string;
+  matchedRevisionId: string | null;
+  status: "pending" | "kept" | "discarded" | "staged";
+  reason: string | null;
+  confidence: string | number | null;
+}
+
+export interface SourceDocumentHydrationRow {
+  documentId: string;
+  revisionId: string | null;
+  revisionTitle: string | null;
+  submittedText: string | null;
+  revisionOutcome: string | null;
+  anomalyReason: string | null;
+  failureCode: string | null;
+  hasImages: boolean;
+  files: SourceDocumentStoredFileDto[];
+  activeResultSummary: SourceDocumentCandidateProjectionSummary | null;
+  duplicateSourceDocumentId: string | null;
+  duplicateRevisionId: string | null;
+  duplicateMatchedSourceDocumentId: string | null;
+  duplicateMatchedRevisionId: string | null;
+  duplicateStatus: "pending" | "kept" | "discarded" | "staged" | null;
+  duplicateReason: string | null;
+  duplicateConfidence: string | number | null;
+}
 
 export function mapDuplicateReviewDto(
   review: DuplicateReviewRow
@@ -91,55 +136,108 @@ export function effectiveDocumentTitle(
 
 export function mapListItem(
   row: SourceDocumentRow,
-  revisions: ReadonlyMap<string, SourceDocumentRevisionRow>,
-  hasImages: ReadonlyMap<string, boolean>
+  hydration: SourceDocumentHydrationRow
 ): SourceDocumentListItemDto {
-  const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
-  const revision = revisionId == null ? null : revisions.get(revisionId);
-  return {
+  const item: SourceDocumentListItemDto = {
     id: row.id,
     ledgerId: row.ledgerId,
-    title: effectiveDocumentTitle(row.title, revision?.title),
+    title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
     text: null,
     status: row.currentStatus,
     type: row.type,
-    anomalyReason: revision?.anomalyReason ?? null,
+    anomalyReason: hydration.anomalyReason,
     entryDate: row.entryDate,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    hasImages: hasImages.get(row.id) ?? false,
+    hasImages: hydration.hasImages,
     supportedActions: [
       ...supportedSourceDocumentActions({
         activeRevisionId: row.activeRevisionId,
         pendingRevisionId: row.pendingRevisionId,
         pendingOutcome:
-          row.pendingRevisionId == null ? null : ((revision?.outcome as RevisionOutcome) ?? null),
+          row.pendingRevisionId == null
+            ? null
+            : ((hydration.revisionOutcome as RevisionOutcome) ?? null),
         duplicateReviewPending: row.currentStatus === "duplicate_pending",
       }),
     ],
-    errorCode: sanitizedErrorCode(revision?.outcome, revision?.failureCode),
+    errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
     pendingRevisionId: row.pendingRevisionId,
   };
+  const duplicateReview = duplicateReviewFromHydration(hydration);
+  if (duplicateReview != null) item.duplicateReview = duplicateReview;
+  return item;
 }
 
-export function summarizeProjection(
-  entries: Array<{
-    amount: string;
-    currency: string | null;
-    convertedAmount: string | null;
-  }>
-): SourceDocumentCandidateProjectionSummary {
-  const total = entries.reduce(
-    (sum, entry) => decimalAdd(sum, entry.convertedAmount ?? entry.amount),
-    "0"
-  );
+function duplicateReviewFromHydration(
+  hydration: SourceDocumentHydrationRow
+): SourceDocumentDuplicateReviewDto | null {
+  if (
+    hydration.duplicateSourceDocumentId == null ||
+    hydration.duplicateRevisionId == null ||
+    hydration.duplicateMatchedSourceDocumentId == null ||
+    hydration.duplicateStatus == null
+  ) {
+    return null;
+  }
+  return mapDuplicateReviewDto({
+    sourceDocumentId: hydration.duplicateSourceDocumentId,
+    revisionId: hydration.duplicateRevisionId,
+    matchedSourceDocumentId: hydration.duplicateMatchedSourceDocumentId,
+    matchedRevisionId: hydration.duplicateMatchedRevisionId,
+    status: hydration.duplicateStatus,
+    reason: hydration.duplicateReason,
+    confidence: hydration.duplicateConfidence,
+  });
+}
+
+export function mapSourceDocumentDetail(
+  row: SourceDocumentRow,
+  hydration: SourceDocumentHydrationRow
+): SourceDocumentDto {
+  const duplicateReview = duplicateReviewFromHydration(hydration);
+  const activeResultSummary =
+    hydration.activeResultSummary == null
+      ? null
+      : {
+          entryCount: Number(hydration.activeResultSummary.entryCount),
+          total: decimalRound(String(hydration.activeResultSummary.total), 2),
+        };
   return {
-    entryCount: entries.length,
-    total: decimalRound(total, 2),
+    id: row.id,
+    ledgerId: row.ledgerId,
+    title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
+    text: hydration.submittedText,
+    files: hydration.files,
+    status: row.currentStatus,
+    type: row.type,
+    anomalyReason: hydration.anomalyReason,
+    entryDate: row.entryDate,
+    metadata: {},
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: null,
+    hasImages: hydration.hasImages,
+    supportedActions: [
+      ...supportedSourceDocumentActions({
+        activeRevisionId: row.activeRevisionId,
+        pendingRevisionId: row.pendingRevisionId,
+        pendingOutcome:
+          row.pendingRevisionId == null
+            ? null
+            : ((hydration.revisionOutcome as RevisionOutcome) ?? null),
+        duplicateReviewPending: row.currentStatus === "duplicate_pending",
+      }),
+    ],
+    errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
+    pendingRevisionId: row.pendingRevisionId,
+    activeRevisionId: row.activeRevisionId,
+    ...(duplicateReview == null ? {} : { duplicateReview }),
+    ...(activeResultSummary == null ? {} : { activeResultSummary }),
   };
 }
 
-export function sanitizedErrorCode(
+function sanitizedErrorCode(
   outcome: string | undefined,
   failureCode: string | null | undefined
 ): ApplicationErrorCode | ProcessingFailureCode | null {

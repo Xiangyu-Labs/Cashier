@@ -1,21 +1,22 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import type {
   SourceDocumentDto,
-  SourceDocumentCandidateProjectionSummary,
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
   SourceDocumentDuplicateReviewDetailDto,
+  SourceDocumentStoredFileDto,
 } from "@/modules/source-document/contracts";
 import type { PendingDuplicateReviewContract } from "@/modules/source-document/application/ports";
-import { supportedSourceDocumentActions, type RevisionOutcome } from "@/application/contracts";
 import { add as decimalAdd } from "@/lib/money/decimal";
 import {
   duplicateReviews,
   entryCategories,
   ledgerEntries,
+  revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
+  storedFiles,
 } from "@/persistence";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 
@@ -26,26 +27,45 @@ import {
   effectiveDocumentTitle,
   mapDuplicateReviewDto,
   mapListItem,
-  sanitizedErrorCode,
+  mapSourceDocumentDetail,
+  type SourceDocumentHydrationRow,
+  type SourceDocumentRow,
 } from "./mappers";
-import {
-  hasRevisionFiles,
-  loadActiveResultSummaryMap,
-  loadDuplicateReviewMap,
-  loadDuplicateReviewSide,
-  loadFileData,
-  loadRevisionFacts,
-} from "./hydration";
+import { loadDuplicateReviewSide } from "./hydration";
+
+type QueryExecutor = Pick<typeof db, "select">;
+
+const selectedRevisionId = sql<string>`COALESCE(${sourceDocuments.pendingRevisionId}, ${sourceDocuments.activeRevisionId})`;
+
+const hasSelectedRevisionFiles = (
+  ledgerId: string | typeof sourceDocuments.ledgerId
+) => sql<boolean>`EXISTS (
+  SELECT 1
+  FROM ${sourceDocumentRevisions} selected_revision
+  INNER JOIN ${revisionFiles} selected_revision_file
+    ON selected_revision_file.ledger_id = selected_revision.ledger_id
+   AND selected_revision_file.revision_id = selected_revision.id
+  INNER JOIN ${storedFiles} selected_file
+    ON selected_file.ledger_id = selected_revision_file.ledger_id
+   AND selected_file.id = selected_revision_file.stored_file_id
+   AND selected_file.deleted_at IS NULL
+  WHERE selected_revision.ledger_id = ${ledgerId}
+    AND selected_revision.source_document_id = ${sourceDocuments.id}
+    AND selected_revision.id = ${selectedRevisionId}
+)`;
 
 export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
-  const document = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)),
-    columns: { ledgerId: true, activeRevisionId: true, pendingRevisionId: true },
-  });
+  const document = await db
+    .select({
+      ledgerId: sourceDocuments.ledgerId,
+      hasImages: hasSelectedRevisionFiles(sourceDocuments.ledgerId),
+    })
+    .from(sourceDocuments)
+    .where(and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)))
+    .limit(1)
+    .then((rows) => rows[0]);
   if (document == null) return null;
-  const revisionId = document.pendingRevisionId ?? document.activeRevisionId;
-  const hasFiles = revisionId != null && (await hasRevisionFiles(document.ledgerId, revisionId));
-  return { ledgerId: document.ledgerId, hasImages: hasFiles };
+  return { ledgerId: document.ledgerId, hasImages: document.hasImages };
 }
 
 export async function listPendingDuplicateReviews(
@@ -339,13 +359,17 @@ export async function getSourceDocumentDuplicateReview(
   };
 }
 
-async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: boolean) {
+async function fetchRows(
+  executor: QueryExecutor,
+  input: TargetSourceDocumentListInput,
+  includeCursor: boolean
+) {
   const conditions = baseConditions(input);
   if (includeCursor) {
     const cursor = cursorCondition(input.cursor);
     if (cursor != null) conditions.push(cursor);
   }
-  return db
+  return executor
     .select()
     .from(sourceDocuments)
     .where(and(...conditions))
@@ -357,90 +381,164 @@ async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: bo
     .limit(input.limit + 1);
 }
 
-export async function listTargetSourceDocuments(input: TargetSourceDocumentListInput) {
-  const rows = await fetchRows(input, true);
-  const hasMore = rows.length > input.limit;
-  const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, fileData] = await Promise.all([
-    loadRevisionFacts(pageRows),
-    loadFileData(pageRows, false),
-  ]);
-  const duplicateReviewMap = await loadDuplicateReviewMap(pageRows);
-  const last = pageRows.at(-1);
+function duplicateReviewColumns() {
   return {
-    items: pageRows.map((row) => {
-      const item = mapListItem(row, revisions, fileData.hasImages);
-      const duplicateReview = duplicateReviewMap.get(row.id);
-      if (duplicateReview !== undefined) {
-        item.duplicateReview = duplicateReview;
-      }
-      return item;
-    }),
-    nextCursor: hasMore && last != null ? encodeCursor(last) : null,
+    duplicateSourceDocumentId: duplicateReviews.sourceDocumentId,
+    duplicateRevisionId: duplicateReviews.revisionId,
+    duplicateMatchedSourceDocumentId: duplicateReviews.matchedSourceDocumentId,
+    duplicateMatchedRevisionId: duplicateReviews.matchedRevisionId,
+    duplicateStatus: duplicateReviews.status,
+    duplicateReason: duplicateReviews.reason,
+    duplicateConfidence: duplicateReviews.confidence,
   };
+}
+
+async function hydrateSourceDocumentRows(
+  executor: QueryExecutor,
+  ledgerId: string,
+  documentIds: readonly string[],
+  includeDetail: boolean
+): Promise<SourceDocumentHydrationRow[]> {
+  if (documentIds.length === 0) return [];
+  const files = includeDetail
+    ? sql<SourceDocumentStoredFileDto[]>`COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', selected_file.id,
+          'contentType', selected_file.content_type,
+          'byteSize', selected_file.byte_size,
+          'originalFilename', selected_file.original_filename
+        ) ORDER BY selected_revision_file.position)
+        FROM ${revisionFiles} selected_revision_file
+        INNER JOIN ${storedFiles} selected_file
+          ON selected_file.ledger_id = selected_revision_file.ledger_id
+         AND selected_file.id = selected_revision_file.stored_file_id
+         AND selected_file.deleted_at IS NULL
+        WHERE selected_revision_file.ledger_id = ${ledgerId}
+          AND selected_revision_file.revision_id = ${sourceDocumentRevisions.id}
+          AND EXISTS (
+            SELECT 1
+            FROM ${sourceDocumentRevisions} owned_revision
+            WHERE owned_revision.ledger_id = ${ledgerId}
+              AND owned_revision.source_document_id = ${sourceDocuments.id}
+              AND owned_revision.id = selected_revision_file.revision_id
+          )
+      ), '[]'::jsonb)`
+    : sql<SourceDocumentStoredFileDto[]>`'[]'::jsonb`;
+  const activeResultSummary = includeDetail
+    ? sql<SourceDocumentHydrationRow["activeResultSummary"]>`CASE
+        WHEN ${sourceDocuments.currentStatus} IN ('anomaly', 'failed')
+          AND ${sourceDocuments.activeRevisionId} IS NOT NULL
+        THEN (
+          SELECT jsonb_build_object(
+            'entryCount', COUNT(*)::int,
+            'total', COALESCE(SUM(COALESCE(active_entry.converted_amount, active_entry.amount)), 0)::text
+          )
+          FROM ${ledgerEntries} active_entry
+          WHERE active_entry.ledger_id = ${ledgerId}
+            AND active_entry.source_document_id = ${sourceDocuments.id}
+            AND active_entry.source_document_revision_id = ${sourceDocuments.activeRevisionId}
+            AND active_entry.deleted_at IS NULL
+            AND EXISTS (
+              SELECT 1
+              FROM ${sourceDocumentRevisions} active_revision
+              WHERE active_revision.ledger_id = ${ledgerId}
+                AND active_revision.source_document_id = ${sourceDocuments.id}
+                AND active_revision.id = active_entry.source_document_revision_id
+            )
+        )
+        ELSE NULL
+      END`
+    : sql<SourceDocumentHydrationRow["activeResultSummary"]>`NULL`;
+
+  return executor
+    .select({
+      documentId: sourceDocuments.id,
+      revisionId: sourceDocumentRevisions.id,
+      revisionTitle: sourceDocumentRevisions.title,
+      submittedText: sourceDocumentRevisions.submittedText,
+      revisionOutcome: sourceDocumentRevisions.outcome,
+      anomalyReason: sourceDocumentRevisions.anomalyReason,
+      failureCode: sourceDocumentRevisions.failureCode,
+      hasImages: hasSelectedRevisionFiles(ledgerId),
+      files,
+      activeResultSummary,
+      ...duplicateReviewColumns(),
+    })
+    .from(sourceDocuments)
+    .leftJoin(
+      sourceDocumentRevisions,
+      and(
+        eq(sourceDocumentRevisions.ledgerId, ledgerId),
+        eq(sourceDocumentRevisions.sourceDocumentId, sourceDocuments.id),
+        eq(sourceDocumentRevisions.id, selectedRevisionId)
+      )
+    )
+    .leftJoin(
+      duplicateReviews,
+      and(
+        eq(duplicateReviews.ledgerId, ledgerId),
+        eq(duplicateReviews.sourceDocumentId, sourceDocuments.id),
+        eq(duplicateReviews.status, "pending")
+      )
+    )
+    .where(
+      and(
+        eq(sourceDocuments.ledgerId, ledgerId),
+        inArray(sourceDocuments.id, [...documentIds]),
+        isNull(sourceDocuments.deletedAt)
+      )
+    );
+}
+
+export async function listTargetSourceDocuments(input: TargetSourceDocumentListInput) {
+  return db.transaction(
+    async (tx) => {
+      const rows = await fetchRows(tx, input, true);
+      const hasMore = rows.length > input.limit;
+      const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
+      const hydrationRows = await hydrateSourceDocumentRows(
+        tx,
+        input.ledgerId,
+        pageRows.map((row) => row.id),
+        false
+      );
+      const hydrationByDocumentId = new Map(
+        hydrationRows.map((hydration) => [hydration.documentId, hydration])
+      );
+      const last = pageRows.at(-1);
+      return {
+        items: pageRows.map((row) => {
+          const hydration = hydrationByDocumentId.get(row.id);
+          if (hydration == null) throw new ConflictError("Source document page hydration changed");
+          return mapListItem(row as SourceDocumentRow, hydration);
+        }),
+        nextCursor: hasMore && last != null ? encodeCursor(last as SourceDocumentRow) : null,
+      };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" }
+  );
 }
 
 export async function getTargetSourceDocument(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<SourceDocumentDto | null> {
-  const row = await db.query.sourceDocuments.findFirst({
-    where: and(
-      eq(sourceDocuments.ledgerId, ledgerId),
-      eq(sourceDocuments.id, sourceDocumentId),
-      isNull(sourceDocuments.deletedAt)
-    ),
-  });
-  if (row == null) return null;
-  const [revisions, fileData] = await Promise.all([
-    loadRevisionFacts([row]),
-    loadFileData([row], true),
-  ]);
-  const duplicateReviewMap = await loadDuplicateReviewMap([row]);
-  const selectedRevisionId = row.pendingRevisionId ?? row.activeRevisionId;
-  const selectedRevision =
-    selectedRevisionId == null ? null : (revisions.get(selectedRevisionId) ?? null);
-  const files = fileData.files.get(row.id) ?? [];
-  const status = row.currentStatus;
-
-  // Load active result summary for anomaly/failed documents with an active revision
-  let activeResultSummary: SourceDocumentCandidateProjectionSummary | undefined;
-  if ((status === "anomaly" || status === "failed") && row.activeRevisionId != null) {
-    const summaryMap = await loadActiveResultSummaryMap([row]);
-    activeResultSummary = summaryMap.get(row.id);
-  }
-  const duplicateReview = duplicateReviewMap.get(row.id);
-
-  return {
-    id: row.id,
-    ledgerId: row.ledgerId,
-    title: effectiveDocumentTitle(row.title, selectedRevision?.title),
-    text: selectedRevision?.submittedText ?? null,
-    files,
-    status,
-    type: row.type,
-    anomalyReason: selectedRevision?.anomalyReason ?? null,
-    entryDate: row.entryDate,
-    metadata: {},
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: null,
-    hasImages: files.length > 0,
-    supportedActions: [
-      ...supportedSourceDocumentActions({
-        activeRevisionId: row.activeRevisionId,
-        pendingRevisionId: row.pendingRevisionId,
-        pendingOutcome:
-          row.pendingRevisionId == null
-            ? null
-            : ((selectedRevision?.outcome as RevisionOutcome) ?? null),
-        duplicateReviewPending: row.currentStatus === "duplicate_pending",
-      }),
-    ],
-    errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
-    pendingRevisionId: row.pendingRevisionId,
-    activeRevisionId: row.activeRevisionId,
-    ...(duplicateReview !== undefined ? { duplicateReview } : {}),
-    ...(activeResultSummary !== undefined ? { activeResultSummary } : {}),
-  };
+  return db.transaction(
+    async (tx) => {
+      const row = await tx.query.sourceDocuments.findFirst({
+        where: and(
+          eq(sourceDocuments.ledgerId, ledgerId),
+          eq(sourceDocuments.id, sourceDocumentId),
+          isNull(sourceDocuments.deletedAt)
+        ),
+      });
+      if (row == null) return null;
+      const hydration = (
+        await hydrateSourceDocumentRows(tx, ledgerId, [sourceDocumentId], true)
+      )[0];
+      if (hydration == null) throw new ConflictError("Source document detail hydration changed");
+      return mapSourceDocumentDetail(row as SourceDocumentRow, hydration);
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" }
+  );
 }
