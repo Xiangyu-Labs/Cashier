@@ -85,6 +85,7 @@ export default defineConfig({
           exclude: [
             ...defaultProjectExcludes,
             "tests/integration/client/category-mutations-optimistic.test.tsx",
+            "tests/integration/client/source-document-dialog-flows.test.tsx",
           ],
           environment: "node",
           setupFiles: ["./tests/setup.ts"],
@@ -99,7 +100,10 @@ export default defineConfig({
           ...sharedProjectTestConfig,
           name: "integration-dom",
           sequence: { groupOrder: 4 },
-          include: ["tests/integration/client/category-mutations-optimistic.test.tsx"],
+          include: [
+            "tests/integration/client/category-mutations-optimistic.test.tsx",
+            "tests/integration/client/source-document-dialog-flows.test.tsx",
+          ],
           exclude: defaultProjectExcludes,
           environment: "happy-dom",
           setupFiles: ["./tests/setup.dom.ts"],
