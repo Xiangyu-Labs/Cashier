@@ -18,10 +18,9 @@ interface SourceDocumentDetailFooterActionsProps {
   isAccepting: boolean;
   isAbandoning: boolean;
   isCancelling: boolean;
-  onAcceptCandidate?: () => Promise<void>;
-  onAbandonCandidate?: () => Promise<void>;
-  onCancelProcessing?: () => Promise<void>;
-  requestAction: (action: () => void | Promise<void>) => void;
+  onAcceptCandidate?: () => void;
+  onAbandonCandidate?: () => void;
+  onCancelProcessing?: () => void;
   onOpenRetryDialog: () => void;
   onRequestDelete: () => void;
   onCancelEditMode: () => void;
@@ -45,7 +44,6 @@ export function SourceDocumentDetailFooterActions({
   onAcceptCandidate,
   onAbandonCandidate,
   onCancelProcessing,
-  requestAction,
   onOpenRetryDialog,
   onRequestDelete,
   onCancelEditMode,
@@ -67,7 +65,7 @@ export function SourceDocumentDetailFooterActions({
                 variant="default"
                 size="sm"
                 className="h-9 px-3 gap-1.5"
-                onClick={() => requestAction(onAcceptCandidate)}
+                onClick={onAcceptCandidate}
                 disabled={interactionDisabled}
               >
                 <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
@@ -79,7 +77,7 @@ export function SourceDocumentDetailFooterActions({
                     variant="outline"
                     size="sm"
                     className="h-9 px-3 gap-1.5 text-muted-foreground"
-                    onClick={() => requestAction(onAbandonCandidate)}
+                    onClick={onAbandonCandidate}
                     disabled={interactionDisabled}
                   >
                     <XCircle className={cn("h-3.5 w-3.5", isAbandoning && "animate-spin")} />
@@ -96,7 +94,7 @@ export function SourceDocumentDetailFooterActions({
               variant="outline"
               size="sm"
               className="h-9 gap-1.5 px-3 text-muted-foreground"
-              onClick={() => requestAction(onAbandonCandidate)}
+              onClick={onAbandonCandidate}
               disabled={interactionDisabled}
             >
               <XCircle className={cn("h-3.5 w-3.5", isAbandoning && "animate-spin")} />
@@ -110,7 +108,7 @@ export function SourceDocumentDetailFooterActions({
               variant="outline"
               size="sm"
               className="h-9 gap-1.5 px-3 text-muted-foreground"
-              onClick={() => requestAction(onCancelProcessing)}
+              onClick={onCancelProcessing}
               disabled={interactionDisabled}
             >
               <XCircle className={cn("h-3.5 w-3.5", isCancelling && "animate-spin")} />
@@ -124,7 +122,7 @@ export function SourceDocumentDetailFooterActions({
             variant="outline"
             size="sm"
             className="h-9 px-3 gap-1.5 text-muted-foreground"
-            onClick={() => requestAction(onOpenRetryDialog)}
+            onClick={onOpenRetryDialog}
             disabled={interactionDisabled}
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -136,7 +134,7 @@ export function SourceDocumentDetailFooterActions({
           variant="outline"
           size="sm"
           className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
-          onClick={() => requestAction(onRequestDelete)}
+          onClick={onRequestDelete}
           disabled={interactionDisabled}
         >
           <Trash2 className="h-3.5 w-3.5" />

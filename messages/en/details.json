@@ -660,6 +660,7 @@
     "saveBeforeActionTitle": "Save changes first?",
     "saveBeforeActionDescription": "Save your current edits, then continue with the selected action. If saving fails, the action will not run.",
     "saveAndContinue": "Save and continue",
+    "actionContextChanged": "The bill changed. Review the latest data and try again.",
     "batchModePendingTitle": "Resolve current changes first",
     "batchModePendingDescription": "Save or discard your current edits before entering batch actions."
   },

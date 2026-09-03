@@ -5,12 +5,14 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocumentLight } from "@/modules/source-document/contracts";
 import { SourceDocumentDetailModal } from "@/modules/source-document/ui/SourceDocumentDetailModal";
 
+const { toastErrorMock } = vi.hoisted(() => ({ toastErrorMock: vi.fn() }));
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: toastErrorMock },
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
@@ -303,6 +305,22 @@ describe("SourceDocumentDetailModal batch mode", () => {
     expect(onSaveAll).not.toHaveBeenCalled();
   });
 
+  it("preserves the draft when conflict reload fails", async () => {
+    const onReload = vi.fn(async () => {
+      throw new Error("reload failed");
+    });
+    const { rerender } = render(modal(undefined, sourceDocument, { onReload }));
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+    rerender(modal(undefined, { ...sourceDocument, activeRevisionId: "revision-2" }, { onReload }));
+
+    fireEvent.click(screen.getByText("reloadServerData"));
+    await waitFor(() => expect(onReload).toHaveBeenCalledOnce());
+
+    expect(screen.getByText("reloadFailed")).toBeInTheDocument();
+    expect(screen.getByText("saveChanges")).toBeDisabled();
+  });
+
   it("saves pending changes before continuing to another action", async () => {
     const onSaveAll = vi.fn(async () => undefined);
     render(modal(onSaveAll, sourceDocument, { onAddEntry: vi.fn(async () => undefined) }));
@@ -316,6 +334,50 @@ describe("SourceDocumentDetailModal batch mode", () => {
 
     await waitFor(() => expect(onSaveAll).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.getByText("add-entry-dialog")).toBeInTheDocument());
+  });
+
+  it.each([
+    {
+      name: "revision",
+      changeContext: ({ rerender }: ReturnType<typeof render>) =>
+        rerender(
+          modal(
+            undefined,
+            { ...sourceDocument, activeRevisionId: "revision-2" },
+            {
+              onAddEntry: vi.fn(async () => undefined),
+            }
+          )
+        ),
+    },
+    {
+      name: "entry set",
+      changeContext: ({ rerender }: ReturnType<typeof render>) =>
+        rerender(
+          modal(undefined, sourceDocument, {
+            ledgerEntries: [entry, secondEntry],
+            onAddEntry: vi.fn(async () => undefined),
+          })
+        ),
+    },
+    {
+      name: "selection",
+      changeContext: () => fireEvent.click(screen.getByText("select-first")),
+    },
+  ])("does not execute a deferred action after the $name changes", async ({ changeContext }) => {
+    const rendered = render(
+      modal(undefined, sourceDocument, { onAddEntry: vi.fn(async () => undefined) })
+    );
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+    fireEvent.click(screen.getByText("add-entry"));
+    expect(screen.getByText("saveBeforeActionTitle")).toBeInTheDocument();
+
+    changeContext(rendered);
+    fireEvent.click(screen.getByText("confirm-discard"));
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("actionContextChanged"));
+    expect(screen.queryByText("add-entry-dialog")).not.toBeInTheDocument();
   });
 
   it("requires confirmation before closing with unsaved changes", () => {

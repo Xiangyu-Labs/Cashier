@@ -20,7 +20,6 @@ interface UseSourceDocumentEntryActionsOptions {
   interactionDisabled: boolean;
   selectedIds: string[];
   ledgerEntries: LedgerEntry[];
-  requestAction: (action: () => void | Promise<void>) => void;
   setIsSaving: (saving: boolean) => void;
   setIsSplitting: (splitting: boolean) => void;
   setIsDeleting: (deleting: boolean) => void;
@@ -48,7 +47,6 @@ export function useSourceDocumentEntryActions({
   interactionDisabled,
   selectedIds,
   ledgerEntries,
-  requestAction,
   setIsSaving,
   setIsSplitting,
   setIsDeleting,
@@ -75,8 +73,8 @@ export function useSourceDocumentEntryActions({
       toast.error(t("splitKeepOne"));
       return;
     }
-    requestAction(() => setShowSplitDialog(true));
-  }, [busy, selectedIds, ledgerEntries.length, t, requestAction, setShowSplitDialog]);
+    setShowSplitDialog(true);
+  }, [busy, selectedIds, ledgerEntries.length, t, setShowSplitDialog]);
 
   const handleSplit = useCallback(
     async (entryDate: string) => {
@@ -139,8 +137,8 @@ export function useSourceDocumentEntryActions({
   );
 
   const handleOpenAddEntry = useCallback(
-    () => requestAction(() => setShowAddEntryDialog(true)),
-    [requestAction, setShowAddEntryDialog]
+    () => setShowAddEntryDialog(true),
+    [setShowAddEntryDialog]
   );
 
   const handleAddEntrySubmit = useCallback(
@@ -180,8 +178,8 @@ export function useSourceDocumentEntryActions({
   );
 
   const handleRequestDeleteEntry = useCallback(
-    (entryId: string) => requestAction(() => setPendingDeleteEntryId(entryId)),
-    [requestAction, setPendingDeleteEntryId]
+    (entryId: string) => setPendingDeleteEntryId(entryId),
+    [setPendingDeleteEntryId]
   );
 
   const handleDeleteDocument = useCallback(async () => {

@@ -23,5 +23,19 @@ export function useConfirmGate<T>() {
     return value;
   }, []);
 
-  return { confirmOpen, setConfirmOpen, requestConfirmation, resolveConfirmation };
+  const cancelConfirmation = useCallback(() => {
+    pendingValueRef.current = null;
+    setConfirmOpenState(false);
+  }, []);
+
+  const peekConfirmation = useCallback(() => pendingValueRef.current, []);
+
+  return {
+    confirmOpen,
+    setConfirmOpen,
+    requestConfirmation,
+    resolveConfirmation,
+    cancelConfirmation,
+    peekConfirmation,
+  };
 }

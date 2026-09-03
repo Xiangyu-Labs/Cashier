@@ -7,7 +7,7 @@ interface SaveAndContinueGate {
   confirmOpen: boolean;
   setConfirmOpen: (open: boolean) => void;
   confirmSaveAndContinue: () => Promise<boolean>;
-  confirmDiscardAndContinue: () => Promise<void>;
+  confirmDiscardAndContinue: () => Promise<boolean>;
 }
 
 interface SourceDocumentDetailConfirmDialogsProps {

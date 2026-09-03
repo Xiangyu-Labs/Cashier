@@ -117,6 +117,9 @@ function SourceDocumentDetailEditor({
     onAddEntry,
     onDeleteEntry,
     onDelete,
+    onAcceptCandidate,
+    onAbandonCandidate,
+    onCancelProcessing,
     t,
     tCommon,
   });
@@ -216,7 +219,7 @@ function SourceDocumentDetailEditor({
               {...(sourceDocument?.supportedActions.includes("split_entries") && onSplit != null
                 ? { onSplit: actions.handleOpenSplit }
                 : {})}
-              onDelete={() => actions.requestAction(() => dialogs.setShowBatchDeleteConfirm(true))}
+              onDelete={actions.handleOpenBatchDelete}
               categories={categories}
               preferredCurrencies={preferredCurrencies}
               isChangingCategory={status.isSaving}
@@ -238,12 +241,17 @@ function SourceDocumentDetailEditor({
             isAccepting={isAccepting}
             isAbandoning={isAbandoning}
             isCancelling={isCancelling}
-            {...(onAcceptCandidate != null ? { onAcceptCandidate } : {})}
-            {...(onAbandonCandidate != null ? { onAbandonCandidate } : {})}
-            {...(onCancelProcessing != null ? { onCancelProcessing } : {})}
-            requestAction={actions.requestAction}
-            onOpenRetryDialog={() => dialogs.setShowRetryDialog(true)}
-            onRequestDelete={() => dialogs.setShowDeleteConfirm(true)}
+            {...(onAcceptCandidate != null
+              ? { onAcceptCandidate: actions.handleAcceptCandidate }
+              : {})}
+            {...(onAbandonCandidate != null
+              ? { onAbandonCandidate: actions.handleAbandonCandidate }
+              : {})}
+            {...(onCancelProcessing != null
+              ? { onCancelProcessing: actions.handleCancelProcessing }
+              : {})}
+            onOpenRetryDialog={actions.handleOpenRetry}
+            onRequestDelete={actions.handleRequestDelete}
             onCancelEditMode={actions.handleCancelEditMode}
             onEditSave={actions.handleEditSave}
             onEnterEditMode={actions.handleEnterEditMode}

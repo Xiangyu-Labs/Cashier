@@ -482,6 +482,7 @@
     "saveBeforeActionTitle": "先保存当前修改？",
     "saveBeforeActionDescription": "先保存当前编辑，再继续所选操作。保存失败时不会执行后续操作。",
     "saveAndContinue": "保存并继续",
+    "actionContextChanged": "账单内容已变化，请检查最新数据后重试。",
     "batchModePendingTitle": "先处理当前修改",
     "batchModePendingDescription": "进入批量操作前，请保存或放弃当前编辑。"
   },
