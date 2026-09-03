@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import { useConfirmGate } from "@/hooks/use-confirm-gate";
 
 interface UseUnsavedChangesGuardOptions {
   /** Store key this guard registers under; must be unique per active instance. */
@@ -16,13 +17,12 @@ interface UseUnsavedChangesGuardOptions {
  * immediately.
  */
 export function useUnsavedChangesGuard({ key, hasUnsavedChanges }: UseUnsavedChangesGuardOptions) {
-  const [confirmOpen, setConfirmOpenState] = useState(false);
-  const continueNavigationRef = useRef<(() => void) | null>(null);
+  const gate = useConfirmGate<(() => void) | null>();
 
-  const requestLeave = useCallback((continueNavigation: (() => void) | null) => {
-    continueNavigationRef.current = continueNavigation;
-    setConfirmOpenState(true);
-  }, []);
+  const requestLeave = useCallback(
+    (continueNavigation: (() => void) | null) => gate.requestConfirmation(continueNavigation),
+    [gate.requestConfirmation]
+  );
 
   useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -33,18 +33,13 @@ export function useUnsavedChangesGuard({ key, hasUnsavedChanges }: UseUnsavedCha
     return () => useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
   }, [hasUnsavedChanges, key, requestLeave]);
 
-  const setConfirmOpen = useCallback((next: boolean) => {
-    setConfirmOpenState(next);
-    if (!next) continueNavigationRef.current = null;
-  }, []);
-
   /** Clears the pending continuation and closes the dialog; returns the continuation (or null) to run. */
-  const resolveLeave = useCallback(() => {
-    const continueNavigation = continueNavigationRef.current;
-    continueNavigationRef.current = null;
-    setConfirmOpenState(false);
-    return continueNavigation;
-  }, []);
+  const resolveLeave = gate.resolveConfirmation;
 
-  return { confirmOpen, setConfirmOpen, requestLeave, resolveLeave };
+  return {
+    confirmOpen: gate.confirmOpen,
+    setConfirmOpen: gate.setConfirmOpen,
+    requestLeave,
+    resolveLeave,
+  };
 }

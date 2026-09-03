@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckSquare, Plus, X } from "lucide-react";
 import type { EntryCategory, LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
-import type { EntriesPendingChanges } from "../../source-document-view-details-types";
+import type { EntriesPendingChanges } from "@/modules/source-document/detail-types";
 import { SelectableEditableEntryCard } from "./SelectableEditableEntryCard";
 
 interface SourceDocumentEntriesListProps {

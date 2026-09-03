@@ -10,7 +10,7 @@ import {
 } from "@/modules/source-document/actions";
 import { createLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { SplitSourceDocumentInput } from "@/modules/source-document/contracts";
-import type { PendingChanges } from "./usePendingChanges";
+import type { PendingChanges } from "@/modules/source-document/detail-types";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
 import type { BatchEntryUpdateData } from "./source-document-detail-cache";

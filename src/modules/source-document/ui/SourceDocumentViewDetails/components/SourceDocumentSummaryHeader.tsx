@@ -7,7 +7,7 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import type { SourceDocumentDetailDisplayEntry } from "../../source-document-detail-view-model";
-import type { SourceDocPendingChanges } from "../../source-document-view-details-types";
+import type { SourceDocPendingChanges } from "@/modules/source-document/detail-types";
 import { CurrencyBreakdownItem } from "./CurrencyBreakdownItem";
 
 interface SourceDocumentSummaryHeaderProps {

@@ -11,7 +11,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import { useSaveAndContinueGate } from "./useSaveAndContinueGate";
 import type { AddEntryData } from "./useSourceDocumentDetailMutations";
-import type { PendingChanges } from "./usePendingChanges";
+import type { PendingChanges } from "@/modules/source-document/detail-types";
 import type { SourceDocumentDetailState } from "./useSourceDocumentDetailState";
 import { useSourceDocumentBatchActions } from "./useSourceDocumentBatchActions";
 import { useSourceDocumentEntryActions } from "./useSourceDocumentEntryActions";

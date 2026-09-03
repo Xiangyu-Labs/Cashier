@@ -15,7 +15,7 @@ import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { EditableField } from "@/components/ui/editable-field";
 import type { AddEntryData } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
-import type { PendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
+import type { PendingChanges } from "@/modules/source-document/detail-types";
 import { useSourceDocumentDetailState } from "@/modules/source-document/hooks/useSourceDocumentDetailState";
 import { useSourceDocumentDetailActions } from "@/modules/source-document/hooks/useSourceDocumentDetailActions";
 import { SourceDocumentDetailFooterActions } from "./SourceDocumentDetailFooterActions";

@@ -7,6 +7,7 @@ import { usePendingChanges } from "./usePendingChanges";
 import { useSourceDocumentRevisionGuard } from "./useSourceDocumentRevisionGuard";
 import { useSelection } from "@/hooks/use-selection";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { ledgerDetailLeaveGuardKey } from "@/lib/navigation/ledger-detail-key";
 
 interface UseSourceDocumentDetailStateOptions {
   ledgerId: string;
@@ -71,7 +72,7 @@ export function useSourceDocumentDetailState({
   });
 
   const unsavedGuard = useUnsavedChangesGuard({
-    key: `source-document-detail:${ledgerId}:${sourceDocument?.id ?? ""}`,
+    key: ledgerDetailLeaveGuardKey("source-document", ledgerId, sourceDocument?.id ?? ""),
     hasUnsavedChanges: sourceDocument?.id != null && hasPendingChanges,
   });
 

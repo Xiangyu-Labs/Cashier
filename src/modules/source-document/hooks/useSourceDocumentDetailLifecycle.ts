@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import type { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
-import type { PendingChanges } from "./usePendingChanges";
+import type { PendingChanges } from "@/modules/source-document/detail-types";
 import type { SourceDocumentDetailState } from "./useSourceDocumentDetailState";
 
 interface UseSourceDocumentDetailLifecycleOptions {

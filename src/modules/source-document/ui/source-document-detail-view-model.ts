@@ -1,11 +1,7 @@
 import Decimal from "decimal.js";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import type { EntryEditData } from "@/modules/source-document/types";
-
-interface SourceDocumentDetailPendingChanges {
-  entries: Record<string, Partial<EntryEditData>>;
-}
+import type { PendingChanges } from "@/modules/source-document/detail-types";
 
 export interface SourceDocumentDetailDisplayEntry extends Omit<
   LedgerEntry,
@@ -20,7 +16,7 @@ export interface SourceDocumentDetailDisplayEntry extends Omit<
 
 interface BuildSourceDocumentDetailViewModelInput {
   ledgerEntries: LedgerEntry[];
-  pendingChanges: SourceDocumentDetailPendingChanges;
+  pendingChanges: Pick<PendingChanges, "entries">;
   mainCurrency: string;
   entryDate: string;
   originalEntryDate: string;

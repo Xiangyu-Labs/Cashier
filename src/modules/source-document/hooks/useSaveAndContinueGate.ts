@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
+import { useConfirmGate } from "@/hooks/use-confirm-gate";
 
 interface UseSaveAndContinueGateOptions {
   disabled: boolean;
@@ -20,48 +21,37 @@ export function useSaveAndContinueGate({
   onSave,
   onDiscard,
 }: UseSaveAndContinueGateOptions) {
-  const [confirmOpen, setConfirmOpenState] = useState(false);
-  const continueActionRef = useRef<(() => void | Promise<void>) | null>(null);
+  const gate = useConfirmGate<() => void | Promise<void>>();
 
   const requestAction = useCallback(
     (action: () => void | Promise<void>) => {
       if (disabled) return;
       if (hasPendingChanges) {
-        continueActionRef.current = action;
-        setConfirmOpenState(true);
+        gate.requestConfirmation(action);
         return;
       }
       void action();
     },
-    [disabled, hasPendingChanges]
+    [disabled, gate.requestConfirmation, hasPendingChanges]
   );
-
-  const setConfirmOpen = useCallback((next: boolean) => {
-    setConfirmOpenState(next);
-    if (!next) continueActionRef.current = null;
-  }, []);
 
   const confirmSaveAndContinue = useCallback(async () => {
     const saved = await onSave();
     if (!saved) return false;
-    const action = continueActionRef.current;
-    continueActionRef.current = null;
-    setConfirmOpenState(false);
+    const action = gate.resolveConfirmation();
     await action?.();
     return true;
-  }, [onSave]);
+  }, [gate.resolveConfirmation, onSave]);
 
   const confirmDiscardAndContinue = useCallback(async () => {
     onDiscard();
-    const action = continueActionRef.current;
-    continueActionRef.current = null;
-    setConfirmOpenState(false);
+    const action = gate.resolveConfirmation();
     await action?.();
-  }, [onDiscard]);
+  }, [gate.resolveConfirmation, onDiscard]);
 
   return {
-    confirmOpen,
-    setConfirmOpen,
+    confirmOpen: gate.confirmOpen,
+    setConfirmOpen: gate.setConfirmOpen,
     requestAction,
     confirmSaveAndContinue,
     confirmDiscardAndContinue,

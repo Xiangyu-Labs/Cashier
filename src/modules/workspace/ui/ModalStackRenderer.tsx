@@ -4,6 +4,7 @@ import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailW
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui/SourceDocumentDetailWrapper";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { closeLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
+import { ledgerDetailLeaveGuardKey } from "@/lib/navigation/ledger-detail-key";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface ModalStackRendererProps {
@@ -28,10 +29,7 @@ export function ModalStackRenderer({
     setClosingKey(itemKey);
   };
   const requestBack = () => {
-    const guardKey =
-      item.type === "source-document"
-        ? "source-document-detail:" + item.ledgerId + ":" + item.id
-        : "ledger-entry-detail:" + item.ledgerId + ":" + item.id;
+    const guardKey = ledgerDetailLeaveGuardKey(item.type, item.ledgerId, item.id);
     const guard = useUnsavedChangesStore.getState().getLeaveGuard(guardKey);
     if (guard == null) startExit();
     else guard.requestLeave(startExit);

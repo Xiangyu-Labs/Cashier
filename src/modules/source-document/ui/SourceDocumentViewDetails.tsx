@@ -8,7 +8,10 @@ import { buildSourceDocumentDetailViewModel } from "./source-document-detail-vie
 import { SourceDocumentSummaryHeader } from "./SourceDocumentViewDetails/components/SourceDocumentSummaryHeader";
 import { SourceDocumentEntriesList } from "./SourceDocumentViewDetails/components/SourceDocumentEntriesList";
 import { SourceDocumentRawEvidence } from "./SourceDocumentViewDetails/components/SourceDocumentRawEvidence";
-import type { PendingChanges, SourceDocPendingChanges } from "./source-document-view-details-types";
+import type {
+  PendingChanges,
+  SourceDocPendingChanges,
+} from "@/modules/source-document/detail-types";
 
 interface SourceDocumentViewDetailsProps {
   sourceDocument: SourceDocument | SourceDocumentLight;

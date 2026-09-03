@@ -5,9 +5,7 @@ export interface SourceDocPendingChanges {
   entryDate?: string;
 }
 
-export interface EntriesPendingChanges {
-  [entryId: string]: Partial<EntryEditData>;
-}
+export type EntriesPendingChanges = Record<string, Partial<EntryEditData>>;
 
 export interface PendingChanges {
   sourceDoc: SourceDocPendingChanges;

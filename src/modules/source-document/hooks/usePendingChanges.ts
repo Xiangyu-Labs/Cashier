@@ -3,14 +3,7 @@ import type { SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, useCallback } from "react";
 import { type EntryEditData } from "@/modules/source-document/types";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-
-export interface PendingChanges {
-  sourceDoc: {
-    title?: string;
-    entryDate?: string;
-  };
-  entries: Record<string, Partial<EntryEditData>>;
-}
+import type { PendingChanges } from "@/modules/source-document/detail-types";
 
 interface UsePendingChangesOptions {
   sourceDocument: SourceDocument | SourceDocumentLight | null;
