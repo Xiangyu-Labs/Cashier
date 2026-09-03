@@ -104,12 +104,12 @@ export function useSourceDocumentBatchActions({
     setShowBatchModePendingConfirm(false);
   }, [enterBatchSelectionMode, setShowBatchModePendingConfirm]);
 
-  const performBatchCategory = useCallback(
-    async (categoryId: string | null) => {
+  const performBatchPatch = useCallback(
+    async (patch: { categoryId: string | null } | { currency: string }) => {
       if (selectedIds.length === 0 || busy) return;
       setIsSaving(true);
       try {
-        const result = await onBatchUpdate(selectedIds, { categoryId });
+        const result = await onBatchUpdate(selectedIds, patch);
         const affectedCount = result?.affectedCount ?? 0;
         if (affectedCount > 0) toast.success(t("batchUpdateSuccess", { count: affectedCount }));
         clearSelection();
@@ -122,22 +122,14 @@ export function useSourceDocumentBatchActions({
     [selectedIds, busy, setIsSaving, onBatchUpdate, t, clearSelection]
   );
 
+  const performBatchCategory = useCallback(
+    (categoryId: string | null) => performBatchPatch({ categoryId }),
+    [performBatchPatch]
+  );
+
   const performBatchCurrency = useCallback(
-    async (currency: string) => {
-      if (selectedIds.length === 0 || busy) return;
-      setIsSaving(true);
-      try {
-        const result = await onBatchUpdate(selectedIds, { currency });
-        const affectedCount = result?.affectedCount ?? 0;
-        if (affectedCount > 0) toast.success(t("batchUpdateSuccess", { count: affectedCount }));
-        clearSelection();
-      } catch {
-        toast.error(t("batchUpdateError"));
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [selectedIds, busy, setIsSaving, onBatchUpdate, t, clearSelection]
+    (currency: string) => performBatchPatch({ currency }),
+    [performBatchPatch]
   );
 
   const handleBatchDelete = useCallback(async () => {

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import type {
   SourceDocumentDto,
@@ -422,108 +422,6 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
       return item;
     }),
     nextCursor: hasMore && last != null ? encodeCursor(last) : null,
-  };
-}
-
-export async function collectTargetSourceDocuments(input: TargetSourceDocumentListInput) {
-  const conditions = baseConditions(input);
-  const [countRow, rows] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(sourceDocuments)
-      .where(and(...conditions))
-      .then((result) => result[0]),
-    fetchRows(input, false),
-  ]);
-  const hasMore = rows.length > input.limit;
-  const resultRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, fileData] = await Promise.all([
-    loadRevisionFacts(resultRows),
-    loadFileData(resultRows, input.includeFiles === true),
-  ]);
-  const [candidateComparisonMap, activeResultSummaryMap, duplicateReviewMap] = await Promise.all([
-    loadCandidateComparisonMap(resultRows, revisions),
-    loadActiveResultSummaryMap(resultRows, revisions),
-    loadDuplicateReviewMap(resultRows),
-  ]);
-  return {
-    items: resultRows.map((row) => {
-      const item = mapListItem(
-        row,
-        revisions,
-        fileData.files,
-        fileData.hasImages,
-        input.includeFiles === true
-      );
-      if (item.status === "candidate_pending") {
-        const comparison = candidateComparisonMap.get(row.id);
-        if (comparison !== undefined) {
-          item.candidateComparison = comparison;
-        }
-      }
-      if ((item.status === "anomaly" || item.status === "failed") && row.activeRevisionId != null) {
-        const summary = activeResultSummaryMap.get(row.id);
-        if (summary !== undefined) {
-          item.activeResultSummary = summary;
-        }
-      }
-      const duplicateReview = duplicateReviewMap.get(row.id);
-      if (duplicateReview !== undefined) {
-        item.duplicateReview = duplicateReview;
-      }
-      return item;
-    }),
-    hasMore,
-    total: Number(countRow?.count ?? 0),
-  };
-}
-
-/**
- * Lightweight aggregation that returns the processing count
- * and attention count (candidate_pending + anomaly + failed) for a ledger.
- * Reads the transactionally maintained current status without revision subqueries.
- */
-export async function countSourceDocumentsByStatus(ledgerId: string): Promise<{
-  processingCount: number;
-  attentionCount: number;
-}> {
-  const result = await db
-    .select({
-      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'processing')`,
-      attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} IN ('candidate_pending', 'duplicate_pending', 'anomaly', 'failed'))`,
-    })
-    .from(sourceDocuments)
-    .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
-    .then((rows) => rows[0] ?? { processingCount: 0, attentionCount: 0 });
-
-  return {
-    processingCount: Number(result.processingCount ?? 0),
-    attentionCount: Number(result.attentionCount ?? 0),
-  };
-}
-
-export async function summarizePendingSourceDocuments(ledgerId: string) {
-  const result = await db
-    .select({
-      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'processing')`,
-      candidatePendingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'candidate_pending')`,
-      duplicatePendingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'duplicate_pending')`,
-      anomalyCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'anomaly')`,
-      failedCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'failed')`,
-      cancelledCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'cancelled')`,
-      total: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} IN ('processing', 'candidate_pending', 'duplicate_pending', 'anomaly', 'failed', 'cancelled'))`,
-    })
-    .from(sourceDocuments)
-    .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
-    .then((rows) => rows[0]);
-  return {
-    processingCount: Number(result?.processingCount ?? 0),
-    candidatePendingCount: Number(result?.candidatePendingCount ?? 0),
-    duplicatePendingCount: Number(result?.duplicatePendingCount ?? 0),
-    anomalyCount: Number(result?.anomalyCount ?? 0),
-    failedCount: Number(result?.failedCount ?? 0),
-    cancelledCount: Number(result?.cancelledCount ?? 0),
-    total: Number(result?.total ?? 0),
   };
 }
 

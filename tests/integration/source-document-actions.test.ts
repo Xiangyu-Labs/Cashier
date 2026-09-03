@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { getSourceDocumentByIdAction } from "@/modules/source-document/actions";
 import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../setup";
 import { ledgers, sourceDocuments, users, ledgerEntries, entryCategories } from "@/persistence";
@@ -19,74 +18,6 @@ vi.mock("@/auth", () => ({
 }));
 
 import { auth } from "@/auth";
-
-describe("getSourceDocumentByIdAction", () => {
-  // const db = getTestDb();
-  const testUserId = "00000000-0000-0000-0000-000000000000";
-
-  beforeEach(() => {
-    vi.mocked(
-      auth as unknown as () => Promise<{
-        user: { id: string; email: string };
-        expires: string;
-      } | null>
-    ).mockResolvedValue({
-      user: { id: testUserId, email: "test@example.com" },
-      expires: new Date(Date.now() + 3600 * 1000).toISOString(),
-    });
-  });
-
-  it("should return the source document when it exists and user has access", async () => {
-    const db = getTestDb();
-    // 1. Create Ledger
-    const ledgerData = createLedgerData({ userId: testUserId });
-    await db.insert(ledgers).values(ledgerData);
-
-    // 2. Create Source Document
-    const docData = createSourceDocumentData(ledgerData.id);
-    await db.insert(sourceDocuments).values(docData);
-    await activateTestSourceDocumentProjection(db, docData.id);
-
-    // 3. Action
-    const result = await getSourceDocumentByIdAction(docData.id);
-
-    // 4. Assertion - new format returns data directly
-    expect(result).not.toBeNull();
-    expect(result!.id).toBe(docData.id);
-    expect(result!.ledgerId).toBe(ledgerData.id);
-    // Verify date serialization
-    expect(typeof result!.createdAt).toBe("string");
-  });
-
-  it("should return null when document does not exist", async () => {
-    const result = await getSourceDocumentByIdAction(uuidv4());
-    expect(result).toBeNull();
-  });
-
-  it("should return null when user does not have access", async () => {
-    const db = getTestDb();
-    const otherUserId = "11111111-1111-1111-1111-111111111111";
-    await db
-      .insert(users)
-      .values({
-        id: otherUserId,
-        email: "other@example.com",
-        name: "Other User",
-        emailVerified: new Date(),
-      })
-      .onConflictDoNothing();
-
-    const ledgerData = createLedgerData({ userId: otherUserId });
-    await db.insert(ledgers).values(ledgerData);
-
-    const docData = createSourceDocumentData(ledgerData.id);
-    await db.insert(sourceDocuments).values(docData);
-
-    // 3. Action - returns null to avoid leaking document existence
-    const result = await getSourceDocumentByIdAction(docData.id);
-    expect(result).toBeNull();
-  });
-});
 
 describe("getSourceDocumentLightAction", () => {
   const testUserId = "00000000-0000-0000-0000-000000000000";

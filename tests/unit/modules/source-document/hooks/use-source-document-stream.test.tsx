@@ -4,15 +4,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 const listStreamPageActionMock = vi.hoisted(() => vi.fn());
-const useRevisionStateRefreshMock = vi.hoisted(() => vi.fn());
+const refreshRefetchMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data: undefined }));
+const useLedgerRefreshPollingMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/source-document/actions", () => ({
   listStreamPageAction: listStreamPageActionMock,
 }));
 
-vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
-  isRefreshableRevisionState: (status: string) => status === "processing",
-  useRevisionStateRefresh: useRevisionStateRefreshMock,
+vi.mock("@/modules/source-document/hooks/useLedgerRefreshPolling", () => ({
+  useLedgerRefreshPolling: useLedgerRefreshPollingMock,
 }));
 
 function createWrapper(
@@ -59,6 +59,7 @@ function makeItem(id: string, overrides: Record<string, unknown> = {}) {
 describe("useSourceDocumentStream", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useLedgerRefreshPollingMock.mockReturnValue({ refetch: refreshRefetchMock });
     listStreamPageActionMock.mockImplementation(
       (_ledgerId: string, params: { cursor?: string; limit?: number }) => {
         if (params.cursor == null) {
@@ -80,24 +81,13 @@ describe("useSourceDocumentStream", () => {
     );
   });
 
-  it.each([
-    ["terminal items", [makeItem("doc-1", { status: "completed" })]],
-    ["an empty page", []],
-  ])("does not poll for %s", async (_label, items) => {
-    listStreamPageActionMock.mockResolvedValue({
-      items,
-      nextCursor: null,
-      generation: "1",
-    });
-
+  it("enables the shared refresh scope by default", async () => {
     renderHook(() => useSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
-      expect(useRevisionStateRefreshMock).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: true, pending: false })
-      );
+      expect(useLedgerRefreshPollingMock).toHaveBeenCalledWith("ledger-1", true);
     });
   });
 
@@ -107,9 +97,7 @@ describe("useSourceDocumentStream", () => {
     });
 
     await waitFor(() => {
-      expect(useRevisionStateRefreshMock).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: false, pending: false })
-      );
+      expect(useLedgerRefreshPollingMock).toHaveBeenCalledWith("ledger-1", false);
     });
   });
 

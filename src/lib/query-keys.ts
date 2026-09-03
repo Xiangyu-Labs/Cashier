@@ -23,7 +23,6 @@ export const queryKeys = {
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, params?: QueryKeyParams | null) =>
     ["sourceDocuments", ledgerId, normalizeQueryParams(params)] as const,
-  sourceDocumentCounts: (ledgerId: string) => ["sourceDocuments", ledgerId, "counts"] as const,
   sourceDocumentStream: (
     ledgerId: string,
     filters?: {
@@ -56,6 +55,7 @@ export const queryKeys = {
     ["sourceDocument", "duplicateReview", ledgerId, id] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>
     ["sourceDocument", "full", ledgerId, id] as const,
+  sourceDocumentRefresh: (ledgerId: string) => ["sourceDocumentRefresh", ledgerId] as const,
 
   // === Categories ===
   entryCategories: (ledgerId: string) => ["entryCategories", ledgerId] as const,
@@ -204,13 +204,6 @@ export function invalidateCalendar(ledgerId: string): QueryPredicate {
     const key = query.queryKey;
     return Array.isArray(key) && key[0] === "calendar" && key[2] === ledgerId;
   };
-}
-
-/**
- * Helper to match the counts query for a ledger.
- */
-export function invalidateSourceDocumentCounts(ledgerId: string): QueryPredicate {
-  return matchExactQueryKey(queryKeys.sourceDocumentCounts(ledgerId));
 }
 
 /**

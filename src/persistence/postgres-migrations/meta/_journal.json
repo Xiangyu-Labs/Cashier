@@ -225,6 +225,13 @@
       "when": 1788182400000,
       "tag": "0031_review_consistency_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788396585041,
+      "tag": "0032_simplify_ledger_change_log",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,9 @@
-import type { SourceDocumentDto, SourceDocumentGroupDto } from "./document-contracts";
+import type { z } from "zod";
+import type { SourceDocumentDto } from "./document-contracts";
+import type {
+  saveSourceDocumentChangesInputSchema,
+  splitSourceDocumentInputSchema,
+} from "./contract-schemas";
 
 export { SourceDocumentStatus, SourceDocumentType } from "./types";
 export type {
@@ -8,13 +13,11 @@ export type {
   SourceDocumentTypeValue,
 } from "./types";
 export type {
-  SourceDocumentAttentionDto,
   SourceDocumentCandidateComparisonDto,
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
   SourceDocumentCandidateReviewRevisionDto,
   SourceDocumentCandidateProjectionSummary,
-  SourceDocumentCountsDto,
   SourceDocumentDto,
   SourceDocumentDuplicateReviewDto,
   SourceDocumentDuplicateReviewDetailDto,
@@ -23,7 +26,6 @@ export type {
   SourceDocumentLightDto,
   SourceDocumentLightWithEntriesDto,
   SourceDocumentListItemDto,
-  SourceDocumentPageDto,
   SourceDocumentStoredFileDto,
   StreamPage,
   StreamTotalDto,
@@ -56,57 +58,14 @@ export interface CreatedRecordResult {
   entryDate: string;
 }
 
-export interface PendingSourceDocumentsResponseDto {
-  groups: {
-    processing: SourceDocumentGroupDto[];
-    candidate_pending: SourceDocumentGroupDto[];
-    duplicate_pending: SourceDocumentGroupDto[];
-    anomaly: SourceDocumentGroupDto[];
-    failed: SourceDocumentGroupDto[];
-    cancelled: SourceDocumentGroupDto[];
-  };
-  stats: {
-    processingCount: number;
-    candidatePendingCount: number;
-    duplicatePendingCount: number;
-    anomalyCount: number;
-    failedCount: number;
-    cancelledCount: number;
-    total: number;
-  };
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
-export interface UpdateSourceDocumentResultDto {
-  sourceDocumentId: string;
-  updated: boolean;
-}
-
-export interface SaveSourceDocumentChangesInput {
-  sourceDocumentId: string;
-  expectedRevisionId: string;
-  operationId: string;
-  sourceDocument?: import("./contract-schemas").UpdateSourceDocumentInput;
-  entries: Array<{
-    ledgerEntryId: string;
-    data: import("@/modules/ledger/contract-schemas").UpdateLedgerEntryInput;
-  }>;
-}
+export type SaveSourceDocumentChangesInput = z.infer<typeof saveSourceDocumentChangesInputSchema>;
 
 export interface SaveSourceDocumentChangesResultDto {
   activeRevisionId: string;
   sourceDocument: SourceDocumentDto;
 }
 
-export interface SplitSourceDocumentInput {
-  sourceDocumentId: string;
-  expectedRevisionId: string;
-  operationId: string;
-  newSourceDocumentId: string;
-  ledgerEntryIds: string[];
-  entryDate: string;
-}
+export type SplitSourceDocumentInput = z.infer<typeof splitSourceDocumentInputSchema>;
 
 export interface SplitSourceDocumentResultDto {
   sourceDocumentId: string;

@@ -10,7 +10,6 @@ import { TEST_USER_ID, createTestUserWithLedger } from "../../helpers/schema-set
 import { getLedgerAction } from "@/modules/ledger/actions";
 import { updateLedgerSettingsAction } from "@/modules/ledger/actions";
 import { getLedgerEntriesAction } from "@/modules/ledger/actions";
-import { getSourceDocumentsAction } from "@/modules/source-document/actions";
 import { getEntryCategoriesAction } from "@/modules/ledger/actions";
 import { getServiceCredentialsAction } from "@/modules/ledger/actions";
 
@@ -97,10 +96,6 @@ describe("Multi-User Isolation", () => {
 
     it("should refuse access to user2 ledger entries", async () => {
       await expect(getLedgerEntriesAction(user2Ledger, {})).rejects.toThrow("Ledger not found");
-    });
-
-    it("should refuse access to user2 source documents", async () => {
-      await expect(getSourceDocumentsAction(user2Ledger, {})).rejects.toThrow("Ledger not found");
     });
 
     it("should refuse access to user2 entry categories", async () => {

@@ -3,7 +3,7 @@ import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { serverComposition } from "@/application/server-composition-root";
 import { getSourceDocumentFullQuery as getSourceDocumentFullQueryUseCase } from "@/modules/source-document/application/queries/get-source-document-full";
-import { querySourceDocumentPage as querySourceDocumentPageUseCase } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
 import { sourceDocuments } from "@/persistence";
 import {
   activateTestSourceDocumentProjection,
@@ -19,10 +19,8 @@ const queryPorts = {
   documents: serverComposition.sourceDocumentReads,
   ledgerReads: serverComposition.ledgerReads,
 };
-const querySourceDocumentPage = (
-  ledgerId: string,
-  input: Parameters<typeof querySourceDocumentPageUseCase>[1]
-) => querySourceDocumentPageUseCase(ledgerId, input, queryPorts);
+const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
+  listStreamPageUseCase(ledgerId, input, queryPorts);
 const getSourceDocumentFullQuery = (ledgerId: string, sourceDocumentId: string) =>
   getSourceDocumentFullQueryUseCase(ledgerId, sourceDocumentId, queryPorts.documents);
 
@@ -35,6 +33,7 @@ const SOURCE_LIST_KEYS = [
   "files",
   "hasImages",
   "id",
+  "ledgerEntries",
   "ledgerId",
   "metadata",
   "pendingRevisionId",
@@ -68,7 +67,7 @@ async function collectSourceDocumentPages(ledgerId: string, limit: number) {
   let cursor: string | null = null;
   const pageSizes: number[] = [];
   do {
-    const page = await querySourceDocumentPage(ledgerId, { limit, cursor });
+    const page = await listStreamPage(ledgerId, { limit, cursor });
     items.push(...page.items);
     pageSizes.push(page.items.length);
     cursor = page.nextCursor;
@@ -119,7 +118,7 @@ describe("bounded target read models", () => {
       });
     }
 
-    const firstPage = await querySourceDocumentPage(ledgerId, { limit: 7 });
+    const firstPage = await listStreamPage(ledgerId, { limit: 7 });
     const history = await collectSourceDocumentPages(ledgerId, 7);
     const serialized = JSON.stringify(firstPage);
 
@@ -138,7 +137,6 @@ describe("bounded target read models", () => {
       localPath,
       "sourceDocumentRevisionId",
       "revisionNumber",
-      "ledgerEntries",
     ]) {
       expect(serialized).not.toContain(forbidden);
     }

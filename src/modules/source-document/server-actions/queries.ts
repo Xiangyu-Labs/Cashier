@@ -1,24 +1,18 @@
 "use server";
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
-import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
-import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
 import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
 import {
-  PendingSourceDocumentsResponseDto,
   SourceDocumentFullDto,
-  SourceDocumentPageDto,
   StreamPage,
   StreamTotalDto,
 } from "@/modules/source-document/contracts";
 import {
   sourceDocumentIdSchema,
-  pendingSourceDocumentsInputSchema,
   streamPageInputSchema,
   streamTotalInputSchema,
-  type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { serverComposition } from "@/application/server-composition-root";
@@ -28,33 +22,6 @@ const queryPorts = {
   ledgerReads: serverComposition.ledgerReads,
   changes: serverComposition.ledgerChanges,
 };
-
-export const getSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> => {
-    // Schedule processing recovery alongside data reads
-    scheduleProcessingRecoveryAfter(ledgerId);
-    return listSourceDocuments(ledgerId, params, queryPorts);
-  }
-);
-
-/**
- * Get all pending source documents (processing + anomaly + failed)
- * Used for the pending source documents modal that should always show ALL pending items.
- */
-export const getPendingSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string, input?: unknown): Promise<PendingSourceDocumentsResponseDto> => {
-    const parsed = pendingSourceDocumentsInputSchema.safeParse(input ?? {});
-    if (!parsed.success) {
-      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
-    }
-    // Schedule processing recovery alongside data reads
-    scheduleProcessingRecoveryAfter(ledgerId);
-    return getPendingSourceDocuments(ledgerId, queryPorts, {
-      limit: parsed.data.limit,
-      ...(parsed.data.cursor != null ? { cursor: parsed.data.cursor } : {}),
-    });
-  }
-);
 
 /**
  * Get a single source document with stored-file identities for edit retry.

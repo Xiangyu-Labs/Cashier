@@ -49,6 +49,7 @@ export function ledgerMutationResourcePredicates(
 
   if (groups.has("documents")) {
     addSourceDocuments();
+    predicates.push(matchExactQueryKey(queryKeys.sourceDocumentRefresh(ledgerId)));
     addLedgerEntries();
     addCategories();
     addStatsAndCalendar();

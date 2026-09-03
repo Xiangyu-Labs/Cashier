@@ -115,10 +115,6 @@ export function usePendingChanges({ sourceDocument, ledgerEntries }: UsePendingC
     [ledgerEntries]
   );
 
-  const discardAllChanges = useCallback(() => {
-    setPendingChanges({ sourceDoc: {}, entries: {} });
-  }, []);
-
   const resetChanges = useCallback(() => {
     setPendingChanges({ sourceDoc: {}, entries: {} });
   }, []);
@@ -129,7 +125,7 @@ export function usePendingChanges({ sourceDocument, ledgerEntries }: UsePendingC
     pendingChangesCount,
     handleSourceDocChange,
     handleEntryChange,
-    discardAllChanges,
+    discardAllChanges: resetChanges,
     resetChanges,
   };
 }

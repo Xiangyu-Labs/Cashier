@@ -133,15 +133,3 @@ export function createSourceDocumentData(
     ...canonicalOverrides,
   };
 }
-
-export function createSourceDocumentInput(
-  overrides: Partial<{
-    text: string;
-    images: Array<{ data: string; mimeType: string }>;
-  }> = {}
-) {
-  return {
-    text: "今天午餐花了25.5元",
-    ...overrides,
-  };
-}

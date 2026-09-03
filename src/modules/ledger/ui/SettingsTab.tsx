@@ -25,7 +25,6 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
-import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
 import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { SettingsSectionActions } from "./settings/SettingsSectionActions";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
@@ -175,23 +174,10 @@ export function SettingsTab({
     }
   };
   const handleSignOut = async () => {
-    await clearUserImageCacheDataSafely(
-      ledger.userId,
-      { userId: ledger.userId, ledgerId },
-      "Failed to clear image cache before sign-out"
-    );
     await signOut({ callbackUrl: "/login" });
   };
 
-  const clearUserCache = () =>
-    clearUserImageCacheDataSafely(
-      ledger.userId,
-      { userId: ledger.userId, ledgerId },
-      "Failed to clear image cache before credential sign-out"
-    );
-
   const handleRequireReauthentication = async () => {
-    await clearUserCache();
     const query = searchParams.toString();
     const currentPath = query === "" ? pathname : `${pathname}?${query}`;
     const callbackUrl = `/login?notice=reauth_required&callbackUrl=${encodeURIComponent(currentPath)}`;
@@ -203,7 +189,6 @@ export function SettingsTab({
   };
 
   const handleCredentialsChanged = async () => {
-    await clearUserCache();
     const callbackUrl = "/login?notice=credentials_changed";
     try {
       await signOut({ callbackUrl });

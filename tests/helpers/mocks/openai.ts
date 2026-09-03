@@ -8,7 +8,7 @@ import Decimal from "decimal.js";
  * supporting the new multi-stage parsing architecture.
  */
 
-export interface MockEntryData {
+interface MockEntryData {
   item_name: string;
   amount: string; // canonical decimal string, e.g. "25.50"
   currency?: string;
@@ -286,8 +286,3 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
       ),
   };
 }
-
-/**
- * Default multi-stage mock for simple test cases
- */
-export const defaultMultiStageMock = createMultiStageMock();

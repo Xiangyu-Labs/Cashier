@@ -28,14 +28,6 @@ describe("queryKeys enhanced stats and source documents", () => {
     ]);
   });
 
-  it("builds source document counts key", () => {
-    expect(queryKeys.sourceDocumentCounts("ledger-1")).toEqual([
-      "sourceDocuments",
-      "ledger-1",
-      "counts",
-    ]);
-  });
-
   it("builds source document stream key with filters", () => {
     expect(
       queryKeys.sourceDocumentStream("ledger-1", {

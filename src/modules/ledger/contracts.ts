@@ -1,7 +1,7 @@
 import type {
   SourceDocumentStatusType as SourceDocumentReferenceStatus,
   SourceDocumentTypeValue as SourceDocumentReferenceType,
-} from "@/modules/source-document/contracts";
+} from "@/modules/source-document/types";
 
 interface LedgerSettings {
   aiLanguage?: string;

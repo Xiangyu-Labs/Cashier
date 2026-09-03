@@ -31,7 +31,6 @@ const CANONICAL_STATUS_ORDER: readonly SourceDocumentStatusType[] = [
   "anomaly",
   "failed",
   "cancelled",
-  "deleted",
   "candidate_pending",
   "duplicate_pending",
 ];

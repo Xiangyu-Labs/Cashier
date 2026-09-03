@@ -3,58 +3,20 @@ import type {
   BatchUpdateSourceDocumentsResultDto,
   SaveSourceDocumentChangesInput,
   SaveSourceDocumentChangesResultDto,
-  UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import {
   batchUpdateSourceDocumentsInputSchema,
   saveSourceDocumentChangesInputSchema,
-  parseMutationIdentity,
   sourceDocumentIdsSchema,
-  updateSourceDocumentInputSchema,
   type BatchUpdateSourceDocumentsInput,
-  type UpdateSourceDocumentInput,
 } from "@/modules/source-document/contract-schemas";
 import {
   batchUpdateSourceDocuments,
-  updateSourceDocument,
-} from "../application/use-cases/update-source-document";
-import { saveSourceDocumentChanges } from "../application/use-cases/save-source-document-changes";
+  saveSourceDocumentChanges,
+} from "../application/use-cases/source-document-updates";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { serverComposition } from "@/application/server-composition-root";
 import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
-
-/**
- * Update source document metadata (e.g. title, entryDate).
- */
-export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
-  async (
-    { ledgerId, userId },
-    sourceId: string,
-    data: UpdateSourceDocumentInput,
-    operationId?: string
-  ): Promise<UpdateSourceDocumentResultDto> => {
-    const identity = parseMutationIdentity({
-      sourceDocumentId: sourceId,
-      ...(operationId === undefined ? {} : { operationId }),
-    });
-    const validated = updateSourceDocumentInputSchema.parse(data);
-    const mutation = () =>
-      updateSourceDocument(
-        { ledgerId, sourceDocumentId: identity.sourceDocumentId, data: validated },
-        serverComposition.sourceDocumentUpdates
-      );
-    return identity.operationId == null
-      ? mutation()
-      : serverComposition.userMutationIdempotency.run(
-          {
-            userId,
-            key: `source-document:update:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
-            fingerprint: sourceDocumentFingerprint(validated),
-          },
-          mutation
-        );
-  }
-);
 
 /**
  * Batch update multiple source documents.

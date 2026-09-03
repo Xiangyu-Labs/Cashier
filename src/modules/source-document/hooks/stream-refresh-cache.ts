@@ -4,24 +4,22 @@ import {
   invalidateLedgerEntryDetails,
   invalidateLedgerSettings,
   invalidateLedgerStats,
-  invalidateSourceDocumentCounts,
   invalidateSourceDocuments,
   invalidateSourceDocumentStream,
   invalidateSourceDocumentStreamTotal,
 } from "@/lib/query-keys";
-import type { LedgerDeltaResult } from "../contract-refresh";
+import type { LedgerRefreshResult } from "../contract-refresh";
 
 export function applyStreamRefreshToCache(
   queryClient: QueryClient,
   ledgerId: string,
-  result: LedgerDeltaResult
+  result: LedgerRefreshResult
 ): Promise<void> {
   const invalidations: Array<Promise<unknown>> = [];
-  if (result.changed || result.resetRequired) {
+  if (result.changed) {
     invalidations.push(
       queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntryDetails(ledgerId) })

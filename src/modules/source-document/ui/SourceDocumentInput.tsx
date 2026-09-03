@@ -26,7 +26,6 @@ export function SourceDocumentInput({
     ...(initialData !== undefined ? { initialData } : {}),
     ...(timeZone !== undefined ? { timeZone } : {}),
     messages: {
-      uploadError: t("uploadError"),
       retrySuccess: t("retrySuccess"),
       retryError: t("retryError"),
       imageTooLarge: (fileName: string) => t("imageTooLarge", { fileName }),

@@ -494,7 +494,6 @@ export const ledgerChangeBatches = pgTable(
     transactionId: bigint("transaction_id", { mode: "bigint" }).notNull(),
     categoriesChanged: boolean("categories_changed").notNull().default(false),
     settingsChanged: boolean("settings_changed").notNull().default(false),
-    countsChanged: boolean("counts_changed").notNull().default(false),
     statsChanged: boolean("stats_changed").notNull().default(false),
     resetRequired: boolean("reset_required").notNull().default(false),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
@@ -512,23 +511,5 @@ export const ledgerChangeBatches = pgTable(
     ),
     index("idx_ledger_change_batches_created").on(table.createdAt),
     check("ledger_change_batches_version_check", sql`${table.version} > 0`),
-  ]
-);
-
-export const ledgerChangeItems = pgTable(
-  "ledger_change_items",
-  {
-    ledgerId: uuid("ledger_id").notNull(),
-    version: bigint("version", { mode: "bigint" }).notNull(),
-    sourceDocumentId: uuid("source_document_id").notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.ledgerId, table.version, table.sourceDocumentId] }),
-    foreignKey({
-      columns: [table.ledgerId, table.version],
-      foreignColumns: [ledgerChangeBatches.ledgerId, ledgerChangeBatches.version],
-      name: "fk_ledger_change_items_batch",
-    }).onDelete("cascade"),
-    index("idx_ledger_change_items_document").on(table.ledgerId, table.sourceDocumentId),
   ]
 );

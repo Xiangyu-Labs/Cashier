@@ -1,8 +1,10 @@
 "use server";
 
-import { acceptSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/accept-source-document-candidate";
-import { abandonSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/abandon-source-document-candidate";
-import { cancelSourceDocumentProcessing } from "@/modules/source-document/application/use-cases/cancel-source-document-processing";
+import {
+  abandonSourceDocumentCandidate,
+  acceptSourceDocumentCandidate,
+  cancelSourceDocumentProcessing,
+} from "@/modules/source-document/application/use-cases/source-document-lifecycle";
 import type {
   AcceptCandidateResponseDto,
   AbandonCandidateResponseDto,

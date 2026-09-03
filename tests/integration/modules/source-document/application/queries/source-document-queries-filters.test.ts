@@ -11,20 +11,14 @@ import {
   sourceDocuments,
 } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { listSourceDocuments as listSourceDocumentsUseCase } from "@/modules/source-document/application/queries/list-source-document-page";
 import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
 import { getStreamTotal as getStreamTotalUseCase } from "@/modules/source-document/application/queries/get-stream-total";
-import { countSourceDocumentsByStatus } from "@/application/adapters/postgres/source-document-reads";
 import { serverComposition } from "@/application/server-composition-root";
 
 const queryPorts = {
   documents: serverComposition.sourceDocumentReads,
   ledgerReads: serverComposition.ledgerReads,
 };
-const listSourceDocuments = (
-  ledgerId: string,
-  params: Parameters<typeof listSourceDocumentsUseCase>[1]
-) => listSourceDocumentsUseCase(ledgerId, params, queryPorts);
 const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
   listStreamPageUseCase(ledgerId, input, queryPorts);
 const getStreamTotal = (ledgerId: string, input: Parameters<typeof getStreamTotalUseCase>[1]) =>
@@ -99,13 +93,11 @@ describe("source-document-queries", () => {
       unconvertedCount: 0,
     });
 
-    const detail = await listSourceDocuments(ledgerId, {
-      limit: 10,
-      includeEntries: true,
-    });
-    expect(detail.items.find((item) => item.id === sourceDocument.id)?.ledgerEntries).toHaveLength(
-      2
-    );
+    expect(
+      await db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.sourceDocumentId, sourceDocument.id),
+      })
+    ).toHaveLength(2);
   });
 
   it("totals only completed documents across the full Stream filter", async () => {
@@ -241,51 +233,5 @@ describe("source-document-queries", () => {
 
     expect(page.items.some((i) => i.id === deleted[0]!.id)).toBe(false);
     expect(page.items.some((i) => i.id === active[0]!.id)).toBe(true);
-  });
-
-  it("leaves global counts unchanged by stream filters", async () => {
-    const db = getTestDb();
-    await db.insert(sourceDocuments).values([
-      {
-        ledgerId,
-        currentStatus: "processing",
-        entryDate: "2026-03-20",
-      },
-      {
-        ledgerId,
-        currentStatus: "completed",
-        entryDate: "2026-03-19",
-      },
-      {
-        ledgerId,
-        currentStatus: "anomaly",
-        entryDate: "2026-03-18",
-      },
-    ]);
-    // Activate projections to set up revision state
-    const allDocs = await db
-      .select()
-      .from(sourceDocuments)
-      .where(eq(sourceDocuments.ledgerId, ledgerId));
-    for (const doc of allDocs) {
-      await activateTestSourceDocumentProjection(db, doc.id);
-    }
-
-    const counts = await countSourceDocumentsByStatus(ledgerId);
-
-    // The processing doc counts as processing (processing), completed as completed, anomaly as attention
-    expect(counts.processingCount).toBe(1); // processing → processing in attention
-    expect(counts.attentionCount).toBe(1); // anomaly
-
-    // Stream page with status filter should not affect counts
-    const page = await listStreamPage(ledgerId, {
-      statuses: ["completed"],
-      limit: 10,
-    });
-    expect(page.items.length).toBeGreaterThanOrEqual(0);
-
-    const countsAfter = await countSourceDocumentsByStatus(ledgerId);
-    expect(countsAfter.processingCount).toBe(counts.processingCount);
-    expect(countsAfter.attentionCount).toBe(counts.attentionCount);
   });
 });

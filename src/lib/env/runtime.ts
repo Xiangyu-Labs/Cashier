@@ -40,7 +40,6 @@ export interface RuntimeEnv {
   readonly authPasswordEmailMaxAttempts: number;
   readonly authPasswordIpMaxAttempts: number;
   readonly authPasswordRateLimitWindowSeconds: number;
-  readonly ledgerStartupCacheDocumentLimit: number;
   readonly otpIpMaxAttemptsPerHour: number;
   readonly otpVerifyMaxAttemptsPerMinute: number;
   readonly apiRateLimitPerMinute: number;
@@ -179,9 +178,6 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get authPasswordRateLimitWindowSeconds() {
     return getStartupEnvValue("AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS");
-  },
-  get ledgerStartupCacheDocumentLimit() {
-    return getStartupEnvValue("LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT");
   },
   get otpIpMaxAttemptsPerHour() {
     return getStartupEnvValue("OTP_IP_MAX_ATTEMPTS_PER_HOUR");

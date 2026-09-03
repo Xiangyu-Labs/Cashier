@@ -15,8 +15,7 @@ import {
   type UnifiedStreamGroup,
 } from "@/modules/source-document/stream-grouping";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
-import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
-import { drainSourceDocumentDelta } from "./source-document-delta-drain";
+import { useLedgerRefreshPolling } from "./useLedgerRefreshPolling";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -143,7 +142,6 @@ export function useSourceDocumentStream(
   // Track the generation from the first page for cross-page consistency
   const generationRef = useRef<string | null>(null);
   const observedRestartFingerprintRef = useRef<string | null>(null);
-  const afterVersionRef = useRef("0");
 
   const streamQuery = useInfiniteQuery({
     queryKey: streamPageKey,
@@ -174,7 +172,6 @@ export function useSourceDocumentStream(
   useEffect(() => {
     generationRef.current = null;
     observedRestartFingerprintRef.current = null;
-    afterVersionRef.current = "0";
   }, [filterSignature, ledgerId]);
 
   // Check generation consistency across pages (Fix 3).
@@ -208,22 +205,20 @@ export function useSourceDocumentStream(
     void queryClient.resetQueries({ queryKey: streamPageKey, exact: true });
   }, [data, queryClient, streamPageKey]);
 
+  const refreshQuery = useLedgerRefreshPolling(ledgerId, enableRefresh);
+  const refetchRefresh = refreshQuery.refetch;
   const refresh = useCallback(async (): Promise<{
     changed: boolean;
     result?: StreamRefreshResult;
   }> => {
-    const drained = await drainSourceDocumentDelta(queryClient, ledgerId, afterVersionRef.current);
-    afterVersionRef.current = drained.result.toVersion;
-    return drained;
-  }, [ledgerId, queryClient]);
+    const refreshed = await refetchRefresh();
+    return {
+      changed: refreshed.data?.changed ?? false,
+      ...(refreshed.data === undefined ? {} : { result: refreshed.data }),
+    };
+  }, [refetchRefresh]);
 
   const items = useMemo(() => deduplicate(data?.pages.flatMap((page) => page.items) ?? []), [data]);
-  const pending = items.some((item) => isRefreshableRevisionState(item.status));
-  useRevisionStateRefresh({
-    enabled: enableRefresh,
-    pending,
-    refresh,
-  });
 
   // Build unified stream groups (preserving server order)
   const streamGroups: UnifiedStreamGroup[] = useMemo(() => {

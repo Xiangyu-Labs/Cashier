@@ -1,15 +1,11 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import type { LedgerDeltaResult } from "@/modules/source-document/contract-refresh";
+import type { LedgerRefreshResult } from "@/modules/source-document/contract-refresh";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 
-function makeResult(overrides: Partial<LedgerDeltaResult> = {}): LedgerDeltaResult {
+function makeResult(overrides: Partial<LedgerRefreshResult> = {}): LedgerRefreshResult {
   return {
-    protocolVersion: 3,
-    fromVersion: "0",
-    toVersion: "1",
-    hasMore: false,
-    resetRequired: false,
+    version: "1",
     changed: false,
     hasTransitionalWork: false,
     invalidations: { categories: false, settings: false, stats: false },
@@ -27,23 +23,17 @@ describe("applyStreamRefreshToCache", () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["changed", { changed: true }],
-    ["reset", { resetRequired: true }],
-  ])(
-    "invalidates stream, total, counts, documents, and ledger entries after %s",
-    (_name, change) => {
-      const client = new QueryClient();
-      const invalidate = vi.spyOn(client, "invalidateQueries");
+  it("invalidates stream, total, documents, and ledger entries after a change", () => {
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
 
-      applyStreamRefreshToCache(client, "ledger-1", makeResult(change));
+    applyStreamRefreshToCache(client, "ledger-1", makeResult({ changed: true }));
 
-      expect(invalidate).toHaveBeenCalledTimes(6);
-      for (const call of invalidate.mock.calls) {
-        expect(call[0]).toEqual(expect.objectContaining({ predicate: expect.any(Function) }));
-      }
+    expect(invalidate).toHaveBeenCalledTimes(5);
+    for (const call of invalidate.mock.calls) {
+      expect(call[0]).toEqual(expect.objectContaining({ predicate: expect.any(Function) }));
     }
-  );
+  });
 
   it.each([
     ["categories", { categories: true, settings: false, stats: false }],

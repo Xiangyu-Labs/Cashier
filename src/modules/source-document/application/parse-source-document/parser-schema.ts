@@ -112,38 +112,37 @@ export const parserOutputSchema = z
 
 // ===== Normalized output type =====
 
-export interface NormalizedReceiptTotal {
-  receipt_index: number;
-  amount: string;
-  currency: string;
-}
+type ParsedOutput = z.infer<typeof parserOutputSchema>;
 
-export interface NormalizedLedgerEntry {
-  receipt_index: number;
-  item_name: string;
+export type NormalizedReceiptTotal = Omit<ParsedOutput["receipt_totals"][number], "amount"> & {
   amount: string;
-  currency: string;
-  category_index: number;
+};
+
+export type NormalizedLedgerEntry = Omit<
+  ParsedOutput["ledger_entries"][number],
+  "amount" | "notes"
+> & {
+  amount: string;
   notes: string | null;
-}
+};
 
-export interface NormalizedOrderAdjustment {
-  receipt_index: number;
-  item_name: string;
+export type NormalizedOrderAdjustment = Omit<
+  ParsedOutput["order_adjustments"][number],
+  "amount"
+> & {
   amount: string;
-  currency: string;
-}
+};
 
-export interface NormalizedParseOutput {
-  outcome: "success" | "invalid" | "anomaly";
+export type NormalizedParseOutput = Omit<
+  ParsedOutput,
+  "anomaly_reason" | "title" | "receipt_totals" | "ledger_entries" | "order_adjustments"
+> & {
   anomaly_reason?: string;
   title: string;
-  receipt_count: number;
   receipt_totals: NormalizedReceiptTotal[];
   ledger_entries: NormalizedLedgerEntry[];
   order_adjustments: NormalizedOrderAdjustment[];
-  reasoning: string;
-}
+};
 
 function fallbackTitleForOutcome(
   output: z.infer<typeof parserOutputSchema>,

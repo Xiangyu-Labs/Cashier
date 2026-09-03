@@ -8,7 +8,7 @@ import { getLedgerEntryDetail as getLedgerEntryDetailUseCase } from "@/modules/l
 import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStatsQuery } from "@/modules/stats/application/queries/get-enhanced-stats";
-import { querySourceDocumentPage as querySourceDocumentPageUseCase } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
 import { updateLedgerEntryWithConversion as updateLedgerEntryWithConversionUseCase } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
 import { deleteLedgerEntry as deleteLedgerEntryUseCase } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
 import { serverComposition } from "@/application/server-composition-root";
@@ -36,11 +36,8 @@ const updateLedgerEntryWithConversion = (
 ) => updateLedgerEntryWithConversionUseCase(input, serverComposition.ledgerMutations);
 const deleteLedgerEntry = (ledgerId: string, entryId: string) =>
   deleteLedgerEntryUseCase(ledgerId, entryId, serverComposition.ledgerMutations);
-const querySourceDocumentPage = (
-  ledgerId: string,
-  input: Parameters<typeof querySourceDocumentPageUseCase>[1]
-) =>
-  querySourceDocumentPageUseCase(ledgerId, input, {
+const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
+  listStreamPageUseCase(ledgerId, input, {
     documents: serverComposition.sourceDocumentReads,
     ledgerReads: serverComposition.ledgerReads,
   });
@@ -79,8 +76,8 @@ describe("target upper workflows", () => {
       .set({ currentStatus: "failed" })
       .where(eq(sourceDocuments.id, completed.sourceDocumentId));
 
-    const first = await querySourceDocumentPage(ledgerId, { limit: 1 });
-    const second = await querySourceDocumentPage(ledgerId, {
+    const first = await listStreamPage(ledgerId, { limit: 1 });
+    const second = await listStreamPage(ledgerId, {
       limit: 1,
       cursor: first.nextCursor,
     });
@@ -319,7 +316,9 @@ describe("target upper workflows", () => {
     const beforeRevisionCount = await db.select().from(sourceDocumentRevisions);
     const beforeEntryCount = await db.select().from(ledgerEntries);
 
-    await expect(querySourceDocumentPage(otherLedgerId, {})).resolves.toMatchObject({ items: [] });
+    await expect(listStreamPage(otherLedgerId, { limit: 20 })).resolves.toMatchObject({
+      items: [],
+    });
     await expect(listLedgerEntries(otherLedgerId, { limit: 20 })).resolves.toMatchObject({
       items: [],
     });

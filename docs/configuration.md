@@ -57,18 +57,15 @@ Docker 容器会把自动生成的内部密钥保存在 `cashier_config` 卷。�
 
 ## AI、图片与缓存
 
-| 变量                                  | 默认值     | 说明                         |
-| ------------------------------------- | ---------- | ---------------------------- |
-| `AI_MAX_RETRIES`                      | `3`        | AI 调用重试次数，可设为 0。  |
-| `AI_RETRY_DELAY_MS`                   | `1000`     | AI 重试初始等待毫秒数。      |
-| `AI_TEMPERATURE`                      | `0.3`      | 模型 temperature，范围 0–2。 |
-| `MAX_INPUT_PIXELS`                    | `25000000` | 兼容保留；当前不控制 Sharp。 |
-| `MAX_IMAGE_QUALITY`                   | `85`       | 图片输出质量，范围 1–100。   |
-| `SOURCE_DOC_STALE_TIME_MS`            | `120000`   | 单据客户端数据新鲜期。       |
-| `CURRENCY_STALE_TIME_MS`              | `14400000` | 汇率客户端数据新鲜期。       |
-| `LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT` | `300`      | 启动预览保存的最新单据数量。 |
-
-启动预览只是等待服务器数据时的只读缓存，不提供离线记账，也不能作为备份。
+| 变量                       | 默认值     | 说明                         |
+| -------------------------- | ---------- | ---------------------------- |
+| `AI_MAX_RETRIES`           | `3`        | AI 调用重试次数，可设为 0。  |
+| `AI_RETRY_DELAY_MS`        | `1000`     | AI 重试初始等待毫秒数。      |
+| `AI_TEMPERATURE`           | `0.3`      | 模型 temperature，范围 0–2。 |
+| `MAX_INPUT_PIXELS`         | `25000000` | 兼容保留；当前不控制 Sharp。 |
+| `MAX_IMAGE_QUALITY`        | `85`       | 图片输出质量，范围 1–100。   |
+| `SOURCE_DOC_STALE_TIME_MS` | `120000`   | 单据客户端数据新鲜期。       |
+| `CURRENCY_STALE_TIME_MS`   | `14400000` | 汇率客户端数据新鲜期。       |
 
 当前图片策略固定为 16 MP 业务校验上限，以及 24 MP Sharp 解码保护上限。
 `MAX_INPUT_PIXELS` 仍保留以兼容既有部署配置，但修改它不会改变这两个限制。

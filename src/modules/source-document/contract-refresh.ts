@@ -1,17 +1,9 @@
-export const LEDGER_DELTA_PROTOCOL_VERSION = 3;
-export const MAX_DELTA_VERSIONS = 100;
-
-export interface LedgerDeltaRequest {
-  ledgerId: string;
+export interface LedgerRefreshRequest {
   afterVersion: string;
 }
 
-export interface LedgerDeltaResult {
-  protocolVersion: 3;
-  fromVersion: string;
-  toVersion: string;
-  hasMore: boolean;
-  resetRequired: boolean;
+export interface LedgerRefreshResult {
+  version: string;
   changed: boolean;
   hasTransitionalWork: boolean;
   invalidations: {
@@ -21,5 +13,4 @@ export interface LedgerDeltaResult {
   };
 }
 
-// Retained alias keeps the refresh coordinator API narrow while the wire protocol is v2.
-export type StreamRefreshResult = LedgerDeltaResult;
+export type StreamRefreshResult = LedgerRefreshResult;

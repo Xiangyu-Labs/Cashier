@@ -37,7 +37,6 @@ interface SourceDocumentViewDetailsProps {
   onAddEntry?: () => void;
   /** Deletes a single entry; the per-entry delete button only shows in edit mode. */
   onDeleteEntry?: (entryId: string) => void;
-  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
@@ -59,7 +58,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   isEditMode = false,
   onAddEntry,
   onDeleteEntry,
-  cachedImageUrls,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
@@ -141,9 +139,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
       <SourceDocumentRawEvidence
         sourceDocument={sourceDocument}
-        readOnly={readOnly}
         isLoadingImages={isLoadingImages}
-        cachedImageUrls={cachedImageUrls}
       />
     </div>
   );

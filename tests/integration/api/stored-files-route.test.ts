@@ -84,6 +84,7 @@ describe("GET /api/stored-files/[fileId]", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/png");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     const body = await response.text();
     expect(body).toBe("bytes");
     expect(body).not.toContain(file.storageKey);
@@ -102,6 +103,7 @@ describe("GET /api/stored-files/[fileId]", () => {
     const response = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
 
     expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(downloadMock).not.toHaveBeenCalled();
   });
 
@@ -128,12 +130,14 @@ describe("GET /api/stored-files/[fileId]", () => {
     downloadMock.mockRejectedValueOnce(new AppError("missing", "FILE_NOT_FOUND", 404));
     const missing = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
     expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control")).toBe("private, no-store");
     await expect(missing.json()).resolves.toMatchObject({ error: { code: "NOT_FOUND" } });
     expect(missing.headers.get("X-Request-Id")).toBeTruthy();
 
     downloadMock.mockRejectedValueOnce(new AppError("outage", "S3_DOWNLOAD_FAILED", 503));
     const outage = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
     expect(outage.status).toBe(503);
+    expect(outage.headers.get("cache-control")).toBe("private, no-store");
     await expect(outage.json()).resolves.toMatchObject({
       error: { code: "STORAGE_UNAVAILABLE", details: { correlationId: expect.any(String) } },
     });
@@ -145,6 +149,7 @@ describe("GET /api/stored-files/[fileId]", () => {
       params: Promise.resolve({ fileId: crypto.randomUUID() }),
     });
     expect(response.status).toBe(401);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "UNAUTHENTICATED" },
     });

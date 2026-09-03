@@ -183,7 +183,6 @@ describe("validateStartupEnv", () => {
       "DATABASE_POOL_MAX",
       "DEV_AUTH_BYPASS",
       "DISABLE_REGISTRATION",
-      "LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT",
       "LOG_LEVEL",
       "MAX_IMAGE_QUALITY",
       "MAX_INPUT_PIXELS",

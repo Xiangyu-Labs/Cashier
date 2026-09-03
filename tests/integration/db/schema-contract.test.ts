@@ -131,7 +131,6 @@ describe("PostgreSQL schema contract", () => {
       "fk_duplicate_reviews_matched_revision_ledger",
       "fk_source_documents_active_revision",
       "fk_source_documents_pending_revision",
-      "fk_ledger_change_items_batch",
     ];
     for (const name of expected) {
       expect(byName.has(name), `missing foreign key ${name}`).toBe(true);
@@ -175,6 +174,16 @@ describe("PostgreSQL schema contract", () => {
     ]) {
       expect(names.has(name), `missing trigger ${name}`).toBe(true);
     }
+  });
+
+  it("keeps only aggregate ledger change-log state", async () => {
+    const batchColumns = (await fetchColumns("ledger_change_batches")).map(
+      (column) => column.columnName
+    );
+
+    expect(batchColumns).toContain("reset_required");
+    expect(batchColumns).not.toContain("counts_changed");
+    expect(await fetchColumns("ledger_change_items")).toEqual([]);
   });
 
   it("keeps effective_date as a generated UTC-fallback column", async () => {

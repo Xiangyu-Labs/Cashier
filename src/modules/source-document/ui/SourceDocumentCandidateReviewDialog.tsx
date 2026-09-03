@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Loader2, RotateCcw } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { formatCurrencyAmount } from "@/lib/format/currency";
@@ -15,6 +15,8 @@ import type {
   SourceDocumentCandidateReviewRevisionDto,
 } from "@/modules/source-document/contracts";
 import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
+import { ReviewPanelSkeleton } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanelSkeleton";
+import { SourceDocumentReviewDialogContent } from "./SourceDocumentReviewDialogContent";
 
 interface SourceDocumentCandidateReviewDialogProps {
   ledgerId: string;
@@ -50,14 +52,7 @@ export function SourceDocumentCandidateReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
-      <DialogContent
-        variant="detail"
-        className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(88dvh,760px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-lg"
-        aria-describedby={undefined}
-        hideCloseButton={isPending}
-        onEscapeKeyDown={(event) => isPending && event.preventDefault()}
-        onPointerDownOutside={(event) => isPending && event.preventDefault()}
-      >
+      <SourceDocumentReviewDialogContent isPending={isPending}>
         <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <DialogTitle className="text-base">{t("title")}</DialogTitle>
         </DialogHeader>
@@ -69,8 +64,8 @@ export function SourceDocumentCandidateReviewDialog({
               aria-busy="true"
               aria-label={t("loading")}
             >
-              <RevisionPanelSkeleton />
-              <RevisionPanelSkeleton />
+              <ReviewPanelSkeleton />
+              <ReviewPanelSkeleton />
             </div>
           ) : reviewQuery.isError || reviewQuery.data == null ? (
             <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
@@ -129,39 +124,9 @@ export function SourceDocumentCandidateReviewDialog({
         {isPending && (
           <div className="absolute inset-0 z-50 cursor-wait bg-surface/20" aria-hidden />
         )}
-      </DialogContent>
+      </SourceDocumentReviewDialogContent>
     </Dialog>
   );
-}
-
-function RevisionPanelSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-        <Skeleton className="h-5 w-20" />
-      </div>
-      <div className="space-y-0 divide-y divide-border">
-        {[0, 1, 2].map((row) => (
-          <div key={row} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-2/3" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
-            <Skeleton className="h-4 w-16 shrink-0" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cn("animate-pulse rounded bg-surface2", className)} />;
 }
 
 function RevisionPanel({

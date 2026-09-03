@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Check, Loader2, ShieldCheck, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import {
@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { summarizeReviewEntries } from "./source-document-duplicate-review.utils";
 import { ReviewPanel } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanel";
 import { ReviewPanelSkeleton } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanelSkeleton";
+import { SourceDocumentReviewDialogContent } from "./SourceDocumentReviewDialogContent";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -123,14 +124,9 @@ export function SourceDocumentDuplicateReviewDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
-        <DialogContent
-          variant="detail"
-          className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(88dvh,760px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-lg"
-          aria-describedby={undefined}
-          hideCloseButton={isPending}
-          onEscapeKeyDown={(event) => isPending && event.preventDefault()}
-          onPointerDownOutside={(event) => isPending && event.preventDefault()}
-          {...(onExitComplete !== undefined ? { onExitComplete } : {})}
+        <SourceDocumentReviewDialogContent
+          isPending={isPending}
+          {...(onExitComplete === undefined ? {} : { onExitComplete })}
         >
           <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
             <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
@@ -229,7 +225,7 @@ export function SourceDocumentDuplicateReviewDialog({
           {isPending && (
             <div className="absolute inset-0 z-50 cursor-wait bg-surface/20" aria-hidden />
           )}
-        </DialogContent>
+        </SourceDocumentReviewDialogContent>
       </Dialog>
       <ConfirmDialog
         open={discardConfirmOpen}

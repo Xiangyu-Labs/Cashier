@@ -22,8 +22,21 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("@/modules/source-document/ui/SourceDocumentImageModal", () => ({
-  SourceDocumentImageModal: ({ open, initialIndex }: { open: boolean; initialIndex: number }) => (
-    <div data-testid="image-viewer-state" data-open={open} data-index={initialIndex} />
+  SourceDocumentImageModal: ({
+    open,
+    initialIndex,
+    images,
+  }: {
+    open: boolean;
+    initialIndex: number;
+    images: Array<{ storedFileId?: string }>;
+  }) => (
+    <div
+      data-testid="image-viewer-state"
+      data-open={open}
+      data-index={initialIndex}
+      data-file-ids={images.map((image) => image.storedFileId).join(",")}
+    />
   ),
 }));
 
@@ -76,7 +89,6 @@ function renderWithQueryClient(element: ReactElement) {
 
 function renderDetails(count: number, isLoadingImages = false) {
   const sourceDocument = documentWithFiles(count);
-  const urls = new Map(sourceDocument.files.map((file, index) => [file.id, `blob:image-${index}`]));
   return renderWithQueryClient(
     <SourceDocumentViewDetails
       sourceDocument={sourceDocument}
@@ -92,7 +104,6 @@ function renderDetails(count: number, isLoadingImages = false) {
       onSelectAllEntries={vi.fn()}
       onToggleSelectionMode={vi.fn()}
       readOnly
-      cachedImageUrls={urls}
     />
   );
 }
@@ -104,12 +115,14 @@ describe("SourceDocumentViewDetails image stage", () => {
     expect(screen.queryByTestId("source-document-image-stage")).not.toBeInTheDocument();
   });
 
-  it("hides thumbnails for a single cached image", () => {
+  it("uses the authenticated stored-file route and hides thumbnails for one image", () => {
     renderDetails(1);
     const stage = screen.getByTestId("source-document-image-stage");
     expect(stage).toHaveClass("aspect-[4/3]");
-    expect(stage.querySelector("img")).toHaveClass("object-contain");
+    expect(stage.querySelector("img")).toHaveAttribute("src", "/api/stored-files/file-1");
+    expect(stage.querySelector("img")).not.toHaveAttribute("src", expect.stringContaining("blob:"));
     expect(screen.getAllByRole("button", { name: /图片 1|image 1/i })).toHaveLength(1);
+    expect(screen.getByTestId("image-viewer-state")).toHaveAttribute("data-file-ids", "file-1");
   });
 
   it("switches thumbnails independently and opens the viewer at the active index", () => {
@@ -121,6 +134,10 @@ describe("SourceDocumentViewDetails image stage", () => {
     fireEvent.click(screen.getByTestId("source-document-image-stage"));
     expect(screen.getByTestId("image-viewer-state")).toHaveAttribute("data-open", "true");
     expect(screen.getByTestId("image-viewer-state")).toHaveAttribute("data-index", "1");
+    expect(screen.getByTestId("image-viewer-state")).toHaveAttribute(
+      "data-file-ids",
+      "file-1,file-2"
+    );
   });
 });
 

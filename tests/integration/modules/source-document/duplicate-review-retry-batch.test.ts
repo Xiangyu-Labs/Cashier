@@ -10,7 +10,6 @@ import {
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import {
   calculateCompletedSourceDocumentTotal,
-  countSourceDocumentsByStatus,
   getTargetSourceDocument,
   listPendingDuplicateReviews,
 } from "@/application/adapters/postgres/source-document-reads";
@@ -80,7 +79,7 @@ async function createDuplicatePendingDocument(
 }
 
 describe("duplicate review lifecycle", () => {
-  it("counts duplicate pending amounts immediately and keeps them in attention", async () => {
+  it("counts duplicate pending amounts immediately", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-stats");
     const matched = await postgresLedgerProjectionAdapter.createManual({
@@ -100,9 +99,6 @@ describe("duplicate review lifecycle", () => {
       [entry],
       reviewSnapshot(matched)
     );
-
-    const counts = await countSourceDocumentsByStatus(ledgerId);
-    expect(counts.attentionCount).toBe(1);
 
     const totals = await Promise.all([
       calculateCompletedSourceDocumentTotal({ ledgerId }),

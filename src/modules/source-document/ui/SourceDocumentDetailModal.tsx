@@ -67,7 +67,6 @@ interface SourceDocumentDetailModalProps {
   isAbandoning?: boolean;
   isCancelling?: boolean;
   readOnly?: boolean;
-  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
@@ -99,7 +98,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   isAbandoning = false,
   isCancelling = false,
   readOnly = false,
-  cachedImageUrls,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -274,7 +272,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   isEditMode={isEditMode}
                   onAddEntry={handleOpenAddEntry}
                   onDeleteEntry={handleRequestDeleteEntry}
-                  {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
                 />
               </>
             )}

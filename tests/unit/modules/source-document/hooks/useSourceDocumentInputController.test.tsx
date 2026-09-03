@@ -24,7 +24,6 @@ vi.mock("@/modules/source-document/hooks/useSourceDocumentSubmitMutations", () =
 import { useSourceDocumentInputController } from "@/modules/source-document/hooks/useSourceDocumentInputController";
 
 const messages = {
-  uploadError: "Upload failed",
   retrySuccess: "Retried",
   retryError: "Retry failed",
   imageTooLarge: (fileName: string) => `${fileName} is too large`,
@@ -49,9 +48,6 @@ describe("useSourceDocumentInputController", () => {
         image: {
           data: "data:image/png;base64,AQ==",
           mimeType: "image/png",
-          originalData: "data:image/png;base64,AQ==",
-          originalMimeType: "image/png",
-          isEdited: false,
         },
       },
     ]);

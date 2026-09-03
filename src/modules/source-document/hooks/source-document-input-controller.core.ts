@@ -6,12 +6,7 @@ import type {
 } from "./source-document-input-controller.types";
 
 export function toEditableImage(image: SourceDocumentModalImage): EditableInputImage {
-  return {
-    ...image,
-    originalData: image.data,
-    originalMimeType: image.mimeType,
-    isEdited: false,
-  };
+  return { ...image };
 }
 
 export function toEditableImages(images?: SourceDocumentModalImage[]) {

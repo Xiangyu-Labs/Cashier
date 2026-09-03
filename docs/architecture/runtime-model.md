@@ -1,6 +1,6 @@
 # Runtime Model
 
-This document describes Cashier's current processing and client-cache boundaries. It is intended
+This document describes Cashier's current processing and client refresh boundaries. It is intended
 for contributors, not as a deployment guarantee.
 
 ## Source-document processing
@@ -28,35 +28,29 @@ and completed source documents. Server-side keyset pagination orders records by
 
 ## Refresh ownership
 
-Each ledger has a monotonic bigint sync version. Visible tabs request bounded deltas and apply
-canonical changed documents and tombstones to loaded filter caches. `BroadcastChannel` distributes
-versioned results as an optimization. Polling pauses while the page is hidden or offline and wakes
-after relevant mutations.
+Each ledger has a monotonic bigint sync version. Stream and detail observers share one ledger-scoped
+React Query refresh request. The server summarizes all retained change batches after the observer's
+version in one query, including category, settings, and statistics invalidation flags.
 
-A full snapshot is fetched on first use, after a retained-log gap or `resetRequired`, and during the
-periodic full validation. Delta refresh remains authoritative between snapshots.
+The summary also reports whether processing documents remain. While transitional work exists,
+visible pages poll every three seconds; background polling is disabled, and focus or reconnect
+triggers a refresh. Invalid or future versions, retained-log gaps, and `resetRequired` batches cause
+the client to invalidate all affected ledger projections instead of assuming a continuous history.
 
-## Startup preview cache
+React Query request deduplication gives multiple Stream and detail observers a single in-flight
+refresh per ledger. Stream keyset generation and restart checks remain responsible for pagination
+cursor consistency.
 
-IndexedDB database `cashier-cache` stores a short-lived, read-only startup preview:
-
-- The latest ledger snapshot, bounded by `LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT`.
-- Viewed document image blobs, bounded to 100 images and 10 MiB with LRU eviction.
-
-The preview is shown only while server bootstrap is loading and is replaced by authoritative server
-data. Cache-format changes invalidate the local database rather than migrating it.
+## Client caching
 
 Cashier does not provide offline availability. The service worker precaches immutable assets but
 does not serve navigation requests or cached API responses.
 
-## Optimistic cache transactions
-
-Client mutations are operation-scoped overlays over canonical Stream entities. Each operation has
-an ID, forward and inverse patches, a base version, and affected projections.
-
-On commit, the acknowledged operation is removed and later operations replay over the new canonical
-base. On rollback, the failed patch is inverted and surviving operations replay. Expensive derived
-data such as statistics and calendar totals can still use targeted invalidation.
+Source-document images are not persisted in IndexedDB or a service-worker cache. Every view uses the
+authenticated `/api/stored-files/{fileId}` route, whose responses use `Cache-Control: private,
+no-store`. Reopening an image therefore performs a new authorized read. On the first startup after
+upgrading from the former persistent image-cache implementation, the browser deletes the retired
+`cashier-cache` IndexedDB database.
 
 ## Storage boundaries
 

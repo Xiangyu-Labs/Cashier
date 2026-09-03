@@ -52,18 +52,6 @@ const optionalSearchSchema = z.preprocess(
   (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
   z.string().max(MAX_SEARCH_LENGTH).optional()
 );
-const sourceDocumentCursorSchema = z.string().superRefine((cursor, ctx) => {
-  const [effectiveDate, createdAt, id, ...extra] = cursor.split("|");
-  if (
-    extra.length > 0 ||
-    dateStringSchema.safeParse(effectiveDate).success === false ||
-    typeof createdAt !== "string" ||
-    Number.isNaN(Date.parse(createdAt)) ||
-    uuidSchema.safeParse(id).success === false
-  ) {
-    ctx.addIssue({ code: "custom", message: "Invalid source document cursor" });
-  }
-});
 const codePointLimitedText = (max: number) =>
   z.string().refine((value) => [...value].length <= max, `Must contain at most ${max} characters`);
 const optionalTitleSchema = codePointLimitedText(200)
@@ -387,18 +375,6 @@ const validateFilterRange = (
   }
 };
 
-export const listSourceDocumentsInputSchema = strictObjectSchema({
-  status: sourceDocumentStatusSchema.optional(),
-  startDate: optionalDateStringSchema,
-  endDate: optionalDateStringSchema,
-  minAmount: optionalQueryDecimalSchema,
-  maxAmount: optionalQueryDecimalSchema,
-  cursor: sourceDocumentCursorSchema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  includeFiles: z.boolean().optional().default(false),
-  includeEntries: z.boolean().default(false),
-}).superRefine(validateFilterRange);
-
 const streamPageCursorSchema = z
   .string()
   .regex(/^v\d+\|/, "Invalid stream cursor format")
@@ -425,11 +401,6 @@ export const streamPageInputSchema = strictObjectSchema({
   cursor: streamPageCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(20).default(20),
 }).superRefine(validateFilterRange);
-
-export const pendingSourceDocumentsInputSchema = strictObjectSchema({
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  cursor: sourceDocumentCursorSchema.optional(),
-});
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({
   title: optionalTitleSchema,
@@ -486,12 +457,7 @@ export const splitSourceDocumentInputSchema = strictObjectSchema({
   entryDate: dateStringSchema,
 });
 
-export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
-  title: optionalTitleSchema,
-  entryDate: optionalDateStringSchema,
-}).refine((value) => value.title !== undefined || value.entryDate !== undefined, {
-  message: "At least one source document patch is required",
-});
+export const batchUpdateSourceDocumentsInputSchema = updateSourceDocumentInputSchema;
 
 export const createQuickEntryInputSchema = strictObjectSchema({
   categoryId: uuidSchema,
@@ -525,9 +491,6 @@ export function parseOperationIdentity(input: unknown): z.infer<typeof operation
   return parseSourceDocumentContract(operationIdentitySchema, input);
 }
 
-export const parseListSourceDocumentsInput = (input: unknown) =>
-  parseSourceDocumentContract(listSourceDocumentsInputSchema, input);
-
 export type CreateSourceDocumentInputContract = z.infer<typeof createSourceDocumentInputSchema>;
 export type RetrySourceDocumentInputContract = z.infer<typeof retrySourceDocumentInputSchema>;
 export type CreateSourceDocumentUploadPlanInput = z.infer<
@@ -536,7 +499,6 @@ export type CreateSourceDocumentUploadPlanInput = z.infer<
 export type FinalizeSourceDocumentUploadInput = z.infer<
   typeof finalizeSourceDocumentUploadInputSchema
 >;
-export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

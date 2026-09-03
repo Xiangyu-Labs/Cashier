@@ -8,13 +8,22 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("mobile long-flow dialog policy", () => {
   it.each([
     "src/modules/source-document/ui/SourceDocumentEditRetryDialog.tsx",
-    "src/modules/source-document/ui/SourceDocumentCandidateReviewDialog.tsx",
+    "src/modules/source-document/ui/SourceDocumentReviewDialogContent.tsx",
     "src/modules/workspace/ui/NewRecordDialog.tsx",
     "src/modules/auth/ui/CredentialChangeDialog.tsx",
   ])("uses a 100dvh mobile surface in %s", (path) => {
     const source = read(path);
     expect(source).toContain("h-[100dvh]");
     expect(source).toContain("sm:");
+  });
+
+  it("uses the shared mobile shell for both source-document review dialogs", () => {
+    for (const path of [
+      "src/modules/source-document/ui/SourceDocumentCandidateReviewDialog.tsx",
+      "src/modules/source-document/ui/SourceDocumentDuplicateReviewDialog.tsx",
+    ]) {
+      expect(read(path)).toContain("SourceDocumentReviewDialogContent");
+    }
   });
 
   it.each([

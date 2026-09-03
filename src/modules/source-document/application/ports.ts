@@ -15,12 +15,12 @@ import type {
 import type {
   BatchUpdateSourceDocumentsResultDto,
   SaveSourceDocumentChangesResultDto,
+  SourceDocumentCandidateReviewDto,
   SplitSourceDocumentResultDto,
-  SourceDocumentCountsDto,
   SourceDocumentDto,
+  SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
-  UpdateSourceDocumentResultDto,
 } from "../contracts";
 
 interface SourceDocumentFilterInput {
@@ -50,16 +50,14 @@ export interface SourceDocumentReadPort {
     total: string;
     unconvertedCount: number;
   }>;
-  counts(ledgerId: string): Promise<SourceDocumentCountsDto>;
-  pendingSummary(ledgerId: string): Promise<{
-    processingCount: number;
-    candidatePendingCount: number;
-    duplicatePendingCount: number;
-    anomalyCount: number;
-    failedCount: number;
-    cancelledCount: number;
-    total: number;
-  }>;
+  candidateReview(
+    ledgerId: string,
+    sourceDocumentId: string
+  ): Promise<SourceDocumentCandidateReviewDto>;
+  duplicateReview(
+    ledgerId: string,
+    sourceDocumentId: string
+  ): Promise<SourceDocumentDuplicateReviewDetailDto>;
   listPendingDuplicateReviews(
     ledgerId: string,
     sourceDocumentIds: readonly string[]
@@ -75,11 +73,6 @@ export interface SourceDocumentReadPort {
 }
 
 export interface SourceDocumentUpdatePort {
-  update(input: {
-    ledgerId: string;
-    sourceDocumentId: string;
-    data: UpdateSourceDocumentInput;
-  }): Promise<UpdateSourceDocumentResultDto>;
   batchUpdate(input: {
     ledgerId: string;
     sourceDocumentIds: string[];
@@ -210,34 +203,16 @@ export interface CredentialSourceDocumentReadPort {
   ): Promise<CredentialSourceDocumentStatusResult | null>;
 }
 
-interface LedgerChangeBatchContract {
-  version: bigint;
-  resetRequired: boolean;
-  countsChanged: boolean;
-  categoriesChanged: boolean;
-  settingsChanged: boolean;
-  statsChanged: boolean;
-}
-
 export interface LedgerChangeReadPort {
   getVersion(ledgerId: string): Promise<bigint>;
-  getSnapshotMetadata(ledgerId: string): Promise<{
-    version: bigint;
-    recordCount: number;
+  summarizeChanges(input: { ledgerId: string; afterVersion: bigint }): Promise<{
+    currentVersion: bigint;
+    firstRetainedVersion: bigint | null;
+    lastRetainedVersion: bigint | null;
+    categoriesChanged: boolean;
+    settingsChanged: boolean;
+    statsChanged: boolean;
+    resetRequired: boolean;
+    hasTransitionalWork: boolean;
   }>;
-  listBatches(input: {
-    ledgerId: string;
-    afterVersion: bigint;
-    throughVersion: bigint;
-    limit: number;
-  }): Promise<LedgerChangeBatchContract[]>;
-  listChangedSourceDocumentIds(input: {
-    ledgerId: string;
-    versions: bigint[];
-    limit: number;
-  }): Promise<string[]>;
-}
-
-export interface LedgerDeltaPorts extends SourceDocumentQueryPorts {
-  changes: LedgerChangeReadPort;
 }

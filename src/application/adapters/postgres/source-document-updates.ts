@@ -4,21 +4,16 @@ import { ConflictError, NotFoundError } from "@/lib/errors";
 import { round } from "@/lib/money/decimal";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import type {
-  LedgerProjectionEntryContract,
-  LedgerProjectionEntryFingerprint,
-} from "@/application/contracts";
+import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import type {
   BatchUpdateSourceDocumentsResultDto,
   SaveSourceDocumentChangesResultDto,
-  UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import type {
   BatchUpdateSourceDocumentsInput as BatchUpdateSourceDocumentsPayload,
   UpdateSourceDocumentInput as UpdateSourceDocumentPayload,
 } from "@/modules/source-document/contract-schemas";
 import { postgresFxRateBook } from "./exchange-rate";
-import { postgresLedgerProjectionAdapter } from "./ledger-projections";
 import { replaceActiveProjectionInTransaction } from "./ledger-projections";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { UpdateLedgerEntryInput } from "@/modules/ledger/contract-schemas";
@@ -32,12 +27,6 @@ function whereSourceDocumentNotDeleted(ledgerId: string) {
 
 function whereSourceDocumentNotDeletedId(ledgerId: string, sourceDocumentId: string) {
   return and(whereSourceDocumentNotDeleted(ledgerId), eq(sourceDocuments.id, sourceDocumentId))!;
-}
-
-interface UpdateSourceDocumentInput {
-  ledgerId: string;
-  sourceDocumentId: string;
-  data: UpdateSourceDocumentPayload;
 }
 
 interface BatchUpdateSourceDocumentsInput {
@@ -80,20 +69,6 @@ type QueryExecutor = Pick<typeof db, "select">;
 
 function normalizeCurrency(currency: string | null, fallback = "CNY"): string {
   return currency != null && currency !== "" ? currency : fallback;
-}
-
-function toFingerprint(entry: {
-  id: string;
-  amount: string;
-  currency: string | null;
-  sourceDocumentRevisionId: string | null;
-}): LedgerProjectionEntryFingerprint {
-  return {
-    id: entry.id,
-    amount: entry.amount,
-    currency: entry.currency,
-    sourceDocumentRevisionId: entry.sourceDocumentRevisionId,
-  };
 }
 
 function projectionEntriesChanged(
@@ -297,176 +272,6 @@ export async function saveSourceDocumentChangesAtomically(
   });
 
   return loadAuthoritativeSourceDocument(input.ledgerId, input.sourceDocumentId, activeRevisionId);
-}
-
-async function updateNonManualDocumentWithDate(input: {
-  ledgerId: string;
-  sourceDocumentId: string;
-  data: UpdateSourceDocumentPayload;
-  initialDocument: {
-    type: "ai_parsed" | "manual";
-    activeRevisionId: string | null;
-    pendingRevisionId: string | null;
-  };
-  plan: DateReestimatePlan;
-}): Promise<boolean> {
-  const updatedDocuments = await db.transaction(async (tx) => {
-    const lockedLedger = await lockLedgerForUpdate(tx, input.ledgerId);
-    if (lockedLedger.mainCurrency !== input.plan.mainCurrency) {
-      throw new ConflictError("Ledger currency changed before the date update");
-    }
-
-    const lockedDocument = await lockSourceDocumentForUpdate(
-      tx,
-      input.ledgerId,
-      input.sourceDocumentId
-    );
-    if (
-      lockedDocument.type !== input.initialDocument.type ||
-      lockedDocument.activeRevisionId !== input.initialDocument.activeRevisionId ||
-      lockedDocument.pendingRevisionId !== input.initialDocument.pendingRevisionId
-    ) {
-      throw new ConflictError("Source document changed before the date update");
-    }
-
-    const currentEntries = await loadProjectionEntriesForDocuments(tx, input.ledgerId, [
-      input.sourceDocumentId,
-    ]);
-    if (projectionEntriesChanged(input.plan.initialEntries, currentEntries)) {
-      throw new ConflictError("Ledger entries changed before the date update");
-    }
-    if (
-      lockedDocument.activeRevisionId == null &&
-      lockedDocument.pendingRevisionId == null &&
-      currentEntries.length === 0
-    ) {
-      return tx
-        .update(sourceDocuments)
-        .set({
-          updatedAt: new Date(),
-          ...(input.data.title === undefined ? {} : { title: input.data.title }),
-          ...(input.data.entryDate === undefined ? {} : { entryDate: input.data.entryDate }),
-        })
-        .where(whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId))
-        .returning({ id: sourceDocuments.id });
-    }
-    if (lockedDocument.activeRevisionId == null || lockedDocument.pendingRevisionId != null) {
-      throw new ConflictError("Source document has processing work");
-    }
-    await replaceActiveProjectionInTransaction(tx, {
-      ledgerId: input.ledgerId,
-      sourceDocumentId: input.sourceDocumentId,
-      expectedActiveRevisionId: lockedDocument.activeRevisionId,
-      revisionId: crypto.randomUUID(),
-      entries: currentEntries.map((entry, index) =>
-        toManualProjectionEntry(entry, input.plan.conversions[index]!, input.plan.mainCurrency)
-      ),
-      ...(input.data.title === undefined ? {} : { title: input.data.title }),
-      ...(input.data.entryDate === undefined ? {} : { entryDate: input.data.entryDate }),
-    });
-    return [{ id: input.sourceDocumentId }];
-  });
-
-  return updatedDocuments.length > 0;
-}
-
-export async function updateSourceDocument({
-  ledgerId,
-  sourceDocumentId,
-  data,
-}: UpdateSourceDocumentInput): Promise<UpdateSourceDocumentResultDto> {
-  const document = await db.query.sourceDocuments.findFirst({
-    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
-    columns: {
-      type: true,
-      activeRevisionId: true,
-      pendingRevisionId: true,
-    },
-  });
-  if (document == null) {
-    return { sourceDocumentId, updated: false };
-  }
-
-  if (document.type === "manual" && document.activeRevisionId != null) {
-    if (data.entryDate === undefined) {
-      const updated = await db.transaction(async (tx) => {
-        await lockLedgerForUpdate(tx, ledgerId);
-        const locked = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-        if (locked.activeRevisionId !== document.activeRevisionId || locked.type !== "manual") {
-          throw new ConflictError("Source document changed before the title update");
-        }
-        return tx
-          .update(sourceDocuments)
-          .set({ title: data.title!, updatedAt: new Date() })
-          .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
-          .returning({ id: sourceDocuments.id });
-      });
-      return { sourceDocumentId, updated: updated.length === 1 };
-    }
-
-    const plan = await prepareDateReestimate(ledgerId, [sourceDocumentId], data.entryDate);
-    const conversionByEntryId = new Map(
-      plan.initialEntries.map((entry, index) => [entry.id, plan.conversions[index]!] as const)
-    );
-    const activeEntries = plan.initialEntries.filter(
-      (entry) => entry.sourceDocumentRevisionId === document.activeRevisionId
-    );
-    await postgresLedgerProjectionAdapter.replaceManual({
-      ledgerId,
-      sourceDocumentId,
-      expectedActiveRevisionId: document.activeRevisionId,
-      expectedMainCurrency: plan.mainCurrency,
-      expectedProjection: plan.initialEntries.map(toFingerprint),
-      projectionConversions: plan.initialEntries.map((entry, index) => ({
-        ledgerEntryId: entry.id,
-        convertedAmount: roundToCurrency(
-          plan.conversions[index]!.convertedAmount,
-          plan.mainCurrency
-        ),
-        exchangeRate: round(plan.conversions[index]!.exchangeRate, 12),
-      })),
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
-      entries: activeEntries.map((entry) => {
-        const conversion = conversionByEntryId.get(entry.id);
-        if (conversion == null)
-          throw new ConflictError("Ledger entries changed before the date update");
-        return toManualProjectionEntry(entry, conversion, plan.mainCurrency);
-      }),
-    });
-    return { sourceDocumentId, updated: true };
-  }
-
-  if (data.entryDate !== undefined) {
-    const plan = await prepareDateReestimate(ledgerId, [sourceDocumentId], data.entryDate);
-    const updated = await updateNonManualDocumentWithDate({
-      ledgerId,
-      sourceDocumentId,
-      data,
-      initialDocument: document,
-      plan,
-    });
-    return { sourceDocumentId, updated };
-  }
-
-  const updatePatch = {
-    updatedAt: new Date(),
-    ...(data.title !== undefined ? { title: data.title } : {}),
-  };
-  const updatedDocuments = await db.transaction(async (tx) => {
-    await lockLedgerForUpdate(tx, ledgerId);
-    await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-    return tx
-      .update(sourceDocuments)
-      .set(updatePatch)
-      .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
-      .returning({ id: sourceDocuments.id });
-  });
-
-  return {
-    sourceDocumentId,
-    updated: updatedDocuments.length > 0,
-  };
 }
 
 export async function batchUpdateSourceDocuments({

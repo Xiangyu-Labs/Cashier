@@ -30,16 +30,7 @@ describe("useSourceDocumentInputDraft", () => {
     act(() => result.current.removeImage(0));
     expect(result.current.isDirty).toBe(true);
 
-    act(() =>
-      result.current.setImages(() =>
-        initialData.images.map((image) => ({
-          ...image,
-          originalData: image.data,
-          originalMimeType: image.mimeType,
-          isEdited: false,
-        }))
-      )
-    );
+    act(() => result.current.setImages(() => initialData.images.map((image) => ({ ...image }))));
     expect(result.current.isDirty).toBe(false);
   });
 });

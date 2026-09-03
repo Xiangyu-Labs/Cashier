@@ -4,7 +4,6 @@ const SOURCE_DOCUMENT_STATUSES = [
   "anomaly",
   "failed",
   "cancelled",
-  "deleted",
   "candidate_pending",
   "duplicate_pending",
 ] as const;
@@ -25,9 +24,8 @@ export const SourceDocumentStatus = {
   Anomaly: SOURCE_DOCUMENT_STATUSES[2],
   Failed: SOURCE_DOCUMENT_STATUSES[3],
   Cancelled: SOURCE_DOCUMENT_STATUSES[4],
-  Deleted: SOURCE_DOCUMENT_STATUSES[5],
-  CandidatePending: SOURCE_DOCUMENT_STATUSES[6],
-  DuplicatePending: SOURCE_DOCUMENT_STATUSES[7],
+  CandidatePending: SOURCE_DOCUMENT_STATUSES[5],
+  DuplicatePending: SOURCE_DOCUMENT_STATUSES[6],
 } as const;
 
 export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];

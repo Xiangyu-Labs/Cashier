@@ -7,22 +7,13 @@ import type {
   SourceDocumentTypeValue,
   SourceDocumentLightDto,
   SourceDocumentListItemDto,
-  SourceDocumentPageDto,
   SourceDocumentCandidateComparisonDto,
   SourceDocumentCandidateProjectionSummary,
-  PendingSourceDocumentsResponseDto,
 } from "@/modules/source-document/contracts";
-import type { SourceDocumentCollectionDto } from "@/modules/source-document/document-contracts";
 import { SourceDocumentStatus, SourceDocumentType } from "@/modules/source-document/contracts";
 import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
 
 describe("source-document contract types", () => {
-  it("uses list item DTOs for collection items", () => {
-    expectTypeOf<
-      SourceDocumentCollectionDto["items"][number]
-    >().toEqualTypeOf<SourceDocumentListItemDto>();
-  });
-
   it("exposes stored-file identities on light DTOs", () => {
     type LightHasFiles = "files" extends keyof SourceDocumentLightDto ? true : false;
     const lightHasFiles: LightHasFiles = true;
@@ -34,18 +25,6 @@ describe("source-document contract types", () => {
     const text: SourceDocumentListItemDto["text"] = null;
 
     expectTypeOf(text).toEqualTypeOf<null>();
-  });
-
-  it("uses list item DTOs for paginated page items", () => {
-    expectTypeOf<
-      SourceDocumentPageDto["items"][number]
-    >().toEqualTypeOf<SourceDocumentListItemDto>();
-  });
-
-  it("uses list item DTOs inside pending groups", () => {
-    expectTypeOf<
-      PendingSourceDocumentsResponseDto["groups"]["processing"][number]["sourceDocument"]
-    >().toEqualTypeOf<SourceDocumentListItemDto>();
   });
 
   it("exports metadata aliases from contracts", () => {

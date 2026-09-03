@@ -1,33 +1,24 @@
 "use client";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { FileText, ImagePlay, Maximize2 } from "lucide-react";
-import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { cn } from "@/lib/utils";
-import { queryKeys } from "@/lib/query-keys";
-import { useCachedSourceImages } from "@/modules/source-document/hooks/use-cached-source-images";
 import { storedFileReadUrl } from "../../../stored-file-read";
 import { SourceDocumentImageModal } from "../../SourceDocumentImageModal";
 
 interface SourceDocumentRawEvidenceProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
-  readOnly: boolean;
   isLoadingImages: boolean;
-  cachedImageUrls?: ReadonlyMap<string, string> | undefined;
 }
 
 export function SourceDocumentRawEvidence({
   sourceDocument,
-  readOnly,
   isLoadingImages,
-  cachedImageUrls,
 }: SourceDocumentRawEvidenceProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCard = useTranslations("SourceDocumentCard");
-  const queryClient = useQueryClient();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
@@ -35,19 +26,6 @@ export function SourceDocumentRawEvidence({
   const hasImages = files.length > 0;
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
   const selectedImageIndex = Math.min(activeImageIndex, Math.max(files.length - 1, 0));
-
-  const ledger = queryClient.getQueryData<LedgerDto>(queryKeys.ledger(sourceDocument.ledgerId));
-  const imageCacheScope = ledger == null ? null : `${ledger.userId}:${sourceDocument.ledgerId}`;
-  const { imageUrls: fetchedImageUrls, isLoading: fetchedImagesLoading } = useCachedSourceImages({
-    snapshotKey: imageCacheScope,
-    files,
-    documentId: sourceDocument.id,
-    documentTimestamp: sourceDocument.entryDate ?? sourceDocument.createdAt,
-    enabled: !readOnly && files.length > 0 && imageCacheScope != null,
-  });
-  const cachedUrls = readOnly && cachedImageUrls != null ? cachedImageUrls : fetchedImageUrls;
-  const useDirectImageUrls = !readOnly && imageCacheScope == null;
-  const showImageLoading = isLoadingImages || (!readOnly && fetchedImagesLoading);
 
   return (
     <>
@@ -76,14 +54,12 @@ export function SourceDocumentRawEvidence({
                   <ImagePlay className="h-3 w-3 text-primary/60" />
                   {tCard("image")}
                 </h5>
-                {showImageLoading ? (
+                {isLoadingImages ? (
                   <div
                     data-testid="source-document-image-stage-loading"
                     className="aspect-[4/3] w-full animate-pulse rounded-md border border-border/50 bg-border/40 sm:max-h-[52dvh]"
                   />
-                ) : files[selectedImageIndex] == null ? null : cachedUrls.get(
-                    files[selectedImageIndex].id
-                  ) != null || useDirectImageUrls ? (
+                ) : files[selectedImageIndex] == null ? null : (
                   <>
                     <button
                       type="button"
@@ -92,22 +68,12 @@ export function SourceDocumentRawEvidence({
                       onClick={() => setViewerIndex(selectedImageIndex)}
                       aria-label={tCard("imageAlt", { index: selectedImageIndex + 1 })}
                     >
-                      {cachedUrls.get(files[selectedImageIndex].id) != null ? (
-                        <Image
-                          src={cachedUrls.get(files[selectedImageIndex].id)!}
-                          alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
-                          fill
-                          unoptimized
-                          className="object-contain p-2"
-                        />
-                      ) : useDirectImageUrls ? (
-                        <Image
-                          src={storedFileReadUrl(files[selectedImageIndex].id)}
-                          alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
-                          fill
-                          className="object-contain p-2"
-                        />
-                      ) : null}
+                      <Image
+                        src={storedFileReadUrl(files[selectedImageIndex].id)}
+                        alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
+                        fill
+                        className="object-contain p-2"
+                      />
                       <span className="fine-pointer-reveal absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-md bg-text/70 text-bg opacity-0 transition-opacity duration-[var(--motion-feedback)] group-focus-visible:opacity-100 group-active:opacity-100">
                         <Maximize2 className="h-4 w-4" />
                       </span>
@@ -118,9 +84,6 @@ export function SourceDocumentRawEvidence({
                         aria-label={tCard("image")}
                       >
                         {files.map((file, index) => {
-                          const cachedUrl = cachedUrls.get(file.id);
-                          const src =
-                            cachedUrl ?? (useDirectImageUrls ? storedFileReadUrl(file.id) : null);
                           return (
                             <button
                               key={file.id}
@@ -135,22 +98,19 @@ export function SourceDocumentRawEvidence({
                               aria-label={tCard("imageAlt", { index: index + 1 })}
                               aria-current={selectedImageIndex === index ? "true" : undefined}
                             >
-                              {src != null ? (
-                                <Image
-                                  src={src}
-                                  alt=""
-                                  fill
-                                  unoptimized={cachedUrl != null}
-                                  className="object-cover"
-                                />
-                              ) : null}
+                              <Image
+                                src={storedFileReadUrl(file.id)}
+                                alt=""
+                                fill
+                                className="object-cover"
+                              />
                             </button>
                           );
                         })}
                       </div>
                     ) : null}
                   </>
-                ) : null}
+                )}
               </div>
             )}
 
@@ -170,9 +130,9 @@ export function SourceDocumentRawEvidence({
 
       <SourceDocumentImageModal
         images={files.map((file) => ({
-          data: cachedUrls.get(file.id) ?? "",
+          data: "",
           mimeType: file.contentType,
-          ...(!readOnly && cachedUrls.get(file.id) == null ? { storedFileId: file.id } : {}),
+          storedFileId: file.id,
         }))}
         initialIndex={viewerIndex ?? 0}
         open={viewerIndex !== null}

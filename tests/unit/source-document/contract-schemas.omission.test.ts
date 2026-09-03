@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   createSourceDocumentInputSchema,
   createSourceDocumentInputSchemaV1,
-  listSourceDocumentsInputSchema,
   retrySourceDocumentInputSchema,
   updateSourceDocumentInputSchema,
   batchUpdateSourceDocumentsInputSchema,
@@ -27,27 +26,6 @@ describe("contract schema omission semantics", () => {
 
     expect(Object.prototype.hasOwnProperty.call(createParsed, "timezone")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(retryParsed, "timezone")).toBe(false);
-  });
-
-  it("omits undefined optional keys in source-document list schema", () => {
-    const parsed = listSourceDocumentsInputSchema.parse({
-      status: undefined,
-      limit: "10",
-    });
-
-    expect(parsed.limit).toBe(10);
-    expect(parsed.includeEntries).toBe(false);
-    expect(parsed.includeFiles).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(parsed, "status")).toBe(false);
-  });
-
-  it("allows the authenticated startup-preview snapshot reader to request file metadata", () => {
-    const parsed = listSourceDocumentsInputSchema.parse({
-      limit: 100,
-      includeEntries: true,
-      includeFiles: true,
-    });
-    expect(parsed).toMatchObject({ limit: 100, includeEntries: true, includeFiles: true });
   });
 
   it("keeps the API v1 Shortcut contract compact and normalizes ISO entry dates", () => {

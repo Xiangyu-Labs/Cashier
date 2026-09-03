@@ -35,7 +35,6 @@ describe("runtimeEnv", () => {
       AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS: "11",
       AUTH_PASSWORD_IP_MAX_ATTEMPTS: "51",
       AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS: "601",
-      LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT: "301",
       AUTH_EMAIL_FROM: "Cashier <security@example.com>",
       DISABLE_REGISTRATION: "true",
       LOG_LEVEL: "warn",
@@ -88,7 +87,6 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.authPasswordEmailMaxAttempts).toBe(11);
     expect(runtimeEnv.authPasswordIpMaxAttempts).toBe(51);
     expect(runtimeEnv.authPasswordRateLimitWindowSeconds).toBe(601);
-    expect(runtimeEnv.ledgerStartupCacheDocumentLimit).toBe(301);
     expect(runtimeEnv.otpIpMaxAttemptsPerHour).toBe(14);
     expect(runtimeEnv.otpVerifyMaxAttemptsPerMinute).toBe(6);
     expect(runtimeEnv.apiRateLimitPerMinute).toBe(75);

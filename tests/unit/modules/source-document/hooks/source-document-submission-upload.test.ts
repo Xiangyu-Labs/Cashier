@@ -27,7 +27,6 @@ describe("source-document inline submission preparation", () => {
       {
         entryDate: "2026-07-15",
         images: [{ data: onePixel, mimeType: "image/jpeg" }],
-        originalImages: [{ data: onePixel, mimeType: "image/jpeg" }],
       },
       { compress, createPlan, put, finalize }
     );

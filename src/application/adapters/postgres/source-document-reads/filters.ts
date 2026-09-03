@@ -32,12 +32,7 @@ export function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unkn
   }
 
   if (input.statuses != null && input.statuses.length > 0) {
-    const activeStatuses = input.statuses.filter((status) => status !== "deleted");
-    if (activeStatuses.length === 0) {
-      conditions.push(sql`false`);
-    } else {
-      conditions.push(inArray(sourceDocuments.currentStatus, activeStatuses));
-    }
+    conditions.push(inArray(sourceDocuments.currentStatus, input.statuses));
   }
   if (input.startDate != null && input.startDate !== "") {
     conditions.push(sql`${sourceDocuments.effectiveDate} >= ${input.startDate}::date`);

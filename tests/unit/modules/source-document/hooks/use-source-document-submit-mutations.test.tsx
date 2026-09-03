@@ -30,7 +30,6 @@ import type { SourceDocumentInputControllerMessages } from "@/modules/source-doc
 import { useSourceDocumentSubmitMutations } from "@/modules/source-document/hooks/useSourceDocumentSubmitMutations";
 
 const messages: SourceDocumentInputControllerMessages = {
-  uploadError: "submit failed",
   retrySuccess: "retried",
   retryError: "retry failed",
   imageTooLarge: (fileName) => `large: ${fileName}`,

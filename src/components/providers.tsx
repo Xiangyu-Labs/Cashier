@@ -1,13 +1,13 @@
 "use client";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
+import { deleteLegacyClientCache } from "@/lib/legacy-client-cache-cleanup";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
-import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
 
-export function Providers({ children, userId }: { children: React.ReactNode; userId?: string }) {
+export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => {
     let redirectStarted = false;
     const handleError = (error: unknown) => {
@@ -16,11 +16,6 @@ export function Providers({ children, userId }: { children: React.ReactNode; use
       }
       redirectStarted = true;
       client.clear();
-      void clearUserImageCacheDataSafely(
-        userId,
-        userId == null ? {} : { userId },
-        "Failed to clear image cache after session expiry"
-      );
       const currentUrl = `${window.location.pathname}${window.location.search}`;
       const locale = window.location.pathname.split("/")[1] || "en";
       window.location.replace(`/${locale}/login?callbackUrl=${encodeURIComponent(currentUrl)}`);
@@ -43,6 +38,10 @@ export function Providers({ children, userId }: { children: React.ReactNode; use
     });
     return client;
   });
+
+  useEffect(() => {
+    void deleteLegacyClientCache().catch(() => undefined);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

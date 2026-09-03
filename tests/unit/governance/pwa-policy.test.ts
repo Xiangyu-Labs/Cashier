@@ -92,28 +92,25 @@ describe("PWA policy", () => {
     expect(activeTab).not.toContain("ledger-startup-cache-store");
   });
 
-  it("caches document images on demand with LRU limits and cached preview URLs", () => {
-    const imageCache = read("src/modules/source-document/image-cache.ts");
+  it("loads document images through the authenticated no-store route", () => {
+    const providers = read("src/components/providers.tsx");
+    const legacyCleanup = read("src/lib/legacy-client-cache-cleanup.ts");
     const viewDetails = read("src/modules/source-document/ui/SourceDocumentViewDetails.tsx");
     const rawEvidence = read(
       "src/modules/source-document/ui/SourceDocumentViewDetails/components/SourceDocumentRawEvidence.tsx"
     );
-    const groups = read("src/modules/workspace/ui/UnifiedStreamGroups.tsx");
-    const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
-    expect(imageCache).toContain("CACHED_IMAGE_COUNT_LIMIT = 100");
-    expect(imageCache).toContain("CACHED_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024");
-    expect(imageCache).toContain("storedFileReadUrl");
-    expect(imageCache).not.toContain("cacheOfflineImages");
-    expect(viewDetails).toContain("cachedImageUrls");
-    expect(rawEvidence).toContain("useCachedSourceImages");
-    expect(rawEvidence).toContain("cachedImageUrls");
-    expect(rawEvidence).not.toContain("cacheOfflineImage");
-    expect(rawEvidence).not.toContain("rememberViewedDocument");
-    // Original vouchers belong to the detail view only; list cards never
-    // render cached image previews.
-    expect(groups).not.toContain("cachedImageUrls");
-    expect(card).not.toContain("cachedImageUrls");
-    expect(card).not.toContain("SourceDocumentCardPreview");
+    expect(exists("src/lib/client-cache/index.ts")).toBe(false);
+    expect(exists("src/modules/source-document/image-cache.ts")).toBe(false);
+    expect(exists("src/modules/source-document/hooks/use-cached-source-images.ts")).toBe(false);
+    expect(providers).toContain("deleteLegacyClientCache");
+    expect(legacyCleanup).toContain('LEGACY_CLIENT_CACHE_DATABASE = "cashier-cache"');
+    expect(legacyCleanup).toContain("indexedDB.deleteDatabase");
+    expect(legacyCleanup).not.toContain("indexedDB.open");
+    expect(legacyCleanup).not.toContain("documentImages");
+    expect(viewDetails).not.toContain("cachedImageUrls");
+    expect(rawEvidence).toContain("storedFileReadUrl");
+    expect(rawEvidence).toContain("storedFileId: file.id");
+    expect(rawEvidence).not.toContain("blob:");
   });
 
   it("keeps protected stored files out of the browser HTTP cache", () => {

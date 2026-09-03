@@ -1,14 +1,11 @@
 "use client";
-import { useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
-import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 import { QUERY } from "@/lib/constants";
 import { withQueryTimeout } from "@/lib/query-timeout";
-import { drainSourceDocumentDelta } from "./source-document-delta-drain";
+import { useLedgerRefreshPolling } from "./useLedgerRefreshPolling";
 
 interface UseSourceDocumentDetailDataOptions {
   ledgerId: string;
@@ -23,9 +20,6 @@ export function useSourceDocumentDetailData({
   open,
   initialLedgerEntries,
 }: UseSourceDocumentDetailDataOptions) {
-  const queryClient = useQueryClient();
-  const afterVersionRef = useRef("0");
-
   const query = useQuery({
     queryKey: queryKeys.sourceDocument(ledgerId, id),
     queryFn: () => withQueryTimeout(getSourceDocumentLightAction(ledgerId, id)),
@@ -37,20 +31,7 @@ export function useSourceDocumentDetailData({
   });
   const { data: sourceDocument, isLoading, error } = query;
 
-  const pending = sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
-
-  const refreshWatched = async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
-    const drained = await drainSourceDocumentDelta(queryClient, ledgerId, afterVersionRef.current);
-    const result = drained.result;
-    afterVersionRef.current = result.toVersion;
-    return drained;
-  };
-
-  useRevisionStateRefresh({
-    enabled: open && id !== "",
-    pending,
-    refresh: refreshWatched,
-  });
+  useLedgerRefreshPolling(ledgerId, open && id !== "");
 
   const currentLedgerEntries = sourceDocument?.ledgerEntries ?? initialLedgerEntries ?? [];
   const isLoadingImages =

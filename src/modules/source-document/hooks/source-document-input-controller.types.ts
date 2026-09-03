@@ -3,23 +3,17 @@ import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
 
 export type SourceDocumentInputInitialData = NonNullable<SourceDocumentInputProps["initialData"]>;
 
-export interface EditableInputImage extends SourceDocumentModalImage {
-  originalData: string;
-  originalMimeType: string;
-  isEdited: boolean;
-}
+export type EditableInputImage = SourceDocumentModalImage;
 
 export interface SourceDocumentSubmitPayload {
   entryDate: string;
   timezone?: string;
   text?: string;
   images?: SourceDocumentModalImage[];
-  originalImages?: SourceDocumentModalImage[];
   storedFileIds?: string[];
 }
 
 export interface SourceDocumentInputControllerMessages {
-  uploadError: string;
   retrySuccess: string;
   retryError: string;
   imageTooLarge: (fileName: string) => string;
