@@ -6,7 +6,7 @@ import type { useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 
-interface UseSourceDocumentBatchActionsOptions {
+interface UseSourceDocumentEntryBatchActionsOptions {
   busy: boolean;
   sourceDocument: SourceDocument | SourceDocumentLight | null;
   ledgerEntries: LedgerEntry[];
@@ -37,7 +37,7 @@ interface UseSourceDocumentBatchActionsOptions {
 }
 
 /** Owns entering/leaving batch-selection mode and the batch category/currency/delete mutations. */
-export function useSourceDocumentBatchActions({
+export function useSourceDocumentEntryBatchActions({
   busy,
   sourceDocument,
   ledgerEntries,
@@ -57,7 +57,7 @@ export function useSourceDocumentBatchActions({
   onBatchUpdate,
   onBatchDeleteEntries,
   t,
-}: UseSourceDocumentBatchActionsOptions) {
+}: UseSourceDocumentEntryBatchActionsOptions) {
   const enterBatchSelectionMode = useCallback(() => {
     discardAllChanges();
     setIsEditMode(false);

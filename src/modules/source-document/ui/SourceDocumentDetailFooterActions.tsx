@@ -16,6 +16,8 @@ interface SourceDocumentDetailFooterActionsProps {
   hasRevisionConflict: boolean;
   pendingChangesCount: number;
   isAccepting: boolean;
+  isAbandoning: boolean;
+  isCancelling: boolean;
   onAcceptCandidate?: () => Promise<void>;
   onAbandonCandidate?: () => Promise<void>;
   onCancelProcessing?: () => Promise<void>;
@@ -38,6 +40,8 @@ export function SourceDocumentDetailFooterActions({
   hasRevisionConflict,
   pendingChangesCount,
   isAccepting,
+  isAbandoning,
+  isCancelling,
   onAcceptCandidate,
   onAbandonCandidate,
   onCancelProcessing,
@@ -78,7 +82,7 @@ export function SourceDocumentDetailFooterActions({
                     onClick={() => requestAction(onAbandonCandidate)}
                     disabled={interactionDisabled}
                   >
-                    <XCircle className="h-3.5 w-3.5" />
+                    <XCircle className={cn("h-3.5 w-3.5", isAbandoning && "animate-spin")} />
                     <span className="hidden sm:inline">{tActions("abandon")}</span>
                   </Button>
                 )}
@@ -95,7 +99,7 @@ export function SourceDocumentDetailFooterActions({
               onClick={() => requestAction(onAbandonCandidate)}
               disabled={interactionDisabled}
             >
-              <XCircle className="h-3.5 w-3.5" />
+              <XCircle className={cn("h-3.5 w-3.5", isAbandoning && "animate-spin")} />
               <span className="hidden sm:inline">{tActions("abandon")}</span>
             </Button>
           )}
@@ -109,7 +113,7 @@ export function SourceDocumentDetailFooterActions({
               onClick={() => requestAction(onCancelProcessing)}
               disabled={interactionDisabled}
             >
-              <XCircle className="h-3.5 w-3.5" />
+              <XCircle className={cn("h-3.5 w-3.5", isCancelling && "animate-spin")} />
               <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
             </Button>
           )}

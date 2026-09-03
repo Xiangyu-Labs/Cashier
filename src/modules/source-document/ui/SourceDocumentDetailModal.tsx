@@ -16,8 +16,7 @@ import { EditableField } from "@/components/ui/editable-field";
 import type { AddEntryData } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
-import { useSourceDocumentDetailState } from "@/modules/source-document/hooks/useSourceDocumentDetailState";
-import { useSourceDocumentDetailActions } from "@/modules/source-document/hooks/useSourceDocumentDetailActions";
+import { useSourceDocumentDetailController } from "@/modules/source-document/hooks/useSourceDocumentDetailController";
 import { SourceDocumentDetailFooterActions } from "./SourceDocumentDetailFooterActions";
 import { SourceDocumentDetailStatusPanels } from "./SourceDocumentDetailStatusPanels";
 import { SourceDocumentDetailConfirmDialogs } from "./SourceDocumentDetailConfirmDialogs";
@@ -101,7 +100,7 @@ function SourceDocumentDetailEditor({
   const tCommon = useTranslations("Common");
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  const state = useSourceDocumentDetailState({
+  const { editor, selection, status, dialogs, actions } = useSourceDocumentDetailController({
     ledgerId,
     sourceDocument,
     ledgerEntries,
@@ -109,12 +108,6 @@ function SourceDocumentDetailEditor({
     isAccepting,
     isAbandoning,
     isCancelling,
-  });
-  const actions = useSourceDocumentDetailActions({
-    ledgerId,
-    sourceDocument,
-    ledgerEntries,
-    state,
     onClose,
     onReload,
     onSaveAll,
@@ -128,71 +121,9 @@ function SourceDocumentDetailEditor({
     tCommon,
   });
 
-  const {
-    pendingChanges,
-    hasPendingChanges,
-    pendingChangesCount,
-    handleSourceDocChange,
-    handleEntryChange,
-    selectedIds,
-    isSelectionMode,
-    isAllSelected,
-    handleSelect: handleSelectEntry,
-    handleSelectAll: handleSelectAllEntries,
-    busy,
-    interactionDisabled,
-    isEditMode,
-    isReloading,
-    reloadError,
-    hasRevisionConflict,
-    unsavedGuard,
-    showDeleteConfirm,
-    setShowDeleteConfirm,
-    showBatchDeleteConfirm,
-    setShowBatchDeleteConfirm,
-    showRetryDialog,
-    setShowRetryDialog,
-    showSplitDialog,
-    setShowSplitDialog,
-    showAddEntryDialog,
-    setShowAddEntryDialog,
-    pendingDeleteEntryId,
-    setPendingDeleteEntryId,
-    showBatchModePendingConfirm,
-    setShowBatchModePendingConfirm,
-    isSplitting,
-    displayTitle,
-    splitInitialDate,
-  } = state;
-
-  const {
-    handleClose,
-    handleEnterEditMode,
-    handleCancelEditMode,
-    handleEditSave,
-    handleToggleSelectionMode,
-    handleSaveAndEnterBatchMode,
-    handleDiscardAndEnterBatchMode,
-    handleSaveAllAndClose,
-    handleDiscardAndClose,
-    handleReload,
-    requestAction,
-    saveAndContinueGate,
-    handleBatchCategory,
-    handleBatchCurrency,
-    handleBatchDelete,
-    handleOpenSplit,
-    handleSplit,
-    handleOpenAddEntry,
-    handleAddEntrySubmit,
-    handleDeleteEntry,
-    handleRequestDeleteEntry,
-    handleDeleteDocument,
-  } = actions;
-
   return (
     <>
-      <Dialog open={open} onOpenChange={(val) => !val && !busy && handleClose()}>
+      <Dialog open={open} onOpenChange={(val) => !val && !status.busy && actions.handleClose()}>
         <DialogContent
           variant="detail"
           {...(onExitComplete !== undefined ? { onExitComplete } : {})}
@@ -205,19 +136,19 @@ function SourceDocumentDetailEditor({
             restoreFocusRef.current?.focus();
           }}
           aria-describedby={undefined}
-          hideCloseButton={busy}
-          onEscapeKeyDown={(event) => busy && event.preventDefault()}
-          onPointerDownOutside={(event) => busy && event.preventDefault()}
+          hideCloseButton={status.busy}
+          onEscapeKeyDown={(event) => status.busy && event.preventDefault()}
+          onPointerDownOutside={(event) => status.busy && event.preventDefault()}
         >
           <DialogHeader className="shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-3">
-            <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
+            <DialogTitle className="sr-only">{editor.displayTitle}</DialogTitle>
             {onBack != null && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
                 onClick={onBack}
-                disabled={busy}
+                disabled={status.busy}
                 aria-label={tCommon("back")}
                 title={tCommon("back")}
               >
@@ -226,12 +157,12 @@ function SourceDocumentDetailEditor({
             )}
             <div className="flex-1 min-w-0 pr-8">
               <EditableField
-                value={displayTitle}
-                onChange={(v) => handleSourceDocChange({ title: v })}
+                value={editor.displayTitle}
+                onChange={(v) => editor.handleSourceDocChange({ title: v })}
                 placeholder={t("untitled")}
                 displayClassName="font-semibold text-text text-base truncate"
                 inputClassName="font-semibold text-base"
-                disabled={busy || !isEditMode}
+                disabled={status.busy || !editor.isEditMode}
               />
             </div>
           </DialogHeader>
@@ -241,11 +172,11 @@ function SourceDocumentDetailEditor({
               sourceDocument={sourceDocument}
               loadError={loadError}
               isLoading={isLoading}
-              isReloading={isReloading}
-              reloadError={reloadError}
-              hasRevisionConflict={hasRevisionConflict}
+              isReloading={status.isReloading}
+              reloadError={status.reloadError}
+              hasRevisionConflict={status.hasRevisionConflict}
               onClose={onClose}
-              onReload={() => void handleReload()}
+              onReload={() => void actions.handleReload()}
             />
 
             {sourceDocument && (
@@ -256,115 +187,117 @@ function SourceDocumentDetailEditor({
                   categories={categories}
                   preferredCurrencies={preferredCurrencies}
                   mainCurrency={mainCurrency}
-                  pendingChanges={pendingChanges}
-                  selectedEntryIds={selectedIds}
-                  isSelectionMode={isSelectionMode}
+                  pendingChanges={editor.pendingChanges}
+                  selectedEntryIds={selection.selectedIds}
+                  isSelectionMode={selection.isSelectionMode}
                   isLoadingImages={isLoadingImages}
-                  onSourceDocChange={handleSourceDocChange}
-                  onEntryChange={handleEntryChange}
-                  onSelectEntry={handleSelectEntry}
-                  onToggleSelectionMode={handleToggleSelectionMode}
-                  interactionDisabled={busy}
-                  isEditMode={isEditMode}
-                  onAddEntry={handleOpenAddEntry}
-                  onDeleteEntry={handleRequestDeleteEntry}
+                  onSourceDocChange={editor.handleSourceDocChange}
+                  onEntryChange={editor.handleEntryChange}
+                  onSelectEntry={selection.handleSelect}
+                  onToggleSelectionMode={actions.handleToggleSelectionMode}
+                  interactionDisabled={status.busy}
+                  isEditMode={editor.isEditMode}
+                  onAddEntry={actions.handleOpenAddEntry}
+                  onDeleteEntry={actions.handleRequestDeleteEntry}
                 />
               </>
             )}
           </div>
 
-          {isSelectionMode && (
+          {selection.isSelectionMode && (
             <LedgerEntriesBatchActionToolbar
-              selectedCount={selectedIds.length}
+              selectedCount={selection.selectedIds.length}
               totalCount={ledgerEntries.length}
-              isAllSelected={isAllSelected}
-              onSelectAll={() => handleSelectAllEntries(true)}
-              onClearSelection={() => handleSelectAllEntries(false)}
-              onChangeCategory={handleBatchCategory}
-              onChangeCurrency={handleBatchCurrency}
+              isAllSelected={selection.isAllSelected}
+              onSelectAll={() => selection.handleSelectAll(true)}
+              onClearSelection={() => selection.handleSelectAll(false)}
+              onChangeCategory={actions.handleBatchCategory}
+              onChangeCurrency={actions.handleBatchCurrency}
               {...(sourceDocument?.supportedActions.includes("split_entries") && onSplit != null
-                ? { onSplit: handleOpenSplit }
+                ? { onSplit: actions.handleOpenSplit }
                 : {})}
-              onDelete={() => requestAction(() => setShowBatchDeleteConfirm(true))}
+              onDelete={() => actions.requestAction(() => dialogs.setShowBatchDeleteConfirm(true))}
               categories={categories}
               preferredCurrencies={preferredCurrencies}
-              isChangingCategory={state.isSaving}
-              isChangingCurrency={state.isSaving}
-              isProcessing={busy}
+              isChangingCategory={status.isSaving}
+              isChangingCurrency={status.isSaving}
+              isProcessing={status.busy}
               variant="inline"
             />
           )}
 
           <SourceDocumentDetailFooterActions
             sourceDocument={sourceDocument}
-            isEditMode={isEditMode}
-            isSelectionMode={isSelectionMode}
-            busy={busy}
-            interactionDisabled={interactionDisabled}
-            hasPendingChanges={hasPendingChanges}
-            hasRevisionConflict={hasRevisionConflict}
-            pendingChangesCount={pendingChangesCount}
+            isEditMode={editor.isEditMode}
+            isSelectionMode={selection.isSelectionMode}
+            busy={status.busy}
+            interactionDisabled={status.interactionDisabled}
+            hasPendingChanges={editor.hasPendingChanges}
+            hasRevisionConflict={status.hasRevisionConflict}
+            pendingChangesCount={editor.pendingChangesCount}
             isAccepting={isAccepting}
+            isAbandoning={isAbandoning}
+            isCancelling={isCancelling}
             {...(onAcceptCandidate != null ? { onAcceptCandidate } : {})}
             {...(onAbandonCandidate != null ? { onAbandonCandidate } : {})}
             {...(onCancelProcessing != null ? { onCancelProcessing } : {})}
-            requestAction={requestAction}
-            onOpenRetryDialog={() => setShowRetryDialog(true)}
-            onRequestDelete={() => setShowDeleteConfirm(true)}
-            onCancelEditMode={handleCancelEditMode}
-            onEditSave={handleEditSave}
-            onEnterEditMode={handleEnterEditMode}
+            requestAction={actions.requestAction}
+            onOpenRetryDialog={() => dialogs.setShowRetryDialog(true)}
+            onRequestDelete={() => dialogs.setShowDeleteConfirm(true)}
+            onCancelEditMode={actions.handleCancelEditMode}
+            onEditSave={actions.handleEditSave}
+            onEnterEditMode={actions.handleEnterEditMode}
           />
         </DialogContent>
 
         <SourceDocumentDetailConfirmDialogs
           t={t}
           tCommon={tCommon}
-          showBatchModePendingConfirm={showBatchModePendingConfirm}
-          setShowBatchModePendingConfirm={setShowBatchModePendingConfirm}
-          handleSaveAndEnterBatchMode={handleSaveAndEnterBatchMode}
-          handleDiscardAndEnterBatchMode={handleDiscardAndEnterBatchMode}
-          showBatchDeleteConfirm={showBatchDeleteConfirm}
-          setShowBatchDeleteConfirm={setShowBatchDeleteConfirm}
-          selectedCount={selectedIds.length}
-          handleBatchDelete={handleBatchDelete}
-          pendingDeleteEntryId={pendingDeleteEntryId}
-          setPendingDeleteEntryId={setPendingDeleteEntryId}
-          handleDeleteEntry={handleDeleteEntry}
-          showDeleteConfirm={showDeleteConfirm}
-          setShowDeleteConfirm={setShowDeleteConfirm}
-          handleDeleteDocument={handleDeleteDocument}
-          saveAndContinueGate={saveAndContinueGate}
-          handleSaveAllAndClose={handleSaveAllAndClose}
-          unsavedGuard={unsavedGuard}
-          handleDiscardAndClose={handleDiscardAndClose}
+          showBatchModePendingConfirm={dialogs.showBatchModePendingConfirm}
+          setShowBatchModePendingConfirm={dialogs.setShowBatchModePendingConfirm}
+          handleSaveAndEnterBatchMode={actions.handleSaveAndEnterBatchMode}
+          handleDiscardAndEnterBatchMode={actions.handleDiscardAndEnterBatchMode}
+          showBatchDeleteConfirm={dialogs.showBatchDeleteConfirm}
+          setShowBatchDeleteConfirm={dialogs.setShowBatchDeleteConfirm}
+          selectedCount={selection.selectedIds.length}
+          handleBatchDelete={actions.handleBatchDelete}
+          pendingDeleteEntryId={dialogs.pendingDeleteEntryId}
+          setPendingDeleteEntryId={dialogs.setPendingDeleteEntryId}
+          handleDeleteEntry={actions.handleDeleteEntry}
+          showDeleteConfirm={dialogs.showDeleteConfirm}
+          setShowDeleteConfirm={dialogs.setShowDeleteConfirm}
+          handleDeleteDocument={actions.handleDeleteDocument}
+          saveAndContinueGate={dialogs.saveAndContinueGate}
+          handleSaveAllAndClose={actions.handleSaveAllAndClose}
+          unsavedGuard={dialogs.unsavedGuard}
+          handleDiscardAndClose={actions.handleDiscardAndClose}
         />
       </Dialog>
       <SourceDocumentDetailOverlays
         ledgerId={ledgerId}
         sourceDocument={sourceDocument}
-        showRetryDialog={showRetryDialog}
-        setShowRetryDialog={setShowRetryDialog}
-        onRetryPendingChange={state.setIsRetrying}
+        showRetryDialog={dialogs.showRetryDialog}
+        setShowRetryDialog={dialogs.setShowRetryDialog}
+        onRetryPendingChange={status.setIsRetrying}
         onRetrySuccess={() => {
-          setShowRetryDialog(false);
+          dialogs.setShowRetryDialog(false);
           onClose();
         }}
         ledgerEntries={ledgerEntries}
-        selectedIds={selectedIds}
-        splitInitialDate={splitInitialDate}
-        isSplitting={isSplitting}
-        showSplitDialog={showSplitDialog}
-        setShowSplitDialog={setShowSplitDialog}
-        handleSplit={handleSplit}
-        showAddEntryDialog={showAddEntryDialog}
+        selectedIds={selection.selectedIds}
+        splitInitialDate={editor.splitInitialDate}
+        isSplitting={status.isSplitting}
+        showSplitDialog={dialogs.showSplitDialog}
+        setShowSplitDialog={dialogs.setShowSplitDialog}
+        handleSplit={actions.handleSplit}
+        showAddEntryDialog={dialogs.showAddEntryDialog}
         onAddEntry={onAddEntry}
         categories={categories}
         preferredCurrencies={preferredCurrencies}
         mainCurrency={mainCurrency}
-        isSaving={state.isSaving}
-        setShowAddEntryDialog={setShowAddEntryDialog}
-        handleAddEntrySubmit={handleAddEntrySubmit}
+        isSaving={status.isSaving}
+        setShowAddEntryDialog={dialogs.setShowAddEntryDialog}
+        handleAddEntrySubmit={actions.handleAddEntrySubmit}
       />
     </>
   );

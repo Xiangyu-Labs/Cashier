@@ -17,11 +17,13 @@ interface UseUnsavedChangesGuardOptions {
  * immediately.
  */
 export function useUnsavedChangesGuard({ key, hasUnsavedChanges }: UseUnsavedChangesGuardOptions) {
-  const gate = useConfirmGate<(() => void) | null>();
+  const { confirmOpen, setConfirmOpen, requestConfirmation, resolveConfirmation } = useConfirmGate<
+    (() => void) | null
+  >();
 
   const requestLeave = useCallback(
-    (continueNavigation: (() => void) | null) => gate.requestConfirmation(continueNavigation),
-    [gate.requestConfirmation]
+    (continueNavigation: (() => void) | null) => requestConfirmation(continueNavigation),
+    [requestConfirmation]
   );
 
   useEffect(() => {
@@ -34,12 +36,7 @@ export function useUnsavedChangesGuard({ key, hasUnsavedChanges }: UseUnsavedCha
   }, [hasUnsavedChanges, key, requestLeave]);
 
   /** Clears the pending continuation and closes the dialog; returns the continuation (or null) to run. */
-  const resolveLeave = gate.resolveConfirmation;
+  const resolveLeave = resolveConfirmation;
 
-  return {
-    confirmOpen: gate.confirmOpen,
-    setConfirmOpen: gate.setConfirmOpen,
-    requestLeave,
-    resolveLeave,
-  };
+  return { confirmOpen, setConfirmOpen, requestLeave, resolveLeave };
 }

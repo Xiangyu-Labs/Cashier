@@ -173,6 +173,14 @@ function modal(
     onReload?: () => Promise<void>;
     onSplit?: React.ComponentProps<typeof SourceDocumentDetailModal>["onSplit"];
     onAddEntry?: React.ComponentProps<typeof SourceDocumentDetailModal>["onAddEntry"];
+    onAbandonCandidate?: React.ComponentProps<
+      typeof SourceDocumentDetailModal
+    >["onAbandonCandidate"];
+    onCancelProcessing?: React.ComponentProps<
+      typeof SourceDocumentDetailModal
+    >["onCancelProcessing"];
+    isAbandoning?: boolean;
+    isCancelling?: boolean;
   } = {}
 ) {
   return (
@@ -189,6 +197,14 @@ function modal(
       onSaveAll={onSaveAll}
       {...(overrides.onSplit !== undefined ? { onSplit: overrides.onSplit } : {})}
       {...(overrides.onAddEntry !== undefined ? { onAddEntry: overrides.onAddEntry } : {})}
+      {...(overrides.onAbandonCandidate !== undefined
+        ? { onAbandonCandidate: overrides.onAbandonCandidate }
+        : {})}
+      {...(overrides.onCancelProcessing !== undefined
+        ? { onCancelProcessing: overrides.onCancelProcessing }
+        : {})}
+      {...(overrides.isAbandoning !== undefined ? { isAbandoning: overrides.isAbandoning } : {})}
+      {...(overrides.isCancelling !== undefined ? { isCancelling: overrides.isCancelling } : {})}
       onBatchUpdate={vi.fn(async () => ({ affectedCount: 1 }))}
       onBatchDeleteEntries={vi.fn(async () => [])}
     />
@@ -364,5 +380,30 @@ describe("SourceDocumentDetailModal batch mode", () => {
     expect(secondInput.operationId).toBe(firstInput.operationId);
     expect(secondInput.newSourceDocumentId).toBe(firstInput.newSourceDocumentId);
     await waitFor(() => expect(screen.queryByText("submit-split")).not.toBeInTheDocument());
+  });
+
+  it("shows pending indicators for abandon and cancel actions", () => {
+    render(
+      modal(
+        undefined,
+        {
+          ...sourceDocument,
+          supportedActions: ["abandon_candidate", "cancel_processing"],
+        },
+        {
+          onAbandonCandidate: vi.fn(async () => undefined),
+          onCancelProcessing: vi.fn(async () => undefined),
+          isAbandoning: true,
+          isCancelling: true,
+        }
+      )
+    );
+
+    expect(screen.getByText("abandon").closest("button")?.querySelector("svg")).toHaveClass(
+      "animate-spin"
+    );
+    expect(
+      screen.getByText("cancelProcessing").closest("button")?.querySelector("svg")
+    ).toHaveClass("animate-spin");
   });
 });
