@@ -9,6 +9,7 @@ import {
 } from "@/modules/source-document/actions";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { useSourceDocumentRevisionDecisionMutation } from "./useSourceDocumentRevisionDecisionMutation";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
   ledgerId: string;
@@ -40,41 +41,28 @@ export function useSourceDocumentRecoveryMutations({
   // Accept candidate
   // -----------------------------------------------------------------------
 
-  const acceptMutation = useLedgerMutation<unknown, void>(ledgerId, {
-    mutationFn: async () => {
-      if (revisionId == null) throw new Error("No revision ID provided for accept");
-      return acceptSourceDocumentCandidateAction(ledgerId, sourceDocumentId, revisionId, undefined);
-    },
-    resourceGroups: ["documents"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  const acceptMutation = useSourceDocumentRevisionDecisionMutation({
+    ledgerId,
+    sourceDocumentId,
+    ...(revisionId === undefined ? {} : { revisionId }),
+    action: acceptSourceDocumentCandidateAction,
     successMessage: tActions("acceptSuccess"),
     errorMessage: tActions("acceptError"),
-    onSuccess: () => {
-      onSuccess?.();
-    },
+    ...(onSuccess === undefined ? {} : { onSuccess }),
   });
 
   // -----------------------------------------------------------------------
   // Abandon candidate
   // -----------------------------------------------------------------------
 
-  const abandonMutation = useLedgerMutation<unknown, void>(ledgerId, {
-    mutationFn: async () => {
-      if (revisionId == null) throw new Error("No revision ID provided for abandon");
-      return abandonSourceDocumentCandidateAction(
-        ledgerId,
-        sourceDocumentId,
-        revisionId,
-        undefined
-      );
-    },
-    resourceGroups: ["documents"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  const abandonMutation = useSourceDocumentRevisionDecisionMutation({
+    ledgerId,
+    sourceDocumentId,
+    ...(revisionId === undefined ? {} : { revisionId }),
+    action: abandonSourceDocumentCandidateAction,
     successMessage: tActions("abandonSuccess"),
     errorMessage: tActions("abandonError"),
-    onSuccess: () => {
-      onSuccess?.();
-    },
+    ...(onSuccess === undefined ? {} : { onSuccess }),
   });
 
   // -----------------------------------------------------------------------
@@ -95,15 +83,10 @@ export function useSourceDocumentRecoveryMutations({
     },
   });
 
-  const cancelMutation = useLedgerMutation<unknown, { operationId: string }>(ledgerId, {
-    mutationFn: async ({ operationId }) => {
+  const cancelMutation = useLedgerMutation<unknown, void>(ledgerId, {
+    mutationFn: async () => {
       if (revisionId == null) throw new Error("No revision ID provided for cancellation");
-      return cancelSourceDocumentProcessingAction(
-        ledgerId,
-        sourceDocumentId,
-        revisionId,
-        operationId
-      );
+      return cancelSourceDocumentProcessingAction(ledgerId, sourceDocumentId, revisionId);
     },
     resourceGroups: ["documents"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
@@ -152,7 +135,7 @@ export function useSourceDocumentRecoveryMutations({
     if (actionLockRef.current) return;
     actionLockRef.current = true;
     try {
-      await cancelMutation.mutateAsync({ operationId: crypto.randomUUID() });
+      await cancelMutation.mutateAsync();
     } finally {
       actionLockRef.current = false;
     }

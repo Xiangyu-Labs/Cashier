@@ -208,12 +208,7 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     fireEvent.click(await screen.findByRole("button", { name: "删除重复" }));
 
     await waitFor(() => {
-      expect(discardActionMock).toHaveBeenCalledWith(
-        LEDGER_ID,
-        DUPLICATE_ID,
-        "rev-2",
-        expect.any(String)
-      );
+      expect(discardActionMock).toHaveBeenCalledWith(LEDGER_ID, DUPLICATE_ID, "rev-2");
     });
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("已删除重复账单"));
 
@@ -310,5 +305,28 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     expect(screen.getAllByText("Duplicate bill").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "删除重复" })).not.toBeDisabled();
     expect(onCaughtError).not.toHaveBeenCalled();
+  });
+
+  it("disables decisions until an errored background refresh succeeds", async () => {
+    reviewActionMock
+      .mockResolvedValueOnce(reviewDetail())
+      .mockRejectedValueOnce(new Error("refresh failed"))
+      .mockResolvedValueOnce(reviewDetail());
+    const queryClient = createQueryClient();
+    renderDialog({ queryClient });
+
+    const keepButton = await screen.findByRole("button", { name: "仍然保留" });
+    await waitFor(() => expect(keepButton).not.toBeDisabled());
+
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.sourceDocumentDuplicateReview(LEDGER_ID, DUPLICATE_ID),
+    });
+    await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(keepButton).toBeDisabled());
+    expect(await screen.findByText("该审核已不可用。")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
+    await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(keepButton).not.toBeDisabled());
   });
 });

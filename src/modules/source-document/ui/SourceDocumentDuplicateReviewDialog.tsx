@@ -13,7 +13,7 @@ import {
   keepDuplicateSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { useSourceDocumentRevisionDecisionMutation } from "@/modules/source-document/hooks/useSourceDocumentRevisionDecisionMutation";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { summarizeReviewEntries } from "./source-document-duplicate-review.utils";
@@ -71,45 +71,27 @@ export function SourceDocumentDuplicateReviewDialog({
     onOpenChange(false);
   }, [onOpenChange, removeResolvedDocumentQueries]);
 
-  const keepMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof keepDuplicateSourceDocumentAction>>,
-    { operationId: string }
-  >(ledgerId, {
-    mutationFn: ({ operationId }: { operationId: string }) => {
-      if (revisionId == null || revisionId === "") {
-        throw new Error("Duplicate review revision is unavailable");
-      }
-      return keepDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId, operationId);
-    },
-    resourceGroups: ["documents"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  const keepMutation = useSourceDocumentRevisionDecisionMutation({
+    ledgerId,
+    sourceDocumentId,
+    ...(revisionId === undefined ? {} : { revisionId }),
+    action: keepDuplicateSourceDocumentAction,
     successMessage: t("keepSuccess"),
     errorMessage: t("actionFailed"),
     onSuccess: closeResolvedReview,
   });
-  const discardMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof discardDuplicateSourceDocumentAction>>,
-    { operationId: string }
-  >(ledgerId, {
-    mutationFn: ({ operationId }: { operationId: string }) => {
-      if (revisionId == null || revisionId === "") {
-        throw new Error("Duplicate review revision is unavailable");
-      }
-      return discardDuplicateSourceDocumentAction(
-        ledgerId,
-        sourceDocumentId,
-        revisionId,
-        operationId
-      );
-    },
-    resourceGroups: ["documents"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  const discardMutation = useSourceDocumentRevisionDecisionMutation({
+    ledgerId,
+    sourceDocumentId,
+    ...(revisionId === undefined ? {} : { revisionId }),
+    action: discardDuplicateSourceDocumentAction,
     successMessage: t("discardSuccess"),
     errorMessage: t("actionFailed"),
     onSuccess: closeResolvedReview,
   });
   const isPending = keepMutation.isPending || discardMutation.isPending;
   const data = reviewQuery.data;
+  const canAct = data != null && !reviewQuery.isError && !reviewQuery.isFetching && !isPending;
   const displayReason =
     data?.review.reason == null
       ? null
@@ -127,6 +109,7 @@ export function SourceDocumentDuplicateReviewDialog({
         <SourceDocumentReviewDialogContent
           isPending={isPending}
           isLoading={reviewQuery.isLoading}
+          isReloading={reviewQuery.isFetching}
           loadingLabel={tReview("loading")}
           hasError={reviewQuery.isError || data == null}
           errorMessage={tReview("loadError")}
@@ -157,7 +140,7 @@ export function SourceDocumentDuplicateReviewDialog({
               <Button
                 variant="destructive"
                 onClick={() => setDiscardConfirmOpen(true)}
-                disabled={isPending || data == null}
+                disabled={!canAct}
               >
                 {discardMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -166,10 +149,7 @@ export function SourceDocumentDuplicateReviewDialog({
                 )}
                 {t("discard")}
               </Button>
-              <Button
-                onClick={() => keepMutation.mutate({ operationId: crypto.randomUUID() })}
-                disabled={isPending || data == null}
-              >
+              <Button onClick={() => keepMutation.mutate()} disabled={!canAct}>
                 {keepMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -228,7 +208,11 @@ export function SourceDocumentDuplicateReviewDialog({
         })}
         confirmLabel={t("discard")}
         variant="destructive"
-        onConfirm={() => discardMutation.mutate({ operationId: crypto.randomUUID() })}
+        onConfirm={async () => {
+          if (!canAct) return false;
+          await discardMutation.mutateAsync();
+          return true;
+        }}
       />
     </>
   );

@@ -55,6 +55,8 @@ export function SourceDocumentCandidateReviewDialog({
     onSuccess: () => onOpenChange(false),
   });
   const isPending = recovery.isReviewing;
+  const canAct =
+    reviewQuery.data != null && !reviewQuery.isError && !reviewQuery.isFetching && !isPending;
 
   return (
     <>
@@ -62,6 +64,7 @@ export function SourceDocumentCandidateReviewDialog({
         <SourceDocumentReviewDialogContent
           isPending={isPending}
           isLoading={reviewQuery.isLoading}
+          isReloading={reviewQuery.isFetching}
           loadingLabel={tReview("loading")}
           hasError={reviewQuery.isError || reviewQuery.data == null}
           errorMessage={tReview("loadError")}
@@ -77,15 +80,12 @@ export function SourceDocumentCandidateReviewDialog({
               <Button
                 variant="outline"
                 onClick={() => setAbandonConfirmOpen(true)}
-                disabled={isPending || reviewQuery.data == null}
+                disabled={!canAct}
               >
                 {recovery.isAbandoning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t("keepOriginal")}
               </Button>
-              <Button
-                onClick={() => recovery.acceptCandidate()}
-                disabled={isPending || reviewQuery.data == null}
-              >
+              <Button onClick={() => recovery.acceptCandidate()} disabled={!canAct}>
                 {recovery.isAccepting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -129,7 +129,7 @@ export function SourceDocumentCandidateReviewDialog({
         description={t("abandonConfirmDescription")}
         confirmLabel={t("keepOriginal")}
         cancelLabel={tCommon("cancel")}
-        onConfirm={() => recovery.abandonCandidate()}
+        onConfirm={() => (canAct ? recovery.abandonCandidate() : false)}
       />
     </>
   );

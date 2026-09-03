@@ -164,6 +164,10 @@ describe("feature message coverage", () => {
     for (const boundary of Object.keys(FEATURE_MESSAGES)) {
       const namespaces = FEATURE_MESSAGES[boundary as keyof typeof FEATURE_MESSAGES];
 
+      it(`${boundary} manifest namespaces are unique`, () => {
+        expect(new Set(namespaces).size).toBe(namespaces.length);
+      });
+
       it(`${boundary} manifest namespaces exist in en catalog`, () => {
         const catalog = CATALOGS.find((c) => c.name === "en")!;
         for (const ns of namespaces) {

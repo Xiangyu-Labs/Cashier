@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SourceDocumentCandidateReviewDialog } from "@/modules/source-document/ui/SourceDocumentCandidateReviewDialog";
+import { queryKeys } from "@/lib/query-keys";
 
 const { reviewActionMock, abandonActionMock, acceptActionMock } = vi.hoisted(() => ({
   reviewActionMock: vi.fn(),
@@ -53,5 +54,48 @@ describe("SourceDocumentCandidateReviewDialog", () => {
     const confirmations = screen.getAllByRole("button", { name: "保留原结果" });
     fireEvent.click(confirmations.at(-1)!);
     await waitFor(() => expect(abandonActionMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("disables decisions while stale review data is refetching or errored", async () => {
+    reviewActionMock
+      .mockResolvedValueOnce({
+        sourceDocumentId: "doc-1",
+        active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
+        candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
+      })
+      .mockRejectedValueOnce(new Error("refresh failed"))
+      .mockResolvedValueOnce({
+        sourceDocumentId: "doc-1",
+        active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
+        candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
+      });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SourceDocumentCandidateReviewDialog
+          ledgerId="ledger-1"
+          sourceDocumentId="doc-1"
+          open
+          onOpenChange={vi.fn()}
+          mainCurrency="CNY"
+        />
+      </QueryClientProvider>
+    );
+
+    const accept = await screen.findByRole("button", { name: "接受新结果" });
+    await waitFor(() => expect(accept).not.toBeDisabled());
+
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.sourceDocumentCandidateReview("ledger-1", "doc-1"),
+    });
+    await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(accept).toBeDisabled());
+    expect(await screen.findByText("该审核已不可用。")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
+    await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(accept).not.toBeDisabled());
   });
 });

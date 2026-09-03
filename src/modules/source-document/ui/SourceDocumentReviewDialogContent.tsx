@@ -1,12 +1,13 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { ReviewPanelSkeleton } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanelSkeleton";
 
 interface SourceDocumentReviewDialogContentProps extends PropsWithChildren {
   isPending: boolean;
   isLoading: boolean;
+  isReloading: boolean;
   loadingLabel: string;
   hasError: boolean;
   errorMessage: string;
@@ -21,6 +22,7 @@ export function SourceDocumentReviewDialogContent({
   children,
   isPending,
   isLoading,
+  isReloading,
   loadingLabel,
   hasError,
   errorMessage,
@@ -52,10 +54,17 @@ export function SourceDocumentReviewDialogContent({
             <ReviewPanelSkeleton />
           </div>
         ) : hasError ? (
-          <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
+          <div
+            className="flex min-h-48 flex-col items-center justify-center gap-3 text-center"
+            aria-busy={isReloading}
+          >
             <p className="text-sm text-danger">{errorMessage}</p>
-            <Button variant="outline" size="sm" onClick={onReload}>
-              <RotateCcw className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={onReload} disabled={isReloading}>
+              {isReloading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              )}
               {reloadLabel}
             </Button>
           </div>

@@ -32,8 +32,7 @@
     "SourceDocumentEditRetryDialog",
     "SourceDocumentImageModal",
     "SourceDocumentInput",
-    "DuplicateReview",
-    "ReviewDialog"
+    "DuplicateReview"
   ],
   "details": [
     "BatchActions",

@@ -147,7 +147,6 @@ export const mutationIdentitySchema = strictObjectSchema({
 export const revisionMutationIdentitySchema = strictObjectSchema({
   sourceDocumentId: uuidSchema,
   revisionId: uuidSchema,
-  operationId: uuidSchema.optional(),
 });
 
 export const operationIdentitySchema = strictObjectSchema({

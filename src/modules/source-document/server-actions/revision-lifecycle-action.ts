@@ -16,16 +16,10 @@ type RevisionLifecycleUseCase<TResult> = (
 
 export function revisionLifecycleAction<TResult>(useCase: RevisionLifecycleUseCase<TResult>) {
   return withSourceDocumentLedgerAccess(
-    async (
-      { ledgerId },
-      sourceDocumentId: string,
-      revisionId: string,
-      operationId?: string
-    ): Promise<TResult> => {
+    async ({ ledgerId }, sourceDocumentId: string, revisionId: string): Promise<TResult> => {
       const identity = parseRevisionMutationIdentity({
         sourceDocumentId,
         revisionId,
-        ...(operationId === undefined ? {} : { operationId }),
       });
       return useCase(
         {
