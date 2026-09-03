@@ -119,7 +119,7 @@ describe("stream list motion", () => {
     const groups = groupsOf(["doc-1"]);
     groups[0]!.items[0]!.sourceDocument = card("doc-1", {
       status: "failed",
-      errorCode: "PROCESSING_TIMEOUT",
+      errorCode: "processing_timeout",
     });
 
     render(
@@ -138,7 +138,7 @@ describe("stream list motion", () => {
 
     expect(screen.getByTestId("card-doc-1")).toHaveAttribute(
       "data-error-code",
-      "PROCESSING_TIMEOUT"
+      "processing_timeout"
     );
   });
 
