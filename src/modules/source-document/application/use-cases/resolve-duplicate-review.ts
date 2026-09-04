@@ -1,12 +1,13 @@
 import type { SourceDocumentLifecyclePort } from "../ports";
-import type { SourceDocumentReadPort } from "../ports";
-import type { BatchActionResult } from "@/lib/batch-ids";
-import { ConflictError, NotFoundError } from "@/lib/errors";
+import type { PartialBatchCommandResult, VersionedTarget } from "../../contracts";
+import { AppError, NotFoundError, StaleSourceDocumentVersionError } from "@/lib/errors";
 
 export interface ResolveDuplicateReviewInput {
   ledgerId: string;
   sourceDocumentId: string;
-  revisionId: string;
+  /** Internal compatibility only; browser transports never provide revision identity. */
+  revisionId?: string;
+  expectedVersion?: number;
 }
 
 export type DuplicateReviewDecision = "keep" | "discard";
@@ -16,8 +17,7 @@ type DuplicateReviewLifecyclePort = Pick<
 >;
 
 export type ResolveDuplicateReviewResult =
-  | { sourceDocumentId: string; revisionId: string; status: "completed"; kept: true }
-  | { sourceDocumentId: string; revisionId: string; status: "deleted"; kept: false };
+  { status: "completed"; kept: true } | { status: "deleted"; kept: false };
 
 /**
  * Keep a duplicate-pending document: activates its completed pending revision
@@ -26,23 +26,18 @@ export type ResolveDuplicateReviewResult =
 export async function keepDuplicateDocument(
   input: ResolveDuplicateReviewInput,
   lifecycle: Pick<SourceDocumentLifecyclePort, "keepDuplicate">
-): Promise<ResolveDuplicateReviewResult> {
+): Promise<{ version: number; data: ResolveDuplicateReviewResult }> {
   const kept = await lifecycle.keepDuplicate(
     input.ledgerId,
     input.sourceDocumentId,
-    input.revisionId
+    input.expectedVersion
   );
   if (!kept) {
     // The document is missing or was already discarded — never acknowledge a
     // keep that did not happen.
     throw new NotFoundError("Source document");
   }
-  return {
-    sourceDocumentId: input.sourceDocumentId,
-    revisionId: input.revisionId,
-    status: "completed",
-    kept: true,
-  };
+  return { version: kept.version, data: { status: "completed", kept: true } };
 }
 
 /**
@@ -52,21 +47,16 @@ export async function keepDuplicateDocument(
 export async function discardDuplicateDocument(
   input: ResolveDuplicateReviewInput,
   lifecycle: Pick<SourceDocumentLifecyclePort, "discardDuplicate">
-): Promise<ResolveDuplicateReviewResult> {
+): Promise<{ version: number; data: ResolveDuplicateReviewResult }> {
   const discarded = await lifecycle.discardDuplicate(
     input.ledgerId,
     input.sourceDocumentId,
-    input.revisionId
+    input.expectedVersion
   );
   if (!discarded) {
     throw new NotFoundError("Source document");
   }
-  return {
-    sourceDocumentId: input.sourceDocumentId,
-    revisionId: input.revisionId,
-    status: "deleted",
-    kept: false,
-  };
+  return { version: discarded.version, data: { status: "deleted", kept: false } };
 }
 
 /**
@@ -78,56 +68,43 @@ export async function discardDuplicateDocument(
 export async function batchResolveDuplicateReviews(
   input: {
     ledgerId: string;
-    sourceDocumentIds: readonly string[];
+    targets: readonly VersionedTarget[];
     decision: DuplicateReviewDecision;
   },
-  dependencies: {
-    reviews: Pick<SourceDocumentReadPort, "listPendingDuplicateReviews">;
-    lifecycle: DuplicateReviewLifecyclePort;
-  }
-): Promise<BatchActionResult> {
-  const ids = [...new Set(input.sourceDocumentIds)];
-  const pending = await dependencies.reviews.listPendingDuplicateReviews(input.ledgerId, ids);
-  const pendingByDocumentId = new Map(
-    pending.map((review) => [review.sourceDocumentId, review] as const)
-  );
-  const result: BatchActionResult = {
-    requestedCount: ids.length,
-    succeededIds: [],
-    skipped: [],
+  lifecycle: DuplicateReviewLifecyclePort
+): Promise<PartialBatchCommandResult> {
+  const result: PartialBatchCommandResult = {
+    succeeded: [],
+    stale: [],
     failed: [],
   };
 
-  for (const sourceDocumentId of ids) {
-    const review = pendingByDocumentId.get(sourceDocumentId);
-    if (review == null) {
-      result.skipped.push({ id: sourceDocumentId, reason: "not_duplicate_pending" });
-      continue;
-    }
-
+  for (const target of input.targets) {
+    const { sourceDocumentId, expectedVersion } = target;
     try {
-      if (input.decision === "keep") {
-        await keepDuplicateDocument(
-          { ledgerId: input.ledgerId, sourceDocumentId, revisionId: review.revisionId },
-          dependencies.lifecycle
-        );
-      } else {
-        await discardDuplicateDocument(
-          { ledgerId: input.ledgerId, sourceDocumentId, revisionId: review.revisionId },
-          dependencies.lifecycle
-        );
-      }
-      result.succeededIds.push(sourceDocumentId);
+      const resolved =
+        input.decision === "keep"
+          ? await keepDuplicateDocument(
+              { ledgerId: input.ledgerId, sourceDocumentId, expectedVersion },
+              lifecycle
+            )
+          : await discardDuplicateDocument(
+              { ledgerId: input.ledgerId, sourceDocumentId, expectedVersion },
+              lifecycle
+            );
+      result.succeeded.push({ id: sourceDocumentId, sourceDocumentId, version: resolved.version });
     } catch (error) {
-      if (error instanceof ConflictError || error instanceof NotFoundError) {
-        result.skipped.push({
+      if (error instanceof StaleSourceDocumentVersionError) {
+        result.stale.push({
           id: sourceDocumentId,
-          reason: "already_processed",
+          sourceDocumentId,
+          expectedVersion: error.expectedVersion,
+          currentVersion: error.currentVersion,
         });
       } else {
         result.failed.push({
           id: sourceDocumentId,
-          reason: "internal",
+          code: error instanceof AppError ? error.code : "INTERNAL",
         });
       }
     }

@@ -1,13 +1,14 @@
 "use server";
 import type {
   BatchUpdateSourceDocumentsResultDto,
+  AtomicBatchCommandResult,
   SaveSourceDocumentChangesInput,
   SaveSourceDocumentChangesResultDto,
+  VersionedCommandResult,
 } from "@/modules/source-document/contracts";
 import {
   batchUpdateSourceDocumentsInputSchema,
   saveSourceDocumentChangesInputSchema,
-  sourceDocumentIdsSchema,
   type BatchUpdateSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import {
@@ -16,7 +17,6 @@ import {
 } from "../application/use-cases/source-document-updates";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { serverComposition } from "@/application/server-composition-root";
-import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 /**
  * Batch update multiple source documents.
@@ -24,16 +24,17 @@ import { sourceDocumentFingerprint } from "@/modules/source-document/source-docu
 export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
-    sourceDocumentIds: string[],
-    data: BatchUpdateSourceDocumentsInput
-  ): Promise<BatchUpdateSourceDocumentsResultDto> => {
-    const validatedIds = sourceDocumentIdsSchema.parse(sourceDocumentIds);
-    const validated = batchUpdateSourceDocumentsInputSchema.parse(data);
+    input: {
+      targets: import("../contracts").VersionedTarget[];
+      data: BatchUpdateSourceDocumentsInput;
+    }
+  ): Promise<AtomicBatchCommandResult<BatchUpdateSourceDocumentsResultDto>> => {
+    const validated = batchUpdateSourceDocumentsInputSchema.parse(input);
     return batchUpdateSourceDocuments(
       {
         ledgerId,
-        sourceDocumentIds: validatedIds,
-        data: validated,
+        targets: validated.targets,
+        data: validated.data,
       },
       serverComposition.sourceDocumentUpdates
     );
@@ -42,31 +43,21 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
 
 export const saveSourceDocumentChangesAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId, userId },
+    { ledgerId },
     input: SaveSourceDocumentChangesInput
-  ): Promise<SaveSourceDocumentChangesResultDto> => {
+  ): Promise<VersionedCommandResult<SaveSourceDocumentChangesResultDto>> => {
     const validated = saveSourceDocumentChangesInputSchema.parse(input);
-    const mutation = () =>
-      saveSourceDocumentChanges(
-        ledgerId,
-        {
-          sourceDocumentId: validated.sourceDocumentId,
-          expectedRevisionId: validated.expectedRevisionId,
-          operationId: validated.operationId,
-          ...(validated.sourceDocument === undefined
-            ? {}
-            : { sourceDocument: validated.sourceDocument }),
-          entries: validated.entries,
-        },
-        serverComposition.sourceDocumentUpdates
-      );
-    return serverComposition.userMutationIdempotency.run(
+    return saveSourceDocumentChanges(
+      ledgerId,
       {
-        userId,
-        key: `source-document:save:${ledgerId}:${validated.sourceDocumentId}:${validated.operationId}`,
-        fingerprint: sourceDocumentFingerprint(validated),
+        sourceDocumentId: validated.sourceDocumentId,
+        expectedVersion: validated.expectedVersion,
+        ...(validated.sourceDocument === undefined
+          ? {}
+          : { sourceDocument: validated.sourceDocument }),
+        entries: validated.entries,
       },
-      mutation
+      serverComposition.sourceDocumentUpdates
     );
   }
 );

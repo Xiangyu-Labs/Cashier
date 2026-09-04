@@ -20,7 +20,6 @@ export function useCredentialMutations(ledgerId: string) {
       const code = (error as Error & { code?: unknown }).code;
       toast.error(code === "CONFLICT" ? tCredentials("maxActive") : t("createFailed"));
     },
-    resourceGroups: ["credentials"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
@@ -28,7 +27,6 @@ export function useCredentialMutations(ledgerId: string) {
     mutationFn: (id) => deleteServiceCredentialAction(ledgerId, id),
     successMessage: t("credentialDeleted"),
     errorMessage: t("deleteFailed"),
-    resourceGroups: ["credentials"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 

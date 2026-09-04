@@ -8,11 +8,13 @@ const {
   retrySourceDocumentActionMock,
   toastErrorMock,
   toastSuccessMock,
+  uploadSubmissionImagesMock,
 } = vi.hoisted(() => ({
   createSourceDocumentActionMock: vi.fn(),
   retrySourceDocumentActionMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
+  uploadSubmissionImagesMock: vi.fn(),
 }));
 
 vi.mock("@/modules/source-document/actions", () => ({
@@ -25,6 +27,16 @@ vi.mock("@/modules/source-document/actions", () => ({
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock },
 }));
+
+vi.mock(
+  "@/modules/source-document/hooks/source-document-submission-upload",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/modules/source-document/hooks/source-document-submission-upload")
+    >()),
+    uploadSourceDocumentSubmissionImages: uploadSubmissionImagesMock,
+  })
+);
 
 import type { SourceDocumentInputControllerMessages } from "@/modules/source-document/hooks/source-document-input-controller.types";
 import { useSourceDocumentSubmitMutations } from "@/modules/source-document/hooks/useSourceDocumentSubmitMutations";
@@ -67,6 +79,10 @@ describe("useSourceDocumentSubmitMutations", () => {
     retrySourceDocumentActionMock.mockReset();
     toastErrorMock.mockReset();
     toastSuccessMock.mockReset();
+    uploadSubmissionImagesMock.mockReset();
+    uploadSubmissionImagesMock.mockImplementation(
+      async (_ledgerId: string, payload: unknown) => payload
+    );
   });
 
   afterEach(() => {
@@ -124,12 +140,60 @@ describe("useSourceDocumentSubmitMutations", () => {
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("create failed"));
     expect(onSuccess).not.toHaveBeenCalled();
 
-    const firstClientSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[3];
+    const firstClientSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[2];
     act(() => {
       result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
     });
     await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(2));
-    expect(createSourceDocumentActionMock.mock.calls[1]?.[3]).toBe(firstClientSubmissionId);
+    expect(createSourceDocumentActionMock.mock.calls[1]?.[2]).toBe(firstClientSubmissionId);
+  });
+
+  it("reuses uploaded files and submission identity after an ambiguous failure", async () => {
+    uploadSubmissionImagesMock.mockResolvedValue({
+      entryDate: "2026-07-17",
+      text: "Lunch",
+      storedFileIds: ["stored-1"],
+    });
+    createSourceDocumentActionMock
+      .mockRejectedValueOnce(new Error("response lost"))
+      .mockResolvedValueOnce({ sourceDocumentId: "source-1", version: 1, status: "processing" });
+    const { result } = setup(vi.fn());
+    const payload = {
+      entryDate: "2026-07-17",
+      text: "Lunch",
+      images: [{ data: "data:image/png;base64,AQ==", mimeType: "image/png" }],
+    };
+
+    act(() => result.current.submit(payload));
+    await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+    const firstSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[2];
+
+    act(() => result.current.submit(payload));
+    await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(2));
+
+    expect(uploadSubmissionImagesMock).toHaveBeenCalledTimes(1);
+    expect(createSourceDocumentActionMock.mock.calls[1]?.[1]).toEqual({
+      entryDate: "2026-07-17",
+      text: "Lunch",
+      storedFileIds: ["stored-1"],
+    });
+    expect(createSourceDocumentActionMock.mock.calls[1]?.[2]).toBe(firstSubmissionId);
+  });
+
+  it("uses a new submission identity when the payload changes", async () => {
+    createSourceDocumentActionMock.mockRejectedValue(new Error("server unavailable"));
+    const { result } = setup(vi.fn());
+
+    act(() => result.current.submit({ entryDate: "2026-07-17", text: "Lunch" }));
+    await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+    const firstSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[2];
+
+    act(() => result.current.submit({ entryDate: "2026-07-17", text: "Dinner" }));
+    await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(2));
+
+    expect(createSourceDocumentActionMock.mock.calls[1]?.[2]).not.toBe(firstSubmissionId);
   });
 
   it("cancels before the deferred mutation starts", async () => {

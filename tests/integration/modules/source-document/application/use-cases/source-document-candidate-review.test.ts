@@ -88,14 +88,11 @@ describe("source document candidates", () => {
   it("hydrates detail entries from the selected pending revision", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-detail-selection");
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
-      db,
-      ledgerId
-    );
+    const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
 
     const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
 
-    expect(detail?.pendingRevisionId).toBe(candidateRevisionId);
+    expect(detail).toMatchObject({ status: "candidate_pending", version: 3 });
     expect(detail?.ledgerEntries).toEqual([
       expect.objectContaining({
         itemName: "Dinner",
@@ -109,13 +106,11 @@ describe("source document candidates", () => {
   it("returns complete active and candidate projections for review", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-review");
-    const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
-      await setupDocumentWithCandidate(db, ledgerId);
+    const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
 
     const review = await getSourceDocumentCandidateReview(ledgerId, sourceDocumentId);
 
     expect(review.active).toMatchObject({
-      revisionId: originalActiveRevisionId,
       entryCount: 1,
       total: "12.5",
     });
@@ -125,7 +120,6 @@ describe("source document candidates", () => {
       convertedAmount: "12.500",
     });
     expect(review.candidate).toMatchObject({
-      revisionId: candidateRevisionId,
       entryCount: 1,
       total: "25",
     });

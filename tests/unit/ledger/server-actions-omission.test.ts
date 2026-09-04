@@ -35,23 +35,26 @@ vi.mock("@/modules/ledger/access", () => ({
       handler({ userId: "00000000-0000-4000-8000-000000000001" }, ledgerId, ...args),
 }));
 
-vi.mock("@/application/adapters/postgres/ledger-entry-idempotency", () => ({
-  postgresIdempotentLedgerEntryCommandAdapter: {
-    create: vi.fn((input) =>
-      createLedgerEntryWithConversionMock({ ledgerId: input.ledgerId, ...input.command })
-    ),
-    update: vi.fn((input) =>
-      updateLedgerEntryWithConversionMock({ ledgerId: input.ledgerId, ...input.command })
-    ),
-    delete: vi.fn(),
-  },
-  runIdempotentUserMutation: vi.fn((_input, mutation) => mutation()),
-}));
-
 vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
   batchUpdateLedgerEntries: batchUpdateLedgerEntriesMock,
   createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
   updateLedgerEntryWithConversion: updateLedgerEntryWithConversionMock,
+}));
+vi.mock("@/application/server-composition-root", () => ({
+  serverComposition: {
+    ledgerEntryCommands: {
+      create: createLedgerEntryWithConversionMock,
+      update: updateLedgerEntryWithConversionMock,
+      delete: vi.fn(),
+    },
+    sourceDocumentAggregate: {
+      batchUpdateEntries: batchUpdateLedgerEntriesMock,
+    },
+    ledgerMutations: {},
+    categories: {},
+    ledgerReads: {},
+    ledgerEntryDates: {},
+  },
 }));
 vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({
   createDefaultLedger: vi.fn(),
@@ -132,11 +135,14 @@ describe("ledger server action omission semantics", () => {
     await createLedgerEntryAction(
       "ledger-1",
       {
+        sourceDocumentId: "123e4567-e89b-42d3-a456-426614174000",
+        expectedVersion: 1,
+      },
+      {
         amount: "12.5",
         itemName: "Lunch",
         sourceDocumentId: "123e4567-e89b-42d3-a456-426614174000",
-      },
-      crypto.randomUUID()
+      }
     );
 
     const payload = createLedgerEntryWithConversionMock.mock.calls[0]?.[0] as Record<
@@ -155,11 +161,14 @@ describe("ledger server action omission semantics", () => {
   it("omits absent optional update-entry fields", async () => {
     await updateLedgerEntryAction(
       "ledger-1",
+      {
+        sourceDocumentId: "123e4567-e89b-42d3-a456-426614174000",
+        expectedVersion: 1,
+      },
       "123e4567-e89b-42d3-a456-426614174001",
       {
         description: null,
-      },
-      crypto.randomUUID()
+      }
     );
 
     const payload = updateLedgerEntryWithConversionMock.mock.calls[0]?.[0] as Record<
@@ -177,9 +186,17 @@ describe("ledger server action omission semantics", () => {
   });
 
   it("omits absent optional batch-update fields", async () => {
-    await batchUpdateLedgerEntriesAction("ledger-1", ["123e4567-e89b-42d3-a456-426614174002"], {
-      amount: "9.99",
-    });
+    await batchUpdateLedgerEntriesAction(
+      "ledger-1",
+      [
+        {
+          sourceDocumentId: "123e4567-e89b-42d3-a456-426614174000",
+          expectedVersion: 1,
+        },
+      ],
+      ["123e4567-e89b-42d3-a456-426614174002"],
+      { amount: "9.99" }
+    );
 
     const payload = batchUpdateLedgerEntriesMock.mock.calls[0]?.[0] as Record<string, unknown>;
 

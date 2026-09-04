@@ -9,6 +9,7 @@ import {
   ledgerEntries,
   sourceDocumentRevisions,
   sourceDocuments,
+  processingOutbox,
   ledgers,
 } from "@/persistence";
 import { eq } from "drizzle-orm";
@@ -35,6 +36,9 @@ describe("SourceDocument Actions", () => {
     }
     return first;
   }
+
+  const createDocument = (input: Parameters<typeof createSourceDocumentAction>[1]) =>
+    createSourceDocumentAction(testLedgerId, input, crypto.randomUUID());
 
   beforeEach(async () => {
     // Reset mock to use multi-stage mock by default
@@ -89,11 +93,11 @@ describe("SourceDocument Actions", () => {
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
 
-    const result = await createSourceDocumentAction(testLedgerId, {
+    const result = await createDocument({
       text: "苹果2公斤，每公斤10元",
     });
 
-    expect(result.revisionState).toBe("processing");
+    expect(result).toMatchObject({ version: 1, status: "processing" });
 
     // Process
     await processAllPendingTasks();
@@ -111,9 +115,9 @@ describe("SourceDocument Actions", () => {
   });
 
   it("should process text message and create ledger entry", async () => {
-    const result = await createSourceDocumentAction(testLedgerId, { text: "午餐花了25.5元" });
+    const result = await createDocument({ text: "午餐花了25.5元" });
     expect(result.sourceDocumentId).toBeDefined();
-    expect(result.revisionState).toBe("processing");
+    expect(result).toMatchObject({ version: 1, status: "processing" });
 
     // Process
     await processAllPendingTasks();
@@ -130,8 +134,8 @@ describe("SourceDocument Actions", () => {
   });
 
   it("should match category by index", async () => {
-    const result = await createSourceDocumentAction(testLedgerId, { text: "午餐" });
-    expect(result.revisionState).toBe("processing");
+    const result = await createDocument({ text: "午餐" });
+    expect(result).toMatchObject({ version: 1, status: "processing" });
 
     // Process
     await processAllPendingTasks();
@@ -150,7 +154,7 @@ describe("SourceDocument Actions", () => {
   });
 
   it("should save input message with AI response", async () => {
-    const result = await createSourceDocumentAction(testLedgerId, { text: "午餐25元" });
+    const result = await createDocument({ text: "午餐25元" });
 
     const db = getTestDb();
     const savedDoc = await db.query.sourceDocuments.findFirst({
@@ -170,21 +174,51 @@ describe("SourceDocument Actions", () => {
     await processAllPendingTasks();
   });
 
+  it("replays a browser create without duplicating persisted work", async () => {
+    const clientSubmissionId = crypto.randomUUID();
+    const input = { text: "Idempotent lunch 25" };
+
+    const first = await createSourceDocumentAction(testLedgerId, input, clientSubmissionId);
+    const replay = await createSourceDocumentAction(testLedgerId, input, clientSubmissionId);
+
+    expect(replay).toEqual(first);
+    const db = getTestDb();
+    expect(
+      await db.query.sourceDocuments.findMany({
+        where: eq(sourceDocuments.id, first.sourceDocumentId),
+      })
+    ).toHaveLength(1);
+    expect(
+      await db.query.sourceDocumentRevisions.findMany({
+        where: eq(sourceDocumentRevisions.sourceDocumentId, first.sourceDocumentId),
+      })
+    ).toHaveLength(1);
+    expect(
+      await db.query.processingOutbox.findMany({
+        where: eq(processingOutbox.sourceDocumentId, first.sourceDocumentId),
+      })
+    ).toHaveLength(1);
+  });
+
   it("should return error when no input provided", async () => {
-    await expect(createSourceDocumentAction(testLedgerId, {})).rejects.toThrow(
+    await expect(createSourceDocumentAction(testLedgerId, {}, crypto.randomUUID())).rejects.toThrow(
       "Content (text or images) is required"
     );
   });
 
   it("should return error for non-existent ledger", async () => {
     await expect(
-      createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" })
+      createSourceDocumentAction(
+        "00000000-0000-0000-0000-000000000099",
+        { text: "foo" },
+        crypto.randomUUID()
+      )
     ).rejects.toThrow("Ledger not found");
   });
 
   it("should delete source document and associated ledger entries", async () => {
     // 1. Create a message first
-    const createRes = await createSourceDocumentAction(testLedgerId, {
+    const createRes = await createDocument({
       text: "待删除的项目 100元",
     });
     const sourceDocumentId = createRes.sourceDocumentId!;
@@ -200,14 +234,17 @@ describe("SourceDocument Actions", () => {
     expect(entriesBefore.length).toBeGreaterThan(0);
 
     // 2. DELETE request - deleteSourceDocumentAction returns void in new format
-    await deleteSourceDocumentAction(testLedgerId, sourceDocumentId);
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    await deleteSourceDocumentAction(testLedgerId, sourceDocumentId, document!.stateVersion);
 
     // 3. Verify deletion
     const docAfter = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(docAfter).toBeDefined();
-    expect(docAfter?.currentStatus).toBe("completed");
+    expect(docAfter?.currentStatus).toBe("cancelled");
     expect(docAfter?.deletedAt).not.toBeNull();
 
     const entriesAfter = await db.query.ledgerEntries.findMany({

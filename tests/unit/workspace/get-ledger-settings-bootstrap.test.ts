@@ -47,13 +47,17 @@ describe("getLedgerSettingsBootstrap", () => {
       categories: dependencies.categories,
       credentials: dependencies.credentials,
     });
-    expect(result?.dehydratedState.queries.map((query) => query.queryKey[0])).toEqual(
-      expect.arrayContaining(["ledger", "entryCategories", "ledgerSettings"])
+    expect(result?.dehydratedState.queries.map((query) => query.queryKey.slice(0, 3))).toEqual(
+      expect.arrayContaining([
+        ["ledger", "ledger-1"],
+        ["ledger", "ledger-1", "categories"],
+        ["ledger", "ledger-1", "settings"],
+      ])
     );
     expect(
       result?.dehydratedState.queries.some((query) =>
-        ["sourceDocuments", "ledgerEntries", "summary", "enhanced-stats"].includes(
-          String(query.queryKey[0])
+        ["source-documents", "entries", "summary", "enhanced-stats"].includes(
+          String(query.queryKey[2])
         )
       )
     ).toBe(false);

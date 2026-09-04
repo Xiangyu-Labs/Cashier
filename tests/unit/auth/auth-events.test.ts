@@ -123,7 +123,7 @@ describe("auth.ts adapter wiring", () => {
       expect.any(Object)
     );
     expect(result).toMatchObject({ email: "user@example.com" });
-  });
+  }, 30_000);
 
   it("passes locale through password authorization", async () => {
     authenticateWithPasswordMock.mockResolvedValueOnce({

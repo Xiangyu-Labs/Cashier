@@ -54,7 +54,6 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
   >(ledgerId, {
     mutationFn: ({ categoryId }: { categoryId: string; requestId: number }) =>
       generateEntryCategoryMetadataAction(ledgerId, categoryId),
-    resourceGroups: ["categories"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (_data, { categoryId: _categoryId }) => {
       options.onMetadataGenerated?.();
@@ -92,7 +91,6 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
     },
     successMessage: t("categoryCreated"),
     errorMessage: t("createCategoryFailed"),
-    resourceGroups: ["categories"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (category) => {
       requestCategoryMetadata(category.id);
@@ -111,7 +109,6 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
       }),
     successMessage: t("categoryUpdated"),
     errorMessage: t("updateCategoryFailed"),
-    resourceGroups: ["categories"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
@@ -119,7 +116,6 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
     mutationFn: (id) => deleteEntryCategoryAction(ledgerId, id),
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
-    resourceGroups: ["categories"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
@@ -127,7 +123,6 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
     mutationFn: (categoryIds) => reorderEntryCategoriesAction(ledgerId, categoryIds),
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
-    resourceGroups: ["categories"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
@@ -135,7 +130,6 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
     mutationFn: (input) => saveEntryCategoriesAction(ledgerId, input),
     successMessage: t("categoriesSaved"),
     errorMessage: t("saveCategoriesFailed"),
-    resourceGroups: ["categories"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (saved, input) => {
       queryClient.setQueryData(queryKeys.entryCategories(ledgerId), saved);

@@ -17,6 +17,7 @@ export type SourceDocumentLedgerEntryDto = LedgerEntryEmbeddedViewDto;
 
 interface SourceDocumentSummaryDto {
   id: string;
+  version: number;
   ledgerId: string;
   title: string | null;
   status: SourceDocumentStatusType;
@@ -26,8 +27,8 @@ interface SourceDocumentSummaryDto {
   createdAt: string;
   updatedAt: string;
   supportedActions: SupportedSourceDocumentAction[];
+  canEdit: boolean;
   errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
-  pendingRevisionId: string | null;
 }
 
 interface SourceDocumentEvidenceDto {
@@ -40,7 +41,6 @@ export interface SourceDocumentDto extends SourceDocumentSummaryDto, SourceDocum
   deletedAt: string | null;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
-  activeRevisionId?: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
   duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
@@ -61,7 +61,6 @@ export interface SourceDocumentCandidateReviewEntryDto {
 }
 
 export interface SourceDocumentCandidateReviewRevisionDto {
-  revisionId: string;
   entries: SourceDocumentCandidateReviewEntryDto[];
   entryCount: number;
   total: string;
@@ -69,15 +68,14 @@ export interface SourceDocumentCandidateReviewRevisionDto {
 
 export interface SourceDocumentCandidateReviewDto {
   sourceDocumentId: string;
+  version: number;
   active: SourceDocumentCandidateReviewRevisionDto;
   candidate: SourceDocumentCandidateReviewRevisionDto;
 }
 
 export interface SourceDocumentDuplicateReviewDto {
   sourceDocumentId: string;
-  revisionId: string;
   matchedSourceDocumentId: string;
-  matchedRevisionId: string | null;
   status: "pending" | "kept" | "discarded";
   reason: string | null;
   confidence: number | null;
@@ -91,6 +89,7 @@ export interface SourceDocumentDuplicateReviewDto {
  * `matchedState` describes what happened to the matched bill since detection.
  */
 export interface SourceDocumentDuplicateReviewDetailDto {
+  version: number;
   review: SourceDocumentDuplicateReviewDto;
   duplicate: {
     id: string;
@@ -121,7 +120,6 @@ export interface SourceDocumentListItemDto extends SourceDocumentSummaryDto {
 export interface SourceDocumentLightDto
   extends Omit<SourceDocumentSummaryDto, "updatedAt">, SourceDocumentEvidenceDto {
   hasImages: boolean;
-  activeRevisionId?: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
   duplicateReview?: SourceDocumentDuplicateReviewDto;
 }

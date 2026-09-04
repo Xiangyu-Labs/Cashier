@@ -1,11 +1,11 @@
-import { and, desc, eq, inArray, isNotNull, isNull, lt, max, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, max, or, sql } from "drizzle-orm";
 import type {
   RevisionOutcome,
   SourceDocumentContract,
   SourceDocumentPort,
   SourceDocumentRevisionContract,
 } from "@/application/contracts";
-import { supportedSourceDocumentActions } from "@/application/contracts";
+import { deriveSourceDocumentCapabilities } from "@/modules/source-document/application/source-document-state";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { MAX_FILES, MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
@@ -55,20 +55,21 @@ function mapRevision(
 
 function mapDocument(
   row: typeof sourceDocuments.$inferSelect,
-  pendingOutcome: RevisionOutcome | null
+  _pendingOutcome: RevisionOutcome | null
 ): SourceDocumentContract {
   return {
     id: row.id,
     ledgerId: row.ledgerId,
+    version: row.stateVersion,
     activeRevisionId: row.activeRevisionId,
     pendingRevisionId: row.pendingRevisionId,
-    supportedActions: supportedSourceDocumentActions({
-      activeRevisionId: row.activeRevisionId,
-      pendingRevisionId: row.pendingRevisionId,
-      pendingOutcome,
-      duplicateReviewPending: row.currentStatus === "duplicate_pending",
-      deleted: row.deletedAt != null,
-    }),
+    supportedActions:
+      row.deletedAt == null
+        ? deriveSourceDocumentCapabilities({
+            status: row.currentStatus,
+            hasActiveResult: row.activeRevisionId != null,
+          }).supportedActions
+        : [],
   };
 }
 
@@ -271,6 +272,10 @@ export async function createPendingRevisionInTransaction(
     .update(sourceDocuments)
     .set({
       pendingRevisionId: revision.id,
+      currentStatus: "processing",
+      ...(existingDocument == null
+        ? {}
+        : { stateVersion: sql`${sourceDocuments.stateVersion} + 1` }),
       ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
       updatedAt: new Date(),
     })
@@ -407,6 +412,19 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         )
         .returning({ id: sourceDocumentRevisions.id });
       if (updated.length === 0) return false;
+      await tx
+        .update(sourceDocuments)
+        .set({
+          currentStatus: input.outcome,
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
+            eq(sourceDocuments.pendingRevisionId, input.revisionId)
+          )
+        );
       return true;
     });
   },

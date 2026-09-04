@@ -7,13 +7,17 @@ import {
   createSourceDocumentAction,
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import type { CreatedRecordResult } from "@/modules/source-document/contracts";
+import type {
+  CreatedRecordResult,
+  RetrySourceDocumentResponseDto,
+} from "@/modules/source-document/contracts";
 import type {
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
 } from "./source-document-input-controller.types";
 import { uploadSourceDocumentSubmissionImages } from "./source-document-submission-upload";
 import { useSubmitProgress } from "./source-document-submit-progress";
+import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,21 +25,27 @@ import { useSubmitProgress } from "./source-document-submit-progress";
 
 interface CreateVariables {
   payload: SourceDocumentSubmitPayload;
-  operationId: string;
+  payloadFingerprint: string;
   clientSubmissionId: string;
   signal: AbortSignal;
 }
 
 interface RetryVariables {
   payload: SourceDocumentSubmitPayload;
-  operationId: string;
   signal: AbortSignal;
+}
+
+interface CreateSubmissionIdentity {
+  payloadFingerprint: string;
+  clientSubmissionId: string;
+  uploadedPayload: SourceDocumentSubmitPayload | null;
 }
 
 interface UseSourceDocumentSubmitMutationsOptions {
   ledgerId: string;
   mode: "create" | "retry";
   sourceDocumentId?: string;
+  sourceDocumentVersion?: number;
   messages: SourceDocumentInputControllerMessages;
   onSuccess?: (result: CreatedRecordResult) => void;
 }
@@ -58,6 +68,7 @@ export function useSourceDocumentSubmitMutations({
   ledgerId,
   mode,
   sourceDocumentId,
+  sourceDocumentVersion,
   messages,
   onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
@@ -72,12 +83,7 @@ export function useSourceDocumentSubmitMutations({
     canCancel,
     cancel,
   } = useSubmitProgress(messages);
-  const submissionIdentityRef = useRef({
-    fingerprint: "",
-    createId: crypto.randomUUID(),
-    retryId: crypto.randomUUID(),
-  });
-
+  const createSubmissionIdentityRef = useRef<CreateSubmissionIdentity | null>(null);
   // -----------------------------------------------------------------------
   // Create mutation
   // -----------------------------------------------------------------------
@@ -87,30 +93,45 @@ export function useSourceDocumentSubmitMutations({
     CreateVariables
   >(ledgerId, {
     mutationFn: async (variables: CreateVariables) => {
-      const { payload, clientSubmissionId } = variables;
-      const uploadedPayload = await uploadSourceDocumentSubmissionImages(
-        ledgerId,
-        payload,
-        { signal: variables.signal },
-        setMonotonicProgress
-      );
+      const currentIdentity = createSubmissionIdentityRef.current;
+      let uploadedPayload =
+        currentIdentity?.clientSubmissionId === variables.clientSubmissionId &&
+        currentIdentity.payloadFingerprint === variables.payloadFingerprint
+          ? currentIdentity.uploadedPayload
+          : null;
+      if (uploadedPayload == null) {
+        uploadedPayload = await uploadSourceDocumentSubmissionImages(
+          ledgerId,
+          variables.payload,
+          { signal: variables.signal },
+          setMonotonicProgress
+        );
+        if (
+          createSubmissionIdentityRef.current?.clientSubmissionId ===
+            variables.clientSubmissionId &&
+          createSubmissionIdentityRef.current.payloadFingerprint === variables.payloadFingerprint
+        ) {
+          createSubmissionIdentityRef.current.uploadedPayload = uploadedPayload;
+        }
+      }
       setMonotonicProgress({ phase: "submitting", percent: 90 });
       const result = await createSourceDocumentAction(
         ledgerId,
         uploadedPayload,
-        variables.operationId,
-        clientSubmissionId
+        variables.clientSubmissionId
       );
       return result;
     },
-    resourceGroups: ["documents"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: null,
     errorMessage: null,
     onSuccess: async (data, variables) => {
       try {
-        submissionIdentityRef.current.createId = crypto.randomUUID();
-        submissionIdentityRef.current.fingerprint = "";
+        if (
+          createSubmissionIdentityRef.current?.clientSubmissionId === variables.clientSubmissionId
+        ) {
+          createSubmissionIdentityRef.current = null;
+        }
         setMonotonicProgress({ phase: "complete", percent: 100 });
         await waitForPaint();
         onSuccess?.({
@@ -131,51 +152,48 @@ export function useSourceDocumentSubmitMutations({
   // Retry mutation
   // -----------------------------------------------------------------------
 
-  const retryMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof editRetrySourceDocumentAction>>,
-    RetryVariables
-  >(ledgerId, {
-    mutationFn: async (variables: RetryVariables) => {
-      if (sourceDocumentId == null) throw new Error("No source document ID for retry");
-      const { payload } = variables;
-      const uploadedPayload = await uploadSourceDocumentSubmissionImages(
-        ledgerId,
-        payload,
-        { signal: variables.signal },
-        setMonotonicProgress
-      );
-      setMonotonicProgress({ phase: "submitting", percent: 90 });
-      const result = await editRetrySourceDocumentAction(
-        ledgerId,
-        sourceDocumentId,
-        uploadedPayload,
-        variables.operationId
-      );
-      return result;
-    },
-    resourceGroups: ["documents"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    successMessage: messages.retrySuccess,
-    errorMessage: null,
-    onSuccess: async (data, variables) => {
-      try {
-        submissionIdentityRef.current.retryId = crypto.randomUUID();
-        submissionIdentityRef.current.fingerprint = "";
-        setMonotonicProgress({ phase: "complete", percent: 100 });
-        await waitForPaint();
-        onSuccess?.({
-          sourceDocumentId: data.sourceDocumentId,
-          entryDate: variables.payload.entryDate,
-        });
-      } finally {
+  const retryMutation = useLedgerMutation<RetrySourceDocumentResponseDto, RetryVariables>(
+    ledgerId,
+    {
+      mutationFn: async (variables: RetryVariables) => {
+        if (sourceDocumentId == null) throw new Error("No source document ID for retry");
+        const { payload } = variables;
+        const uploadedPayload = await uploadSourceDocumentSubmissionImages(
+          ledgerId,
+          payload,
+          { signal: variables.signal },
+          setMonotonicProgress
+        );
+        setMonotonicProgress({ phase: "submitting", percent: 90 });
+        const result = await editRetrySourceDocumentAction(
+          ledgerId,
+          sourceDocumentId,
+          uploadedPayload,
+          sourceDocumentVersion ?? 1
+        );
+        return unwrapVersionedCommandResult(result);
+      },
+      invalidationErrorMessage: tCommon("savedRefreshFailed"),
+      successMessage: messages.retrySuccess,
+      errorMessage: null,
+      onSuccess: async (data, variables) => {
+        try {
+          setMonotonicProgress({ phase: "complete", percent: 100 });
+          await waitForPaint();
+          onSuccess?.({
+            sourceDocumentId: sourceDocumentId!,
+            entryDate: variables.payload.entryDate,
+          });
+        } finally {
+          finishUpload(variables.signal);
+        }
+      },
+      onError: (error, variables) => {
+        handleSubmitError(error, messages.retryError);
         finishUpload(variables.signal);
-      }
-    },
-    onError: (error, variables) => {
-      handleSubmitError(error, messages.retryError);
-      finishUpload(variables.signal);
-    },
-  });
+      },
+    }
+  );
 
   // -----------------------------------------------------------------------
   // Public API
@@ -190,13 +208,16 @@ export function useSourceDocumentSubmitMutations({
     const controller = new AbortController();
     uploadControllerRef.current = controller;
     setProgress({ phase: "preparing", percent: 0 });
-    const fingerprint = JSON.stringify(payload);
-    if (submissionIdentityRef.current.fingerprint !== fingerprint) {
-      submissionIdentityRef.current = {
-        fingerprint,
-        createId: crypto.randomUUID(),
-        retryId: crypto.randomUUID(),
-      };
+    const payloadFingerprint = JSON.stringify(payload);
+    if (mode === "create") {
+      const currentIdentity = createSubmissionIdentityRef.current;
+      if (currentIdentity?.payloadFingerprint !== payloadFingerprint) {
+        createSubmissionIdentityRef.current = {
+          payloadFingerprint,
+          clientSubmissionId: crypto.randomUUID(),
+          uploadedPayload: null,
+        };
+      }
     }
     const startMutation = () => {
       if (controller.signal.aborted) {
@@ -208,17 +229,14 @@ export function useSourceDocumentSubmitMutations({
       }
       if (mode === "retry") {
         if (sourceDocumentId == null) return;
-        const operationId = submissionIdentityRef.current.retryId;
-        retryMutation.mutate({ payload, operationId, signal: controller.signal });
+        retryMutation.mutate({ payload, signal: controller.signal });
         return;
       }
 
-      const operationId = crypto.randomUUID();
-      const clientSubmissionId = submissionIdentityRef.current.createId;
       createMutation.mutate({
         payload,
-        operationId,
-        clientSubmissionId,
+        payloadFingerprint,
+        clientSubmissionId: createSubmissionIdentityRef.current!.clientSubmissionId,
         signal: controller.signal,
       });
     };

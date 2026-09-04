@@ -112,6 +112,35 @@ const imagesSchema = z
   });
 
 export const sourceDocumentIdSchema = uuidSchema;
+export const clientSubmissionIdSchema = uuidSchema;
+export const versionedTargetSchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  expectedVersion: z.number().int().positive(),
+});
+
+export const versionedTargetsSchema = z
+  .array(versionedTargetSchema)
+  .min(1)
+  .max(MAX_BATCH_SIZE)
+  .superRefine((targets, ctx) => {
+    const versions = new Map<string, number>();
+    for (const target of targets) {
+      const previous = versions.get(target.sourceDocumentId);
+      if (previous != null) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            previous === target.expectedVersion
+              ? "A source document may only appear once"
+              : "A source document has conflicting expected versions",
+        });
+      }
+      versions.set(target.sourceDocumentId, target.expectedVersion);
+    }
+  })
+  .transform((targets) =>
+    [...targets].sort((left, right) => left.sourceDocumentId.localeCompare(right.sourceDocumentId))
+  );
 
 /**
  * Idempotency-Key header contract for POST /api/v1/source-documents.
@@ -132,26 +161,6 @@ export const sourceDocumentIdsSchema = z.preprocess(
   (value) => (Array.isArray(value) ? [...new Set(value)] : value),
   z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
 );
-
-/**
- * Identity values carried by source-document mutations are opaque correlation
- * values at the transport boundary, but they must still be real UUID v4
- * values before they reach an application adapter.
- */
-export const mutationIdentitySchema = strictObjectSchema({
-  sourceDocumentId: uuidSchema,
-  revisionId: uuidSchema.optional(),
-  operationId: uuidSchema.optional(),
-});
-
-export const revisionMutationIdentitySchema = strictObjectSchema({
-  sourceDocumentId: uuidSchema,
-  revisionId: uuidSchema,
-});
-
-export const operationIdentitySchema = strictObjectSchema({
-  operationId: uuidSchema.optional(),
-});
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z
@@ -410,8 +419,7 @@ export const updateSourceDocumentInputSchema = strictObjectSchema({
 
 export const saveSourceDocumentChangesInputSchema = strictObjectSchema({
   sourceDocumentId: uuidSchema,
-  expectedRevisionId: uuidSchema,
-  operationId: uuidSchema,
+  expectedVersion: z.number().int().positive(),
   sourceDocument: updateSourceDocumentInputSchema.optional(),
   entries: z
     .array(
@@ -441,9 +449,7 @@ export const saveSourceDocumentChangesInputSchema = strictObjectSchema({
 
 export const splitSourceDocumentInputSchema = strictObjectSchema({
   sourceDocumentId: uuidSchema,
-  expectedRevisionId: uuidSchema,
-  operationId: uuidSchema,
-  newSourceDocumentId: uuidSchema,
+  expectedVersion: z.number().int().positive(),
   ledgerEntryIds: z
     .array(uuidSchema)
     .min(1)
@@ -456,7 +462,10 @@ export const splitSourceDocumentInputSchema = strictObjectSchema({
   entryDate: dateStringSchema,
 });
 
-export const batchUpdateSourceDocumentsInputSchema = updateSourceDocumentInputSchema;
+export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
+  targets: versionedTargetsSchema,
+  data: updateSourceDocumentInputSchema,
+});
 
 export const createQuickEntryInputSchema = strictObjectSchema({
   categoryId: uuidSchema,
@@ -476,18 +485,8 @@ function parseSourceDocumentContract<T>(schema: z.ZodType<T>, input: unknown): T
   return result.data;
 }
 
-export function parseMutationIdentity(input: unknown): z.infer<typeof mutationIdentitySchema> {
-  return parseSourceDocumentContract(mutationIdentitySchema, input);
-}
-
-export function parseRevisionMutationIdentity(
-  input: unknown
-): z.infer<typeof revisionMutationIdentitySchema> {
-  return parseSourceDocumentContract(revisionMutationIdentitySchema, input);
-}
-
-export function parseOperationIdentity(input: unknown): z.infer<typeof operationIdentitySchema> {
-  return parseSourceDocumentContract(operationIdentitySchema, input);
+export function parseVersionedTarget(input: unknown): z.infer<typeof versionedTargetSchema> {
+  return parseSourceDocumentContract(versionedTargetSchema, input);
 }
 
 export type CreateSourceDocumentInputContract = z.infer<typeof createSourceDocumentInputSchema>;
@@ -499,5 +498,5 @@ export type FinalizeSourceDocumentUploadInput = z.infer<
   typeof finalizeSourceDocumentUploadInputSchema
 >;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
-export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
+export type BatchUpdateSourceDocumentsInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

@@ -4,42 +4,32 @@ import { useEffect, useRef } from "react";
 
 interface UseSourceDocumentRevisionGuardOptions {
   hasPendingChanges: boolean;
-  activeRevisionId: string | null | undefined;
-}
-
-export interface SaveAttemptIdentity {
-  operationId: string;
-  payloadKey: string;
+  version: number | undefined;
 }
 
 /**
- * Tracks the revision a draft was started against so a concurrent server-side
- * save can be detected as a conflict. `draftRevisionIdRef` is intentionally set
- * with `??=`, not `=`: once a draft starts, later `activeRevisionId` changes
- * while it's still pending must NOT overwrite the baseline, or the conflict
- * they represent would go undetected.
+ * Tracks the document version a draft started from. A newer server snapshot
+ * never rebases local edits implicitly.
  */
 export function useSourceDocumentRevisionGuard({
   hasPendingChanges,
-  activeRevisionId,
+  version,
 }: UseSourceDocumentRevisionGuardOptions) {
-  const draftRevisionIdRef = useRef<string | null>(null);
-  const saveAttemptIdentityRef = useRef<SaveAttemptIdentity | null>(null);
+  const baseVersionRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (hasPendingChanges) {
-      draftRevisionIdRef.current ??= activeRevisionId ?? null;
+      baseVersionRef.current ??= version ?? null;
     } else {
-      draftRevisionIdRef.current = null;
-      saveAttemptIdentityRef.current = null;
+      baseVersionRef.current = null;
     }
-  }, [hasPendingChanges, activeRevisionId]);
+  }, [hasPendingChanges, version]);
 
-  const hasRevisionConflict =
+  const hasVersionConflict =
     hasPendingChanges &&
-    draftRevisionIdRef.current != null &&
-    activeRevisionId != null &&
-    draftRevisionIdRef.current !== activeRevisionId;
+    baseVersionRef.current != null &&
+    version != null &&
+    baseVersionRef.current !== version;
 
-  return { draftRevisionIdRef, saveAttemptIdentityRef, hasRevisionConflict };
+  return { baseVersionRef, hasVersionConflict };
 }

@@ -88,7 +88,7 @@ describe("local contract release", () => {
     ).toEqual(beforeDocument);
   });
 
-  it("derives reads from the canonical active revision", async () => {
+  it("uses the explicitly persisted document status", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const created = await postgresLedgerProjectionAdapter.createManual({
@@ -106,7 +106,7 @@ describe("local contract release", () => {
       getTargetSourceDocument(ledgerId, created.sourceDocumentId)
     ).resolves.toMatchObject({
       id: created.sourceDocumentId,
-      status: "completed",
+      status: "failed",
       text: "target revision text",
     });
   });

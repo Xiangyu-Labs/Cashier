@@ -131,6 +131,7 @@ export function SourceDocumentEditRetryDialog({
                 ledgerId={ledgerId}
                 mode="retry"
                 sourceDocumentId={sourceDocument.id}
+                sourceDocumentVersion={sourceDocument.version}
                 initialData={initialData}
                 onPendingChange={(pending) => {
                   setIsSubmitting(pending);

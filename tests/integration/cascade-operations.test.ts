@@ -215,19 +215,23 @@ describe("E1: Create Entry → Data Association Correct", () => {
     // Create entry via action (amount must be a number, sourceDocumentId is required)
     const entry = await createLedgerEntryAction(
       ledger.id,
+      { sourceDocumentId: sourceDoc.id, expectedVersion: 1 },
       {
         amount: "100.0",
         currency: "CNY",
         itemName: "测试条目",
         categoryId: category.id,
         sourceDocumentId: sourceDoc.id,
-      },
-      crypto.randomUUID()
+      }
     );
 
     // Verify association
-    expect(entry.ledgerId).toBe(ledger.id);
-    expect(entry.categoryId).toBe(category.id);
+    expect(entry.ok).toBe(true);
+    const createdEntry = await db.query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, entry.ok ? entry.data.ledgerEntryId : ""),
+    });
+    expect(createdEntry?.ledgerId).toBe(ledger.id);
+    expect(createdEntry?.categoryId).toBe(category.id);
 
     // Verify category entry count
     const categories = await getTargetEntryCategoriesAction(ledger.id);
@@ -245,16 +249,19 @@ describe("E1: Create Entry → Data Association Correct", () => {
     // Create entry without category (amount must be a number, sourceDocumentId is required)
     const entry = await createLedgerEntryAction(
       ledger.id,
+      { sourceDocumentId: sourceDoc.id, expectedVersion: 1 },
       {
         amount: "50.0",
         currency: "CNY",
         itemName: "无分类条目",
         sourceDocumentId: sourceDoc.id,
-      },
-      crypto.randomUUID()
+      }
     );
 
-    expect(entry.categoryId).toBeNull();
+    const createdEntry = await db.query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, entry.ok ? entry.data.ledgerEntryId : ""),
+    });
+    expect(createdEntry?.categoryId).toBeNull();
 
     // Verify uncategorized count
     const count = await getUncategorizedCountAction(ledger.id);
@@ -283,7 +290,11 @@ describe("E2: Delete Entry → Related Counts Update", () => {
     expect(categories.find((c) => c.id === category.id)?.entryCount).toBe(2);
 
     // Delete one entry
-    await deleteLedgerEntryAction(ledger.id, entry1.id, crypto.randomUUID());
+    await deleteLedgerEntryAction(
+      ledger.id,
+      { sourceDocumentId: entry1.sourceDocumentId!, expectedVersion: 1 },
+      entry1.id
+    );
 
     // Verify count decreased
     categories = await getTargetEntryCategoriesAction(ledger.id);
@@ -299,7 +310,11 @@ describe("E2: Delete Entry → Related Counts Update", () => {
     const entry = await createTestEntry(db, ledger.id, { sourceDocumentId: sourceDoc.id });
 
     // Delete entry
-    await deleteLedgerEntryAction(ledger.id, entry.id, crypto.randomUUID());
+    await deleteLedgerEntryAction(
+      ledger.id,
+      { sourceDocumentId: entry.sourceDocumentId!, expectedVersion: 1 },
+      entry.id
+    );
 
     // Verify source document still exists and unchanged
     const doc = await db.query.sourceDocuments.findFirst({
@@ -334,9 +349,9 @@ describe("E3: Update Entry Category → Counts Update Correctly", () => {
     // Move entry from A to B
     await updateLedgerEntryAction(
       ledger.id,
+      { sourceDocumentId: entry.sourceDocumentId!, expectedVersion: 1 },
       entry.id,
-      { categoryId: categoryB.id },
-      crypto.randomUUID()
+      { categoryId: categoryB.id }
     );
 
     // Verify counts updated
@@ -357,7 +372,12 @@ describe("E3: Update Entry Category → Counts Update Correctly", () => {
     expect(await getUncategorizedCountAction(ledger.id)).toBe(0);
 
     // Remove category from entry
-    await updateLedgerEntryAction(ledger.id, entry.id, { categoryId: null }, crypto.randomUUID());
+    await updateLedgerEntryAction(
+      ledger.id,
+      { sourceDocumentId: entry.sourceDocumentId!, expectedVersion: 1 },
+      entry.id,
+      { categoryId: null }
+    );
 
     // Now 1 uncategorized
     expect(await getUncategorizedCountAction(ledger.id)).toBe(1);
@@ -381,7 +401,7 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
     const entry2 = await createTestEntry(db, ledger.id, { sourceDocumentId: sourceDoc.id });
 
     // Delete source document
-    await deleteSourceDocumentAction(ledger.id, sourceDoc.id);
+    await deleteSourceDocumentAction(ledger.id, sourceDoc.id, 1);
 
     // Verify: Source document is deleted (soft)
     // Note: findFirst returns undefined when not found, not null
@@ -414,7 +434,7 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
     const entryB = await createTestEntry(db, ledger.id, { sourceDocumentId: docB.id });
 
     // Delete only doc A
-    await deleteSourceDocumentAction(ledger.id, docA.id);
+    await deleteSourceDocumentAction(ledger.id, docA.id, 1);
 
     // Entry B should still exist
     const remainingEntryB = await db.query.ledgerEntries.findFirst({

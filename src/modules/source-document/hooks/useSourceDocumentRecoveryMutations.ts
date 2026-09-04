@@ -10,11 +10,12 @@ import {
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useSourceDocumentRevisionDecisionMutation } from "./useSourceDocumentRevisionDecisionMutation";
+import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
   ledgerId: string;
   sourceDocumentId: string;
-  revisionId?: string;
+  version: number;
   onSuccess?: () => void;
 }
 
@@ -29,11 +30,10 @@ interface UseSourceDocumentRecoveryMutationsOptions {
 export function useSourceDocumentRecoveryMutations({
   ledgerId,
   sourceDocumentId,
-  revisionId,
+  version,
   onSuccess,
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const actionLockRef = useRef(false);
-  const retryOperationIdRef = useRef(crypto.randomUUID());
   const tActions = useTranslations("CandidateAction");
   const tCommon = useTranslations("Common");
 
@@ -44,7 +44,7 @@ export function useSourceDocumentRecoveryMutations({
   const acceptMutation = useSourceDocumentRevisionDecisionMutation({
     ledgerId,
     sourceDocumentId,
-    ...(revisionId === undefined ? {} : { revisionId }),
+    expectedVersion: version,
     action: acceptSourceDocumentCandidateAction,
     successMessage: tActions("acceptSuccess"),
     errorMessage: tActions("acceptError"),
@@ -58,7 +58,7 @@ export function useSourceDocumentRecoveryMutations({
   const abandonMutation = useSourceDocumentRevisionDecisionMutation({
     ledgerId,
     sourceDocumentId,
-    ...(revisionId === undefined ? {} : { revisionId }),
+    expectedVersion: version,
     action: abandonSourceDocumentCandidateAction,
     successMessage: tActions("abandonSuccess"),
     errorMessage: tActions("abandonError"),
@@ -69,26 +69,28 @@ export function useSourceDocumentRecoveryMutations({
   // Direct retry
   // -----------------------------------------------------------------------
 
-  const retryMutation = useLedgerMutation<unknown, { operationId: string }>(ledgerId, {
-    mutationFn: async ({ operationId }) => {
-      return retrySourceDocumentAction(ledgerId, sourceDocumentId, operationId);
+  const retryMutation = useLedgerMutation<unknown, void>(ledgerId, {
+    mutationFn: async () => {
+      const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId, version);
+      return unwrapVersionedCommandResult(result);
     },
-    resourceGroups: ["documents"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tActions("retrySuccess"),
     errorMessage: tActions("retryError"),
     onSuccess: () => {
-      retryOperationIdRef.current = crypto.randomUUID();
       onSuccess?.();
     },
   });
 
   const cancelMutation = useLedgerMutation<unknown, void>(ledgerId, {
     mutationFn: async () => {
-      if (revisionId == null) throw new Error("No revision ID provided for cancellation");
-      return cancelSourceDocumentProcessingAction(ledgerId, sourceDocumentId, revisionId);
+      const result = await cancelSourceDocumentProcessingAction(
+        ledgerId,
+        sourceDocumentId,
+        version
+      );
+      return unwrapVersionedCommandResult(result);
     },
-    resourceGroups: ["documents"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tActions("cancelSuccess"),
     errorMessage: tActions("cancelError"),
@@ -125,7 +127,7 @@ export function useSourceDocumentRecoveryMutations({
     if (actionLockRef.current) return;
     actionLockRef.current = true;
     try {
-      await retryMutation.mutateAsync({ operationId: retryOperationIdRef.current });
+      await retryMutation.mutateAsync();
     } finally {
       actionLockRef.current = false;
     }

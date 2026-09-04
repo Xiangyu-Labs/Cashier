@@ -23,16 +23,17 @@ describe("applyStreamRefreshToCache", () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it("invalidates stream, total, documents, and ledger entries after a change", () => {
+  it("invalidates the ledger root once after a change", () => {
     const client = new QueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries");
 
     applyStreamRefreshToCache(client, "ledger-1", makeResult({ changed: true }));
 
-    expect(invalidate).toHaveBeenCalledTimes(5);
-    for (const call of invalidate.mock.calls) {
-      expect(call[0]).toEqual(expect.objectContaining({ predicate: expect.any(Function) }));
-    }
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["ledger", "ledger-1"],
+      refetchType: "active",
+    });
   });
 
   it.each([
@@ -45,6 +46,10 @@ describe("applyStreamRefreshToCache", () => {
     applyStreamRefreshToCache(client, "ledger-1", makeResult({ invalidations }));
 
     expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["ledger", "ledger-1"],
+      refetchType: "active",
+    });
   });
 
   it("invalidates stats for a stats signal", () => {
@@ -60,5 +65,9 @@ describe("applyStreamRefreshToCache", () => {
     );
 
     expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["ledger", "ledger-1"],
+      refetchType: "active",
+    });
   });
 });

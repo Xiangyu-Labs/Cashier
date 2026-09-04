@@ -8,6 +8,7 @@ import type {
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
+import type { LedgerEntryCommandPort } from "@/modules/ledger/application/ports";
 import type {
   BatchUpdateSourceDocumentsInput,
   UpdateSourceDocumentInput,
@@ -21,6 +22,10 @@ import type {
   SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
+  AtomicBatchCommandResult,
+  PartialBatchCommandResult,
+  VersionedCommandResult,
+  VersionedTarget,
 } from "../contracts";
 
 interface SourceDocumentFilterInput {
@@ -73,29 +78,61 @@ export interface SourceDocumentReadPort {
 export interface SourceDocumentUpdatePort {
   batchUpdate(input: {
     ledgerId: string;
-    sourceDocumentIds: string[];
+    targets: VersionedTarget[];
     data: BatchUpdateSourceDocumentsInput;
-  }): Promise<BatchUpdateSourceDocumentsResultDto>;
+  }): Promise<AtomicBatchCommandResult<BatchUpdateSourceDocumentsResultDto>>;
   saveChangesAtomically(input: {
     ledgerId: string;
     sourceDocumentId: string;
-    expectedRevisionId: string;
-    operationId: string;
+    expectedVersion: number;
     sourceDocument?: UpdateSourceDocumentInput;
     entries: Array<{
       ledgerEntryId: string;
       data: import("@/modules/ledger/contract-schemas").UpdateLedgerEntryInput;
     }>;
-  }): Promise<SaveSourceDocumentChangesResultDto>;
+  }): Promise<VersionedCommandResult<SaveSourceDocumentChangesResultDto>>;
   split(input: {
     ledgerId: string;
     sourceDocumentId: string;
-    expectedRevisionId: string;
-    operationId: string;
-    newSourceDocumentId: string;
+    expectedVersion: number;
     ledgerEntryIds: string[];
     entryDate: string;
-  }): Promise<SplitSourceDocumentResultDto>;
+  }): Promise<VersionedCommandResult<SplitSourceDocumentResultDto>>;
+}
+
+/** The only application-facing boundary for writes that change a document's visible projection. */
+export interface SourceDocumentAggregateWritePort {
+  createProcessingDocument: SourceDocumentSubmissionPort["createPendingWithIntent"];
+  createManualDocument: LedgerProjectionPort["createManual"];
+  saveChanges: SourceDocumentUpdatePort["saveChangesAtomically"];
+  updateDocuments: SourceDocumentUpdatePort["batchUpdate"];
+  addEntry: LedgerEntryCommandPort["create"];
+  updateEntries: LedgerEntryCommandPort["update"];
+  deleteEntries: LedgerEntryCommandPort["delete"];
+  batchUpdateEntries: LedgerEntryCommandPort["batchUpdate"];
+  batchDeleteEntries: LedgerEntryCommandPort["batchDelete"];
+  splitEntries: SourceDocumentUpdatePort["split"];
+  installRetry: SourceDocumentSubmissionPort["createPendingWithIntent"];
+  acceptCandidate: SourceDocumentLifecyclePort["acceptCandidate"];
+  abandonCandidate: SourceDocumentLifecyclePort["abandonCandidate"];
+  cancelProcessing: SourceDocumentLifecyclePort["cancelPending"];
+  resolveDuplicate(input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    expectedVersion?: number;
+    decision: "keep" | "discard";
+  }): Promise<{ version: number; status: "completed" | "deleted" } | null>;
+  deleteDocuments(input: {
+    ledgerId: string;
+    target: VersionedTarget;
+  }): Promise<VersionedCommandResult<import("../contracts").DeleteSourceDocumentResultDto>>;
+  deleteDocumentsBatch?: (
+    ledgerId: string,
+    targets: VersionedTarget[]
+  ) => Promise<PartialBatchCommandResult>;
+  completeProcessing: LedgerProjectionPort["activateRevision"];
+  applyMainCurrencyChange: LedgerProjectionPort["recalculate"];
+  recalculateConversions: LedgerProjectionPort["recalculate"];
 }
 
 export interface SourceDocumentQueryPorts {
@@ -134,24 +171,31 @@ export interface SourceDocumentLifecyclePort {
   acceptCandidate(
     ledgerId: string,
     sourceDocumentId: string,
-    revisionId: string
-  ): Promise<"completed" | "duplicate_pending">;
+    expectedVersion?: number
+  ): Promise<{ version: number; status: "completed" | "duplicate_pending" }>;
   abandonCandidate(
     ledgerId: string,
     sourceDocumentId: string,
-    revisionId: string
-  ): Promise<boolean>;
-  keepDuplicate(ledgerId: string, sourceDocumentId: string, revisionId: string): Promise<boolean>;
+    expectedVersion?: number
+  ): Promise<{ version: number; status: "completed" | "duplicate_pending" } | null>;
+  keepDuplicate(
+    ledgerId: string,
+    sourceDocumentId: string,
+    expectedVersion?: number
+  ): Promise<{ version: number; status: "completed" } | null>;
   discardDuplicate(
     ledgerId: string,
     sourceDocumentId: string,
-    revisionId: string
-  ): Promise<boolean>;
+    expectedVersion?: number
+  ): Promise<{ version: number; status: "deleted" } | null>;
   cancelPending(
     ledgerId: string,
     sourceDocumentId: string,
-    revisionId: string
-  ): Promise<import("../contracts").CancelProcessingResponseDto>;
+    expectedVersion?: number
+  ): Promise<{
+    version: number;
+    status: "cancelled" | "completed" | "duplicate_pending";
+  }>;
 }
 
 export interface ProcessingRecoveryPort {

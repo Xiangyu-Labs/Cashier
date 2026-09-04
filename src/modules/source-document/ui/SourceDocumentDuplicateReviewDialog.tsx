@@ -45,7 +45,7 @@ export function SourceDocumentDuplicateReviewDialog({
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
-  const [discardRevisionId, setDiscardRevisionId] = useState<string | null>(null);
+  const [discardVersion, setDiscardVersion] = useState<number | null>(null);
   const reviewQueryKey = queryKeys.sourceDocumentDuplicateReview(ledgerId, sourceDocumentId);
   const reviewQuery = useQuery({
     queryKey: reviewQueryKey,
@@ -53,7 +53,7 @@ export function SourceDocumentDuplicateReviewDialog({
     enabled: open,
     staleTime: 0,
   });
-  const revisionId = reviewQuery.data?.review.revisionId;
+  const version = reviewQuery.data?.version ?? 1;
 
   const removeResolvedDocumentQueries = useCallback(() => {
     queryClient.removeQueries({ queryKey: reviewQueryKey });
@@ -69,14 +69,14 @@ export function SourceDocumentDuplicateReviewDialog({
   const closeResolvedReview = useCallback(() => {
     removeResolvedDocumentQueries();
     setDiscardConfirmOpen(false);
-    setDiscardRevisionId(null);
+    setDiscardVersion(null);
     onOpenChange(false);
   }, [onOpenChange, removeResolvedDocumentQueries]);
 
   const keepMutation = useSourceDocumentRevisionDecisionMutation({
     ledgerId,
     sourceDocumentId,
-    ...(revisionId === undefined ? {} : { revisionId }),
+    expectedVersion: version,
     action: keepDuplicateSourceDocumentAction,
     successMessage: t("keepSuccess"),
     errorMessage: t("actionFailed"),
@@ -85,7 +85,7 @@ export function SourceDocumentDuplicateReviewDialog({
   const discardMutation = useSourceDocumentRevisionDecisionMutation({
     ledgerId,
     sourceDocumentId,
-    ...(revisionId === undefined ? {} : { revisionId }),
+    expectedVersion: version,
     action: discardDuplicateSourceDocumentAction,
     successMessage: t("discardSuccess"),
     errorMessage: t("actionFailed"),
@@ -142,8 +142,8 @@ export function SourceDocumentDuplicateReviewDialog({
               <Button
                 variant="destructive"
                 onClick={() => {
-                  if (revisionId == null) return;
-                  setDiscardRevisionId(revisionId);
+                  if (data == null) return;
+                  setDiscardVersion(version);
                   setDiscardConfirmOpen(true);
                 }}
                 disabled={!canAct}
@@ -204,11 +204,11 @@ export function SourceDocumentDuplicateReviewDialog({
         </SourceDocumentReviewDialogContent>
       </Dialog>
       <ConfirmDialog
-        open={discardConfirmOpen}
+        open={discardConfirmOpen && discardVersion === version}
         onOpenChange={(nextOpen) => {
           if (isPending) return;
           setDiscardConfirmOpen(nextOpen);
-          if (!nextOpen) setDiscardRevisionId(null);
+          if (!nextOpen) setDiscardVersion(null);
         }}
         title={t("discardConfirmTitle")}
         description={t("discardConfirmDescription", {
@@ -220,9 +220,12 @@ export function SourceDocumentDuplicateReviewDialog({
         variant="destructive"
         onConfirm={async () => {
           if (!canAct) return false;
-          if (revisionId !== discardRevisionId) {
+          const currentVersion = queryClient.getQueryData<{ version: number }>(
+            reviewQueryKey
+          )?.version;
+          if (version !== discardVersion || currentVersion !== discardVersion) {
             setDiscardConfirmOpen(false);
-            setDiscardRevisionId(null);
+            setDiscardVersion(null);
             return false;
           }
           await discardMutation.mutateAsync();

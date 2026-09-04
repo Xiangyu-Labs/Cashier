@@ -55,19 +55,19 @@ function listItem(id: string, title: string): SourceDocumentListItemDto {
     createdAt: "2026-07-15T00:00:00.000Z",
     updatedAt: "2026-07-15T00:00:00.000Z",
     hasImages: false,
+    version: 1,
+    canEdit: false,
     supportedActions: [],
     errorCode: null,
-    pendingRevisionId: "rev-2",
   };
 }
 
 function reviewDetail(): SourceDocumentDuplicateReviewDetailDto {
   return {
+    version: 1,
     review: {
       sourceDocumentId: DUPLICATE_ID,
-      revisionId: "rev-2",
       matchedSourceDocumentId: "doc-1",
-      matchedRevisionId: "rev-1",
       status: "pending",
       reason: "same amount",
       confidence: 0.98,
@@ -190,7 +190,18 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     reviewActionMock.mockResolvedValue(reviewDetail());
-    discardActionMock.mockResolvedValue({ status: "discarded" });
+    discardActionMock.mockResolvedValue({
+      ok: true,
+      sourceDocumentId: DUPLICATE_ID,
+      version: 2,
+      data: { status: "deleted", kept: false },
+    });
+    keepActionMock.mockResolvedValue({
+      ok: true,
+      sourceDocumentId: DUPLICATE_ID,
+      version: 2,
+      data: { status: "completed", kept: true },
+    });
   });
 
   it("closes after success without synchronously patching the stream", async () => {
@@ -208,7 +219,7 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     fireEvent.click(await screen.findByRole("button", { name: "删除重复" }));
 
     await waitFor(() => {
-      expect(discardActionMock).toHaveBeenCalledWith(LEDGER_ID, DUPLICATE_ID, "rev-2");
+      expect(discardActionMock).toHaveBeenCalledWith(LEDGER_ID, DUPLICATE_ID, 1);
     });
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("已删除重复账单"));
 
@@ -333,7 +344,7 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
   it("does not discard a replacement revision after confirmation opens", async () => {
     reviewActionMock.mockResolvedValueOnce(reviewDetail()).mockResolvedValueOnce({
       ...reviewDetail(),
-      review: { ...reviewDetail().review, revisionId: "rev-3" },
+      version: 2,
     });
     const queryClient = createQueryClient();
     renderDialog({ queryClient });

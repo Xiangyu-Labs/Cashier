@@ -53,8 +53,9 @@ export function useActiveTabQueryState({
       void queryClient.refetchQueries(
         {
           predicate: (query) =>
-            (query.queryKey[0] === "ledgerEntries" || query.queryKey[0] === "summary") &&
-            query.queryKey[1] === ledgerId,
+            query.queryKey[0] === "ledger" &&
+            query.queryKey[1] === ledgerId &&
+            (query.queryKey[2] === "entries" || query.queryKey[2] === "summary"),
           type: "active",
         },
         { throwOnError: true }
@@ -65,7 +66,9 @@ export function useActiveTabQueryState({
       void queryClient.refetchQueries(
         {
           predicate: (query) =>
-            query.queryKey[0] === "sourceDocuments" && query.queryKey[1] === ledgerId,
+            query.queryKey[0] === "ledger" &&
+            query.queryKey[1] === ledgerId &&
+            query.queryKey[2] === "source-documents",
           type: "active",
         },
         { throwOnError: true }
@@ -76,10 +79,11 @@ export function useActiveTabQueryState({
       void queryClient.refetchQueries(
         {
           predicate: (query) =>
-            (query.queryKey[0] === "ledger" ||
-              query.queryKey[0] === "entryCategories" ||
-              query.queryKey[0] === "ledgerSettings") &&
-            query.queryKey[1] === ledgerId,
+            query.queryKey[0] === "ledger" &&
+            query.queryKey[1] === ledgerId &&
+            (query.queryKey.length === 2 ||
+              query.queryKey[2] === "categories" ||
+              query.queryKey[2] === "settings"),
           type: "active",
         },
         { throwOnError: true }
@@ -100,18 +104,26 @@ export function useActiveTabQueryState({
       const key = query.queryKey;
       if (activeTab === "stream") {
         return (
-          key[0] === "sourceDocuments" &&
+          key[0] === "ledger" &&
           key[1] === ledgerId &&
-          (key[2] === "stream" || key[2] === "streamTotal")
+          key[2] === "source-documents" &&
+          (key[3] === "stream" || key[3] === "stream-total")
         );
       }
       if (activeTab === "details") {
-        return (key[0] === "ledgerEntries" || key[0] === "summary") && key[1] === ledgerId;
+        return (
+          key[0] === "ledger" &&
+          key[1] === ledgerId &&
+          (key[2] === "entries" || key[2] === "summary")
+        );
       }
-      if (activeTab === "stats") return key[0] === "enhanced-stats" && key[1] === ledgerId;
+      if (activeTab === "stats") {
+        return key[0] === "ledger" && key[1] === ledgerId && key[2] === "enhanced-stats";
+      }
       return (
-        (key[0] === "ledger" || key[0] === "entryCategories" || key[0] === "ledgerSettings") &&
-        key[1] === ledgerId
+        key[0] === "ledger" &&
+        key[1] === ledgerId &&
+        (key.length === 2 || key[2] === "categories" || key[2] === "settings")
       );
     };
     await queryClient.refetchQueries(

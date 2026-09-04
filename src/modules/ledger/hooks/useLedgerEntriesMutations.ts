@@ -1,48 +1,55 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
-import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 
-type UpdateEntryResult = LedgerEntryDto;
-type DeleteEntryResult = DeleteLedgerEntryResultDto;
 type UpdateVariables = {
-  ledgerEntryId: string;
+  entry: LedgerEntryDto;
   data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number };
 };
 export function useLedgerEntriesMutations(ledgerId: string) {
   const tCommon = useTranslations("Common");
-  const updateEntry = useLedgerMutation<UpdateEntryResult, UpdateVariables>(ledgerId, {
-    mutationFn: async ({ ledgerEntryId, data }) => {
-      const operationId = crypto.randomUUID();
+  const updateEntry = useLedgerMutation<{ ledgerEntryId: string }, UpdateVariables>(ledgerId, {
+    mutationFn: async ({ entry, data }) => {
+      if (entry.sourceDocument == null) throw new Error("Entry has no source document");
       const { amount, ...rest } = data;
-      return updateLedgerEntryAction(
+      const result = await updateLedgerEntryAction(
         ledgerId,
-        ledgerEntryId,
-        { ...rest, ...(amount == null ? {} : { amount: String(amount) }) },
-        operationId
-      ) as Promise<UpdateEntryResult>;
+        {
+          sourceDocumentId: entry.sourceDocument.id,
+          expectedVersion: entry.sourceDocument.version,
+        },
+        entry.id,
+        { ...rest, ...(amount == null ? {} : { amount: String(amount) }) }
+      );
+      return unwrapVersionedCommandResult(result);
     },
-    resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("saveFailed"),
   });
 
-  const deleteEntry = useLedgerMutation<DeleteEntryResult, string>(ledgerId, {
-    mutationFn: async (ledgerEntryId) => {
-      const operationId = crypto.randomUUID();
-      return deleteLedgerEntryAction(
-        ledgerId,
-        ledgerEntryId,
-        operationId
-      ) as Promise<DeleteEntryResult>;
-    },
-    resourceGroups: ["entries"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-  });
+  const deleteEntry = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, LedgerEntryDto>(
+    ledgerId,
+    {
+      mutationFn: async (entry) => {
+        if (entry.sourceDocument == null) throw new Error("Entry has no source document");
+        const result = await deleteLedgerEntryAction(
+          ledgerId,
+          {
+            sourceDocumentId: entry.sourceDocument.id,
+            expectedVersion: entry.sourceDocument.version,
+          },
+          entry.id
+        );
+        return unwrapVersionedCommandResult(result);
+      },
+      invalidationErrorMessage: tCommon("savedRefreshFailed"),
+      successMessage: tCommon("deleteSuccess"),
+      errorMessage: tCommon("deleteFailed"),
+    }
+  );
 
   return {
     updateEntry,

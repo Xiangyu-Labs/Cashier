@@ -3,14 +3,14 @@ import type { CategoryPort } from "@/application/contracts";
 import { NotFoundError } from "@/lib/errors";
 
 type LedgerEntryMutationDependencies =
-  | Pick<LedgerMutationPort, "createEntry" | "updateEntry" | "batchUpdateEntries">
+  | Pick<LedgerMutationPort, "createEntry" | "updateEntry">
   | {
-      mutations: Pick<LedgerMutationPort, "createEntry" | "updateEntry" | "batchUpdateEntries">;
+      mutations: Pick<LedgerMutationPort, "createEntry" | "updateEntry">;
       categories: Pick<CategoryPort, "get">;
     };
 
 function resolveDependencies(dependencies: LedgerEntryMutationDependencies): {
-  mutations: Pick<LedgerMutationPort, "createEntry" | "updateEntry" | "batchUpdateEntries">;
+  mutations: Pick<LedgerMutationPort, "createEntry" | "updateEntry">;
   categories?: Pick<CategoryPort, "get">;
 } {
   if ("mutations" in dependencies) return dependencies;
@@ -43,21 +43,4 @@ export async function updateLedgerEntryWithConversion(
   const { mutations, categories } = resolveDependencies(dependencies);
   await assertCategoryBelongsToLedger(input.ledgerId, input.categoryId, categories);
   return mutations.updateEntry(input);
-}
-
-export async function batchUpdateLedgerEntries(
-  input: {
-    ledgerId: string;
-    ledgerEntryIds: string[];
-    categoryId?: string | null;
-    currency?: string | null;
-    amount?: string;
-    description?: string | null;
-    itemName?: string;
-  },
-  dependencies: LedgerEntryMutationDependencies
-) {
-  const { mutations, categories } = resolveDependencies(dependencies);
-  await assertCategoryBelongsToLedger(input.ledgerId, input.categoryId, categories);
-  return mutations.batchUpdateEntries(input);
 }

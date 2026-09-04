@@ -6,11 +6,13 @@ const {
   deleteSourceDocumentMock,
   retrySourceDocumentMock,
   scheduleProcessingAfterMock,
+  deleteDocumentsMock,
 } = vi.hoisted(() => ({
   requireLedgerAccessMock: vi.fn(),
   deleteSourceDocumentMock: vi.fn(),
   retrySourceDocumentMock: vi.fn(),
   scheduleProcessingAfterMock: vi.fn(),
+  deleteDocumentsMock: vi.fn(),
 }));
 
 vi.mock("@/modules/ledger/access", () => ({
@@ -33,6 +35,7 @@ vi.mock("@/application/server-composition-root", () => ({
   serverComposition: {
     sourceDocumentRevisions: {},
     sourceDocumentSubmissions: {},
+    sourceDocumentAggregate: { deleteDocuments: deleteDocumentsMock },
   },
 }));
 
@@ -51,15 +54,16 @@ describe("source document batch server actions", () => {
   });
 
   it("returns a stable internal reason without exposing the original error", async () => {
-    deleteSourceDocumentMock.mockRejectedValueOnce(new Error("database unavailable"));
+    deleteDocumentsMock.mockRejectedValueOnce(new Error("database unavailable"));
 
-    const result = await batchDeleteSourceDocumentsAction(ledgerId, [sourceDocumentId]);
+    const result = await batchDeleteSourceDocumentsAction(ledgerId, [
+      { sourceDocumentId, expectedVersion: 1 },
+    ]);
 
     expect(result).toEqual({
-      requestedCount: 1,
-      succeededIds: [],
-      skipped: [],
-      failed: [{ id: sourceDocumentId, reason: "internal" }],
+      succeeded: [],
+      stale: [],
+      failed: [{ id: sourceDocumentId, code: "INTERNAL" }],
     });
     expect(JSON.stringify(result)).not.toContain("database unavailable");
   });
@@ -69,9 +73,11 @@ describe("source document batch server actions", () => {
       new AppError("storage provider unavailable", "STORAGE_UNAVAILABLE")
     );
 
-    const result = await batchRetrySourceDocumentsAction(ledgerId, [sourceDocumentId]);
+    const result = await batchRetrySourceDocumentsAction(ledgerId, [
+      { sourceDocumentId, expectedVersion: 1 },
+    ]);
 
-    expect(result.failed).toEqual([{ id: sourceDocumentId, reason: "processing_unavailable" }]);
+    expect(result.failed).toEqual([{ id: sourceDocumentId, code: "PROCESSING_UNAVAILABLE" }]);
     expect(JSON.stringify(result)).not.toContain("storage provider unavailable");
   });
 });

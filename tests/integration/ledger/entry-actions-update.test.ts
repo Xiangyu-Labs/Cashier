@@ -1,168 +1,128 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { getTestDb } from "../../setup";
-import { ledgers, ledgerEntries, entryCategories } from "@/persistence";
-import { sourceDocuments } from "@/persistence/schema/source-document";
-import { v4 as uuidv4 } from "uuid";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-
-const { getRatesMock, convertBatchMock } = vi.hoisted(() => ({
-  getRatesMock: vi.fn(async () => ({
-    base: "USD",
-    date: "2026-01-01",
-    rates: { CNY: 1 } as Record<string, number>,
-  })),
-  convertBatchMock: vi.fn(),
-}));
+import { updateLedgerEntryAction } from "@/modules/ledger/actions";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import { getTestDb } from "../../setup";
+import { activateTestSourceDocumentProjection, TEST_USER_ID } from "../../helpers/schema-setup";
 
 vi.mock("@/application/adapters/postgres/exchange-rate", () => {
-  const rateBook = {
-    getRates: getRatesMock,
-    convertBatch: convertBatchMock,
-  };
+  const rateBook = { getRates: vi.fn(), convertBatch: vi.fn() };
   return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
 });
-import { updateLedgerEntryAction } from "@/modules/ledger/actions";
-import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
-const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
-
-async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entryDate?: string) {
-  const [doc] = await db
-    .insert(sourceDocuments)
-    .values({
-      id: uuidv4(),
-      ledgerId,
-      currentStatus: "completed",
-      type: "ai_parsed",
-      entryDate: entryDate ?? null,
-    })
-    .returning();
-  expect(doc).toBeDefined();
-  if (doc === undefined) {
-    throw new Error("Expected source document insert to return a row");
-  }
-  await activateTestSourceDocumentProjection(db, doc.id);
-  return doc;
-}
-
-describe("updateLedgerEntryAction", () => {
+describe("updateLedgerEntryAction version CAS", () => {
   let ledgerId: string;
+  let sourceDocumentId: string;
   let entryId: string;
 
   beforeEach(async () => {
-    vi.clearAllMocks();
     const db = getTestDb();
-    ledgerId = uuidv4();
-    await db.insert(ledgers).values({
-      id: ledgerId,
-      userId: TEST_USER_ID,
-
-      mainCurrency: "CNY",
+    ledgerId = crypto.randomUUID();
+    sourceDocumentId = crypto.randomUUID();
+    entryId = crypto.randomUUID();
+    await db.insert(ledgers).values({ id: ledgerId, userId: TEST_USER_ID, mainCurrency: "CNY" });
+    await db.insert(sourceDocuments).values({
+      id: sourceDocumentId,
+      ledgerId,
+      currentStatus: "completed",
+      type: "manual",
     });
+    await db.insert(ledgerEntries).values({
+      id: entryId,
+      ledgerId,
+      sourceDocumentId,
+      itemName: "Lunch",
+      amount: "50.000",
+      currency: "CNY",
+      convertedAmount: "50.000",
+      exchangeRate: "1",
+    });
+    await activateTestSourceDocumentProjection(db, sourceDocumentId);
+  });
 
-    const doc = await seedDoc(db, ledgerId);
-    const [entry] = await db
-      .insert(ledgerEntries)
-      .values({
-        id: uuidv4(),
-        ledgerId,
-        sourceDocumentId: doc.id,
-        itemName: "午餐",
-        amount: "50.00",
-        currency: "CNY",
-        convertedAmount: "50.00",
+  it("preserves the entry ID and increments the document exactly once", async () => {
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      { sourceDocumentId, expectedVersion: 1 },
+      entryId,
+      { itemName: "Dinner" }
+    );
+    expect(result).toEqual({
+      ok: true,
+      sourceDocumentId,
+      version: 2,
+      data: { ledgerEntryId: entryId },
+    });
+    const entry = await getTestDb().query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, entryId),
+    });
+    expect(entry?.itemName).toBe("Dinner");
+    expect(entry?.deletedAt).toBeNull();
+  });
+
+  it("does not write or increment for a no-op", async () => {
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      { sourceDocumentId, expectedVersion: 1 },
+      entryId,
+      { itemName: "Lunch" }
+    );
+    expect(result).toMatchObject({ ok: true, version: 1 });
+    const document = await getTestDb().query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    expect(document?.stateVersion).toBe(1);
+  });
+
+  it("returns stale without changing the entry", async () => {
+    await getTestDb()
+      .update(sourceDocuments)
+      .set({ stateVersion: 2 })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+    await expect(
+      updateLedgerEntryAction(ledgerId, { sourceDocumentId, expectedVersion: 1 }, entryId, {
+        itemName: "Stale",
       })
-      .returning();
-    expect(entry).toBeDefined();
-    if (entry === undefined) {
-      throw new Error("Expected ledger entry insert to return a row");
-    }
-    entryId = entry.id;
-    await activateTestSourceDocumentProjection(db, doc.id);
-  });
-
-  it("updates itemName without recalculating convertedAmount", async () => {
-    const result = await updateLedgerEntryAction(
-      ledgerId,
-      entryId,
-      {
-        itemName: "晚餐",
-      },
-      crypto.randomUUID()
-    );
-    expect(result.itemName).toBe("晚餐");
-    expect(getRatesMock).not.toHaveBeenCalled();
-  });
-
-  it("recalculates convertedAmount when amount changes", async () => {
-    getRatesMock.mockResolvedValue({ base: "USD", date: "2026-01-01", rates: { CNY: 2 } });
-
-    const db = getTestDb();
-    // Change currency to USD first
-    await db.update(ledgerEntries).set({ currency: "USD" }).where(eq(ledgerEntries.id, entryId));
-
-    const result = await updateLedgerEntryAction(
-      ledgerId,
-      entryId,
-      {
-        amount: "100",
-      },
-      crypto.randomUUID()
-    );
-
-    expect(getRatesMock).toHaveBeenCalled();
-    expect(result.convertedAmount).toBe("200.000");
-  });
-
-  it("re-rounds the amount when only currency changes", async () => {
-    getRatesMock.mockResolvedValue({
-      base: "USD",
-      date: "2026-01-01",
-      rates: { CNY: 1, JPY: 100 },
+    ).resolves.toMatchObject({ ok: false, reason: "stale", currentVersion: 2 });
+    const entry = await getTestDb().query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, entryId),
     });
-    const result = await updateLedgerEntryAction(
-      ledgerId,
-      entryId,
-      { currency: "JPY" },
-      crypto.randomUUID()
-    );
-
-    expect(result.currency).toBe("JPY");
-    expect(result.amount).toBe("50.000");
+    expect(entry?.itemName).toBe("Lunch");
   });
 
-  it("persists the ledger currency when an empty currency is submitted", async () => {
-    const result = await updateLedgerEntryAction(
-      ledgerId,
-      entryId,
-      { amount: "12.3456", currency: null },
-      crypto.randomUUID()
-    );
-
-    expect(result.currency).toBe("CNY");
-    expect(result.amount).toBe("12.350");
-    expect(result.convertedAmount).toBe("12.350");
-  });
-
-  it("updates categoryId without conversion", async () => {
-    const db = getTestDb();
-    const catId = uuidv4();
-    await db.insert(entryCategories).values({
-      id: catId,
-      ledgerId,
-      name: "餐饮",
-      sortOrder: 1,
+  it("allows exactly one of two synchronized commands with the same version", async () => {
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
     });
-
-    const result = await updateLedgerEntryAction(
-      ledgerId,
-      entryId,
-      {
-        categoryId: catId,
-      },
-      crypto.randomUUID()
+    const first = barrier.then(() =>
+      updateLedgerEntryAction(ledgerId, { sourceDocumentId, expectedVersion: 1 }, entryId, {
+        itemName: "Dinner",
+      })
     );
-    expect(result.categoryId).toBe(catId);
-    expect(getRatesMock).not.toHaveBeenCalled();
+    const second = barrier.then(() =>
+      updateLedgerEntryAction(ledgerId, { sourceDocumentId, expectedVersion: 1 }, entryId, {
+        description: "Team meal",
+      })
+    );
+
+    release();
+    const results = await Promise.all([first, second]);
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.filter((result) => !result.ok)).toEqual([
+      expect.objectContaining({ reason: "stale", expectedVersion: 1, currentVersion: 2 }),
+    ]);
+
+    const [entry, document] = await Promise.all([
+      getTestDb().query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
+      getTestDb().query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      }),
+    ]);
+    expect(document?.stateVersion).toBe(2);
+    expect(
+      (entry?.itemName === "Dinner" && entry.description == null) ||
+        (entry?.itemName === "Lunch" && entry.description === "Team meal")
+    ).toBe(true);
   });
 });

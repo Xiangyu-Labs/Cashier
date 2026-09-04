@@ -8,9 +8,16 @@ import {
   batchResolveDuplicateReviewsAction,
   batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/actions";
-import type { BatchActionResult } from "@/lib/batch-ids";
-import type { BatchUpdateSourceDocumentsResultDto } from "@/modules/source-document/contracts";
+import type {
+  PartialBatchCommandResult,
+  BatchUpdateSourceDocumentsResultDto,
+  VersionedTarget,
+} from "@/modules/source-document/contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import {
+  unwrapAtomicBatchCommandResult,
+  unwrapVersionedCommandResult,
+} from "@/modules/source-document/command-results";
 
 type DuplicateBatchVariables =
   | string[]
@@ -26,16 +33,16 @@ function getDuplicateBatchVariables(variables: DuplicateBatchVariables) {
 export function useBatchSourceDocumentActions(
   ledgerId: string,
   clearSelection: () => void,
-  retainSelection?: (ids: string[]) => void
+  retainSelection?: (ids: string[]) => void,
+  versions: ReadonlyMap<string, number> = new Map()
 ) {
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
   const deleteSourceDocument = useLedgerMutation<void, string>(ledgerId, {
     mutationFn: async (id: string) => {
-      const operationId = crypto.randomUUID();
-      await deleteSourceDocumentAction(ledgerId, id, operationId);
+      const result = await deleteSourceDocumentAction(ledgerId, id, versions.get(id) ?? 1);
+      unwrapVersionedCommandResult(result);
     },
-    resourceGroups: ["documents"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
@@ -48,9 +55,16 @@ export function useBatchSourceDocumentActions(
     BatchUpdateSourceDocumentsResultDto,
     { ids: string[]; entryDate: string }
   >(ledgerId, {
-    mutationFn: ({ ids, entryDate }) =>
-      batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate }),
-    resourceGroups: ["documents"],
+    mutationFn: async ({ ids, entryDate }) => {
+      const result = await batchUpdateSourceDocumentsAction(ledgerId, {
+        targets: ids.map((sourceDocumentId) => ({
+          sourceDocumentId,
+          expectedVersion: versions.get(sourceDocumentId) ?? 1,
+        })),
+        data: { entryDate },
+      });
+      return unwrapAtomicBatchCommandResult(result);
+    },
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) => {
       toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
@@ -62,85 +76,87 @@ export function useBatchSourceDocumentActions(
   });
 
   const settleBatchResult = (
-    result: BatchActionResult,
+    result: PartialBatchCommandResult,
     successLabel: string,
     preserveIds: string[] = []
   ) => {
-    const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
+    const unresolved = [...result.stale, ...result.failed].map((item) => item.id);
     const retained = [...new Set([...preserveIds, ...unresolved])];
     if (retained.length === 0) clearSelection();
     else retainSelection?.(retained);
-    if (result.succeededIds.length > 0) toast.success(successLabel);
+    if (result.succeeded.length > 0) toast.success(successLabel);
     if (unresolved.length > 0) {
       toast.warning(
         tBatch("partialResult", {
-          succeeded: result.succeededIds.length,
-          skipped: result.skipped.length,
+          succeeded: result.succeeded.length,
+          skipped: result.stale.length,
           failed: result.failed.length,
         })
       );
     }
   };
 
-  const batchDelete = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
-    mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
-    resourceGroups: ["documents"],
+  const targetsFor = (ids: string[]): VersionedTarget[] =>
+    ids.map((sourceDocumentId) => ({
+      sourceDocumentId,
+      expectedVersion: versions.get(sourceDocumentId) ?? 1,
+    }));
+
+  const batchDelete = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, targetsFor(ids)),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
-      settleBatchResult(result, tBatch("deleted", { count: result.succeededIds.length })),
+      settleBatchResult(result, tBatch("deleted", { count: result.succeeded.length })),
     onError: () => toast.error(tCommon("deleteFailed")),
   });
 
-  const batchRetry = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
-    mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
-    resourceGroups: ["documents"],
+  const batchRetry = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, targetsFor(ids)),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
-      settleBatchResult(result, tBatch("retried", { count: result.succeededIds.length })),
+      settleBatchResult(result, tBatch("retried", { count: result.succeeded.length })),
     onError: () => toast.error(tCommon("error")),
   });
 
-  const batchKeepDuplicates = useLedgerMutation<BatchActionResult, DuplicateBatchVariables>(
+  const batchKeepDuplicates = useLedgerMutation<PartialBatchCommandResult, DuplicateBatchVariables>(
     ledgerId,
     {
       mutationFn: (variables) =>
         batchResolveDuplicateReviewsAction(
           ledgerId,
-          getDuplicateBatchVariables(variables).ids,
+          targetsFor(getDuplicateBatchVariables(variables).ids),
           "keep"
         ),
-      resourceGroups: ["documents"],
       invalidationErrorMessage: tCommon("savedRefreshFailed"),
       onSuccess: (result, variables) =>
         settleBatchResult(
           result,
-          tBatch("duplicatesKept", { count: result.succeededIds.length }),
+          tBatch("duplicatesKept", { count: result.succeeded.length }),
           getDuplicateBatchVariables(variables).preserveIds
         ),
       onError: () => toast.error(tCommon("error")),
     }
   );
 
-  const batchDiscardDuplicates = useLedgerMutation<BatchActionResult, DuplicateBatchVariables>(
-    ledgerId,
-    {
-      mutationFn: (variables) =>
-        batchResolveDuplicateReviewsAction(
-          ledgerId,
-          getDuplicateBatchVariables(variables).ids,
-          "discard"
-        ),
-      resourceGroups: ["documents"],
-      invalidationErrorMessage: tCommon("savedRefreshFailed"),
-      onSuccess: (result, variables) =>
-        settleBatchResult(
-          result,
-          tBatch("duplicatesDiscarded", { count: result.succeededIds.length }),
-          getDuplicateBatchVariables(variables).preserveIds
-        ),
-      onError: () => toast.error(tCommon("error")),
-    }
-  );
+  const batchDiscardDuplicates = useLedgerMutation<
+    PartialBatchCommandResult,
+    DuplicateBatchVariables
+  >(ledgerId, {
+    mutationFn: (variables) =>
+      batchResolveDuplicateReviewsAction(
+        ledgerId,
+        targetsFor(getDuplicateBatchVariables(variables).ids),
+        "discard"
+      ),
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    onSuccess: (result, variables) =>
+      settleBatchResult(
+        result,
+        tBatch("duplicatesDiscarded", { count: result.succeeded.length }),
+        getDuplicateBatchVariables(variables).preserveIds
+      ),
+    onError: () => toast.error(tCommon("error")),
+  });
 
   return {
     deleteSourceDocument,

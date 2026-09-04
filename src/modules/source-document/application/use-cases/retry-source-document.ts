@@ -1,9 +1,12 @@
-import { ValidationError } from "@/lib/errors";
+import { StaleSourceDocumentVersionError, ValidationError } from "@/lib/errors";
 import type {
   ProcessingIntentContract,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
-import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import type {
+  RetrySourceDocumentResponseDto,
+  VersionedCommandResult,
+} from "@/modules/source-document/contracts";
 import {
   prepareInlineImages,
   type ImageProcessor,
@@ -22,6 +25,7 @@ interface RetrySourceDocumentInput {
   ledgerId: string;
   ledger?: unknown;
   sourceDocumentId: string;
+  expectedVersion?: number;
   idempotency?: {
     principalType: "credential" | "user";
     principalId: string;
@@ -38,10 +42,20 @@ interface RetrySourceDocumentDependencies {
   processImage?: ImageProcessor;
 }
 
-export async function retrySourceDocument(
-  { ledgerId, sourceDocumentId, input, idempotency }: RetrySourceDocumentInput,
+export function retrySourceDocument(
+  input: RetrySourceDocumentInput & { expectedVersion: number },
   dependencies: RetrySourceDocumentDependencies
-): Promise<RetrySourceDocumentResponseDto> {
+): Promise<VersionedCommandResult<RetrySourceDocumentResponseDto>>;
+export function retrySourceDocument(
+  input: RetrySourceDocumentInput & { expectedVersion?: undefined },
+  dependencies: RetrySourceDocumentDependencies
+): Promise<RetrySourceDocumentResponseDto>;
+export async function retrySourceDocument(
+  { ledgerId, sourceDocumentId, expectedVersion, input, idempotency }: RetrySourceDocumentInput,
+  dependencies: RetrySourceDocumentDependencies
+): Promise<
+  RetrySourceDocumentResponseDto | VersionedCommandResult<RetrySourceDocumentResponseDto>
+> {
   let createdUploadSessionId: string | null = null;
   if ((input?.originalImages?.length ?? 0) > 0) {
     throw new ValidationError("Images must be finalized before source-document retry");
@@ -74,6 +88,7 @@ export async function retrySourceDocument(
     return {
       ledgerId,
       sourceDocumentId,
+      ...(expectedVersion === undefined ? {} : { expectedVersion }),
       inheritEvidence: true,
       supersedeProcessing: true,
       ...(input?.text === undefined ? {} : { submittedText: input.text }),
@@ -99,13 +114,26 @@ export async function retrySourceDocument(
         // Preserve the submission error; upload cleanup is best-effort.
       }
     }
+    if (error instanceof StaleSourceDocumentVersionError && expectedVersion !== undefined) {
+      return {
+        ok: false,
+        reason: "stale",
+        sourceDocumentId: error.sourceDocumentId,
+        expectedVersion: error.expectedVersion,
+        currentVersion: error.currentVersion,
+      };
+    }
     throw error;
   }
   if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
 
-  return {
-    sourceDocumentId: pending.document.id,
-    previousSourceDocumentId: sourceDocumentId,
-    status: "processing",
-  };
+  const data = { status: "processing" as const };
+  return expectedVersion === undefined
+    ? data
+    : {
+        ok: true,
+        sourceDocumentId,
+        version: pending.document.version,
+        data,
+      };
 }

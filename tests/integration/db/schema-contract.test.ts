@@ -161,11 +161,15 @@ describe("PostgreSQL schema contract", () => {
     expect(compact(byName.get("ledger_change_batches_version_check"))).toContain("version>0");
   });
 
-  it("keeps status and change-log triggers", async () => {
+  it("removes status triggers while keeping change-log triggers", async () => {
     const names = new Set((await fetchTriggers()).map((row) => row.tgname));
     for (const name of [
       "trg_source_documents_refresh_status",
       "trg_revisions_refresh_document_status",
+    ]) {
+      expect(names.has(name), `unexpected trigger ${name}`).toBe(false);
+    }
+    for (const name of [
       "trg_source_documents_change_log",
       "trg_source_document_revisions_change_log",
       "trg_ledger_entries_change_log",

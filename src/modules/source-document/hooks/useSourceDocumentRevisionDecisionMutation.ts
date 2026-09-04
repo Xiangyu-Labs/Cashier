@@ -2,12 +2,18 @@
 
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import type { VersionedCommandResult } from "@/modules/source-document/contracts";
+import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentRevisionDecisionMutationOptions<TResult> {
   ledgerId: string;
   sourceDocumentId: string;
-  revisionId?: string;
-  action: (ledgerId: string, sourceDocumentId: string, revisionId: string) => Promise<TResult>;
+  expectedVersion: number;
+  action: (
+    ledgerId: string,
+    sourceDocumentId: string,
+    expectedVersion: number
+  ) => Promise<VersionedCommandResult<TResult>>;
   successMessage: string;
   errorMessage: string;
   onSuccess?: (result: TResult) => void | Promise<void>;
@@ -16,7 +22,7 @@ interface UseSourceDocumentRevisionDecisionMutationOptions<TResult> {
 export function useSourceDocumentRevisionDecisionMutation<TResult>({
   ledgerId,
   sourceDocumentId,
-  revisionId,
+  expectedVersion,
   action,
   successMessage,
   errorMessage,
@@ -25,13 +31,10 @@ export function useSourceDocumentRevisionDecisionMutation<TResult>({
   const tCommon = useTranslations("Common");
 
   return useLedgerMutation<TResult, void>(ledgerId, {
-    mutationFn: () => {
-      if (revisionId == null || revisionId === "") {
-        throw new Error("Source document review revision is unavailable");
-      }
-      return action(ledgerId, sourceDocumentId, revisionId);
+    mutationFn: async () => {
+      const result = await action(ledgerId, sourceDocumentId, expectedVersion);
+      return unwrapVersionedCommandResult(result);
     },
-    resourceGroups: ["documents"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage,
     errorMessage,

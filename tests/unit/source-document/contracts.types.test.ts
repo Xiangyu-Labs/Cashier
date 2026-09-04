@@ -46,6 +46,7 @@ describe("source-document contract types", () => {
   it("list item DTO contains only stream fields", () => {
     const _item: SourceDocumentListItemDto = {
       id: "doc-1",
+      version: 1,
       ledgerId: "ledger-1",
       title: null,
       text: null,
@@ -57,8 +58,8 @@ describe("source-document contract types", () => {
       updatedAt: "2026-07-15T00:00:00.000Z",
       hasImages: false,
       supportedActions: ["accept_candidate", "abandon_candidate", "delete"],
+      canEdit: false,
       errorCode: null,
-      pendingRevisionId: "rev-1",
     };
     expect(_item.status).toBe("candidate_pending");
   });

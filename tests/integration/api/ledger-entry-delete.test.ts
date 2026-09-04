@@ -45,7 +45,11 @@ describe("Ledger Entry Delete Action", () => {
 
   it("should delete a ledger entry", async () => {
     // deleteLedgerEntryAction returns void in new format
-    await deleteLedgerEntryAction(testLedgerId, testEntryId, crypto.randomUUID());
+    await deleteLedgerEntryAction(
+      testLedgerId,
+      { sourceDocumentId: testSourceDocId, expectedVersion: 1 },
+      testEntryId
+    );
 
     const db = getTestDb();
     const deletedEntry = await db.query.ledgerEntries.findFirst({
@@ -66,7 +70,11 @@ describe("Ledger Entry Delete Action", () => {
 
     // This should throw error because requireLedgerAccess will fail for TEST_USER_ID
     await expect(
-      deleteLedgerEntryAction(otherLedgerId, testEntryId, crypto.randomUUID())
+      deleteLedgerEntryAction(
+        otherLedgerId,
+        { sourceDocumentId: testSourceDocId, expectedVersion: 1 },
+        testEntryId
+      )
     ).rejects.toThrow("Ledger not found");
   });
 });

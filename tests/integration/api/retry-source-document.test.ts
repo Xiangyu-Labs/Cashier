@@ -25,6 +25,9 @@ vi.mock("@/lib/ai/openai-client", () => ({
 describe("source-document retry action", () => {
   let ledgerId = "";
 
+  const createDocument = (text: string) =>
+    createSourceDocumentAction(ledgerId, { text }, crypto.randomUUID());
+
   beforeEach(async () => {
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
@@ -42,7 +45,7 @@ describe("source-document retry action", () => {
 
   it("reprocesses a new revision while keeping the source-document identity stable", async () => {
     const db = getTestDb();
-    const created = await createSourceDocumentAction(ledgerId, { text: "午餐 25元" });
+    const created = await createDocument("午餐 25元");
     await processAllPendingTasks();
     const before = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
@@ -68,13 +71,17 @@ describe("source-document retry action", () => {
         ],
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
-    const retried = await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
-      text: "晚餐 50元",
-    });
-    expect(retried).toMatchObject({
+    const retried = await editRetrySourceDocumentAction(
+      ledgerId,
+      created.sourceDocumentId,
+      { text: "晚餐 50元" },
+      before!.stateVersion
+    );
+    expect(retried).toEqual({
+      ok: true,
       sourceDocumentId: created.sourceDocumentId,
-      previousSourceDocumentId: created.sourceDocumentId,
-      status: "processing",
+      version: before!.stateVersion + 1,
+      data: { status: "processing" },
     });
     await processAllPendingTasks();
 
@@ -109,7 +116,7 @@ describe("source-document retry action", () => {
   });
 
   it("rejects raw image payloads that bypass upload finalization", async () => {
-    const created = await createSourceDocumentAction(ledgerId, { text: "Lunch 25" });
+    const created = await createDocument("Lunch 25");
     await processAllPendingTasks();
     await expect(
       editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
@@ -122,7 +129,7 @@ describe("source-document retry action", () => {
     const db = getTestDb();
 
     // Step 1: Create a document and process it successfully
-    const created = await createSourceDocumentAction(ledgerId, { text: "午餐 25元" });
+    const created = await createDocument("午餐 25元");
     await processAllPendingTasks();
 
     const before = await db.query.sourceDocuments.findFirst({
@@ -136,9 +143,12 @@ describe("source-document retry action", () => {
       generateContent: vi.fn().mockRejectedValue(new Error("AI service failure")),
     } as unknown as ReturnType<typeof getOpenAIClient>);
 
-    await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
-      text: "修改 50元",
-    });
+    await editRetrySourceDocumentAction(
+      ledgerId,
+      created.sourceDocumentId,
+      { text: "修改 50元" },
+      before!.stateVersion
+    );
     await processAllPendingTasks();
 
     // Step 3: Verify the previous active revision is preserved despite the failed retry
@@ -171,10 +181,13 @@ describe("source-document retry action", () => {
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
 
-    const retried = await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
-      text: "晚餐 50元",
-    });
-    expect(retried.status).toBe("processing");
+    const retried = await editRetrySourceDocumentAction(
+      ledgerId,
+      created.sourceDocumentId,
+      { text: "晚餐 50元" },
+      afterFail!.stateVersion
+    );
+    expect(retried).toMatchObject({ ok: true, data: { status: "processing" } });
     await processAllPendingTasks();
 
     // Step 5: Verify final state — 3 revisions, candidate is pending, original active preserved

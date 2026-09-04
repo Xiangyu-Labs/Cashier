@@ -66,9 +66,7 @@ function InteractiveSourceDocumentCard(props: SourceDocumentCardProps) {
   const recovery = useSourceDocumentRecoveryMutations({
     ledgerId: props.sourceDocument.ledgerId,
     sourceDocumentId: props.sourceDocument.id,
-    ...(props.sourceDocument.pendingRevisionId == null
-      ? {}
-      : { revisionId: props.sourceDocument.pendingRevisionId }),
+    version: props.sourceDocument.version,
   });
   return <SourceDocumentCardBody {...props} recovery={recovery} />;
 }

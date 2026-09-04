@@ -1,34 +1,56 @@
 import type { SourceDocumentLifecyclePort } from "@/modules/source-document/application/ports";
-import { parseRevisionMutationIdentity } from "@/modules/source-document/contract-schemas";
+import type { VersionedCommandResult } from "@/modules/source-document/contracts";
+import { versionedTargetSchema } from "@/modules/source-document/contract-schemas";
+import { StaleSourceDocumentVersionError } from "@/lib/errors";
 import { serverComposition } from "@/application/server-composition-root";
 import { withSourceDocumentLedgerAccess } from "./access";
 
 interface RevisionLifecycleInput {
   ledgerId: string;
   sourceDocumentId: string;
-  revisionId: string;
+  expectedVersion: number;
 }
 
 type RevisionLifecycleUseCase<TResult> = (
   input: RevisionLifecycleInput,
   lifecycle: SourceDocumentLifecyclePort
-) => Promise<TResult>;
+) => Promise<{ version: number; data: TResult }>;
 
 export function revisionLifecycleAction<TResult>(useCase: RevisionLifecycleUseCase<TResult>) {
   return withSourceDocumentLedgerAccess(
-    async ({ ledgerId }, sourceDocumentId: string, revisionId: string): Promise<TResult> => {
-      const identity = parseRevisionMutationIdentity({
-        sourceDocumentId,
-        revisionId,
-      });
-      return useCase(
-        {
-          ledgerId,
-          sourceDocumentId: identity.sourceDocumentId,
-          revisionId: identity.revisionId,
-        },
-        serverComposition.sourceDocumentLifecycle
-      );
+    async (
+      { ledgerId },
+      sourceDocumentId: string,
+      expectedVersion: number
+    ): Promise<VersionedCommandResult<TResult>> => {
+      const target = versionedTargetSchema.parse({ sourceDocumentId, expectedVersion });
+      try {
+        const result = await useCase(
+          {
+            ledgerId,
+            sourceDocumentId: target.sourceDocumentId,
+            expectedVersion: target.expectedVersion,
+          },
+          serverComposition.sourceDocumentLifecycle
+        );
+        return {
+          ok: true,
+          sourceDocumentId: target.sourceDocumentId,
+          version: result.version,
+          data: result.data,
+        };
+      } catch (error) {
+        if (error instanceof StaleSourceDocumentVersionError) {
+          return {
+            ok: false,
+            reason: "stale",
+            sourceDocumentId: error.sourceDocumentId,
+            expectedVersion: error.expectedVersion,
+            currentVersion: error.currentVersion,
+          };
+        }
+        throw error;
+      }
     }
   );
 }

@@ -1,9 +1,5 @@
 "use client";
-import type {
-  LedgerEntry,
-  LedgerEntryDto,
-  DeleteLedgerEntryResultDto,
-} from "@/modules/ledger/contracts";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/modules/ledger/actions";
@@ -15,6 +11,7 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { withQueryTimeout } from "@/lib/query-timeout";
+import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 
 interface LedgerEntryDetailWrapperProps {
   id: string;
@@ -53,34 +50,47 @@ export function LedgerEntryDetailWrapper({
   const sourceDocumentId = ledgerEntry?.sourceDocumentId;
 
   const updateMutation = useLedgerMutation<
-    LedgerEntryDto,
+    { ledgerEntryId: string },
     Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   >(ledgerId, {
     mutationFn: async (data) => {
-      const operationId = crypto.randomUUID();
+      if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
       const { amount, ...rest } = data;
-      return updateLedgerEntryAction(
+      const result = await updateLedgerEntryAction(
         ledgerId,
+        {
+          sourceDocumentId: ledgerEntry.sourceDocument.id,
+          expectedVersion: ledgerEntry.sourceDocument.version,
+        },
         id,
-        { ...rest, ...(amount == null ? {} : { amount: String(amount) }) },
-        operationId
+        { ...rest, ...(amount == null ? {} : { amount: String(amount) }) }
       );
+      return unwrapVersionedCommandResult(result);
     },
     errorMessage: null,
-    resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
-  const deleteMutation = useLedgerMutation<DeleteLedgerEntryResultDto, void>(ledgerId, {
-    mutationFn: async () => {
-      const operationId = crypto.randomUUID();
-      return deleteLedgerEntryAction(ledgerId, id, operationId);
-    },
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-    resourceGroups: ["entries"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
-  });
+  const deleteMutation = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, void>(
+    ledgerId,
+    {
+      mutationFn: async () => {
+        if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
+        const result = await deleteLedgerEntryAction(
+          ledgerId,
+          {
+            sourceDocumentId: ledgerEntry.sourceDocument.id,
+            expectedVersion: ledgerEntry.sourceDocument.version,
+          },
+          id
+        );
+        return unwrapVersionedCommandResult(result);
+      },
+      successMessage: tCommon("deleteSuccess"),
+      errorMessage: tCommon("deleteFailed"),
+      invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    }
+  );
 
   const handleReload = useCallback(async () => {
     const result = await query.refetch();

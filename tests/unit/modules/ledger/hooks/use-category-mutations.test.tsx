@@ -92,12 +92,10 @@ describe("useCategoryMutations", () => {
       { ...category, entryCount: 7 },
     ]);
     expect(invalidate).toHaveBeenCalledOnce();
-    const predicate = invalidate.mock.calls[0]?.[0]?.predicate;
-    const matches = (queryKey: readonly unknown[]) =>
-      predicate?.({ queryKey } as Parameters<NonNullable<typeof predicate>>[0]);
-    expect(matches(queryKeys.entryCategories("ledger-1"))).toBe(true);
-    expect(matches(queryKeys.sourceDocumentStream("ledger-1"))).toBe(true);
-    expect(matches(queryKeys.entryCategories("ledger-2"))).toBe(false);
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: queryKeys.ledger("ledger-1"),
+      refetchType: "active",
+    });
   });
 
   it("keeps a save pending until broad invalidation settles", async () => {

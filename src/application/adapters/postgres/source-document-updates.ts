@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { round } from "@/lib/money/decimal";
@@ -17,8 +17,6 @@ import { postgresFxRateBook } from "./exchange-rate";
 import { replaceActiveProjectionInTransaction } from "./ledger-projections";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { UpdateLedgerEntryInput } from "@/modules/ledger/contract-schemas";
-import { getTargetSourceDocument } from "./source-document-reads";
-import { listLedgerEntryViewsBySourceDocumentIds } from "./ledger-reads/list-ledger-entry-views-by-source-document-ids";
 import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
 
 function whereSourceDocumentNotDeleted(ledgerId: string) {
@@ -31,7 +29,7 @@ function whereSourceDocumentNotDeletedId(ledgerId: string, sourceDocumentId: str
 
 interface BatchUpdateSourceDocumentsInput {
   ledgerId: string;
-  sourceDocumentIds: string[];
+  targets: import("@/modules/source-document/contracts").VersionedTarget[];
   data: BatchUpdateSourceDocumentsPayload;
   ledgerEntryIds?: string[];
 }
@@ -39,8 +37,7 @@ interface BatchUpdateSourceDocumentsInput {
 interface SaveSourceDocumentChangesAdapterInput {
   ledgerId: string;
   sourceDocumentId: string;
-  expectedRevisionId: string;
-  operationId: string;
+  expectedVersion: number;
   sourceDocument?: UpdateSourceDocumentPayload;
   entries: Array<{ ledgerEntryId: string; data: UpdateLedgerEntryInput }>;
 }
@@ -134,33 +131,11 @@ function toManualProjectionEntry(
   };
 }
 
-async function loadAuthoritativeSourceDocument(
-  ledgerId: string,
-  sourceDocumentId: string,
-  activeRevisionId: string
-): Promise<SaveSourceDocumentChangesResultDto> {
-  const [sourceDocument, entriesByDocument] = await Promise.all([
-    getTargetSourceDocument(ledgerId, sourceDocumentId),
-    listLedgerEntryViewsBySourceDocumentIds({
-      ledgerId,
-      sourceDocumentIds: [sourceDocumentId],
-      includeDuplicatePending: true,
-    }),
-  ]);
-  if (sourceDocument == null) throw new NotFoundError("Source document");
-  return {
-    activeRevisionId,
-    sourceDocument: {
-      ...sourceDocument,
-      activeRevisionId,
-      ledgerEntries: entriesByDocument.get(sourceDocumentId) ?? [],
-    },
-  };
-}
-
 export async function saveSourceDocumentChangesAtomically(
   input: SaveSourceDocumentChangesAdapterInput
-): Promise<SaveSourceDocumentChangesResultDto> {
+): Promise<
+  import("@/modules/source-document/contracts").VersionedCommandResult<SaveSourceDocumentChangesResultDto>
+> {
   const [ledger, document, initialEntries] = await Promise.all([
     db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)),
@@ -170,6 +145,8 @@ export async function saveSourceDocumentChangesAtomically(
       where: whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId),
       columns: {
         activeRevisionId: true,
+        stateVersion: true,
+        title: true,
         entryDate: true,
       },
     }),
@@ -177,7 +154,6 @@ export async function saveSourceDocumentChangesAtomically(
       where: and(
         eq(ledgerEntries.ledgerId, input.ledgerId),
         eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
-        eq(ledgerEntries.sourceDocumentRevisionId, input.expectedRevisionId),
         isNull(ledgerEntries.deletedAt)
       ),
       orderBy: (entries, { asc: orderAscending }) => [
@@ -188,23 +164,60 @@ export async function saveSourceDocumentChangesAtomically(
     }),
   ]);
   if (ledger == null || document == null) throw new NotFoundError("Source document");
-  if (document.activeRevisionId !== input.expectedRevisionId) {
-    throw new ConflictError("Source document active revision changed");
+  if (document.stateVersion !== input.expectedVersion) {
+    return {
+      ok: false,
+      reason: "stale",
+      sourceDocumentId: input.sourceDocumentId,
+      expectedVersion: input.expectedVersion,
+      currentVersion: document.stateVersion,
+    };
   }
+  if (document.activeRevisionId == null)
+    throw new ConflictError("Source document has no active result");
+  const activeEntries = initialEntries.filter(
+    (entry) => entry.sourceDocumentRevisionId === document.activeRevisionId
+  );
 
   const patches = new Map(input.entries.map((entry) => [entry.ledgerEntryId, entry.data]));
   if (patches.size !== input.entries.length) {
     throw new ConflictError("A ledger entry may only be updated once");
   }
-  const initialEntriesById = new Map(initialEntries.map((entry) => [entry.id, entry]));
+  const initialEntriesById = new Map(activeEntries.map((entry) => [entry.id, entry]));
   for (const entryId of patches.keys()) {
     if (!initialEntriesById.has(entryId)) {
       throw new NotFoundError("Active ledger entry projection");
     }
   }
 
+  const metadataChanged =
+    (input.sourceDocument?.title !== undefined && input.sourceDocument.title !== document.title) ||
+    (input.sourceDocument?.entryDate !== undefined &&
+      input.sourceDocument.entryDate !== document.entryDate);
+  const entriesChanged = input.entries.some(({ ledgerEntryId, data }) => {
+    const entry = initialEntriesById.get(ledgerEntryId)!;
+    const nextCurrency = data.currency !== undefined ? data.currency : entry.currency;
+    const effectiveCurrency = normalizeCurrency(nextCurrency, ledger.mainCurrency);
+    return (
+      (data.categoryId !== undefined && data.categoryId !== entry.categoryId) ||
+      (data.amount !== undefined &&
+        roundToCurrency(String(data.amount), effectiveCurrency) !== entry.amount) ||
+      (data.currency !== undefined && data.currency !== entry.currency) ||
+      (data.itemName !== undefined && data.itemName !== entry.itemName) ||
+      (data.description !== undefined && data.description !== entry.description)
+    );
+  });
+  if (!metadataChanged && !entriesChanged) {
+    return {
+      ok: true,
+      sourceDocumentId: input.sourceDocumentId,
+      version: input.expectedVersion,
+      data: { updatedEntryIds: input.entries.map((entry) => entry.ledgerEntryId) },
+    };
+  }
+
   const nextEntryDate = input.sourceDocument?.entryDate ?? document.entryDate ?? undefined;
-  const nextEntries = initialEntries.map((entry) => {
+  const nextEntries = activeEntries.map((entry) => {
     const patch = patches.get(entry.id);
     return {
       id: entry.id,
@@ -236,7 +249,7 @@ export async function saveSourceDocumentChangesAtomically(
     exchangeRate: round(conversions[index]!.exchangeRate, 12),
   }));
 
-  const activeRevisionId = await db.transaction(async (tx) => {
+  const committed = await db.transaction(async (tx) => {
     const lockedLedger = await lockLedgerForUpdate(tx, input.ledgerId);
     if (lockedLedger.mainCurrency !== ledger.mainCurrency) {
       throw new ConflictError("Ledger currency changed before the edit");
@@ -246,44 +259,67 @@ export async function saveSourceDocumentChangesAtomically(
       input.ledgerId,
       input.sourceDocumentId
     );
-    if (lockedDocument.activeRevisionId !== input.expectedRevisionId) {
-      throw new ConflictError("Source document active revision changed");
+    if (lockedDocument.stateVersion !== input.expectedVersion) {
+      return false;
+    }
+    if (lockedDocument.activeRevisionId == null) {
+      throw new ConflictError("Source document has no active result");
     }
 
-    return replaceActiveProjectionInTransaction(tx, {
+    await replaceActiveProjectionInTransaction(tx, {
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
-      expectedActiveRevisionId: input.expectedRevisionId,
-      revisionId: input.operationId,
+      expectedActiveRevisionId: lockedDocument.activeRevisionId,
+      expectedStateVersion: input.expectedVersion,
+      revisionId: crypto.randomUUID(),
       entries: projection,
       ...(input.sourceDocument?.title === undefined ? {} : { title: input.sourceDocument.title }),
       ...(input.sourceDocument?.entryDate === undefined
         ? {}
         : { entryDate: input.sourceDocument.entryDate }),
     });
+    return true;
   });
 
-  return loadAuthoritativeSourceDocument(input.ledgerId, input.sourceDocumentId, activeRevisionId);
+  if (!committed) {
+    const current = await db.query.sourceDocuments.findFirst({
+      where: whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId),
+      columns: { stateVersion: true },
+    });
+    if (current == null) throw new NotFoundError("Source document");
+    return {
+      ok: false,
+      reason: "stale",
+      sourceDocumentId: input.sourceDocumentId,
+      expectedVersion: input.expectedVersion,
+      currentVersion: current.stateVersion,
+    };
+  }
+  return {
+    ok: true,
+    sourceDocumentId: input.sourceDocumentId,
+    version: input.expectedVersion + 1,
+    data: { updatedEntryIds: input.entries.map((entry) => entry.ledgerEntryId) },
+  };
 }
 
 export async function batchUpdateSourceDocuments({
   ledgerId,
-  sourceDocumentIds,
+  targets,
   data,
   ledgerEntryIds: selectedLedgerEntryIds,
 }: BatchUpdateSourceDocumentsInput): Promise<
-  BatchUpdateSourceDocumentsResultDto & { impact?: BatchEntryDateImpact }
+  import("@/modules/source-document/contracts").AtomicBatchCommandResult<
+    BatchUpdateSourceDocumentsResultDto & { impact?: BatchEntryDateImpact }
+  >
 > {
-  if (sourceDocumentIds.length === 0) {
-    return {
-      sourceDocumentIds,
-      updatedCount: 0,
-    };
-  }
-
-  const requestedIds = [...new Set(sourceDocumentIds)].sort();
+  const requestedIds = targets.map((target) => target.sourceDocumentId);
+  const expectedVersions = new Map(
+    targets.map((target) => [target.sourceDocumentId, target.expectedVersion] as const)
+  );
   const updatePatch = {
     updatedAt: new Date(),
+    stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
     ...(data.title !== undefined ? { title: data.title } : {}),
     ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
   };
@@ -297,6 +333,7 @@ export async function batchUpdateSourceDocuments({
             type: sourceDocuments.type,
             activeRevisionId: sourceDocuments.activeRevisionId,
             pendingRevisionId: sourceDocuments.pendingRevisionId,
+            stateVersion: sourceDocuments.stateVersion,
           })
           .from(sourceDocuments)
           .where(
@@ -328,6 +365,7 @@ export async function batchUpdateSourceDocuments({
         type: sourceDocuments.type,
         activeRevisionId: sourceDocuments.activeRevisionId,
         pendingRevisionId: sourceDocuments.pendingRevisionId,
+        stateVersion: sourceDocuments.stateVersion,
       })
       .from(sourceDocuments)
       .where(
@@ -342,6 +380,19 @@ export async function batchUpdateSourceDocuments({
     if (documents.length !== requestedIds.length) {
       throw new ConflictError("Source documents changed before the batch edit");
     }
+    const staleTargets = documents.flatMap((document) => {
+      const expectedVersion = expectedVersions.get(document.id)!;
+      return document.stateVersion === expectedVersion
+        ? []
+        : [
+            {
+              sourceDocumentId: document.id,
+              expectedVersion,
+              currentVersion: document.stateVersion,
+            },
+          ];
+    });
+    if (staleTargets.length > 0) return { updated: [], staleTargets };
 
     let impact: BatchEntryDateImpact | undefined;
     if (selectedLedgerEntryIds != null) {
@@ -440,6 +491,7 @@ export async function batchUpdateSourceDocuments({
           sourceDocumentId: document.id,
           expectedActiveRevisionId: document.activeRevisionId,
           revisionId: crypto.randomUUID(),
+          incrementVersion: false,
           entryDate: data.entryDate!,
           entries: entries.map((entry) => {
             const conversion = conversionByEntryId.get(entry.id);
@@ -462,21 +514,41 @@ export async function batchUpdateSourceDocuments({
     if (updated.length !== requestedIds.length) {
       throw new ConflictError("Source documents changed during the batch edit");
     }
-    return { updated, impact };
+    return { updated, impact, staleTargets: [] };
   });
 
+  if (transactionResult.staleTargets.length > 0) {
+    return {
+      ok: false as const,
+      reason: "stale" as const,
+      staleTargets: transactionResult.staleTargets,
+    };
+  }
+
   return {
-    sourceDocumentIds: requestedIds,
-    updatedCount: transactionResult.updated.length,
-    ...(transactionResult.impact == null ? {} : { impact: transactionResult.impact }),
+    ok: true as const,
+    versions: targets.map((target) => ({
+      sourceDocumentId: target.sourceDocumentId,
+      version: target.expectedVersion + 1,
+    })),
+    data: {
+      sourceDocumentIds: requestedIds,
+      updatedCount: transactionResult.updated.length,
+      ...(transactionResult.impact == null ? {} : { impact: transactionResult.impact }),
+    },
   };
 }
 
 export async function updateLedgerEntryDatesAtomically(input: {
   ledgerId: string;
+  targets: import("@/modules/source-document/contracts").VersionedTarget[];
   ledgerEntryIds: string[];
   entryDate: string;
-}): Promise<BatchEntryDateImpact> {
+}): Promise<
+  import("@/modules/source-document/contracts").AtomicBatchCommandResult<{
+    impact: BatchEntryDateImpact;
+  }>
+> {
   const selectedIds = [...new Set(input.ledgerEntryIds)].sort();
   const selected = await db
     .select({ id: ledgerEntries.id, sourceDocumentId: ledgerEntries.sourceDocumentId })
@@ -503,14 +575,22 @@ export async function updateLedgerEntryDatesAtomically(input: {
       selected.flatMap((entry) => (entry.sourceDocumentId == null ? [] : [entry.sourceDocumentId]))
     ),
   ].sort();
+  const targetIds = input.targets.map((target) => target.sourceDocumentId);
+  if (
+    sourceDocumentIds.length !== targetIds.length ||
+    sourceDocumentIds.some((id, index) => id !== targetIds[index])
+  ) {
+    throw new NotFoundError("Source document target");
+  }
   const result = await batchUpdateSourceDocuments({
     ledgerId: input.ledgerId,
-    sourceDocumentIds,
+    targets: input.targets,
     ledgerEntryIds: selectedIds,
     data: { entryDate: input.entryDate },
   });
-  if (result.impact == null) throw new ConflictError("Date update impact was not committed");
-  return result.impact;
+  if (!result.ok) return result;
+  if (result.data.impact == null) throw new ConflictError("Date update impact was not committed");
+  return { ok: true, versions: result.versions, data: { impact: result.data.impact } };
 }
 
 function loadProjectionEntriesForDocuments(

@@ -18,6 +18,7 @@ function makeItem(
 ): SourceDocumentListItemDto {
   return {
     id,
+    version: 1,
     ledgerId: "ledger-1",
     title: `Doc ${id}`,
     text: null,
@@ -29,8 +30,8 @@ function makeItem(
     updatedAt: "2026-07-01T10:00:00.000Z",
     hasImages: false,
     supportedActions: [],
+    canEdit: false,
     errorCode: null,
-    pendingRevisionId: null,
     ...overrides,
   };
 }

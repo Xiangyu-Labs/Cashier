@@ -87,6 +87,39 @@ describe("createAndQueueSourceDocument", () => {
     });
   });
 
+  it("does not dispatch processing again for an idempotency replay", async () => {
+    const createIdempotentPendingWithIntent = vi.fn().mockResolvedValue({
+      document: { id: "doc-1" },
+      revision: { id: "revision-1" },
+      intent: { id: "intent-1" },
+      idempotencyReplay: true,
+    });
+    const idempotency = {
+      principalType: "user" as const,
+      principalId: "user-1",
+      key: "source-document:create:ledger-1:new:submission-1",
+      contentFingerprint: "fingerprint-1",
+    };
+
+    const result = await createAndQueueSourceDocument(
+      { ledgerId: ledger.id, ledger, text: "Lunch receipt", idempotency },
+      {
+        submissions: { createPendingWithIntent, createIdempotentPendingWithIntent },
+        storedFiles: mockStoredFiles,
+        processImage,
+        scheduleProcessing,
+      }
+    );
+
+    expect(createIdempotentPendingWithIntent).toHaveBeenCalledWith(
+      idempotency,
+      expect.any(Function)
+    );
+    expect(createPendingWithIntent).not.toHaveBeenCalled();
+    expect(scheduleProcessing).not.toHaveBeenCalled();
+    expect(result.sourceDocumentId).toBe("doc-1");
+  });
+
   it("submits finalized stored-file identities without raw image material", async () => {
     await createAndQueueSourceDocument(
       {

@@ -13,7 +13,7 @@ interface SourceDocumentDetailFooterActionsProps {
   busy: boolean;
   interactionDisabled: boolean;
   hasPendingChanges: boolean;
-  hasRevisionConflict: boolean;
+  hasVersionConflict: boolean;
   pendingChangesCount: number;
   isAccepting: boolean;
   isAbandoning: boolean;
@@ -36,7 +36,7 @@ export function SourceDocumentDetailFooterActions({
   busy,
   interactionDisabled,
   hasPendingChanges,
-  hasRevisionConflict,
+  hasVersionConflict,
   pendingChangesCount,
   isAccepting,
   isAbandoning,
@@ -161,7 +161,7 @@ export function SourceDocumentDetailFooterActions({
               size="sm"
               className="h-9 gap-1.5 shadow-lg shadow-primary/20"
               onClick={onEditSave}
-              disabled={busy || hasRevisionConflict || !hasPendingChanges}
+              disabled={busy || hasVersionConflict || !hasPendingChanges}
             >
               <Save className="h-3.5 w-3.5" />
               {hasPendingChanges

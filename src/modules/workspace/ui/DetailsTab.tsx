@@ -65,7 +65,6 @@ export function DetailsTab({
     onQueryStateChange,
   ]);
   const { groupedItems } = useDetailsTabGrouping(data.entries, timeZone);
-  const entryIds = useMemo(() => data.entries.map((entry) => entry.id), [data.entries]);
   const queryFingerprint = useMemo(
     () =>
       JSON.stringify({
@@ -75,7 +74,7 @@ export function DetailsTab({
       }),
     [advancedFilters, periodParams]
   );
-  const batch = useDetailsBatchController(ledgerId, entryIds, queryFingerprint, timeZone);
+  const batch = useDetailsBatchController(ledgerId, data.entries, queryFingerprint, timeZone);
   const { filters } = useDetailsTabFilters({
     periodParams,
     advancedFilters,

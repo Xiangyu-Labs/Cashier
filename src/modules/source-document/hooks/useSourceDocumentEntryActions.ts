@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 import type { useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -32,8 +32,8 @@ interface UseSourceDocumentEntryActionsOptions {
         input: Omit<SplitSourceDocumentInput, "sourceDocumentId">
       ) => Promise<SplitSourceDocumentResultDto>)
     | undefined;
-  onAddEntry?: ((data: AddEntryData) => Promise<unknown>) | undefined;
-  onDeleteEntry?: ((entryId: string) => Promise<unknown>) | undefined;
+  onAddEntry?: ((data: AddEntryData) => Promise<void>) | undefined;
+  onDeleteEntry?: ((entryId: string) => Promise<void>) | undefined;
   onDelete?: (() => void | Promise<void>) | undefined;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
@@ -61,12 +61,6 @@ export function useSourceDocumentEntryActions({
   t,
   tCommon,
 }: UseSourceDocumentEntryActionsOptions) {
-  const splitIdentityRef = useRef<{
-    operationId: string;
-    newSourceDocumentId: string;
-    payloadKey: string;
-  } | null>(null);
-
   const handleOpenSplit = useCallback(() => {
     if (busy || selectedIds.length === 0) return;
     if (selectedIds.length >= ledgerEntries.length) {
@@ -78,33 +72,18 @@ export function useSourceDocumentEntryActions({
 
   const handleSplit = useCallback(
     async (entryDate: string) => {
-      const expectedRevisionId = sourceDocument?.activeRevisionId;
-      if (expectedRevisionId == null || expectedRevisionId === "" || onSplit == null) {
+      const expectedVersion = sourceDocument?.version;
+      if (expectedVersion == null || onSplit == null) {
         toast.error(t("splitFailed"));
         return;
-      }
-      const payloadKey = JSON.stringify({
-        expectedRevisionId,
-        ledgerEntryIds: [...selectedIds].sort(),
-        entryDate,
-      });
-      if (splitIdentityRef.current?.payloadKey !== payloadKey) {
-        splitIdentityRef.current = {
-          operationId: crypto.randomUUID(),
-          newSourceDocumentId: crypto.randomUUID(),
-          payloadKey,
-        };
       }
       setIsSplitting(true);
       try {
         const result = await onSplit({
-          expectedRevisionId,
-          operationId: splitIdentityRef.current.operationId,
-          newSourceDocumentId: splitIdentityRef.current.newSourceDocumentId,
+          expectedVersion,
           ledgerEntryIds: selectedIds,
           entryDate,
         });
-        splitIdentityRef.current = null;
         setShowSplitDialog(false);
         clearSelection();
         toast.success(t("splitSuccess", { count: result.movedEntryCount }), {
@@ -125,7 +104,7 @@ export function useSourceDocumentEntryActions({
       }
     },
     [
-      sourceDocument?.activeRevisionId,
+      sourceDocument?.version,
       onSplit,
       t,
       selectedIds,

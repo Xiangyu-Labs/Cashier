@@ -20,6 +20,7 @@ export function useSourceDocumentInputController({
   onSuccess,
   mode = "create",
   sourceDocumentId,
+  sourceDocumentVersion,
   initialData,
   messages,
   timeZone,
@@ -44,6 +45,7 @@ export function useSourceDocumentInputController({
       onSuccess?.(result);
     },
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
+    ...(sourceDocumentVersion != null ? { sourceDocumentVersion } : {}),
   });
   imageCountRef.current = draft.images.length;
   useEffect(() => {

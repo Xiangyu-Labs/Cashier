@@ -88,7 +88,6 @@ export function useLedgerSettingsMutation({
     },
     successMessage,
     errorMessage: null,
-    resourceGroups: ["settings"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (savedLedger) => {
       queryClient.setQueryData(queryKeys.ledger(ledgerId), savedLedger);

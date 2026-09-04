@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
   PendingRevisionSubmissionContract,
   SourceDocumentIdempotencyInput,
@@ -6,7 +6,12 @@ import type {
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
-import { ConflictError, ValidationError } from "@/lib/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  StaleSourceDocumentVersionError,
+  ValidationError,
+} from "@/lib/errors";
 import {
   idempotencyRecords,
   processingAttempts,
@@ -41,16 +46,26 @@ async function createPendingWithIntentInTransaction(
       .select({
         activeRevisionId: sourceDocuments.activeRevisionId,
         pendingRevisionId: sourceDocuments.pendingRevisionId,
+        stateVersion: sourceDocuments.stateVersion,
       })
       .from(sourceDocuments)
       .where(
         and(
           eq(sourceDocuments.ledgerId, input.ledgerId),
-          eq(sourceDocuments.id, input.sourceDocumentId)
+          eq(sourceDocuments.id, input.sourceDocumentId),
+          isNull(sourceDocuments.deletedAt)
         )
       )
       .for("update")
       .then((rows) => rows[0]);
+    if (document == null) throw new NotFoundError("Source document");
+    if (input.expectedVersion != null && document.stateVersion !== input.expectedVersion) {
+      throw new StaleSourceDocumentVersionError(
+        input.sourceDocumentId,
+        input.expectedVersion,
+        document.stateVersion
+      );
+    }
     const evidenceRevisionId = document?.pendingRevisionId ?? document?.activeRevisionId;
 
     if (submittedText === undefined) {

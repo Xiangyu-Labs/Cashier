@@ -2,11 +2,13 @@
 
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
-import type { BatchActionResult } from "@/lib/batch-ids";
-import { AppError, ConflictError, NotFoundError } from "@/lib/errors";
+import type {
+  PartialBatchCommandResult,
+  VersionedTarget,
+} from "@/modules/source-document/contracts";
+import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { sourceDocumentIdsSchema } from "@/modules/source-document/contract-schemas";
-import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
+import { versionedTargetsSchema } from "@/modules/source-document/contract-schemas";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingAfter } from "./schedule-processing";
@@ -31,26 +33,18 @@ const PROCESSING_UNAVAILABLE_CODES = new Set([
   "TASK_RUNTIME_NOT_INITIALIZED",
 ]);
 
-function stableBatchFailureReason(
-  error: unknown
-): "not_available" | "conflict" | "processing_unavailable" | "internal" {
-  if (error instanceof NotFoundError) return "not_available";
-  if (error instanceof ConflictError) return "conflict";
+function stableBatchFailureCode(error: unknown): string {
   if (error instanceof AppError && PROCESSING_UNAVAILABLE_CODES.has(error.code)) {
-    return "processing_unavailable";
+    return "PROCESSING_UNAVAILABLE";
   }
-  return "internal";
+  return error instanceof AppError ? error.code : "INTERNAL";
 }
 
-function logBatchFailure(
-  operation: "delete" | "retry",
-  error: unknown,
-  reason: "not_available" | "conflict" | "processing_unavailable" | "internal"
-): void {
+function logBatchFailure(operation: "delete" | "retry", error: unknown, code: string): void {
   logger.error(
     {
       error,
-      reason,
+      code,
       operation,
       correlationId: crypto.randomUUID(),
     },
@@ -59,29 +53,34 @@ function logBatchFailure(
 }
 
 export const batchDeleteSourceDocumentsAction = withSourceDocumentLedgerAccess(
-  async ({ ledgerId }, inputIds: string[]): Promise<BatchActionResult> => {
-    const ids = sourceDocumentIdsSchema.parse(inputIds);
-    const result: BatchActionResult = {
-      requestedCount: ids.length,
-      succeededIds: [],
-      skipped: [],
+  async ({ ledgerId }, inputTargets: VersionedTarget[]): Promise<PartialBatchCommandResult> => {
+    const targets = versionedTargetsSchema.parse(inputTargets);
+    const result: PartialBatchCommandResult = {
+      succeeded: [],
+      stale: [],
       failed: [],
     };
-    for (const id of ids) {
+    for (const target of targets) {
+      const id = target.sourceDocumentId;
       try {
-        const deleted = await deleteSourceDocument(
-          { ledgerId, sourceDocumentId: id },
-          serverComposition.sourceDocumentRevisions
-        );
-        if (deleted.deleted) result.succeededIds.push(id);
-        else result.skipped.push({ id, reason: "not_available" });
-      } catch (error) {
-        const reason = stableBatchFailureReason(error);
-        logBatchFailure("delete", error, reason);
-        result.failed.push({
-          id,
-          reason,
+        const deleted = await serverComposition.sourceDocumentAggregate.deleteDocuments({
+          ledgerId,
+          target,
         });
+        if (deleted.ok) {
+          result.succeeded.push({ id, sourceDocumentId: id, version: deleted.version });
+        } else {
+          result.stale.push({
+            id,
+            sourceDocumentId: id,
+            expectedVersion: deleted.expectedVersion,
+            currentVersion: deleted.currentVersion,
+          });
+        }
+      } catch (error) {
+        const code = stableBatchFailureCode(error);
+        logBatchFailure("delete", error, code);
+        result.failed.push({ id, code });
       }
     }
     return result;
@@ -89,33 +88,38 @@ export const batchDeleteSourceDocumentsAction = withSourceDocumentLedgerAccess(
 );
 
 export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
-  async ({ ledgerId }, inputIds: string[]): Promise<BatchActionResult> => {
-    const ids = sourceDocumentIdsSchema.parse(inputIds);
-    const result: BatchActionResult = {
-      requestedCount: ids.length,
-      succeededIds: [],
-      skipped: [],
+  async ({ ledgerId }, inputTargets: VersionedTarget[]): Promise<PartialBatchCommandResult> => {
+    const targets = versionedTargetsSchema.parse(inputTargets);
+    const result: PartialBatchCommandResult = {
+      succeeded: [],
+      stale: [],
       failed: [],
     };
     const intents: ProcessingIntentContract[] = [];
-    for (const id of ids) {
+    for (const target of targets) {
+      const id = target.sourceDocumentId;
       try {
-        await retrySourceDocument(
-          { ledgerId, sourceDocumentId: id },
+        const retried = await retrySourceDocument(
+          { ledgerId, sourceDocumentId: id, expectedVersion: target.expectedVersion },
           {
             submissions: serverComposition.sourceDocumentSubmissions,
             scheduleProcessing: (intent) => intents.push(intent),
           }
         );
-        result.succeededIds.push(id);
-      } catch (error) {
-        const reason = stableBatchFailureReason(error);
-        logBatchFailure("retry", error, reason);
-        if (reason === "not_available" || reason === "conflict") {
-          result.skipped.push({ id, reason });
+        if (retried.ok) {
+          result.succeeded.push({ id, sourceDocumentId: id, version: retried.version });
         } else {
-          result.failed.push({ id, reason });
+          result.stale.push({
+            id,
+            sourceDocumentId: id,
+            expectedVersion: retried.expectedVersion,
+            currentVersion: retried.currentVersion,
+          });
         }
+      } catch (error) {
+        const code = stableBatchFailureCode(error);
+        logBatchFailure("retry", error, code);
+        result.failed.push({ id, code });
       }
     }
     for (const intent of intents) scheduleProcessingAfter(intent);

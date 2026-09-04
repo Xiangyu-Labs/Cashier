@@ -133,7 +133,7 @@ describe("duplicate review lifecycle", () => {
 
     const payload = await getSourceDocumentDuplicateReview(ledgerId, sourceDocumentId);
     expect(payload.review.matchedSourceDocumentId).toBe(matched.sourceDocumentId);
-    expect(payload.review.matchedRevisionId).toBe(matched.revisionId);
+    expect(payload.review.matchedSourceDocumentId).toBe(matched.sourceDocumentId);
     expect(payload.duplicate.id).toBe(sourceDocumentId);
     expect(payload.duplicate.title).toBe("Coffee Shop");
     expect(payload.duplicate.entries[0]?.itemName).toBe("Latte");

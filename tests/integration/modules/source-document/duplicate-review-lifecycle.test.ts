@@ -218,14 +218,6 @@ describe("duplicate review lifecycle", () => {
       reason: "Legacy review",
       confidence: "0.900",
     });
-    // The current status trigger derives from the pending revision first, so
-    // the legacy "pending revision + pending review without active revision"
-    // state can no longer be written through normal updates. Disable the
-    // trigger while planting the historical fixture (in real deployments the
-    // legacy rows were created before 0024 shipped).
-    await db.execute(
-      sql`ALTER TABLE source_documents DISABLE TRIGGER trg_source_documents_refresh_status`
-    );
     await db
       .update(sourceDocuments)
       .set({
@@ -235,9 +227,6 @@ describe("duplicate review lifecycle", () => {
         currentStatus: "duplicate_pending",
       })
       .where(eq(sourceDocuments.id, sourceDocumentId));
-    await db.execute(
-      sql`ALTER TABLE source_documents ENABLE TRIGGER trg_source_documents_refresh_status`
-    );
 
     const migration = readFileSync(
       path.resolve("src/persistence/postgres-migrations/0020_duplicate_detection_enabled.sql"),

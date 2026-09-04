@@ -1,15 +1,18 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   saveSourceDocumentChangesAction,
   splitSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { createLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
-import type { SplitSourceDocumentInput } from "@/modules/source-document/contracts";
+import type {
+  SaveSourceDocumentChangesResultDto,
+  SplitSourceDocumentInput,
+  SplitSourceDocumentResultDto,
+} from "@/modules/source-document/contracts";
+import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
@@ -18,12 +21,12 @@ import type { BatchEntryUpdateData } from "./source-document-detail-cache";
 interface UseSourceDocumentDetailMutationsOptions {
   id: string;
   ledgerId: string | undefined;
+  version: number;
   onClose: () => void;
 }
 
 interface SaveDetailChanges {
-  expectedRevisionId: string;
-  operationId: string;
+  expectedVersion: number;
   changes: PendingChanges;
 }
 
@@ -39,31 +42,33 @@ export interface AddEntryData {
 export function useSourceDocumentDetailMutations({
   id,
   ledgerId,
+  version,
   onClose,
 }: UseSourceDocumentDetailMutationsOptions) {
   const tCommon = useTranslations("Common");
-  const queryClient = useQueryClient();
 
   const { deleteDocumentMutation } = useSourceDocumentRecordMutations({
     id,
     ledgerId,
+    version,
     onClose,
   });
 
   const { batchUpdateMutation, batchDeleteMutation } = useSourceDocumentEntryMutations({
     ledgerId,
+    sourceDocumentId: id,
+    version,
   });
 
   const saveChangesMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof saveSourceDocumentChangesAction>>,
+    SaveSourceDocumentChangesResultDto,
     SaveDetailChanges
   >(ledgerId, {
-    mutationFn: async ({ expectedRevisionId, operationId, changes }: SaveDetailChanges) => {
+    mutationFn: async ({ expectedVersion, changes }: SaveDetailChanges) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-      return saveSourceDocumentChangesAction(ledgerId, {
+      const result = await saveSourceDocumentChangesAction(ledgerId, {
         sourceDocumentId: id,
-        expectedRevisionId,
-        operationId,
+        expectedVersion,
         ...(Object.keys(changes.sourceDoc).length === 0
           ? {}
           : { sourceDocument: changes.sourceDoc }),
@@ -74,84 +79,80 @@ export function useSourceDocumentDetailMutations({
             data,
           })),
       });
+      return unwrapVersionedCommandResult(result);
     },
     successMessage: null,
     errorMessage: null,
-    resourceGroups: ["documents", "entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    onSuccess: (result) => {
-      if (ledgerId == null || ledgerId === "") return;
-      queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
-    },
   });
 
   const splitMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof splitSourceDocumentAction>>,
+    SplitSourceDocumentResultDto,
     Omit<SplitSourceDocumentInput, "sourceDocumentId">
   >(ledgerId, {
     mutationFn: async (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-      return splitSourceDocumentAction(ledgerId, { sourceDocumentId: id, ...input });
+      const result = await splitSourceDocumentAction(ledgerId, { sourceDocumentId: id, ...input });
+      return unwrapVersionedCommandResult(result);
     },
     successMessage: null,
     errorMessage: null,
-    resourceGroups: ["documents", "entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    onSuccess: (result) => {
-      if (ledgerId == null || ledgerId === "") return;
-      queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
-    },
   });
 
-  const addEntryMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof createLedgerEntryAction>>,
-    AddEntryData
-  >(ledgerId, {
+  const addEntryMutation = useLedgerMutation<{ ledgerEntryId: string }, AddEntryData>(ledgerId, {
     mutationFn: async (data: AddEntryData) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-      const operationId = crypto.randomUUID();
-      return createLedgerEntryAction(
+      const result = await createLedgerEntryAction(
         ledgerId,
-        { sourceDocumentId: id, ...data, amount: String(data.amount) },
-        operationId
+        { sourceDocumentId: id, expectedVersion: version },
+        { sourceDocumentId: id, ...data, amount: String(data.amount) }
       );
+      return unwrapVersionedCommandResult(result);
     },
     successMessage: null,
     errorMessage: null,
-    resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
-  const deleteEntryMutation = useLedgerMutation<
-    Awaited<ReturnType<typeof deleteLedgerEntryAction>>,
-    string
-  >(ledgerId, {
-    mutationFn: async (entryId: string) => {
-      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-      const operationId = crypto.randomUUID();
-      return deleteLedgerEntryAction(ledgerId, entryId, operationId);
-    },
-    successMessage: null,
-    errorMessage: null,
-    resourceGroups: ["entries"],
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
-  });
+  const deleteEntryMutation = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, string>(
+    ledgerId,
+    {
+      mutationFn: async (entryId: string) => {
+        if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+        const result = await deleteLedgerEntryAction(
+          ledgerId,
+          { sourceDocumentId: id, expectedVersion: version },
+          entryId
+        );
+        return unwrapVersionedCommandResult(result);
+      },
+      successMessage: null,
+      errorMessage: null,
+      invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    }
+  );
 
   return {
-    saveChanges: (input: SaveDetailChanges) => saveChangesMutation.mutateAsync(input),
+    saveChanges: async (input: SaveDetailChanges) => {
+      await saveChangesMutation.mutateAsync(input);
+    },
     splitEntries: (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) =>
       splitMutation.mutateAsync(input),
-    addEntry: (data: AddEntryData) => addEntryMutation.mutateAsync(data),
-    deleteEntry: (entryId: string) => deleteEntryMutation.mutateAsync(entryId),
+    addEntry: async (data: AddEntryData) => {
+      await addEntryMutation.mutateAsync(data);
+    },
+    deleteEntry: async (entryId: string) => {
+      await deleteEntryMutation.mutateAsync(entryId);
+    },
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
     batchDeleteEntries: async (entryIds: string[]) => {
       const result = await batchDeleteMutation.mutateAsync(entryIds);
-      return [...result.skipped, ...result.failed].map((item) => item.id);
+      return [...result.stale, ...result.failed].map((item) => item.id);
     },
     deleteDocument: async () => {
-      const operationId = crypto.randomUUID();
-      await deleteDocumentMutation.mutateAsync({ operationId });
+      await deleteDocumentMutation.mutateAsync();
     },
     isSavingChanges: saveChangesMutation.isPending,
     isSplitting: splitMutation.isPending,

@@ -75,6 +75,7 @@ export interface SaveEntryCategoriesInput {
 
 export type SourceDocumentReferenceDto = {
   id: string;
+  version: number;
   ledgerId: string;
   title: string | null;
   status: SourceDocumentReferenceStatus;

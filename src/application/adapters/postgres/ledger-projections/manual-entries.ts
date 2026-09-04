@@ -235,6 +235,8 @@ export async function replaceActiveProjectionInTransaction(
     ledgerId: string;
     sourceDocumentId: string;
     expectedActiveRevisionId: string;
+    expectedStateVersion?: number;
+    incrementVersion?: boolean;
     revisionId: string;
     entries: readonly LedgerProjectionEntryContract[];
     title?: string;
@@ -324,6 +326,10 @@ export async function replaceActiveProjectionInTransaction(
     .set({
       activeRevisionId: revision.id,
       pendingRevisionId: null,
+      currentStatus: "completed",
+      ...(input.incrementVersion === false
+        ? {}
+        : { stateVersion: sql`${sourceDocuments.stateVersion} + 1` }),
       ...(input.title === undefined ? {} : { title: input.title }),
       ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
       updatedAt: new Date(),
@@ -331,7 +337,10 @@ export async function replaceActiveProjectionInTransaction(
     .where(
       and(
         activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
-        eq(sourceDocuments.activeRevisionId, input.expectedActiveRevisionId)
+        eq(sourceDocuments.activeRevisionId, input.expectedActiveRevisionId),
+        ...(input.expectedStateVersion === undefined
+          ? []
+          : [eq(sourceDocuments.stateVersion, input.expectedStateVersion)])
       )
     )
     .returning({ id: sourceDocuments.id })

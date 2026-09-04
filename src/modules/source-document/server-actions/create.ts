@@ -5,7 +5,7 @@ import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   createSourceDocumentInputSchema,
-  parseOperationIdentity,
+  clientSubmissionIdSchema,
   type CreateSourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
@@ -23,15 +23,11 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId, ledger, userId },
     input: CreateSourceDocumentInputContract,
-    _operationId?: string,
-    clientSubmissionId?: string
+    clientSubmissionId: string
   ): Promise<CreateSourceDocumentResponseDto> => {
     const validated = createSourceDocumentInputSchema.parse(input);
+    const validatedClientSubmissionId = clientSubmissionIdSchema.parse(clientSubmissionId);
     const payload = omitUndefinedProperties(validated);
-    const submissionIdentity = parseOperationIdentity({
-      ...(clientSubmissionId === undefined ? {} : { operationId: clientSubmissionId }),
-    });
-
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
       scheduleProcessingAfter(intent);
     };
@@ -41,16 +37,12 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
         ledgerId,
         ledger,
         ...payload,
-        ...(submissionIdentity.operationId == null
-          ? {}
-          : {
-              idempotency: {
-                principalType: "user" as const,
-                principalId: userId,
-                key: `source-document:create:${ledgerId}:new:${submissionIdentity.operationId}`,
-                contentFingerprint: sourceDocumentFingerprint(payload),
-              },
-            }),
+        idempotency: {
+          principalType: "user",
+          principalId: userId,
+          key: `source-document:create:${ledgerId}:new:${validatedClientSubmissionId}`,
+          contentFingerprint: sourceDocumentFingerprint(payload),
+        },
       },
       {
         submissions: serverComposition.sourceDocumentSubmissions,
@@ -64,6 +56,6 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     scheduleProcessingRecoveryAfter(ledgerId);
     scheduleRequestMaintenance();
 
-    return result;
+    return { sourceDocumentId: result.sourceDocumentId, version: 1, status: "processing" };
   }
 );

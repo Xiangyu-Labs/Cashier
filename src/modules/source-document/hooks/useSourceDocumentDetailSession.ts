@@ -8,7 +8,6 @@ import { ledgerDetailLeaveGuardKey } from "@/lib/navigation/ledger-detail-key";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
-import { sourceDocumentSavePayloadKey } from "./source-document-save-payload-key";
 import { usePendingChanges } from "./usePendingChanges";
 import { useSourceDocumentRevisionGuard } from "./useSourceDocumentRevisionGuard";
 
@@ -21,12 +20,7 @@ interface UseSourceDocumentDetailSessionOptions {
   onClose: () => void;
   onReload?: (() => Promise<void>) | undefined;
   onSaveAll?:
-    | ((input: {
-        expectedRevisionId: string;
-        operationId: string;
-        changes: PendingChanges;
-      }) => Promise<unknown>)
-    | undefined;
+    ((input: { expectedVersion: number; changes: PendingChanges }) => Promise<void>) | undefined;
   clearSelection: () => void;
   t: ReturnType<typeof useTranslations>;
 }
@@ -46,7 +40,7 @@ export function useSourceDocumentDetailSession({
   const pending = usePendingChanges({ sourceDocument, ledgerEntries });
   const revision = useSourceDocumentRevisionGuard({
     hasPendingChanges: pending.hasPendingChanges,
-    activeRevisionId: sourceDocument?.activeRevisionId,
+    version: sourceDocument?.version,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -77,32 +71,17 @@ export function useSourceDocumentDetailSession({
 
   const handleSaveAll = useCallback(async (): Promise<boolean> => {
     if (busy) return false;
-    const expectedRevisionId =
-      revision.draftRevisionIdRef.current ?? sourceDocument?.activeRevisionId;
-    if (
-      expectedRevisionId == null ||
-      expectedRevisionId === "" ||
-      onSaveAll == null ||
-      revision.hasRevisionConflict
-    ) {
+    const expectedVersion = revision.baseVersionRef.current ?? sourceDocument?.version;
+    if (expectedVersion == null || onSaveAll == null || revision.hasVersionConflict) {
       toast.error(t("saveAllFailed"));
       return false;
     }
     setIsSaving(true);
     try {
-      const payloadKey = sourceDocumentSavePayloadKey(expectedRevisionId, pending.pendingChanges);
-      if (revision.saveAttemptIdentityRef.current?.payloadKey !== payloadKey) {
-        revision.saveAttemptIdentityRef.current = {
-          operationId: crypto.randomUUID(),
-          payloadKey,
-        };
-      }
       await onSaveAll({
-        expectedRevisionId,
-        operationId: revision.saveAttemptIdentityRef.current.operationId,
+        expectedVersion,
         changes: pending.pendingChanges,
       });
-      revision.saveAttemptIdentityRef.current = null;
       pending.discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pending.pendingChangesCount }));
       return true;
@@ -112,7 +91,7 @@ export function useSourceDocumentDetailSession({
     } finally {
       setIsSaving(false);
     }
-  }, [busy, onSaveAll, pending, revision, sourceDocument?.activeRevisionId, t]);
+  }, [busy, onSaveAll, pending, revision, sourceDocument?.version, t]);
 
   const handleReload = useCallback(async () => {
     if (onReload == null || isReloading) return false;

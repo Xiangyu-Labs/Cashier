@@ -23,6 +23,7 @@ export async function getLedgerEntryDetail(
       sourceDocument: {
         columns: {
           id: true,
+          stateVersion: true,
           ledgerId: true,
           title: true,
           currentStatus: true,

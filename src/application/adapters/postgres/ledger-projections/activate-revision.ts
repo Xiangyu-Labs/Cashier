@@ -1,10 +1,10 @@
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type {
   LedgerProjectionEntryContract,
   ProcessingLeaseContract,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
-import { ConflictError, NotFoundError } from "@/lib/errors";
+import { ConflictError, NotFoundError, StaleSourceDocumentVersionError } from "@/lib/errors";
 import {
   duplicateReviews,
   ledgerEntries,
@@ -111,6 +111,19 @@ export async function storeCandidateRevision(
           target: [duplicateReviews.sourceDocumentId, duplicateReviews.revisionId],
         });
     }
+    await tx
+      .update(sourceDocuments)
+      .set({
+        currentStatus: "candidate_pending",
+        stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, revisionId)
+        )
+      );
     // The candidate title is committed only if this revision is accepted.
     return true;
   });
@@ -205,6 +218,8 @@ export async function storeDuplicatePendingRevision(
       .set({
         activeRevisionId: revisionId,
         pendingRevisionId: null,
+        currentStatus: "duplicate_pending",
+        stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
         ...(title == null ? {} : { title }),
         updatedAt: now,
       })
@@ -243,8 +258,16 @@ async function updateResolvedDuplicateDocument(
     .update(sourceDocuments)
     .set(
       input.resolution === "keep"
-        ? { updatedAt: input.now }
-        : { deletedAt: input.now, updatedAt: input.now }
+        ? {
+            currentStatus: "completed" as const,
+            stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+            updatedAt: input.now,
+          }
+        : {
+            deletedAt: input.now,
+            stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+            updatedAt: input.now,
+          }
     )
     .where(
       and(
@@ -260,21 +283,67 @@ async function updateResolvedDuplicateDocument(
   }
 }
 
+async function restoredActiveStatus(
+  tx: PostgresTransaction,
+  ledgerId: string,
+  sourceDocumentId: string,
+  activeRevisionId: string
+): Promise<"completed" | "duplicate_pending"> {
+  const pendingReview = await tx
+    .select({ id: duplicateReviews.id })
+    .from(duplicateReviews)
+    .where(
+      and(
+        eq(duplicateReviews.ledgerId, ledgerId),
+        eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+        eq(duplicateReviews.revisionId, activeRevisionId),
+        eq(duplicateReviews.status, "pending")
+      )
+    )
+    .then((rows) => rows[0]);
+  return pendingReview == null ? "completed" : "duplicate_pending";
+}
+
+export function activateDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string,
+  expectedVersion?: number
+): Promise<boolean>;
+export function activateDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  expectedVersion?: number
+): Promise<{ version: number; status: "completed" } | null>;
 export async function activateDuplicatePendingRevision(
   ledgerId: string,
   sourceDocumentId: string,
-  revisionId: string
-): Promise<boolean> {
+  revisionIdOrExpectedVersion?: string | number,
+  legacyExpectedVersion?: number
+): Promise<boolean | { version: number; status: "completed" } | null> {
+  const legacy = typeof revisionIdOrExpectedVersion === "string";
+  const expectedVersion = legacy ? legacyExpectedVersion : revisionIdOrExpectedVersion;
   return db.transaction(async (tx) => {
     await lockLedgerForUpdate(tx, ledgerId);
     let document: typeof sourceDocuments.$inferSelect;
     try {
       document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
     } catch (error) {
-      if (error instanceof NotFoundError) return false;
+      if (error instanceof NotFoundError) return legacy ? false : null;
       throw error;
     }
-    if (document.deletedAt != null) return false;
+    if (expectedVersion != null && document.stateVersion !== expectedVersion) {
+      throw new StaleSourceDocumentVersionError(
+        sourceDocumentId,
+        expectedVersion,
+        document.stateVersion
+      );
+    }
+    if (document.deletedAt != null) return legacy ? false : null;
+    const revisionId = legacy ? revisionIdOrExpectedVersion : document.activeRevisionId;
+    if (revisionId == null || document.pendingRevisionId != null) {
+      throw new ConflictError("Duplicate active revision does not match");
+    }
     const review = await tx
       .select()
       .from(duplicateReviews)
@@ -295,15 +364,11 @@ export async function activateDuplicatePendingRevision(
       document.activeRevisionId === revisionId &&
       document.pendingRevisionId == null
     ) {
-      return true;
+      return legacy ? true : { version: document.stateVersion, status: "completed" };
     }
     if (review.status !== "pending" || review.revisionId !== revisionId) {
       throw new ConflictError("Duplicate review is no longer pending");
     }
-    if (document.activeRevisionId !== revisionId || document.pendingRevisionId != null) {
-      throw new ConflictError("Duplicate active revision does not match");
-    }
-
     const revision = await tx
       .select()
       .from(sourceDocumentRevisions)
@@ -334,7 +399,7 @@ export async function activateDuplicatePendingRevision(
       now,
       resolution: "keep",
     });
-    return true;
+    return legacy ? true : { version: document.stateVersion + 1, status: "completed" };
   });
 }
 
@@ -344,11 +409,25 @@ export async function activateDuplicatePendingRevision(
  * rows, but all accounting reads exclude them through the document tombstone.
  * Idempotent.
  */
+export function discardDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string,
+  expectedVersion?: number
+): Promise<boolean>;
+export function discardDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  expectedVersion?: number
+): Promise<{ version: number; status: "deleted" } | null>;
 export async function discardDuplicatePendingRevision(
   ledgerId: string,
   sourceDocumentId: string,
-  revisionId: string
-): Promise<boolean> {
+  revisionIdOrExpectedVersion?: string | number,
+  legacyExpectedVersion?: number
+): Promise<boolean | { version: number; status: "deleted" } | null> {
+  const legacy = typeof revisionIdOrExpectedVersion === "string";
+  const expectedVersion = legacy ? legacyExpectedVersion : revisionIdOrExpectedVersion;
   return db.transaction(async (tx) => {
     await lockLedgerForUpdate(tx, ledgerId);
     const document = await tx
@@ -357,7 +436,18 @@ export async function discardDuplicatePendingRevision(
       .where(and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)))
       .for("update")
       .then((rows) => rows[0]);
-    if (document == null) return false;
+    if (document == null) return legacy ? false : null;
+    if (expectedVersion != null && document.stateVersion !== expectedVersion) {
+      throw new StaleSourceDocumentVersionError(
+        sourceDocumentId,
+        expectedVersion,
+        document.stateVersion
+      );
+    }
+    const revisionId = legacy ? revisionIdOrExpectedVersion : document.activeRevisionId;
+    if (revisionId == null || document.pendingRevisionId != null) {
+      throw new ConflictError("Duplicate active revision does not match");
+    }
 
     const review = await tx
       .select()
@@ -376,16 +466,12 @@ export async function discardDuplicatePendingRevision(
       review.decision === "discard_duplicate" &&
       review.revisionId === revisionId
     ) {
-      return true;
+      return legacy ? true : { version: document.stateVersion, status: "deleted" };
     }
-    if (document.deletedAt != null) return false;
+    if (document.deletedAt != null) return legacy ? false : null;
     if (review == null || review.status !== "pending" || review.revisionId !== revisionId) {
       throw new ConflictError("Duplicate review is no longer pending");
     }
-    if (document.activeRevisionId !== revisionId || document.pendingRevisionId != null) {
-      throw new ConflictError("Duplicate active revision does not match");
-    }
-
     const now = new Date();
     await tx
       .update(duplicateReviews)
@@ -398,7 +484,7 @@ export async function discardDuplicatePendingRevision(
       now,
       resolution: "discard",
     });
-    return true;
+    return legacy ? true : { version: document.stateVersion + 1, status: "deleted" };
   });
 }
 
@@ -416,17 +502,51 @@ export async function discardDuplicatePendingRevision(
  * Throws {@link ConflictError} when pointer ownership or CAS checks fail so the entire
  * transaction (including soft-deletes) rolls back.
  */
+export function acceptCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  candidateRevisionId: string,
+  expectedVersion?: number
+): Promise<"completed" | "duplicate_pending">;
+export function acceptCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  expectedVersion?: number
+): Promise<{ version: number; status: "completed" | "duplicate_pending" }>;
 export async function acceptCandidateRevision(
   ledgerId: string,
   sourceDocumentId: string,
-  candidateRevisionId: string
-): Promise<"completed" | "duplicate_pending"> {
+  candidateRevisionIdOrExpectedVersion?: string | number,
+  legacyExpectedVersion?: number
+): Promise<
+  "completed" | "duplicate_pending" | { version: number; status: "completed" | "duplicate_pending" }
+> {
+  const legacy = typeof candidateRevisionIdOrExpectedVersion === "string";
+  const expectedVersion = legacy ? legacyExpectedVersion : candidateRevisionIdOrExpectedVersion;
   return db.transaction(async (tx) => {
     await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    if (expectedVersion != null && document.stateVersion !== expectedVersion) {
+      throw new StaleSourceDocumentVersionError(
+        sourceDocumentId,
+        expectedVersion,
+        document.stateVersion
+      );
+    }
+    const candidateRevisionId = legacy
+      ? candidateRevisionIdOrExpectedVersion
+      : document.pendingRevisionId;
+    if (candidateRevisionId == null) {
+      throw new ConflictError(
+        "Cannot accept candidate: pending revision does not match or no active revision exists"
+      );
+    }
 
-    // Idempotent: candidate is already active
-    if (document.activeRevisionId === candidateRevisionId && document.pendingRevisionId == null) {
+    if (
+      legacy &&
+      document.activeRevisionId === candidateRevisionId &&
+      document.pendingRevisionId == null
+    ) {
       const review = await tx
         .select({ status: duplicateReviews.status })
         .from(duplicateReviews)
@@ -443,7 +563,7 @@ export async function acceptCandidateRevision(
     }
 
     // Re-read pointers inside the lock — reject stale CAS on the spot.
-    if (document.pendingRevisionId !== candidateRevisionId || document.activeRevisionId == null) {
+    if (document.activeRevisionId == null || document.pendingRevisionId !== candidateRevisionId) {
       throw new ConflictError(
         "Cannot accept candidate: pending revision does not match or no active revision exists"
       );
@@ -524,6 +644,8 @@ export async function acceptCandidateRevision(
       .set({
         activeRevisionId: candidateRevisionId,
         pendingRevisionId: null,
+        currentStatus: stagedReview == null ? "completed" : "duplicate_pending",
+        stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
         ...(revision.title == null || revision.title === "" ? {} : { title: revision.title }),
         updatedAt: now,
       })
@@ -539,7 +661,13 @@ export async function acceptCandidateRevision(
     if (updated == null) {
       throw new ConflictError("Source document was modified concurrently during accept");
     }
-    return stagedReview == null ? "completed" : "duplicate_pending";
+    const status = stagedReview == null ? "completed" : "duplicate_pending";
+    return legacy
+      ? status
+      : {
+          version: document.stateVersion + 1,
+          status,
+        };
   });
 }
 
@@ -551,19 +679,45 @@ export async function acceptCandidateRevision(
  * Throws {@link ConflictError} when pointer ownership or CAS checks fail so the entire
  * transaction (including the revision outcome change) rolls back.
  */
+export function abandonCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  candidateRevisionId: string,
+  expectedVersion?: number
+): Promise<boolean>;
+export function abandonCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  expectedVersion?: number
+): Promise<{ version: number; status: "completed" | "duplicate_pending" } | null>;
 export async function abandonCandidateRevision(
   ledgerId: string,
   sourceDocumentId: string,
-  candidateRevisionId: string
-): Promise<boolean> {
+  candidateRevisionIdOrExpectedVersion?: string | number,
+  legacyExpectedVersion?: number
+): Promise<boolean | { version: number; status: "completed" | "duplicate_pending" } | null> {
+  const legacy = typeof candidateRevisionIdOrExpectedVersion === "string";
+  const expectedVersion = legacy ? legacyExpectedVersion : candidateRevisionIdOrExpectedVersion;
   return db.transaction(async (tx) => {
     await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    if (expectedVersion != null && document.stateVersion !== expectedVersion) {
+      throw new StaleSourceDocumentVersionError(
+        sourceDocumentId,
+        expectedVersion,
+        document.stateVersion
+      );
+    }
+    const candidateRevisionId = legacy
+      ? candidateRevisionIdOrExpectedVersion
+      : document.pendingRevisionId;
+    if (candidateRevisionId == null) {
+      throw new ConflictError("Cannot abandon candidate: pending revision does not match");
+    }
 
-    // Idempotent: candidate revision is already abandoned (pendingRevisionId cleared)
-    if (document.pendingRevisionId == null) {
+    if (legacy && document.pendingRevisionId == null) {
       const revision = await tx
-        .select()
+        .select({ id: sourceDocumentRevisions.id })
         .from(sourceDocumentRevisions)
         .where(
           and(
@@ -637,9 +791,20 @@ export async function abandonCandidateRevision(
 
     // Clear the pending pointer. With the source-document lock this should always succeed,
     // but the WHERE guard catches programming errors and ensures rollback.
+    const currentStatus = await restoredActiveStatus(
+      tx,
+      ledgerId,
+      sourceDocumentId,
+      document.activeRevisionId
+    );
     const documentUpdated = await tx
       .update(sourceDocuments)
-      .set({ pendingRevisionId: null, updatedAt: now })
+      .set({
+        pendingRevisionId: null,
+        currentStatus,
+        stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+        updatedAt: now,
+      })
       .where(
         and(
           activeDocumentWhere(ledgerId, sourceDocumentId),
@@ -651,11 +816,16 @@ export async function abandonCandidateRevision(
     if (documentUpdated == null) {
       throw new ConflictError("Source document was modified concurrently during abandon");
     }
-    return true;
+    return legacy ? true : { version: document.stateVersion + 1, status: currentStatus };
   });
 }
 
 export interface CancelPendingRevisionResult {
+  version: number;
+  status: "cancelled" | "completed" | "duplicate_pending";
+}
+
+export interface LegacyCancelPendingRevisionResult {
   sourceDocumentId: string;
   revisionId: string;
   status: "cancelled" | "abandoned";
@@ -663,14 +833,39 @@ export interface CancelPendingRevisionResult {
 }
 
 /** Stop accepting results for a pending revision without interrupting provider I/O. */
+export function cancelPendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string,
+  expectedVersion?: number
+): Promise<LegacyCancelPendingRevisionResult>;
+export function cancelPendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  expectedVersion?: number
+): Promise<CancelPendingRevisionResult>;
 export async function cancelPendingRevision(
   ledgerId: string,
   sourceDocumentId: string,
-  revisionId: string
-): Promise<CancelPendingRevisionResult> {
+  revisionIdOrExpectedVersion?: string | number,
+  legacyExpectedVersion?: number
+): Promise<CancelPendingRevisionResult | LegacyCancelPendingRevisionResult> {
+  const legacy = typeof revisionIdOrExpectedVersion === "string";
+  const expectedVersion = legacy ? legacyExpectedVersion : revisionIdOrExpectedVersion;
   return db.transaction(async (tx) => {
     await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    if (expectedVersion != null && document.stateVersion !== expectedVersion) {
+      throw new StaleSourceDocumentVersionError(
+        sourceDocumentId,
+        expectedVersion,
+        document.stateVersion
+      );
+    }
+    const revisionId = legacy ? revisionIdOrExpectedVersion : document.pendingRevisionId;
+    if (revisionId == null) {
+      throw new ConflictError("Source document has no pending revision");
+    }
     const revision = await tx
       .select({ outcome: sourceDocumentRevisions.outcome })
       .from(sourceDocumentRevisions)
@@ -686,6 +881,7 @@ export async function cancelPendingRevision(
 
     const restoredActiveResult = document.activeRevisionId != null;
     if (
+      legacy &&
       (revision.outcome === "cancelled" || revision.outcome === "abandoned") &&
       (document.pendingRevisionId == null || document.pendingRevisionId === revisionId)
     ) {
@@ -694,7 +890,6 @@ export async function cancelPendingRevision(
     if (document.pendingRevisionId !== revisionId) {
       throw new ConflictError("Cannot cancel processing: pending revision does not match");
     }
-
     const canAbandonFinishedCandidate =
       restoredActiveResult && ["completed", "anomaly", "failed"].includes(revision.outcome);
     if (revision.outcome !== "processing" && !canAbandonFinishedCandidate) {
@@ -755,10 +950,22 @@ export async function cancelPendingRevision(
         )
       );
 
+    let finalStatus: CancelPendingRevisionResult["status"];
     if (restoredActiveResult) {
+      const currentStatus = await restoredActiveStatus(
+        tx,
+        ledgerId,
+        sourceDocumentId,
+        document.activeRevisionId!
+      );
       const documentUpdated = await tx
         .update(sourceDocuments)
-        .set({ pendingRevisionId: null, updatedAt: now })
+        .set({
+          pendingRevisionId: null,
+          currentStatus,
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          updatedAt: now,
+        })
         .where(
           and(
             activeDocumentWhere(ledgerId, sourceDocumentId),
@@ -771,18 +978,27 @@ export async function cancelPendingRevision(
       if (documentUpdated == null) {
         throw new ConflictError("Source document changed during cancellation");
       }
+      finalStatus = currentStatus;
     } else {
       await tx
         .update(sourceDocuments)
-        .set({ updatedAt: now })
+        .set({
+          pendingRevisionId: null,
+          currentStatus: "cancelled",
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          updatedAt: now,
+        })
         .where(
           and(
             activeDocumentWhere(ledgerId, sourceDocumentId),
             eq(sourceDocuments.pendingRevisionId, revisionId)
           )
         );
+      finalStatus = "cancelled";
     }
 
-    return { sourceDocumentId, revisionId, status: nextOutcome, restoredActiveResult };
+    return legacy
+      ? { sourceDocumentId, revisionId, status: nextOutcome, restoredActiveResult }
+      : { version: document.stateVersion + 1, status: finalStatus };
   });
 }

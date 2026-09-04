@@ -1,20 +1,17 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { useConfirmGate } from "@/hooks/use-confirm-gate";
 import type { SourceDocumentDeferredAction } from "./source-document-deferred-action";
 
 interface DeferredRequest {
   action: SourceDocumentDeferredAction;
-  contextKey: string;
 }
 
 interface UseSourceDocumentDeferredActionsOptions {
-  contextKey: string;
   interactionDisabled: boolean;
-  hasRevisionConflict: boolean;
+  hasVersionConflict: boolean;
   hasPendingChanges: boolean;
   saveAll: () => Promise<boolean>;
   discardAllChanges: () => void;
@@ -23,37 +20,37 @@ interface UseSourceDocumentDeferredActionsOptions {
 }
 
 export function useSourceDocumentDeferredActions({
-  contextKey,
   interactionDisabled,
-  hasRevisionConflict,
+  hasVersionConflict,
   hasPendingChanges,
   saveAll,
   discardAllChanges,
   executeAction,
-  t,
+  t: _t,
 }: UseSourceDocumentDeferredActionsOptions) {
   const gate = useConfirmGate<DeferredRequest>();
 
+  useEffect(() => {
+    if (hasVersionConflict) gate.setConfirmOpen(false);
+  }, [gate, hasVersionConflict]);
+
   const requestAction = useCallback(
     (action: SourceDocumentDeferredAction) => {
-      if (interactionDisabled || hasRevisionConflict) return;
+      if (interactionDisabled || hasVersionConflict) return;
       if (hasPendingChanges) {
-        gate.requestConfirmation({ action, contextKey });
+        gate.requestConfirmation({ action });
         return;
       }
       void executeAction(action);
     },
-    [contextKey, executeAction, gate, hasPendingChanges, hasRevisionConflict, interactionDisabled]
+    [executeAction, gate, hasPendingChanges, hasVersionConflict, interactionDisabled]
   );
 
   const resolveCurrentRequest = useCallback(() => {
     const request = gate.peekConfirmation();
     if (request == null) return null;
-    if (request.contextKey === contextKey) return request;
-    gate.cancelConfirmation();
-    toast.error(t("actionContextChanged"));
-    return null;
-  }, [contextKey, gate, t]);
+    return request;
+  }, [gate]);
 
   const confirmSaveAndContinue = useCallback(async () => {
     const request = resolveCurrentRequest();

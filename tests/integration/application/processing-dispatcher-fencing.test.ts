@@ -119,6 +119,7 @@ describe("leased processor fencing", () => {
     expect(revision?.outcome).toBe("processing");
     expect(document?.activeRevisionId).toBeNull();
     expect(document?.pendingRevisionId).toBe(intent.revisionId);
+    expect(document?.stateVersion).toBe(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 
@@ -167,8 +168,12 @@ describe("leased processor fencing", () => {
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.id, intent.revisionId),
     });
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+    });
     expect(revision?.outcome).toBe("processing");
     expect(revision?.anomalyReason).toBeNull();
+    expect(document?.stateVersion).toBe(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 });

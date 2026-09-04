@@ -33,6 +33,15 @@ export function useLedgerEntriesSelection({
       }),
     [advancedFilters, periodParams]
   );
+  const sourceDocumentVersions = useMemo(
+    () =>
+      new Map(
+        streamGroups.flatMap((group) =>
+          group.items.map((item) => [item.sourceDocument.id, item.sourceDocument.version] as const)
+        )
+      ),
+    [streamGroups]
+  );
 
   const {
     isSelectionMode,
@@ -54,7 +63,12 @@ export function useLedgerEntriesSelection({
     batchRetry,
     batchKeepDuplicates,
     batchDiscardDuplicates,
-  } = useBatchSourceDocumentActions(ledgerId, clearSelection, retainSelection);
+  } = useBatchSourceDocumentActions(
+    ledgerId,
+    clearSelection,
+    retainSelection,
+    sourceDocumentVersions
+  );
   const selectedDuplicateIds = useMemo(() => {
     if (selectedIds.length === 0) return [];
     const statusById = new Map(

@@ -181,7 +181,7 @@ describe("source-document-queries", () => {
     );
     await db
       .update(sourceDocuments)
-      .set({ pendingRevisionId: failedRevision.id })
+      .set({ pendingRevisionId: failedRevision.id, currentStatus: "failed" })
       .where(eq(sourceDocuments.id, failed.id));
 
     await expect(

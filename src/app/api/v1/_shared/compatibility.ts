@@ -1,6 +1,9 @@
-import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentSubmissionContract } from "@/application/contracts";
 
-export interface ApiV1SourceDocumentCreateResponse extends CreateSourceDocumentResponseDto {
+export interface ApiV1SourceDocumentCreateResponse {
+  sourceDocumentId: string;
+  revisionId: string;
+  revisionState: "processing";
   status: "processing";
 }
 
@@ -10,7 +13,7 @@ export const apiV1Compatibility = {
 } as const;
 
 export function toApiV1SourceDocumentCreateResponse(
-  result: CreateSourceDocumentResponseDto
+  result: SourceDocumentSubmissionContract
 ): ApiV1SourceDocumentCreateResponse {
   return {
     sourceDocumentId: result.sourceDocumentId,

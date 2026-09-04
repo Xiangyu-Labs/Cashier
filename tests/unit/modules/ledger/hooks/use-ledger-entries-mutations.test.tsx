@@ -52,13 +52,21 @@ describe("useLedgerEntriesMutations", () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
-    updateLedgerEntryActionMock.mockResolvedValueOnce({ id: "entry-1" });
+    updateLedgerEntryActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { ledgerEntryId: "entry-1" },
+    });
     const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1"), { wrapper });
 
     let mutation!: Promise<unknown>;
     act(() => {
       mutation = result.current.updateEntry.mutateAsync({
-        ledgerEntryId: "entry-1",
+        entry: {
+          id: "entry-1",
+          sourceDocument: { id: "document-1", version: 1 },
+        } as never,
         data: { itemName: "Dinner" },
       });
     });
@@ -76,12 +84,20 @@ describe("useLedgerEntriesMutations", () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
-    deleteLedgerEntryActionMock.mockResolvedValueOnce({ sourceDocumentDeleted: false });
+    deleteLedgerEntryActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { ledgerEntryId: "entry-1", deleted: true },
+    });
     const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1"), { wrapper });
 
     let mutation!: Promise<unknown>;
     act(() => {
-      mutation = result.current.deleteEntry.mutateAsync("entry-1");
+      mutation = result.current.deleteEntry.mutateAsync({
+        id: "entry-1",
+        sourceDocument: { id: "document-1", version: 1 },
+      } as never);
     });
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess"));
@@ -91,5 +107,25 @@ describe("useLedgerEntriesMutations", () => {
       refreshGate.resolve();
       await mutation;
     });
+  });
+
+  it("routes stale entry mutations through error feedback without success", async () => {
+    const { wrapper } = setup();
+    deleteLedgerEntryActionMock.mockResolvedValueOnce({
+      ok: false,
+      reason: "stale",
+      sourceDocumentId: "document-1",
+      expectedVersion: 1,
+      currentVersion: 2,
+    });
+    const { result } = renderHook(() => useLedgerEntriesMutations("ledger-1"), { wrapper });
+
+    await expect(
+      result.current.deleteEntry.mutateAsync({
+        id: "entry-1",
+        sourceDocument: { id: "document-1", version: 1 },
+      } as never)
+    ).rejects.toMatchObject({ code: "SOURCE_DOCUMENT_STALE" });
+    expect(toastSuccessMock).not.toHaveBeenCalled();
   });
 });

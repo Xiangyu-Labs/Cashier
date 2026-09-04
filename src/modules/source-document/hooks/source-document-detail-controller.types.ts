@@ -20,12 +20,7 @@ export interface UseSourceDocumentDetailControllerOptions {
   onClose: () => void;
   onReload?: (() => Promise<void>) | undefined;
   onSaveAll?:
-    | ((input: {
-        expectedRevisionId: string;
-        operationId: string;
-        changes: PendingChanges;
-      }) => Promise<unknown>)
-    | undefined;
+    ((input: { expectedVersion: number; changes: PendingChanges }) => Promise<void>) | undefined;
   onSplit?:
     | ((
         input: Omit<SplitSourceDocumentInput, "sourceDocumentId">
@@ -41,8 +36,8 @@ export interface UseSourceDocumentDetailControllerOptions {
     }
   ) => Promise<{ affectedCount: number } | undefined>;
   onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
-  onAddEntry?: ((data: AddEntryData) => Promise<unknown>) | undefined;
-  onDeleteEntry?: ((entryId: string) => Promise<unknown>) | undefined;
+  onAddEntry?: ((data: AddEntryData) => Promise<void>) | undefined;
+  onDeleteEntry?: ((entryId: string) => Promise<void>) | undefined;
   onDelete?: (() => void | Promise<void>) | undefined;
   onAcceptCandidate?: (() => Promise<void>) | undefined;
   onAbandonCandidate?: (() => Promise<void>) | undefined;

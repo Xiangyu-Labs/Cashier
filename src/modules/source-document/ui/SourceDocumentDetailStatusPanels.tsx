@@ -16,7 +16,7 @@ interface SourceDocumentDetailStatusPanelsProps {
   isLoading: boolean;
   isReloading: boolean;
   reloadError: boolean;
-  hasRevisionConflict: boolean;
+  hasVersionConflict: boolean;
   onClose: () => void;
   onReload: () => void;
 }
@@ -31,7 +31,7 @@ export function SourceDocumentDetailStatusPanels({
   isLoading,
   isReloading,
   reloadError,
-  hasRevisionConflict,
+  hasVersionConflict,
   onClose,
   onReload,
 }: SourceDocumentDetailStatusPanelsProps) {
@@ -85,7 +85,7 @@ export function SourceDocumentDetailStatusPanels({
 
       {sourceDocument && (
         <>
-          {hasRevisionConflict ? (
+          {hasVersionConflict ? (
             <div
               className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-3"
               role="alert"

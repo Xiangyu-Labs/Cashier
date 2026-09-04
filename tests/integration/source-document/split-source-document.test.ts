@@ -2,23 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "@/auth";
 import { splitSourceDocumentAction } from "@/modules/source-document/actions";
-import {
-  ledgerEntries,
-  ledgers,
-  revisionFiles,
-  sourceDocumentRevisions,
-  sourceDocuments,
-  storedFiles,
-} from "@/persistence";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../setup";
-import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
+import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 describe("splitSourceDocumentAction", () => {
   const userId = "00000000-0000-0000-0000-000000000000";
-
   beforeEach(() => {
     vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValue({
       user: { id: userId, email: "split@example.com" },
@@ -26,20 +18,15 @@ describe("splitSourceDocumentAction", () => {
     });
   });
 
-  async function seedDocument(type: "ai_parsed" | "manual" = "ai_parsed") {
+  async function seed() {
     const db = getTestDb();
     const ledger = createLedgerData({ userId, mainCurrency: "USD" });
-    const document = createSourceDocumentData(ledger.id, {
-      status: "completed",
-      type,
-      title: "Shared receipt",
-      entryDate: "2026-08-01",
-    });
-    const entryIds = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+    const document = createSourceDocumentData(ledger.id, { status: "completed", type: "manual" });
+    const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
     await db.insert(ledgers).values(ledger);
     await db.insert(sourceDocuments).values(document);
     await db.insert(ledgerEntries).values(
-      entryIds.map((id, position) => ({
+      ids.map((id, position) => ({
         id,
         ledgerId: ledger.id,
         sourceDocumentId: document.id,
@@ -48,135 +35,63 @@ describe("splitSourceDocumentAction", () => {
         currency: "USD",
         itemName: `Item ${position + 1}`,
         convertedAmount: `${position + 1}0.00`,
-        exchangeRate: "1.000000",
-        createdAt: new Date(`2026-08-01T00:00:0${position}.000Z`),
+        exchangeRate: "1",
       }))
     );
-    const revisionId = await activateTestSourceDocumentProjection(db, document.id, {
-      text: "Full original evidence",
-      imageUrls: ["fixture.jpg"],
-    });
-    return { db, ledger, document, entryIds, revisionId };
+    await activateTestSourceDocumentProjection(db, document.id);
+    return { db, ledger, document, ids };
   }
 
-  it("moves selected entries atomically while sharing text and stored files", async () => {
-    const fixture = await seedDocument();
-    const operationId = crypto.randomUUID();
-    const newSourceDocumentId = crypto.randomUUID();
-    const storedFileCountBefore = await fixture.db.select().from(storedFiles);
-
+  it("moves live rows without changing entry IDs and versions both documents correctly", async () => {
+    const fixture = await seed();
+    const movedIds = [fixture.ids[0]!, fixture.ids[2]!];
     const result = await splitSourceDocumentAction(fixture.ledger.id, {
       sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      newSourceDocumentId,
-      ledgerEntryIds: [fixture.entryIds[2]!, fixture.entryIds[0]!],
+      expectedVersion: 1,
+      ledgerEntryIds: movedIds,
       entryDate: "2026-08-16",
     });
-
     expect(result).toMatchObject({
-      sourceDocumentActiveRevisionId: operationId,
-      splitSourceDocumentId: newSourceDocumentId,
-      movedEntryCount: 2,
-      sourceDocument: { title: "Shared receipt", entryDate: "2026-08-01" },
-      splitSourceDocument: {
-        title: "Shared receipt",
-        entryDate: "2026-08-16",
-        type: "ai_parsed",
-        status: "completed",
-        text: "Full original evidence",
-      },
+      ok: true,
+      version: 2,
+      data: { splitVersion: 1, movedEntryCount: 2 },
     });
-    expect(result.sourceDocument.ledgerEntries!.map((entry) => entry.itemName)).toEqual(["Item 2"]);
-    expect(result.splitSourceDocument.ledgerEntries!.map((entry) => entry.itemName)).toEqual([
-      "Item 1",
-      "Item 3",
-    ]);
-    expect(result.splitSourceDocument.ledgerEntries!.map((entry) => entry.id)).not.toEqual(
-      expect.arrayContaining([fixture.entryIds[0], fixture.entryIds[2]])
-    );
-
-    const [storedFileCountAfter, sourceFiles, splitFiles, activeEntries] = await Promise.all([
-      fixture.db.select().from(storedFiles),
-      fixture.db.select().from(revisionFiles).where(eq(revisionFiles.revisionId, operationId)),
-      fixture.db
-        .select()
-        .from(revisionFiles)
-        .where(eq(revisionFiles.revisionId, result.splitSourceDocumentActiveRevisionId)),
-      fixture.db
-        .select()
-        .from(ledgerEntries)
-        .where(and(eq(ledgerEntries.ledgerId, fixture.ledger.id), isNull(ledgerEntries.deletedAt))),
-    ]);
-    expect(storedFileCountAfter).toHaveLength(storedFileCountBefore.length);
-    expect(sourceFiles.map((file) => file.storedFileId)).toEqual(
-      splitFiles.map((file) => file.storedFileId)
-    );
-    expect(activeEntries).toHaveLength(3);
-
-    const replay = await splitSourceDocumentAction(fixture.ledger.id, {
-      sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      newSourceDocumentId,
-      ledgerEntryIds: [fixture.entryIds[2]!, fixture.entryIds[0]!],
-      entryDate: "2026-08-16",
-    });
-    expect(replay).toEqual(result);
-
-    await expect(
-      splitSourceDocumentAction(fixture.ledger.id, {
-        sourceDocumentId: fixture.document.id,
-        expectedRevisionId: fixture.revisionId,
-        operationId,
-        newSourceDocumentId,
-        ledgerEntryIds: [fixture.entryIds[1]!, fixture.entryIds[2]!],
-        entryDate: "2026-08-16",
-      })
-    ).rejects.toThrow(/identifiers do not match/i);
-  });
-
-  it("preserves a manual source type across the split and idempotent replay", async () => {
-    const fixture = await seedDocument("manual");
-    const operationId = crypto.randomUUID();
-    const newSourceDocumentId = crypto.randomUUID();
-    const input = {
-      sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      newSourceDocumentId,
-      ledgerEntryIds: [fixture.entryIds[0]!],
-      entryDate: "2026-08-16",
-    };
-
-    const result = await splitSourceDocumentAction(fixture.ledger.id, input);
-
-    expect(result.sourceDocument.type).toBe("manual");
-    expect(result.splitSourceDocument.type).toBe("manual");
-    await expect(splitSourceDocumentAction(fixture.ledger.id, input)).resolves.toEqual(result);
-  });
-
-  it("rejects moving every entry without changing the active projection", async () => {
-    const fixture = await seedDocument();
-    await expect(
-      splitSourceDocumentAction(fixture.ledger.id, {
-        sourceDocumentId: fixture.document.id,
-        expectedRevisionId: fixture.revisionId,
-        operationId: crypto.randomUUID(),
-        newSourceDocumentId: crypto.randomUUID(),
-        ledgerEntryIds: fixture.entryIds,
-        entryDate: "2026-08-16",
-      })
-    ).rejects.toThrow(/retain at least one/i);
-
-    const document = await fixture.db.query.sourceDocuments.findFirst({
+    if (!result.ok) throw new Error("Expected split success");
+    const live = await fixture.db
+      .select()
+      .from(ledgerEntries)
+      .where(and(eq(ledgerEntries.ledgerId, fixture.ledger.id), isNull(ledgerEntries.deletedAt)));
+    expect(
+      live
+        .filter((entry) => entry.sourceDocumentId === result.data.splitSourceDocumentId)
+        .map((entry) => entry.id)
+        .sort()
+    ).toEqual([...movedIds].sort());
+    const source = await fixture.db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, fixture.document.id),
     });
-    expect(document?.activeRevisionId).toBe(fixture.revisionId);
-    await expect(
-      fixture.db.query.sourceDocumentRevisions.findMany({
-        where: eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id),
-      })
-    ).resolves.toHaveLength(1);
+    const split = await fixture.db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.data.splitSourceDocumentId),
+    });
+    expect(source?.stateVersion).toBe(2);
+    expect(split?.stateVersion).toBe(1);
+  });
+
+  it("returns stale on lost-response retry", async () => {
+    const fixture = await seed();
+    const input = {
+      sourceDocumentId: fixture.document.id,
+      expectedVersion: 1,
+      ledgerEntryIds: [fixture.ids[0]!],
+      entryDate: "2026-08-16",
+    };
+    await expect(splitSourceDocumentAction(fixture.ledger.id, input)).resolves.toMatchObject({
+      ok: true,
+    });
+    await expect(splitSourceDocumentAction(fixture.ledger.id, input)).resolves.toMatchObject({
+      ok: false,
+      reason: "stale",
+      currentVersion: 2,
+    });
   });
 });

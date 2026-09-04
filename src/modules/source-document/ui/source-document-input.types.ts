@@ -9,6 +9,7 @@ export interface SourceDocumentInputProps {
   timeZone?: string;
   mode?: "create" | "retry";
   sourceDocumentId?: string;
+  sourceDocumentVersion?: number;
   initialData?: {
     text?: string;
     images?: Array<{ data: string; mimeType: string; storedFileId?: string }>;

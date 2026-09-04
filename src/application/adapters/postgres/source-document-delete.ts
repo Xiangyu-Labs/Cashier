@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   duplicateReviews,
   ledgerEntries,
@@ -8,6 +8,9 @@ import {
   sourceDocuments,
 } from "@/persistence";
 import { NotFoundError } from "@/lib/errors";
+import { db } from "@/lib/db";
+import type { VersionedCommandResult, VersionedTarget } from "@/modules/source-document/contracts";
+import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
 import type { PostgresTransaction } from "./transaction-locks";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 
@@ -80,7 +83,13 @@ export async function softDeleteSourceDocumentInTransaction(
     );
   const deleted = await tx
     .update(sourceDocuments)
-    .set({ deletedAt: now, updatedAt: now })
+    .set({
+      pendingRevisionId: null,
+      currentStatus: "cancelled",
+      deletedAt: now,
+      stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+      updatedAt: now,
+    })
     .where(
       and(
         eq(sourceDocuments.ledgerId, ledgerId),
@@ -101,4 +110,39 @@ export async function softDeleteSourceDocumentInTransaction(
       )
     );
   return true;
+}
+
+export async function deleteSourceDocumentAtomically(input: {
+  ledgerId: string;
+  target: VersionedTarget;
+}): Promise<VersionedCommandResult<DeleteSourceDocumentResultDto>> {
+  return db.transaction(async (tx) => {
+    await lockLedgerForUpdate(tx, input.ledgerId);
+    const document = await lockSourceDocumentForUpdate(
+      tx,
+      input.ledgerId,
+      input.target.sourceDocumentId
+    );
+    if (document.stateVersion !== input.target.expectedVersion) {
+      return {
+        ok: false,
+        reason: "stale",
+        sourceDocumentId: input.target.sourceDocumentId,
+        expectedVersion: input.target.expectedVersion,
+        currentVersion: document.stateVersion,
+      };
+    }
+    const deleted = await softDeleteSourceDocumentInTransaction(
+      tx,
+      input.ledgerId,
+      input.target.sourceDocumentId
+    );
+    if (!deleted) throw new NotFoundError("Source document");
+    return {
+      ok: true,
+      sourceDocumentId: input.target.sourceDocumentId,
+      version: input.target.expectedVersion + 1,
+      data: { sourceDocumentId: input.target.sourceDocumentId, deleted: true },
+    };
+  });
 }

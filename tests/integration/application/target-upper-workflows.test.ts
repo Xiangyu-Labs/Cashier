@@ -53,7 +53,7 @@ const entry = {
 } as const;
 
 describe("target upper workflows", () => {
-  it("derives list state from revision pointers and paginates without skips", async () => {
+  it("uses persisted list state and paginates without skips", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const completed = await postgresLedgerProjectionAdapter.createManual({
@@ -88,7 +88,7 @@ describe("target upper workflows", () => {
     expect(
       [...first.items, ...second.items].find((item) => item.id === completed.sourceDocumentId)
         ?.status
-    ).toBe("completed");
+    ).toBe("failed");
     expect(
       [...first.items, ...second.items].find((item) => item.id === pending.document.id)?.status
     ).toBe("processing");

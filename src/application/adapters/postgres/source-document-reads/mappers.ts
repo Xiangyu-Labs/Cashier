@@ -8,11 +8,10 @@ import type {
 } from "@/modules/source-document/contracts";
 import {
   PROCESSING_FAILURE_CODES,
-  supportedSourceDocumentActions,
   type ApplicationErrorCode,
   type ProcessingFailureCode,
-  type RevisionOutcome,
 } from "@/application/contracts";
+import { deriveSourceDocumentCapabilities } from "@/modules/source-document/application/source-document-state";
 import { compare as decimalCompare, round as decimalRound } from "@/lib/money/decimal";
 import type {
   SourceDocumentStatusType,
@@ -29,6 +28,7 @@ export interface SourceDocumentRow {
   effectiveDate: string;
   activeRevisionId: string | null;
   pendingRevisionId: string | null;
+  stateVersion: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -46,6 +46,8 @@ interface DuplicateReviewRow {
 
 export interface SourceDocumentHydrationRow {
   documentId: string;
+  selectedRevisionId: string | null;
+  activeRevisionId: string | null;
   revisionTitle: string | null;
   submittedText: string | null;
   revisionOutcome: string | null;
@@ -108,9 +110,7 @@ export function mapDuplicateReviewDto(
   }
   return {
     sourceDocumentId: review.sourceDocumentId,
-    revisionId: review.revisionId,
     matchedSourceDocumentId: review.matchedSourceDocumentId,
-    matchedRevisionId: review.matchedRevisionId,
     status: review.status,
     reason: review.reason,
     confidence: review.confidence == null ? null : Number(review.confidence),
@@ -198,8 +198,13 @@ export function mapListItem(
   row: SourceDocumentRow,
   hydration: SourceDocumentHydrationRow
 ): SourceDocumentListItemDto {
+  const capabilities = deriveSourceDocumentCapabilities({
+    status: row.currentStatus,
+    hasActiveResult: row.activeRevisionId != null,
+  });
   const item: SourceDocumentListItemDto = {
     id: row.id,
+    version: row.stateVersion,
     ledgerId: row.ledgerId,
     title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
     text: null,
@@ -210,19 +215,9 @@ export function mapListItem(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     hasImages: hydration.hasImages,
-    supportedActions: [
-      ...supportedSourceDocumentActions({
-        activeRevisionId: row.activeRevisionId,
-        pendingRevisionId: row.pendingRevisionId,
-        pendingOutcome:
-          row.pendingRevisionId == null
-            ? null
-            : ((hydration.revisionOutcome as RevisionOutcome) ?? null),
-        duplicateReviewPending: row.currentStatus === "duplicate_pending",
-      }),
-    ],
+    supportedActions: capabilities.supportedActions,
+    canEdit: capabilities.canEdit,
     errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
-    pendingRevisionId: row.pendingRevisionId,
   };
   const duplicateReview = duplicateReviewFromHydration(hydration);
   if (duplicateReview != null) item.duplicateReview = duplicateReview;
@@ -263,8 +258,13 @@ export function mapSourceDocumentDetail(
           entryCount: Number(hydration.activeResultSummary.entryCount),
           total: decimalRound(String(hydration.activeResultSummary.total), 2),
         };
+  const capabilities = deriveSourceDocumentCapabilities({
+    status: row.currentStatus,
+    hasActiveResult: row.activeRevisionId != null,
+  });
   return {
     id: row.id,
+    version: row.stateVersion,
     ledgerId: row.ledgerId,
     title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
     text: hydration.submittedText,
@@ -279,20 +279,9 @@ export function mapSourceDocumentDetail(
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
     hasImages: hydration.hasImages,
-    supportedActions: [
-      ...supportedSourceDocumentActions({
-        activeRevisionId: row.activeRevisionId,
-        pendingRevisionId: row.pendingRevisionId,
-        pendingOutcome:
-          row.pendingRevisionId == null
-            ? null
-            : ((hydration.revisionOutcome as RevisionOutcome) ?? null),
-        duplicateReviewPending: row.currentStatus === "duplicate_pending",
-      }),
-    ],
+    supportedActions: capabilities.supportedActions,
+    canEdit: capabilities.canEdit,
     errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
-    pendingRevisionId: row.pendingRevisionId,
-    activeRevisionId: row.activeRevisionId,
     ...(duplicateReview == null ? {} : { duplicateReview }),
     ...(activeResultSummary == null ? {} : { activeResultSummary }),
   };

@@ -78,18 +78,28 @@ describe("target Settings currency workflow", () => {
   it("changes main currency and recalculates active entries atomically", async () => {
     await createEntry();
 
+    const before = await getTestDb().query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+
     const updated = await updateLedger(TEST_USER_ID, ledgerId, {
       settings: { mainCurrency: "USD" },
     });
-    const entry = await getTestDb().query.ledgerEntries.findFirst({
-      where: eq(ledgerEntries.ledgerId, ledgerId),
-    });
+    const [entry, document] = await Promise.all([
+      getTestDb().query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.ledgerId, ledgerId),
+      }),
+      getTestDb().query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      }),
+    ]);
 
     expect(updated.settings.mainCurrency).toBe("USD");
     expect(entry?.amount).toBe("80.000");
     expect(entry?.currency).toBe("CNY");
     expect(entry?.convertedAmount).toBe("10.000");
     expect(entry?.exchangeRate).toBe("0.125000000000");
+    expect(document?.stateVersion).toBe(before!.stateVersion + 1);
   });
 
   it("recalculates both active and pending revision entries", async () => {
@@ -148,11 +158,17 @@ describe("target Settings currency workflow", () => {
 
     await updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } });
 
-    const entries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.ledgerId, ledgerId),
-    });
+    const [entries, document] = await Promise.all([
+      db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.ledgerId, ledgerId),
+      }),
+      db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      }),
+    ]);
     expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.000", "5.000"]);
     expect(entries.every((entry) => entry.exchangeRate === "0.125000000000")).toBe(true);
+    expect(document?.stateVersion).toBe(2);
   });
 
   it("allows other setting changes when entries exist", async () => {

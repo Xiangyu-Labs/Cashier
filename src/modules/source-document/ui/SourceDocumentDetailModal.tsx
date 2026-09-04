@@ -37,11 +37,7 @@ interface SourceDocumentDetailModalProps {
   onClose: () => void;
   onBack?: () => void;
   onExitComplete?: () => void;
-  onSaveAll?: (input: {
-    expectedRevisionId: string;
-    operationId: string;
-    changes: PendingChanges;
-  }) => Promise<unknown>;
+  onSaveAll?: (input: { expectedVersion: number; changes: PendingChanges }) => Promise<void>;
   onSplit?: (
     input: Omit<SplitSourceDocumentInput, "sourceDocumentId">
   ) => Promise<SplitSourceDocumentResultDto>;
@@ -55,8 +51,8 @@ interface SourceDocumentDetailModalProps {
     }
   ) => Promise<{ affectedCount: number } | undefined>;
   onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
-  onAddEntry?: (data: AddEntryData) => Promise<unknown>;
-  onDeleteEntry?: (entryId: string) => Promise<unknown>;
+  onAddEntry?: (data: AddEntryData) => Promise<void>;
+  onDeleteEntry?: (entryId: string) => Promise<void>;
   onDelete?: () => void | Promise<void>;
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
@@ -177,7 +173,7 @@ function SourceDocumentDetailEditor({
               isLoading={isLoading}
               isReloading={status.isReloading}
               reloadError={status.reloadError}
-              hasRevisionConflict={status.hasRevisionConflict}
+              hasVersionConflict={status.hasVersionConflict}
               onClose={onClose}
               onReload={() => void actions.handleReload()}
             />
@@ -236,7 +232,7 @@ function SourceDocumentDetailEditor({
             busy={status.busy}
             interactionDisabled={status.interactionDisabled}
             hasPendingChanges={editor.hasPendingChanges}
-            hasRevisionConflict={status.hasRevisionConflict}
+            hasVersionConflict={status.hasVersionConflict}
             pendingChangesCount={editor.pendingChangesCount}
             isAccepting={isAccepting}
             isAbandoning={isAbandoning}

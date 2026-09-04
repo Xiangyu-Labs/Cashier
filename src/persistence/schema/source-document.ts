@@ -1,4 +1,5 @@
 import {
+  check,
   pgTable,
   text,
   index,
@@ -6,6 +7,7 @@ import {
   timestamp,
   uuid,
   date,
+  integer,
   pgEnum,
   foreignKey,
 } from "drizzle-orm/pg-core";
@@ -58,6 +60,7 @@ export const sourceDocuments = pgTable(
       .generatedAlwaysAs(sql`COALESCE("entry_date", ("created_at" AT TIME ZONE 'UTC')::date)`),
     activeRevisionId: uuid("active_revision_id"),
     pendingRevisionId: uuid("pending_revision_id"),
+    stateVersion: integer("state_version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -85,6 +88,7 @@ export const sourceDocuments = pgTable(
     index("idx_source_documents_ledger_entry_date")
       .on(table.ledgerId, table.entryDate, table.createdAt.desc(), table.id.desc())
       .where(sql`${table.deletedAt} IS NULL`),
+    check("source_documents_state_version_check", sql`${table.stateVersion} > 0`),
     // PostgreSQL uses column-list SET NULL here so ledger_id remains intact.
     // Drizzle cannot express that syntax; migrations own the delete action.
     foreignKey({

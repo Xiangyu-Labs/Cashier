@@ -14,8 +14,9 @@ describe("queryKeys enhanced stats and source documents", () => {
         mainCurrency: "USD",
       })
     ).toEqual([
-      "enhanced-stats",
+      "ledger",
       "ledger-1",
+      "enhanced-stats",
       {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
@@ -37,8 +38,9 @@ describe("queryKeys enhanced stats and source documents", () => {
         maxAmount: "100",
       })
     ).toEqual([
-      "sourceDocuments",
+      "ledger",
       "ledger-1",
+      "source-documents",
       "stream",
       {
         startDate: "2026-03-01",
@@ -50,6 +52,11 @@ describe("queryKeys enhanced stats and source documents", () => {
   });
 
   it("keeps stable positions when enhanced stats dimensions are omitted", () => {
-    expect(queryKeys.enhancedStats("ledger-1")).toEqual(["enhanced-stats", "ledger-1", {}]);
+    expect(queryKeys.enhancedStats("ledger-1")).toEqual([
+      "ledger",
+      "ledger-1",
+      "enhanced-stats",
+      {},
+    ]);
   });
 });

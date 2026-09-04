@@ -2,9 +2,12 @@
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
-import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import type {
+  RetrySourceDocumentResponseDto,
+  VersionedCommandResult,
+} from "@/modules/source-document/contracts";
 import {
-  parseMutationIdentity,
+  versionedTargetSchema,
   retrySourceDocumentInputSchema,
   type RetrySourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
@@ -13,7 +16,6 @@ import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { scheduleProcessingAfter } from "./schedule-processing";
 import { processImage } from "@/lib/storage/image-processing";
-import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -26,13 +28,13 @@ import { sourceDocumentFingerprint } from "@/modules/source-document/source-docu
  */
 export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId, userId },
+    { ledgerId },
     sourceDocumentId: string,
-    operationId?: string
-  ): Promise<RetrySourceDocumentResponseDto> => {
-    const identity = parseMutationIdentity({
+    expectedVersion: number
+  ): Promise<VersionedCommandResult<RetrySourceDocumentResponseDto>> => {
+    const identity = versionedTargetSchema.parse({
       sourceDocumentId,
-      ...(operationId === undefined ? {} : { operationId }),
+      expectedVersion,
     });
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
       scheduleProcessingAfter(intent);
@@ -42,16 +44,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
-        ...(identity.operationId == null
-          ? {}
-          : {
-              idempotency: {
-                principalType: "user" as const,
-                principalId: userId,
-                key: `source-document:direct-retry:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
-                contentFingerprint: sourceDocumentFingerprint({}),
-              },
-            }),
+        expectedVersion: identity.expectedVersion,
       },
       {
         submissions: serverComposition.sourceDocumentSubmissions,
@@ -78,14 +71,14 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
  */
 export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId, userId },
+    { ledgerId },
     sourceDocumentId: string,
     input?: RetrySourceDocumentInputContract,
-    operationId?: string
-  ): Promise<RetrySourceDocumentResponseDto> => {
-    const identity = parseMutationIdentity({
+    expectedVersion = 1
+  ): Promise<VersionedCommandResult<RetrySourceDocumentResponseDto>> => {
+    const identity = versionedTargetSchema.parse({
       sourceDocumentId,
-      ...(operationId === undefined ? {} : { operationId }),
+      expectedVersion,
     });
     const validatedInput =
       input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
@@ -98,16 +91,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
-        ...(identity.operationId == null
-          ? {}
-          : {
-              idempotency: {
-                principalType: "user" as const,
-                principalId: userId,
-                key: `source-document:edit-retry:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
-                contentFingerprint: sourceDocumentFingerprint(validatedInput ?? {}),
-              },
-            }),
+        expectedVersion: identity.expectedVersion,
         ...(validatedInput == null ? {} : { input: validatedInput }),
       },
       {

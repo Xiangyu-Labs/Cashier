@@ -1,7 +1,7 @@
-import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import type {
   AuthenticatedServiceCredentialContract,
   ProcessingIntentContract,
+  SourceDocumentSubmissionContract,
 } from "@/application/contracts";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
@@ -37,7 +37,7 @@ export async function createSourceDocumentFromCredential(
   },
   scheduleProcessing: (intent: ProcessingIntentContract) => void,
   ports: SourceDocumentCredentialPorts
-): Promise<CreateSourceDocumentResponseDto> {
+): Promise<SourceDocumentSubmissionContract> {
   const ledger = { id: input.credential.ledgerId };
 
   const payload = input.payload;

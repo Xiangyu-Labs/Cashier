@@ -59,10 +59,9 @@ export function SourceDocumentDetailWrapper({
   } = useSourceDocumentDetailMutations({
     id,
     ledgerId,
+    version: sourceDocument?.version ?? 1,
     onClose,
   });
-
-  const pendingRevisionId = sourceDocument?.pendingRevisionId ?? undefined;
 
   const {
     acceptCandidate,
@@ -74,7 +73,7 @@ export function SourceDocumentDetailWrapper({
   } = useSourceDocumentRecoveryMutations({
     ledgerId: detailLedgerId ?? ledgerId,
     sourceDocumentId: id,
-    ...(pendingRevisionId !== undefined ? { revisionId: pendingRevisionId } : {}),
+    version: sourceDocument?.version ?? 1,
     onSuccess: onClose,
   });
 

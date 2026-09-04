@@ -3,10 +3,10 @@ import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { omitUndefinedProperties } from "@/lib/validation";
 import type {
   ProcessingIntentContract,
+  SourceDocumentSubmissionContract,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
 import { toSourceDocumentSubmissionContract } from "@/application/contracts";
-import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { parseSourceDocumentPayloadInput } from "@/modules/source-document/contract-schemas";
 import { validateAggregateFileCount } from "@/lib/storage/upload-policy";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
@@ -59,7 +59,7 @@ function readLedgerTimeZone(ledger: unknown): string | undefined {
 export async function createAndQueueSourceDocument(
   input: CreateAndQueueSourceDocumentInput,
   dependencies: CreateAndQueueSourceDocumentDependencies
-): Promise<CreateSourceDocumentResponseDto> {
+): Promise<SourceDocumentSubmissionContract> {
   let createdUploadSessionId: string | null = null;
   const hasPreparedImages = input.preparedImages != null && input.preparedImages.length > 0;
 

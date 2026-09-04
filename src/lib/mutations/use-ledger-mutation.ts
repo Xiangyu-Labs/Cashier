@@ -1,13 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  invalidateLedgerMutationResources,
-  type LedgerMutationResourceGroup,
-} from "./ledger-mutation-resources";
+import { queryKeys } from "@/lib/query-keys";
 
 export interface UseLedgerMutationOptions<TData, TVariables> {
   mutationFn: (variables: TVariables) => Promise<TData>;
-  resourceGroups: readonly LedgerMutationResourceGroup[];
   successMessage?: string | null;
   errorMessage?: string | null;
   invalidationErrorMessage?: string | null;
@@ -27,7 +23,6 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
   const queryClient = useQueryClient();
   const {
     mutationFn,
-    resourceGroups,
     successMessage,
     errorMessage,
     invalidationErrorMessage = "Saved, but the latest data could not be refreshed. Retry.",
@@ -57,7 +52,10 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
       } finally {
         if (ledgerId != null && ledgerId !== "") {
           try {
-            await invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups);
+            await queryClient.invalidateQueries({
+              queryKey: queryKeys.ledger(ledgerId),
+              refetchType: "active",
+            });
           } catch (invalidationError) {
             console.error("[useLedgerMutation] resource invalidation failed", {
               ledgerId,
@@ -65,14 +63,17 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
             });
             if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
             globalThis.setTimeout(() => {
-              void invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups).catch(
-                (retryError) => {
+              void queryClient
+                .invalidateQueries({
+                  queryKey: queryKeys.ledger(ledgerId),
+                  refetchType: "active",
+                })
+                .catch((retryError) => {
                   console.error("[useLedgerMutation] resource invalidation retry failed", {
                     ledgerId,
                     error: retryError,
                   });
-                }
-              );
+                });
             }, 1_000);
           }
         }

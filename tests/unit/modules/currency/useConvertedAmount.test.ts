@@ -126,29 +126,33 @@ describe("useConvertedAmount", () => {
 
   it("uses the same concrete default date for the query and action", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 1, 4, 23, 30));
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { result } = renderHook(() => useConvertedAmount(ledgerId, "100", "CNY", "USD"), {
-      wrapper: createWrapper(queryClient),
-    });
-    await vi.advanceTimersByTimeAsync(1);
-    expect(mockConvertCurrencyAction).toHaveBeenCalledWith(
-      ledgerId,
-      "100",
-      "CNY",
-      "USD",
-      "2026-02-04"
-    );
-    expect(queryClient.getQueryCache().getAll()[0]?.queryKey).toEqual([
-      "convert",
-      ledgerId,
-      "100",
-      "CNY",
-      "USD",
-      "2026-02-04",
-    ]);
-    expect(result.current.status).not.toBe("idle");
-    vi.useRealTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 1, 4, 23, 30));
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const { result } = renderHook(() => useConvertedAmount(ledgerId, "100", "CNY", "USD"), {
+        wrapper: createWrapper(queryClient),
+      });
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockConvertCurrencyAction).toHaveBeenCalledWith(
+        ledgerId,
+        "100",
+        "CNY",
+        "USD",
+        "2026-02-04"
+      );
+      expect(queryClient.getQueryCache().getAll()[0]?.queryKey).toEqual([
+        "ledger",
+        ledgerId,
+        "convert",
+        "100",
+        "CNY",
+        "USD",
+        "2026-02-04",
+      ]);
+      expect(result.current.status).not.toBe("idle");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("normalizes timestamps to the client's local civil date", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -40,19 +40,21 @@ export function SourceDocumentCandidateReviewDialog({
   const tReview = useTranslations("ReviewDialog");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
+  const queryClient = useQueryClient();
   const [abandonConfirmOpen, setAbandonConfirmOpen] = useState(false);
-  const [abandonRevisionId, setAbandonRevisionId] = useState<string | null>(null);
+  const [abandonVersion, setAbandonVersion] = useState<number | null>(null);
+  const reviewQueryKey = queryKeys.sourceDocumentCandidateReview(ledgerId, sourceDocumentId);
   const reviewQuery = useQuery({
-    queryKey: queryKeys.sourceDocumentCandidateReview(ledgerId, sourceDocumentId),
+    queryKey: reviewQueryKey,
     queryFn: () => getSourceDocumentCandidateReviewAction(ledgerId, sourceDocumentId),
     enabled: open,
     staleTime: 0,
   });
-  const revisionId = reviewQuery.data?.candidate.revisionId;
+  const version = reviewQuery.data?.version ?? 1;
   const recovery = useSourceDocumentRecoveryMutations({
     ledgerId,
     sourceDocumentId,
-    ...(revisionId == null ? {} : { revisionId }),
+    version,
     onSuccess: () => onOpenChange(false),
   });
   const isPending = recovery.isReviewing;
@@ -81,8 +83,8 @@ export function SourceDocumentCandidateReviewDialog({
               <Button
                 variant="outline"
                 onClick={() => {
-                  if (revisionId == null) return;
-                  setAbandonRevisionId(revisionId);
+                  if (reviewQuery.data == null) return;
+                  setAbandonVersion(version);
                   setAbandonConfirmOpen(true);
                 }}
                 disabled={!canAct}
@@ -128,11 +130,11 @@ export function SourceDocumentCandidateReviewDialog({
         </SourceDocumentReviewDialogContent>
       </Dialog>
       <ConfirmDialog
-        open={abandonConfirmOpen}
+        open={abandonConfirmOpen && abandonVersion === version}
         onOpenChange={(nextOpen) => {
           if (isPending) return;
           setAbandonConfirmOpen(nextOpen);
-          if (!nextOpen) setAbandonRevisionId(null);
+          if (!nextOpen) setAbandonVersion(null);
         }}
         title={t("abandonConfirmTitle")}
         description={t("abandonConfirmDescription")}
@@ -140,9 +142,12 @@ export function SourceDocumentCandidateReviewDialog({
         cancelLabel={tCommon("cancel")}
         onConfirm={() => {
           if (!canAct) return false;
-          if (revisionId !== abandonRevisionId) {
+          const currentVersion = queryClient.getQueryData<{ version: number }>(
+            reviewQueryKey
+          )?.version;
+          if (version !== abandonVersion || currentVersion !== abandonVersion) {
             setAbandonConfirmOpen(false);
-            setAbandonRevisionId(null);
+            setAbandonVersion(null);
             return false;
           }
           return recovery.abandonCandidate();

@@ -5,7 +5,7 @@ import type { SourceDocumentUpdatePort } from "../ports";
 export function batchUpdateSourceDocuments(
   input: {
     ledgerId: string;
-    sourceDocumentIds: string[];
+    targets: import("../../contracts").VersionedTarget[];
     data: BatchUpdateSourceDocumentsInput;
   },
   updates: Pick<SourceDocumentUpdatePort, "batchUpdate">
@@ -21,8 +21,7 @@ export function saveSourceDocumentChanges(
   return updates.saveChangesAtomically({
     ledgerId,
     sourceDocumentId: input.sourceDocumentId,
-    expectedRevisionId: input.expectedRevisionId,
-    operationId: input.operationId,
+    expectedVersion: input.expectedVersion,
     ...(input.sourceDocument === undefined ? {} : { sourceDocument: input.sourceDocument }),
     entries: input.entries,
   });

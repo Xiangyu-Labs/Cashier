@@ -1,7 +1,8 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { compare as compareDecimal } from "@/lib/money/decimal";
 import {
   duplicateReviews,
   ledgerEntries,
@@ -81,6 +82,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: input.revisionId,
           pendingRevisionId: null,
+          currentStatus: "completed",
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
           ...(input.title == null || input.title === "" ? {} : { title: input.title }),
           updatedAt: now,
         })
@@ -216,6 +219,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
+          currentStatus: "completed",
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
           updatedAt: new Date(),
@@ -310,6 +315,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
+          currentStatus: "completed",
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
           updatedAt: new Date(),
         })
         .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
@@ -320,17 +327,79 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
   async recalculate(input) {
     if (input.updates.length === 0) return 0;
     return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, input.ledgerId);
       const uniqueIds = new Set(input.updates.map((update) => update.ledgerEntryId));
       if (uniqueIds.size !== input.updates.length) {
         throw new ValidationError("A ledger entry may only be recalculated once per transaction");
       }
+      const requestedIds = [...uniqueIds];
+      const current = await tx
+        .select({
+          id: ledgerEntries.id,
+          sourceDocumentId: ledgerEntries.sourceDocumentId,
+          convertedAmount: ledgerEntries.convertedAmount,
+          exchangeRate: ledgerEntries.exchangeRate,
+        })
+        .from(ledgerEntries)
+        .innerJoin(
+          sourceDocuments,
+          and(
+            eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+            eq(sourceDocuments.ledgerId, input.ledgerId),
+            eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+            isNull(sourceDocuments.deletedAt)
+          )
+        )
+        .where(
+          and(
+            eq(ledgerEntries.ledgerId, input.ledgerId),
+            inArray(ledgerEntries.id, requestedIds),
+            isNull(ledgerEntries.deletedAt)
+          )
+        );
+      if (current.length !== input.updates.length) {
+        throw new NotFoundError("Active ledger entry projection");
+      }
+      const currentById = new Map(current.map((entry) => [entry.id, entry] as const));
+      const changedUpdates = input.updates.filter((update) => {
+        const entry = currentById.get(update.ledgerEntryId)!;
+        return (
+          (entry.convertedAmount == null) !== (update.convertedAmount == null) ||
+          (entry.convertedAmount != null &&
+            update.convertedAmount != null &&
+            compareDecimal(entry.convertedAmount, update.convertedAmount) !== 0) ||
+          (entry.exchangeRate == null) !== (update.exchangeRate == null) ||
+          (entry.exchangeRate != null &&
+            update.exchangeRate != null &&
+            compareDecimal(entry.exchangeRate, update.exchangeRate) !== 0)
+        );
+      });
+      if (changedUpdates.length === 0) return 0;
+      const documentIds = [
+        ...new Set(
+          changedUpdates.map((update) => currentById.get(update.ledgerEntryId)!.sourceDocumentId!)
+        ),
+      ].sort();
+      await tx
+        .select({ id: sourceDocuments.id })
+        .from(sourceDocuments)
+        .where(
+          and(
+            eq(sourceDocuments.ledgerId, input.ledgerId),
+            inArray(sourceDocuments.id, documentIds),
+            isNull(sourceDocuments.deletedAt)
+          )
+        )
+        .orderBy(sourceDocuments.id)
+        .for("update");
       const changes = JSON.stringify(
-        input.updates.map((update) => ({
+        changedUpdates.map((update) => ({
           id: update.ledgerEntryId,
           converted_amount: update.convertedAmount,
           exchange_rate: update.exchangeRate,
         }))
       );
+      const now = new Date();
       const updated = await tx.execute(sql`
         WITH changes AS (
           SELECT * FROM jsonb_to_recordset(${changes}::jsonb) AS value(
@@ -342,7 +411,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         UPDATE ledger_entries AS entry
         SET converted_amount = changes.converted_amount,
             exchange_rate = changes.exchange_rate,
-            updated_at = ${new Date()}
+            updated_at = ${now}
         FROM changes, source_documents AS document
         WHERE entry.id = changes.id
           AND entry.ledger_id = ${input.ledgerId}
@@ -353,10 +422,23 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           AND document.deleted_at IS NULL
         RETURNING entry.id
       `);
-      if (updated.rows.length !== input.updates.length) {
+      if (updated.rows.length !== changedUpdates.length) {
         throw new NotFoundError("Active ledger entry projection");
       }
-      return input.updates.length;
+      await tx
+        .update(sourceDocuments)
+        .set({
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(sourceDocuments.ledgerId, input.ledgerId),
+            inArray(sourceDocuments.id, documentIds),
+            isNull(sourceDocuments.deletedAt)
+          )
+        );
+      return changedUpdates.length;
     });
   },
 

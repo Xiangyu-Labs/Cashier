@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
-import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
+import {
+  createPendingRevisionInTransaction,
+  postgresRevisionAdapter,
+} from "@/application/adapters/postgres/revisions";
 import { getTargetSourceDocument } from "@/application/adapters/postgres/source-document-reads";
-import { sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
@@ -45,14 +46,13 @@ async function setupDocumentWithFailedRetry(
   });
 
   // Step 3: Set the pending revision outcome to anomaly/failed
-  await db
-    .update(sourceDocumentRevisions)
-    .set({
-      outcome,
-      finalizedAt: new Date(),
-      ...(outcome === "anomaly" ? { anomalyReason: "Validation anomaly" } : {}),
-    })
-    .where(eq(sourceDocumentRevisions.id, pending.revision.id));
+  await postgresRevisionAdapter.preserveTerminalOutcome({
+    ledgerId,
+    sourceDocumentId: created.sourceDocumentId,
+    revisionId: pending.revision.id,
+    outcome,
+    ...(outcome === "anomaly" ? { anomalyReason: "Validation anomaly" } : {}),
+  });
 
   return {
     sourceDocumentId: created.sourceDocumentId,
@@ -70,30 +70,17 @@ async function setupDocumentWithFirstParseFailure(
   ledgerId: string,
   outcome: "anomaly" | "failed"
 ) {
-  const sourceDocumentId = crypto.randomUUID();
-  const revisionId = crypto.randomUUID();
-
-  await db.insert(sourceDocuments).values({
-    id: sourceDocumentId,
+  const pending = await db.transaction((tx) =>
+    createPendingRevisionInTransaction(tx, { ledgerId })
+  );
+  await postgresRevisionAdapter.preserveTerminalOutcome({
     ledgerId,
-    type: "ai_parsed",
-  });
-
-  await db.insert(sourceDocumentRevisions).values({
-    id: revisionId,
-    ledgerId,
-    sourceDocumentId,
-    revisionNumber: 1,
+    sourceDocumentId: pending.document.id,
+    revisionId: pending.revision.id,
     outcome,
-    finalizedAt: new Date(),
     ...(outcome === "anomaly" ? { anomalyReason: "First parse anomaly" } : {}),
   });
-  await db
-    .update(sourceDocuments)
-    .set({ pendingRevisionId: revisionId })
-    .where(eq(sourceDocuments.id, sourceDocumentId));
-
-  return { sourceDocumentId, pendingRevisionId: revisionId };
+  return { sourceDocumentId: pending.document.id, pendingRevisionId: pending.revision.id };
 }
 
 describe("retry active result summary", () => {
@@ -200,10 +187,12 @@ describe("retry active result summary", () => {
         submittedText: "Failed retry",
       });
     });
-    await db
-      .update(sourceDocumentRevisions)
-      .set({ outcome: "failed", finalizedAt: new Date() })
-      .where(eq(sourceDocumentRevisions.id, pending.revision.id));
+    await postgresRevisionAdapter.preserveTerminalOutcome({
+      ledgerId,
+      sourceDocumentId: created.sourceDocumentId,
+      revisionId: pending.revision.id,
+      outcome: "failed",
+    });
 
     const detail = await getTargetSourceDocument(ledgerId, created.sourceDocumentId);
     expect(detail?.status).toBe("failed");

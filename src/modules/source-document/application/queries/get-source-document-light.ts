@@ -9,6 +9,7 @@ function toLightDto(
 ): SourceDocumentLightWithEntriesDto {
   return {
     id: document.id,
+    version: document.version,
     ledgerId: document.ledgerId,
     title: document.title,
     text: document.text,
@@ -20,9 +21,8 @@ function toLightDto(
     createdAt: document.createdAt,
     hasImages,
     supportedActions: document.supportedActions,
+    canEdit: document.canEdit,
     errorCode: document.errorCode,
-    pendingRevisionId: document.pendingRevisionId,
-    activeRevisionId: document.activeRevisionId ?? null,
     ...(document.activeResultSummary !== undefined
       ? { activeResultSummary: document.activeResultSummary }
       : {}),

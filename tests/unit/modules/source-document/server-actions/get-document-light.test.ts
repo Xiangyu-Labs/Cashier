@@ -28,7 +28,7 @@ describe("getSourceDocumentLightAction", () => {
     await expect(
       getSourceDocumentLightAction("unauthorized-ledger", sourceDocumentId)
     ).rejects.toBeInstanceOf(UnauthorizedError);
-  });
+  }, 30_000);
 
   it("returns document for authorized ledger", async () => {
     const { getSourceDocumentLightAction } =

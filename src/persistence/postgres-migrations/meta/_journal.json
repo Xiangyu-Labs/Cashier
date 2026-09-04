@@ -232,6 +232,20 @@
       "when": 1788396585041,
       "tag": "0032_simplify_ledger_change_log",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788482985041,
+      "tag": "0033_source_document_state_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788569385041,
+      "tag": "0034_remove_source_document_status_triggers",
+      "breakpoints": true
     }
   ]
 }

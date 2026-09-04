@@ -13,6 +13,11 @@ import {
 vi.mock("@/application/adapters/postgres/exchange-rate", () => {
   const rateBook = {
     convert: vi.fn(),
+    getRates: vi.fn(async () => ({
+      base: "CNY",
+      date: "2026-09-04",
+      rates: { CNY: 1, USD: 0.14 },
+    })),
     convertBatch: vi.fn(async (items: Array<{ amount: string }>) =>
       items.map((item) => ({ convertedAmount: item.amount, exchangeRate: "1" }))
     ),
@@ -73,10 +78,15 @@ describe("Batch Update Ledger Entries Action", () => {
 
   it("should batch update category and currency", async () => {
     // batchUpdateLedgerEntriesAction returns void in new format
-    await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
-      categoryId: testCategoryId,
-      currency: "USD",
-    });
+    await batchUpdateLedgerEntriesAction(
+      testLedgerId,
+      [{ sourceDocumentId: testSourceDocId, expectedVersion: 1 }],
+      testEntryIds,
+      {
+        categoryId: testCategoryId,
+        currency: "USD",
+      }
+    );
 
     // Verify in DB
     const db = getTestDb();
@@ -93,7 +103,12 @@ describe("Batch Update Ledger Entries Action", () => {
   });
 
   it("normalizes a cleared currency to the ledger main currency", async () => {
-    await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, { currency: null });
+    await batchUpdateLedgerEntriesAction(
+      testLedgerId,
+      [{ sourceDocumentId: testSourceDocId, expectedVersion: 1 }],
+      testEntryIds,
+      { currency: null }
+    );
 
     const updatedEntries = await getTestDb()
       .select()
@@ -108,9 +123,14 @@ describe("Batch Update Ledger Entries Action", () => {
     const newDescription = "Batch updated description";
 
     // batchUpdateLedgerEntriesAction returns void in new format
-    await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
-      description: newDescription,
-    });
+    await batchUpdateLedgerEntriesAction(
+      testLedgerId,
+      [{ sourceDocumentId: testSourceDocId, expectedVersion: 1 }],
+      testEntryIds,
+      {
+        description: newDescription,
+      }
+    );
 
     // Verify in DB
     const db = getTestDb();

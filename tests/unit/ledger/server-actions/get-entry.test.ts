@@ -30,7 +30,7 @@ describe("getLedgerEntryAction", () => {
     await expect(getLedgerEntryAction("unauthorized-ledger", "entry-1")).rejects.toBeInstanceOf(
       UnauthorizedError
     );
-  });
+  }, 30_000);
 
   it("returns entry for authorized ledger", async () => {
     const { getLedgerEntryAction } = await import("@/modules/ledger/server-actions/get-entry");

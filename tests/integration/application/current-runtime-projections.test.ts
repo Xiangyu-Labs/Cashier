@@ -46,6 +46,10 @@ describe("current-runtime target adapters", () => {
         ?.deletedAt
     ).not.toBeNull();
 
+    const beforeRecalculation = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
+
     await expect(
       postgresLedgerProjectionAdapter.recalculate({
         ledgerId,
@@ -58,13 +62,39 @@ describe("current-runtime target adapters", () => {
         ],
       })
     ).resolves.toBe(1);
+    const afterRecalculation = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
+    expect(afterRecalculation?.stateVersion).toBe(beforeRecalculation!.stateVersion + 1);
+    expect(afterRecalculation!.updatedAt.getTime()).toBeGreaterThan(
+      beforeRecalculation!.updatedAt.getTime()
+    );
+
+    await expect(
+      postgresLedgerProjectionAdapter.recalculate({
+        ledgerId,
+        updates: [
+          {
+            ledgerEntryId: replacementEntry!.id,
+            convertedAmount: "2.50",
+            exchangeRate: "0.138889",
+          },
+        ],
+      })
+    ).resolves.toBe(0);
+    const afterNoopRecalculation = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
+    expect(afterNoopRecalculation?.stateVersion).toBe(afterRecalculation?.stateVersion);
+    expect(afterNoopRecalculation?.updatedAt).toEqual(afterRecalculation?.updatedAt);
+
     await expect(
       postgresLedgerProjectionAdapter.softDelete(ledgerId, created.sourceDocumentId)
     ).resolves.toBe(true);
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(deleted).toMatchObject({ currentStatus: "completed", deletedAt: expect.any(Date) });
+    expect(deleted).toMatchObject({ currentStatus: "cancelled", deletedAt: expect.any(Date) });
     expect(
       (
         await db.query.ledgerEntries.findFirst({

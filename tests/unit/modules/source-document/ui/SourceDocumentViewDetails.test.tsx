@@ -59,6 +59,7 @@ vi.mock("@/modules/source-document/ui/EditableLedgerEntryItem", () => ({
 function documentWithFiles(count: number): SourceDocument {
   return {
     id: "doc-1",
+    version: 1,
     ledgerId: "ledger-1",
     title: "Receipt",
     text: null,
@@ -77,8 +78,8 @@ function documentWithFiles(count: number): SourceDocument {
     updatedAt: "2026-07-28T00:00:00.000Z",
     deletedAt: null,
     supportedActions: [],
+    canEdit: true,
     errorCode: null,
-    pendingRevisionId: null,
   };
 }
 

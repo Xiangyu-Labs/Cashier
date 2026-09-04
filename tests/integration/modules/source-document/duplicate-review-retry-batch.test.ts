@@ -11,7 +11,6 @@ import { createPendingRevisionInTransaction } from "@/application/adapters/postg
 import {
   calculateCompletedSourceDocumentTotal,
   getTargetSourceDocument,
-  listPendingDuplicateReviews,
 } from "@/application/adapters/postgres/source-document-reads";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
 import {
@@ -253,30 +252,29 @@ describe("duplicate review lifecycle", () => {
     const result = await batchResolveDuplicateReviews(
       {
         ledgerId,
-        sourceDocumentIds: [
-          first.sourceDocumentId,
-          original.sourceDocumentId,
-          other.sourceDocumentId,
+        targets: [
+          { sourceDocumentId: first.sourceDocumentId, expectedVersion: 2 },
+          { sourceDocumentId: original.sourceDocumentId, expectedVersion: 1 },
+          { sourceDocumentId: other.sourceDocumentId, expectedVersion: 2 },
         ],
         decision: "keep",
       },
       {
-        reviews: { listPendingDuplicateReviews },
-        lifecycle: {
-          keepDuplicate: activateDuplicatePendingRevision,
-          discardDuplicate: discardDuplicatePendingRevision,
-        },
+        keepDuplicate: (targetLedgerId, sourceDocumentId, expectedVersion) =>
+          activateDuplicatePendingRevision(targetLedgerId, sourceDocumentId, expectedVersion),
+        discardDuplicate: (targetLedgerId, sourceDocumentId, expectedVersion) =>
+          discardDuplicatePendingRevision(targetLedgerId, sourceDocumentId, expectedVersion),
       }
     );
 
-    expect(result).toMatchObject({
-      requestedCount: 3,
-      succeededIds: [first.sourceDocumentId],
-      skipped: expect.arrayContaining([
-        { id: original.sourceDocumentId, reason: "not_duplicate_pending" },
-        { id: other.sourceDocumentId, reason: "not_duplicate_pending" },
-      ]),
-    });
+    expect(result.succeeded).toEqual([
+      { id: first.sourceDocumentId, sourceDocumentId: first.sourceDocumentId, version: 3 },
+    ]);
+    expect(result.stale).toEqual([]);
+    expect(result.failed.map((item) => item.id)).toEqual([
+      original.sourceDocumentId,
+      other.sourceDocumentId,
+    ]);
     await expect(getTargetSourceDocument(ledgerId, first.sourceDocumentId)).resolves.toMatchObject({
       status: "completed",
     });
@@ -287,19 +285,23 @@ describe("duplicate review lifecycle", () => {
     const repeat = await batchResolveDuplicateReviews(
       {
         ledgerId,
-        sourceDocumentIds: [first.sourceDocumentId],
+        targets: [{ sourceDocumentId: first.sourceDocumentId, expectedVersion: 2 }],
         decision: "keep",
       },
       {
-        reviews: { listPendingDuplicateReviews },
-        lifecycle: {
-          keepDuplicate: activateDuplicatePendingRevision,
-          discardDuplicate: discardDuplicatePendingRevision,
-        },
+        keepDuplicate: (targetLedgerId, sourceDocumentId, expectedVersion) =>
+          activateDuplicatePendingRevision(targetLedgerId, sourceDocumentId, expectedVersion),
+        discardDuplicate: (targetLedgerId, sourceDocumentId, expectedVersion) =>
+          discardDuplicatePendingRevision(targetLedgerId, sourceDocumentId, expectedVersion),
       }
     );
-    expect(repeat.skipped).toEqual([
-      { id: first.sourceDocumentId, reason: "not_duplicate_pending" },
+    expect(repeat.stale).toEqual([
+      {
+        id: first.sourceDocumentId,
+        sourceDocumentId: first.sourceDocumentId,
+        expectedVersion: 2,
+        currentVersion: 3,
+      },
     ]);
   });
 });

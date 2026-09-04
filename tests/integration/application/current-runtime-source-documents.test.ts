@@ -239,7 +239,7 @@ describe("current-runtime target adapters", () => {
       currentStatus: "cancelled",
       deletedAt: expect.any(Date),
       activeRevisionId: active.revisionId,
-      pendingRevisionId: pending.revision.id,
+      pendingRevisionId: null,
     });
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(revisionCount);
     expect(await db.select().from(revisionFiles)).toHaveLength(fileLinkCount);

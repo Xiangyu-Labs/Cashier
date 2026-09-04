@@ -25,6 +25,7 @@ function renderDialog() {
         ledgerId="ledger-1"
         sourceDocument={{
           id: "00000000-0000-4000-8000-000000000001",
+          version: 1,
           text: null,
           files: [],
           hasImages: true,

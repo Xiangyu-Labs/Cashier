@@ -83,10 +83,16 @@ describe("batchDeleteLedgerEntriesAction", () => {
       .where(eq(sourceDocumentRevisions.sourceDocumentId, doc.id));
     const result = await batchDeleteLedgerEntriesAction(
       ledgerId,
+      [{ sourceDocumentId: doc.id, expectedVersion: 1 }],
       entries.slice(0, 2).map((entry) => entry.id)
     );
 
-    expect(result.succeededIds).toEqual(entries.slice(0, 2).map((entry) => entry.id));
+    expect(result.succeeded.map((item) => item.id).sort()).toEqual(
+      entries
+        .slice(0, 2)
+        .map((entry) => entry.id)
+        .sort()
+    );
     expect(result.failed).toHaveLength(0);
     const afterRevisionCount = await db
       .select({ id: sourceDocumentRevisions.id })
@@ -137,17 +143,18 @@ describe("batchDeleteLedgerEntriesAction", () => {
 
     const result = await batchDeleteLedgerEntriesAction(
       ledgerId,
+      [{ sourceDocumentId: doc!.id, expectedVersion: 1 }],
       entries.map((entry) => entry.id)
     );
 
     // The legacy document has no canonical active projection, so the entries
     // cannot be deleted. The per-entry delete path reports this as a failure
     // (the projection resolution throws) instead of a silent skip.
-    expect(result.succeededIds).toEqual([]);
-    expect(result.skipped).toEqual([]);
+    expect(result.succeeded).toEqual([]);
+    expect(result.stale).toEqual([]);
     expect(result.failed.map((failure) => failure.id).sort()).toEqual(
       entries.map((entry) => entry.id).sort()
     );
-    expect(result.failed[0]?.reason).toContain("canonical active revision");
+    expect(result.failed[0]?.code).toBe("NOT_FOUND");
   });
 });

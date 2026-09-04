@@ -14,6 +14,7 @@ type SourceDocumentRow = Pick<
   "id" | "ledgerId" | "title" | "type" | "entryDate"
 > &
   DateFields & {
+    stateVersion: number;
     currentStatus: SourceDocumentReferenceDto["status"];
   };
 type LedgerEntryRow = Omit<
@@ -49,6 +50,7 @@ function mapSourceDocumentReferenceDto(
   doc: Pick<
     SourceDocumentRow,
     | "id"
+    | "stateVersion"
     | "ledgerId"
     | "title"
     | "type"
@@ -61,6 +63,7 @@ function mapSourceDocumentReferenceDto(
 ): SourceDocumentReferenceDto {
   return {
     id: doc.id,
+    version: doc.stateVersion,
     ledgerId: doc.ledgerId,
     title: doc.title,
     // Ledger-entry references describe the active accounting projection.

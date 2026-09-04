@@ -52,6 +52,31 @@ const moduleActionsBarrelPattern = /^@\/modules\/[^/]+\/actions$/;
 const appPattern = /^@\/app(?:\/|$)/;
 const anyModulePattern = /^@\/modules(?:\/|$)/;
 const workspaceModulePattern = /^@\/modules\/workspace(?:\/|$)/;
+const sourceDocumentWriterPattern = /\.(?:insert|update|delete)\(\s*sourceDocuments\s*\)/;
+const registeredSourceDocumentWriters = new Set([
+  "src/application/adapters/postgres/source-document-delete.ts",
+  "src/application/adapters/postgres/source-document-updates.ts",
+  "src/application/adapters/postgres/source-document-splits.ts",
+  "src/application/adapters/postgres/revisions.ts",
+  "src/application/adapters/postgres/submissions.ts",
+  "src/application/adapters/postgres/ledger-projections/activate-revision.ts",
+  "src/application/adapters/postgres/ledger-projections/manual-entries.ts",
+  "src/application/adapters/postgres/ledger-projections/recalculate.ts",
+  "src/application/adapters/postgres/source-document-aggregate/recalculate-current-entries.ts",
+]);
+const wholeLedgerDeleteWriter = "src/application/adapters/postgres/business-ports/ledger.ts";
+const browserSourceDocumentPath =
+  /^src\/modules\/(?:source-document\/(?:hooks|ui)|ledger\/hooks|workspace)\//;
+const forbiddenBrowserConcurrencyTokens = [
+  "activeRevisionId",
+  "pendingRevisionId",
+  "expectedRevisionId",
+  "operationId",
+  "payloadKey",
+  "contextKey",
+  "newSourceDocumentId",
+  "resourceGroups",
+];
 
 function collectSpecifiers(source) {
   const specifiers = [];
@@ -85,6 +110,30 @@ export function findBoundaryViolations(relativePath, source) {
   const isPersistence = /^src\/persistence\//.test(relativePath);
   const isApiRoute = /^src\/app\/api\//.test(relativePath);
   const isClientComponent = hasClientDirective(source);
+
+  if (
+    sourceDocumentWriterPattern.test(source) &&
+    !registeredSourceDocumentWriters.has(relativePath) &&
+    relativePath !== wholeLedgerDeleteWriter &&
+    !relativePath.startsWith("src/persistence/postgres-migrations/")
+  ) {
+    violations.push(
+      `${relativePath}: sourceDocuments writes must use the registered aggregate gateway`
+    );
+  }
+
+  if (browserSourceDocumentPath.test(relativePath)) {
+    for (const token of forbiddenBrowserConcurrencyTokens) {
+      if (new RegExp(`\\b${token}\\b`).test(source)) {
+        violations.push(`${relativePath}: browser source-document code must not use ${token}`);
+      }
+    }
+    if (/IdempotentLedgerEntryCommandPort|ledger-entry-idempotency/.test(source)) {
+      violations.push(
+        `${relativePath}: ordinary browser mutations must not use durable idempotency adapters`
+      );
+    }
+  }
 
   for (const specifier of specifiers) {
     if (isModule && appPattern.test(specifier)) {

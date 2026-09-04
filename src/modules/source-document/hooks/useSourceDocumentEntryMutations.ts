@@ -5,15 +5,20 @@ import {
   batchUpdateLedgerEntriesAction,
 } from "@/modules/ledger/actions";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import type { BatchActionResult } from "@/lib/batch-ids";
+import type { PartialBatchCommandResult } from "@/modules/source-document/contracts";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
+import { unwrapAtomicBatchCommandResult } from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentEntryMutationsOptions {
   ledgerId: string | undefined;
+  sourceDocumentId: string;
+  version: number;
 }
 
 export function useSourceDocumentEntryMutations({
   ledgerId,
+  sourceDocumentId,
+  version,
 }: UseSourceDocumentEntryMutationsOptions) {
   const tCommon = useTranslations("Common");
   const batchUpdateMutation = useLedgerMutation<
@@ -23,24 +28,32 @@ export function useSourceDocumentEntryMutations({
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
       const { amount, ...rest } = data;
-      return batchUpdateLedgerEntriesAction(ledgerId, ids, {
-        ...rest,
-        ...(amount == null ? {} : { amount: String(amount) }),
-      });
+      const result = await batchUpdateLedgerEntriesAction(
+        ledgerId,
+        [{ sourceDocumentId, expectedVersion: version }],
+        ids,
+        {
+          ...rest,
+          ...(amount == null ? {} : { amount: String(amount) }),
+        }
+      );
+      return unwrapAtomicBatchCommandResult(result);
     },
     errorMessage: null,
-    resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
-  const batchDeleteMutation = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
+  const batchDeleteMutation = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
     mutationFn: async (entryIds) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-      return batchDeleteLedgerEntriesAction(ledgerId, entryIds);
+      return batchDeleteLedgerEntriesAction(
+        ledgerId,
+        [{ sourceDocumentId, expectedVersion: version }],
+        entryIds
+      );
     },
     successMessage: null,
     errorMessage: null,
-    resourceGroups: ["entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 

@@ -73,7 +73,7 @@ describe("deleteSourceDocument", () => {
 
     expect(deletedDocument).toMatchObject({
       id: sourceDocument.id,
-      currentStatus: "completed",
+      currentStatus: "cancelled",
       deletedAt: expect.any(Date),
     });
     expect(activeEntries).toEqual([]);

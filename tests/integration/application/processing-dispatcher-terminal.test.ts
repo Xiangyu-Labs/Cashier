@@ -173,6 +173,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     });
     expect(doc?.activeRevisionId).toBe(intent.revisionId);
     expect(doc?.pendingRevisionId).toBeNull();
+    expect(doc?.stateVersion).toBe(2);
 
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.id, intent.revisionId),

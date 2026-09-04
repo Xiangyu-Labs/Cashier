@@ -125,11 +125,14 @@ describe("ledger server-action validation", () => {
       createLedgerEntryAction(
         "ledger-1",
         {
+          sourceDocumentId: "bad-id",
+          expectedVersion: 1,
+        } as never,
+        {
           amount: 1,
           itemName: "x",
           sourceDocumentId: "bad-id",
-        } as never,
-        crypto.randomUUID()
+        } as never
       )
     ).rejects.toBeInstanceOf(ValidationError);
     expect(createLedgerEntryWithConversionMock).not.toHaveBeenCalled();

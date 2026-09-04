@@ -1,11 +1,5 @@
 "use server";
-import { withLedgerAccess, withLedgerAccessContext } from "../access";
-import { createHash } from "node:crypto";
-import { ValidationError } from "@/lib/errors";
-import { isValidUuid } from "@/lib/validation";
-import type { DeleteLedgerEntryResultDto, LedgerEntryDto } from "@/modules/ledger/contracts";
-import { batchUpdateLedgerEntries } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
-import { batchDeleteLedgerEntries } from "@/modules/ledger/application/use-cases/batch-delete-ledger-entries";
+import { withLedgerAccess } from "../access";
 import { getBatchEntryDateImpact } from "@/modules/ledger/application/queries/get-batch-entry-date-impact";
 import { updateLedgerEntryDates } from "@/modules/ledger/application/use-cases/update-ledger-entry-dates";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
@@ -20,127 +14,67 @@ import {
   type CreateLedgerEntryInput,
   type UpdateLedgerEntryInput,
 } from "@/modules/ledger/contract-schemas";
-import type { BatchActionResult } from "@/lib/batch-ids";
 import { serverComposition } from "@/application/server-composition-root";
+import {
+  parseVersionedTarget,
+  versionedTargetsSchema,
+} from "@/modules/source-document/contract-schemas";
+import type {
+  AtomicBatchCommandResult,
+  PartialBatchCommandResult,
+  VersionedTarget,
+} from "@/modules/source-document/contracts";
 
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value != null && typeof value === "object") {
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function fingerprint(value: unknown): string {
-  return createHash("sha256").update(stableJson(value)).digest("hex");
-}
-
-function deterministicEntryId(ledgerId: string, operationId: string): string {
-  const bytes = createHash("sha256").update(`${ledgerId}:${operationId}`).digest().subarray(0, 16);
-  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
-  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-  const hex = bytes.toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
-    16,
-    20
-  )}-${hex.slice(20)}`;
-}
-
-function requireOperationId(operationId: string): string {
-  if (!isValidUuid(operationId)) throw new ValidationError("operationId must be a UUID");
-  return operationId;
-}
-
-export const createLedgerEntryAction = withLedgerAccessContext(
-  async (
-    { userId },
-    ledgerId: string,
-    data: CreateLedgerEntryInput,
-    operationId: string
-  ): Promise<LedgerEntryDto> => {
-    const validatedOperationId = requireOperationId(operationId);
+export const createLedgerEntryAction = withLedgerAccess(
+  async (ledgerId: string, target: VersionedTarget, data: CreateLedgerEntryInput) => {
+    const validatedTarget = parseVersionedTarget(target);
     const validated = parseCreateLedgerEntryInput(data);
-    const command: Parameters<typeof serverComposition.ledgerEntryCommands.create>[0]["command"] = {
-      ledgerEntryId: deterministicEntryId(ledgerId, validatedOperationId),
+    if (validated.sourceDocumentId !== validatedTarget.sourceDocumentId) {
+      throw new Error("Source document target does not match entry payload");
+    }
+    return serverComposition.ledgerEntryCommands.create({
+      ledgerId,
+      target: validatedTarget,
       amount: String(validated.amount),
       itemName: validated.itemName,
-      sourceDocumentId: validated.sourceDocumentId,
-    };
-    if (validated.currency !== undefined) command.currency = validated.currency;
-    if (validated.categoryId !== undefined) command.categoryId = validated.categoryId;
-    if (validated.description !== undefined) command.description = validated.description;
-    return serverComposition.ledgerEntryCommands.create({
-      userId,
-      ledgerId,
-      operationId: validatedOperationId,
-      fingerprint: fingerprint({
-        operation: "create",
-        ledgerId,
-        entryId: null,
-        payload: validated,
-      }),
-      command,
+      ...(validated.currency === undefined ? {} : { currency: validated.currency }),
+      ...(validated.categoryId === undefined ? {} : { categoryId: validated.categoryId }),
+      ...(validated.description === undefined ? {} : { description: validated.description }),
     });
   }
 );
 
-export const updateLedgerEntryAction = withLedgerAccessContext(
+export const updateLedgerEntryAction = withLedgerAccess(
   async (
-    { userId },
     ledgerId: string,
+    target: VersionedTarget,
     ledgerEntryId: string,
-    data: UpdateLedgerEntryInput,
-    operationId: string
-  ): Promise<LedgerEntryDto> => {
-    const validatedOperationId = requireOperationId(operationId);
+    data: UpdateLedgerEntryInput
+  ) => {
+    const validatedTarget = parseVersionedTarget(target);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     const validated = parseUpdateLedgerEntryInput(data);
-    const command: Parameters<typeof serverComposition.ledgerEntryCommands.update>[0]["command"] = {
-      ledgerEntryId: validatedLedgerEntryId,
-    };
-    if (validated.categoryId !== undefined) command.categoryId = validated.categoryId;
-    if (validated.amount !== undefined) command.amount = String(validated.amount);
-    if (validated.currency !== undefined) command.currency = validated.currency;
-    if (validated.itemName !== undefined) command.itemName = validated.itemName;
-    if (validated.description !== undefined) command.description = validated.description;
     return serverComposition.ledgerEntryCommands.update({
-      userId,
       ledgerId,
-      operationId: validatedOperationId,
-      fingerprint: fingerprint({
-        operation: "update",
-        ledgerId,
-        entryId: validatedLedgerEntryId,
-        payload: validated,
-      }),
-      command,
+      target: validatedTarget,
+      ledgerEntryId: validatedLedgerEntryId,
+      ...(validated.categoryId === undefined ? {} : { categoryId: validated.categoryId }),
+      ...(validated.amount === undefined ? {} : { amount: String(validated.amount) }),
+      ...(validated.currency === undefined ? {} : { currency: validated.currency }),
+      ...(validated.itemName === undefined ? {} : { itemName: validated.itemName }),
+      ...(validated.description === undefined ? {} : { description: validated.description }),
     });
   }
 );
 
-export const deleteLedgerEntryAction = withLedgerAccessContext(
-  async (
-    { userId },
-    ledgerId: string,
-    ledgerEntryId: string,
-    operationId: string
-  ): Promise<DeleteLedgerEntryResultDto> => {
-    const validatedOperationId = requireOperationId(operationId);
+export const deleteLedgerEntryAction = withLedgerAccess(
+  async (ledgerId: string, target: VersionedTarget, ledgerEntryId: string) => {
+    const validatedTarget = parseVersionedTarget(target);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     return serverComposition.ledgerEntryCommands.delete({
-      userId,
       ledgerId,
-      operationId: validatedOperationId,
-      fingerprint: fingerprint({
-        operation: "delete",
-        ledgerId,
-        entryId: validatedLedgerEntryId,
-        payload: null,
-      }),
-      command: { ledgerEntryId: validatedLedgerEntryId },
+      target: validatedTarget,
+      ledgerEntryId: validatedLedgerEntryId,
     });
   }
 );
@@ -148,13 +82,18 @@ export const deleteLedgerEntryAction = withLedgerAccessContext(
 export const batchUpdateLedgerEntriesAction = withLedgerAccess(
   async (
     ledgerId: string,
+    inputTargets: VersionedTarget[],
     ledgerEntryIds: string[],
     data: BatchUpdateLedgerEntriesInput
-  ): Promise<{ ledgerEntryIds: string[]; affectedCount: number }> => {
+  ): Promise<AtomicBatchCommandResult<{ ledgerEntryIds: string[]; affectedCount: number }>> => {
+    const targets = versionedTargetsSchema.parse(inputTargets);
     const validatedLedgerEntryIds = parseLedgerEntryIds(ledgerEntryIds);
     const validated = parseBatchUpdateLedgerEntriesInput(data);
-    const payload: Parameters<typeof batchUpdateLedgerEntries>[0] = {
+    const payload: Parameters<
+      typeof serverComposition.sourceDocumentAggregate.batchUpdateEntries
+    >[0] = {
       ledgerId,
+      targets,
       ledgerEntryIds: validatedLedgerEntryIds,
     };
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
@@ -162,25 +101,23 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     if (validated.amount !== undefined) payload.amount = String(validated.amount);
     if (validated.description !== undefined) payload.description = validated.description;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
-    const affectedCount = await batchUpdateLedgerEntries(payload, {
-      mutations: serverComposition.ledgerMutations,
-      categories: serverComposition.categories,
-    });
-
-    return {
-      ledgerEntryIds: validatedLedgerEntryIds,
-      affectedCount,
-    };
+    return serverComposition.sourceDocumentAggregate.batchUpdateEntries(payload);
   }
 );
 
 export const batchDeleteLedgerEntriesAction = withLedgerAccess(
-  async (ledgerId: string, inputIds: string[]): Promise<BatchActionResult> => {
+  async (
+    ledgerId: string,
+    inputTargets: VersionedTarget[],
+    inputIds: string[]
+  ): Promise<PartialBatchCommandResult> => {
+    const targets = versionedTargetsSchema.parse(inputTargets);
     const ids = parseLedgerEntryIds(inputIds);
-    return batchDeleteLedgerEntries(
-      { ledgerId, ledgerEntryIds: ids },
-      serverComposition.ledgerMutations
-    );
+    return serverComposition.sourceDocumentAggregate.batchDeleteEntries({
+      ledgerId,
+      targets,
+      ledgerEntryIds: ids,
+    });
   }
 );
 export const previewBatchLedgerEntryDateAction = withLedgerAccess(
@@ -194,7 +131,13 @@ export const previewBatchLedgerEntryDateAction = withLedgerAccess(
 );
 
 export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
-  async (ledgerId: string, inputIds: string[], entryDate: string) => {
+  async (
+    ledgerId: string,
+    inputTargets: VersionedTarget[],
+    inputIds: string[],
+    entryDate: string
+  ) => {
+    const targets = versionedTargetsSchema.parse(inputTargets);
     const validated = parseBatchUpdateLedgerEntryDatesInput({
       entryIds: inputIds,
       entryDate,
@@ -202,6 +145,7 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
     const impact = await updateLedgerEntryDates(
       {
         ledgerId,
+        targets,
         ledgerEntryIds: validated.entryIds,
         entryDate: validated.entryDate,
       },

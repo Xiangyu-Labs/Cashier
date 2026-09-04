@@ -1,267 +1,97 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { saveSourceDocumentChangesAction } from "@/modules/source-document/actions";
-import {
-  idempotencyRecords,
-  ledgerEntries,
-  ledgers,
-  sourceDocumentRevisions,
-  sourceDocuments,
-} from "@/persistence";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../../../../setup";
-import { createLedgerData, createSourceDocumentData } from "../../../../../helpers/factories";
 import { activateTestSourceDocumentProjection } from "../../../../../helpers/schema-setup";
+import { createLedgerData, createSourceDocumentData } from "../../../../../helpers/factories";
 
-vi.mock("@/auth", () => ({
-  auth: vi.fn(),
-}));
+vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 describe("saveSourceDocumentChangesAction", () => {
   const userId = "00000000-0000-0000-0000-000000000000";
+  beforeEach(() =>
+    vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValue({
+      user: { id: userId },
+      expires: new Date(Date.now() + 1000).toISOString(),
+    })
+  );
 
-  beforeEach(() => {
-    vi.mocked(
-      auth as unknown as () => Promise<{
-        user: { id: string; email: string };
-        expires: string;
-      } | null>
-    ).mockResolvedValue({
-      user: { id: userId, email: "atomic-save@example.com" },
-      expires: new Date(Date.now() + 3_600_000).toISOString(),
-    });
-  });
-
-  async function seedDocument() {
+  async function seed() {
     const db = getTestDb();
     const ledger = createLedgerData({ userId, mainCurrency: "USD" });
     const document = createSourceDocumentData(ledger.id, {
       status: "completed",
       type: "manual",
-      title: "Original title",
-      entryDate: "2026-08-01",
+      title: "Original",
     });
-    const firstEntryId = crypto.randomUUID();
-    const secondEntryId = crypto.randomUUID();
-
+    const entryId = crypto.randomUUID();
     await db.insert(ledgers).values(ledger);
     await db.insert(sourceDocuments).values(document);
-    await db.insert(ledgerEntries).values([
-      {
-        id: firstEntryId,
-        ledgerId: ledger.id,
-        sourceDocumentId: document.id,
-        amount: "10.00",
-        currency: "USD",
-        itemName: "First",
-        convertedAmount: "10.00",
-        exchangeRate: "1.000000",
-      },
-      {
-        id: secondEntryId,
-        ledgerId: ledger.id,
-        sourceDocumentId: document.id,
-        amount: "20.00",
-        currency: "USD",
-        itemName: "Second",
-        convertedAmount: "20.00",
-        exchangeRate: "1.000000",
-      },
-    ]);
-    const revisionId = await activateTestSourceDocumentProjection(db, document.id);
-
-    return { db, ledger, document, firstEntryId, secondEntryId, revisionId };
+    await db.insert(ledgerEntries).values({
+      id: entryId,
+      ledgerId: ledger.id,
+      sourceDocumentId: document.id,
+      amount: "10.000",
+      currency: "USD",
+      itemName: "First",
+      convertedAmount: "10.000",
+      exchangeRate: "1",
+    });
+    await activateTestSourceDocumentProjection(db, document.id);
+    return { db, ledger, document, entryId };
   }
 
-  it("commits document and entry changes together and returns the authoritative projection", async () => {
-    const fixture = await seedDocument();
-    const operationId = crypto.randomUUID();
-
+  it("commits metadata and entry changes once while preserving the entry ID", async () => {
+    const fixture = await seed();
     const result = await saveSourceDocumentChangesAction(fixture.ledger.id, {
       sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      sourceDocument: { title: "Updated title" },
-      entries: [
-        {
-          ledgerEntryId: fixture.firstEntryId,
-          data: { itemName: "Updated first", amount: "12" },
-        },
-        {
-          ledgerEntryId: fixture.secondEntryId,
-          data: { description: "Updated second" },
-        },
-      ],
+      expectedVersion: 1,
+      sourceDocument: { title: "Updated" },
+      entries: [{ ledgerEntryId: fixture.entryId, data: { itemName: "Updated entry" } }],
     });
-
-    expect(result.activeRevisionId).toBe(operationId);
-    expect(result.sourceDocument).toMatchObject({
-      id: fixture.document.id,
-      title: "Updated title",
-      activeRevisionId: operationId,
+    expect(result).toEqual({
+      ok: true,
+      sourceDocumentId: fixture.document.id,
+      version: 2,
+      data: { updatedEntryIds: [fixture.entryId] },
     });
-    expect(result.sourceDocument.ledgerEntries).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: fixture.firstEntryId,
-          itemName: "Updated first",
-          amount: "12.000",
-        }),
-        expect.objectContaining({
-          id: fixture.secondEntryId,
-          description: "Updated second",
-        }),
-      ])
-    );
+    const entry = await fixture.db.query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, fixture.entryId),
+    });
+    expect(entry?.itemName).toBe("Updated entry");
+    expect(entry?.deletedAt).toBeNull();
   });
 
-  it("rolls back the document patch when any entry does not belong to the active projection", async () => {
-    const fixture = await seedDocument();
-    const operationId = crypto.randomUUID();
+  it("returns stale on replay and performs no additional write", async () => {
+    const fixture = await seed();
+    const input = {
+      sourceDocumentId: fixture.document.id,
+      expectedVersion: 1,
+      sourceDocument: { title: "Updated" },
+      entries: [],
+    };
+    await expect(saveSourceDocumentChangesAction(fixture.ledger.id, input)).resolves.toMatchObject({
+      ok: true,
+      version: 2,
+    });
+    await expect(saveSourceDocumentChangesAction(fixture.ledger.id, input)).resolves.toMatchObject({
+      ok: false,
+      reason: "stale",
+      currentVersion: 2,
+    });
+  });
 
+  it("returns the original version for a no-op", async () => {
+    const fixture = await seed();
     await expect(
       saveSourceDocumentChangesAction(fixture.ledger.id, {
         sourceDocumentId: fixture.document.id,
-        expectedRevisionId: fixture.revisionId,
-        operationId,
-        sourceDocument: { title: "Must not persist" },
-        entries: [
-          {
-            ledgerEntryId: crypto.randomUUID(),
-            data: { itemName: "Invalid entry" },
-          },
-        ],
-      })
-    ).rejects.toThrow();
-
-    const document = await fixture.db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, fixture.document.id),
-    });
-    const activeEntries = await fixture.db.query.ledgerEntries.findMany({
-      where: and(
-        eq(ledgerEntries.sourceDocumentId, fixture.document.id),
-        isNull(ledgerEntries.deletedAt)
-      ),
-    });
-    expect(document?.title).toBe("Original title");
-    expect(document?.activeRevisionId).toBe(fixture.revisionId);
-    expect(activeEntries.map((entry) => entry.itemName).sort()).toEqual(["First", "Second"]);
-  });
-
-  it("rejects a stale revision without writing any changes", async () => {
-    const fixture = await seedDocument();
-
-    await expect(
-      saveSourceDocumentChangesAction(fixture.ledger.id, {
-        sourceDocumentId: fixture.document.id,
-        expectedRevisionId: crypto.randomUUID(),
-        operationId: crypto.randomUUID(),
-        sourceDocument: { title: "Stale update" },
+        expectedVersion: 1,
+        sourceDocument: { title: "Original" },
         entries: [],
       })
-    ).rejects.toThrow(/active revision changed/i);
-
-    const document = await fixture.db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, fixture.document.id),
-    });
-    expect(document?.title).toBe("Original title");
-    expect(document?.activeRevisionId).toBe(fixture.revisionId);
-  });
-
-  it("replays an acknowledged operation without creating another revision", async () => {
-    const fixture = await seedDocument();
-    const operationId = crypto.randomUUID();
-    const input = {
-      sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      sourceDocument: { title: "Idempotent update" },
-      entries: [
-        {
-          ledgerEntryId: fixture.firstEntryId,
-          data: { itemName: "Idempotent entry" },
-        },
-      ],
-    };
-
-    const first = await saveSourceDocumentChangesAction(fixture.ledger.id, input);
-    const replay = await saveSourceDocumentChangesAction(fixture.ledger.id, input);
-
-    expect(replay).toEqual(first);
-    const document = await fixture.db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, fixture.document.id),
-    });
-    expect(document?.activeRevisionId).toBe(operationId);
-  });
-
-  it("fails closed when the committed mutation loses its idempotency receipt", async () => {
-    const fixture = await seedDocument();
-    const operationId = crypto.randomUUID();
-    const input = {
-      sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      sourceDocument: { title: "Committed update" },
-      entries: [],
-    };
-
-    await saveSourceDocumentChangesAction(fixture.ledger.id, input);
-    const revisionsBefore = await fixture.db
-      .select({ id: sourceDocumentRevisions.id })
-      .from(sourceDocumentRevisions)
-      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
-    await fixture.db
-      .delete(idempotencyRecords)
-      .where(
-        and(
-          eq(idempotencyRecords.principalType, "user"),
-          eq(idempotencyRecords.principalId, userId),
-          eq(
-            idempotencyRecords.key,
-            `source-document:save:${fixture.ledger.id}:${fixture.document.id}:${operationId}`
-          )
-        )
-      );
-
-    await expect(saveSourceDocumentChangesAction(fixture.ledger.id, input)).rejects.toThrow(
-      /active revision changed/i
-    );
-
-    const revisionsAfter = await fixture.db
-      .select({ id: sourceDocumentRevisions.id })
-      .from(sourceDocumentRevisions)
-      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
-    expect(revisionsAfter).toHaveLength(revisionsBefore.length);
-  });
-
-  it("rejects reusing an operation ID with a different payload", async () => {
-    const fixture = await seedDocument();
-    const operationId = crypto.randomUUID();
-    const baseInput = {
-      sourceDocumentId: fixture.document.id,
-      expectedRevisionId: fixture.revisionId,
-      operationId,
-      sourceDocument: { title: "First payload" },
-      entries: [],
-    };
-
-    await saveSourceDocumentChangesAction(fixture.ledger.id, baseInput);
-    const revisionsBefore = await fixture.db
-      .select({ id: sourceDocumentRevisions.id })
-      .from(sourceDocumentRevisions)
-      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
-
-    await expect(
-      saveSourceDocumentChangesAction(fixture.ledger.id, {
-        ...baseInput,
-        sourceDocument: { title: "Different payload" },
-      })
-    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
-
-    const revisionsAfter = await fixture.db
-      .select({ id: sourceDocumentRevisions.id })
-      .from(sourceDocumentRevisions)
-      .where(eq(sourceDocumentRevisions.sourceDocumentId, fixture.document.id));
-    expect(revisionsAfter).toHaveLength(revisionsBefore.length);
+    ).resolves.toMatchObject({ ok: true, version: 1 });
   });
 });

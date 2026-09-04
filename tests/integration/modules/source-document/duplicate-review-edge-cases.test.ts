@@ -223,7 +223,7 @@ describe("duplicate review edge cases", () => {
 
     const payload = await getSourceDocumentDuplicateReview(ledgerId, b.sourceDocumentId);
     expect(payload.matchedState).toBe("modified");
-    expect(payload.review.matchedRevisionId).toBe(a.revisionId);
+    expect(payload.review.matchedSourceDocumentId).toBe(a.sourceDocumentId);
     expect(payload.matched?.entries[0]?.itemName).toBe("Latte");
     expect(payload.review.reason).toBe("Same bill");
     expect(payload.review.confidence).toBe(0.9);
@@ -401,8 +401,8 @@ describe("duplicate review edge cases", () => {
     expect(promoted?.decision).toBeNull();
 
     const payload = await getSourceDocumentDuplicateReview(ledgerId, b.sourceDocumentId);
-    expect(payload.review.revisionId).toBe(retry.revisionId);
-    expect(payload.review.matchedRevisionId).toBe(a.revisionId);
+    expect(payload.review.sourceDocumentId).toBe(b.sourceDocumentId);
+    expect(payload.review.matchedSourceDocumentId).toBe(a.sourceDocumentId);
     expect(payload.review.reason).toBe("Retry verdict");
     expect(payload.matchedState).toBe("unchanged");
   });
@@ -597,7 +597,7 @@ describe("duplicate review edge cases", () => {
     const payload = await getSourceDocumentDuplicateReview(ledgerId, b.sourceDocumentId);
     expect(payload.matched).toBeNull();
     expect(payload.matchedState).toBe("deleted");
-    expect(payload.review.matchedRevisionId).toBeNull();
+    expect(payload.review.matchedSourceDocumentId).toBe(revisionlessMatched.id);
     expect(payload.review.reason).toBe("Legacy verdict");
     expect(payload.duplicate.entries[0]?.itemName).toBe("Latte");
 

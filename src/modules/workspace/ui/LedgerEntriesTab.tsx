@@ -116,9 +116,14 @@ export function LedgerEntriesTab({
     if (deleteConfirm.type === "sourceDocument") {
       await selection.deleteSourceDocument.mutateAsync(deleteConfirm.id);
     } else if (deleteConfirm.type === "ledgerEntry") {
-      await deleteEntry.mutateAsync(deleteConfirm.id);
+      const entry = streamData.streamGroups
+        .flatMap((group) => group.items)
+        .flatMap((item) => item.ledgerEntries)
+        .find((candidate) => candidate.id === deleteConfirm.id);
+      if (entry == null) throw new Error("Ledger entry is no longer available");
+      await deleteEntry.mutateAsync(entry);
     }
-  }, [deleteConfirm, selection.deleteSourceDocument, deleteEntry]);
+  }, [deleteConfirm, selection.deleteSourceDocument, deleteEntry, streamData.streamGroups]);
 
   const sentinelRef = useInfiniteScroll({
     hasNextPage: streamData.hasNextPage,

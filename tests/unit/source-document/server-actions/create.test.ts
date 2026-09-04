@@ -17,6 +17,9 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
 }));
 
 import { createSourceDocumentAction } from "@/modules/source-document/actions";
+import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
+
+const CLIENT_SUBMISSION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 describe("createSourceDocumentAction omission semantics", () => {
   beforeEach(() => {
@@ -27,12 +30,13 @@ describe("createSourceDocumentAction omission semantics", () => {
     });
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
+      version: 1,
       status: "processing",
     });
   });
 
   it("omits absent optional fields when forwarding parsed input", async () => {
-    await createSourceDocumentAction("ledger-1", { text: "Lunch 12.50" });
+    await createSourceDocumentAction("ledger-1", { text: "Lunch 12.50" }, CLIENT_SUBMISSION_ID);
 
     const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<
       string,
@@ -49,38 +53,44 @@ describe("createSourceDocumentAction omission semantics", () => {
   });
 
   it("injects scheduleProcessing into use case dependencies", async () => {
-    await createSourceDocumentAction("ledger-1", { text: "Lunch" });
+    await createSourceDocumentAction("ledger-1", { text: "Lunch" }, CLIENT_SUBMISSION_ID);
 
     const deps = createAndQueueSourceDocumentMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(deps).toBeDefined();
     expect(typeof deps.scheduleProcessing).toBe("function");
   });
 
-  it("scopes a client submission ID to the authenticated user", async () => {
-    const clientSubmissionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-    await createSourceDocumentAction("ledger-1", { text: "Lunch" }, undefined, clientSubmissionId);
+  it("scopes browser idempotency to the authenticated user and payload", async () => {
+    await createSourceDocumentAction("ledger-1", { text: "Lunch" }, CLIENT_SUBMISSION_ID);
 
     expect(createAndQueueSourceDocumentMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         idempotency: {
           principalType: "user",
           principalId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          key: `source-document:create:ledger-1:new:${clientSubmissionId}`,
-          contentFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+          key: `source-document:create:ledger-1:new:${CLIENT_SUBMISSION_ID}`,
+          contentFingerprint: sourceDocumentFingerprint({ text: "Lunch" }),
         },
       })
     );
+  });
+
+  it("rejects an invalid client submission ID", async () => {
+    await expect(
+      createSourceDocumentAction("ledger-1", { text: "Lunch" }, "not-a-uuid")
+    ).rejects.toThrow("Invalid UUID");
+    expect(createAndQueueSourceDocumentMock).not.toHaveBeenCalled();
   });
 
   it("does not include the legacy operation ID in the business result", async () => {
     const result = await createSourceDocumentAction(
       "ledger-1",
       { text: "Lunch" },
-      "operation-not-a-uuid"
+      CLIENT_SUBMISSION_ID
     );
 
     expect(createAndQueueSourceDocumentMock).toHaveBeenCalledOnce();
-    expect(result).toEqual({ sourceDocumentId: "doc-1", status: "processing" });
+    expect(result).toEqual({ sourceDocumentId: "doc-1", version: 1, status: "processing" });
     expect(result).not.toHaveProperty("reconciliation");
   });
 });

@@ -58,6 +58,19 @@ export class ConflictError extends AppError {
   }
 }
 
+/** Internal CAS signal mapped to a structured browser stale result. */
+export class StaleSourceDocumentVersionError extends ConflictError {
+  constructor(
+    public readonly sourceDocumentId: string,
+    public readonly expectedVersion: number,
+    public readonly currentVersion: number
+  ) {
+    super(
+      `Source document version is stale (expected ${expectedVersion}, current ${currentVersion})`
+    );
+  }
+}
+
 /**
  * Rate limit error (429)
  */

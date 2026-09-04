@@ -5,9 +5,7 @@ const get = vi.fn();
 const split = vi.fn();
 const input = {
   sourceDocumentId: crypto.randomUUID(),
-  expectedRevisionId: crypto.randomUUID(),
-  operationId: crypto.randomUUID(),
-  newSourceDocumentId: crypto.randomUUID(),
+  expectedVersion: 1,
   ledgerEntryIds: [crypto.randomUUID()],
   entryDate: "2026-08-16",
 };

@@ -61,7 +61,6 @@ export function useQuickEntryFormController({
     CreateQuickEntryPayload
   >(ledgerId, {
     mutationFn: (data: CreateQuickEntryPayload) => createQuickEntryAction(ledgerId, data),
-    resourceGroups: ["documents", "entries"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: null,
     errorMessage: t("quickEntryError"),

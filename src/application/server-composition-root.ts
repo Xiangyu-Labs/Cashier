@@ -19,15 +19,8 @@ import {
   listPendingDuplicateReviews,
   PostgresProcessingIntentAdapter,
   listTargetSourceDocuments,
-  batchUpdateSourceDocuments,
   updateLedgerEntryDatesAtomically,
-  saveSourceDocumentChangesAtomically,
-  splitSourceDocumentAtomically,
-  acceptCandidateRevision,
-  abandonCandidateRevision,
-  activateDuplicatePendingRevision,
-  discardDuplicatePendingRevision,
-  cancelPendingRevision,
+  postgresSourceDocumentAggregateAdapter,
 } from "@/application/adapters/postgres";
 import {
   batchUpdateLedgerEntries,
@@ -37,6 +30,10 @@ import {
 } from "@/application/adapters/postgres/mutate-ledger-entries";
 import { deleteLedgerEntry } from "@/application/adapters/postgres/delete-ledger-entry";
 import { postgresAccountSecurityAdapter } from "@/application/adapters/postgres/account-security";
+import {
+  activateDuplicatePendingRevision,
+  discardDuplicatePendingRevision,
+} from "@/application/adapters/postgres/ledger-projections/activate-revision";
 import { postgresCredentialSourceDocumentReadAdapter } from "@/application/adapters/postgres/credential-source-document-status";
 import { postgresLedgerChangeReadAdapter } from "@/application/adapters/postgres/ledger-changes";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
@@ -55,10 +52,7 @@ import {
   fetchWithRetry as fetchExchangeRatesWithRetry,
 } from "@/application/adapters/postgres/exchange-rate";
 import { categoryMetadataGeneratorAdapter } from "@/application/adapters/ai/category-metadata-generator";
-import {
-  postgresIdempotentLedgerEntryCommandAdapter,
-  runIdempotentUserMutation,
-} from "@/application/adapters/postgres/ledger-entry-idempotency";
+import { postgresLedgerEntryCommandAdapter } from "@/application/adapters/postgres/ledger-entry-commands";
 
 /** Composition root for the PostgreSQL-backed Docker runtime. */
 export const serverComposition = {
@@ -78,9 +72,8 @@ export const serverComposition = {
     deleteEntry: deleteLedgerEntry,
     updateEntry: updateLedgerEntryWithConversion,
   },
-  ledgerEntryCommands: postgresIdempotentLedgerEntryCommandAdapter,
+  ledgerEntryCommands: postgresLedgerEntryCommandAdapter,
   ledgerEntryDates: { updateDates: updateLedgerEntryDatesAtomically },
-  userMutationIdempotency: { run: runIdempotentUserMutation },
   ledgerReads: {
     hasActiveEntries: hasActiveLedgerEntries,
     calculateStats: calculateLedgerEntryStats,
@@ -98,17 +91,20 @@ export const serverComposition = {
   settings: postgresSettingsAdapter,
   storedFiles: storedFileAdapter,
   sourceDocumentSubmissions: postgresSourceDocumentSubmissionAdapter,
+  sourceDocumentAggregate: postgresSourceDocumentAggregateAdapter,
   sourceDocumentUpdates: {
-    batchUpdate: batchUpdateSourceDocuments,
-    saveChangesAtomically: saveSourceDocumentChangesAtomically,
-    split: splitSourceDocumentAtomically,
+    batchUpdate: postgresSourceDocumentAggregateAdapter.updateDocuments,
+    saveChangesAtomically: postgresSourceDocumentAggregateAdapter.saveChanges,
+    split: postgresSourceDocumentAggregateAdapter.splitEntries,
   },
   sourceDocumentLifecycle: {
-    acceptCandidate: acceptCandidateRevision,
-    abandonCandidate: abandonCandidateRevision,
-    keepDuplicate: activateDuplicatePendingRevision,
-    discardDuplicate: discardDuplicatePendingRevision,
-    cancelPending: cancelPendingRevision,
+    acceptCandidate: postgresSourceDocumentAggregateAdapter.acceptCandidate,
+    abandonCandidate: postgresSourceDocumentAggregateAdapter.abandonCandidate,
+    keepDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion?: number) =>
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion),
+    discardDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion?: number) =>
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion),
+    cancelPending: postgresSourceDocumentAggregateAdapter.cancelProcessing,
   },
   sourceDocumentRevisions: postgresRevisionAdapter,
   sourceDocumentReads: {

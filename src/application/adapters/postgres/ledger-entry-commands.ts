@@ -1,36 +1,30 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import type { LedgerProjectionEntryContract } from "@/application/contracts";
+import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
+import type { LedgerEntryCommandPort } from "@/modules/ledger/application/ports";
+import type { VersionedCommandResult, VersionedTarget } from "@/modules/source-document/contracts";
+import { db } from "@/lib/db";
+import { ConflictError, NotFoundError } from "@/lib/errors";
+import { compare as compareDecimal } from "@/lib/money/decimal";
+import { roundToCurrency } from "@/lib/money/currency-precision";
+import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import { postgresFxRateBook } from "./exchange-rate";
+import { replaceActiveProjectionInTransaction } from "./ledger-projections";
 import type { PostgresTransaction } from "./transaction-locks";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
-import { replaceActiveProjectionInTransaction } from "./ledger-projections";
-import { postgresFxRateBook } from "./exchange-rate";
-import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
-import { roundToCurrency } from "@/lib/money/currency-precision";
-import { AppError, NotFoundError } from "@/lib/errors";
-import { entryCategories, ledgerEntries, revisionFiles } from "@/persistence";
-import { mapLedgerEntryDto } from "./ledger-reads/mappers";
-import type { DeleteLedgerEntryResultDto, LedgerEntryDto } from "@/modules/ledger/contracts";
-import type { LedgerProjectionEntryContract } from "@/application/contracts";
 
-type CreateCommand = {
-  ledgerId: string;
-  ledgerEntryId: string;
-  amount: string;
-  currency?: string;
-  itemName: string;
-  categoryId?: string;
-  description?: string | null;
-  sourceDocumentId: string;
-};
+type EntryResult = VersionedCommandResult<{ ledgerEntryId: string }>;
+type DeleteEntryResult = VersionedCommandResult<{ ledgerEntryId: string; deleted: true }>;
 
-type UpdateCommand = {
-  ledgerId: string;
-  ledgerEntryId: string;
-  categoryId?: string | null;
-  amount?: string;
-  currency?: string | null;
-  itemName?: string;
-  description?: string | null;
-};
+function stale<T>(target: VersionedTarget, currentVersion: number): VersionedCommandResult<T> {
+  return {
+    ok: false,
+    reason: "stale",
+    sourceDocumentId: target.sourceDocumentId,
+    expectedVersion: target.expectedVersion,
+    currentVersion,
+  };
+}
 
 async function assertCategoryOwnership(
   tx: PostgresTransaction,
@@ -85,235 +79,602 @@ function toProjectionEntry(
   };
 }
 
-async function getEntryInTransaction(
-  tx: PostgresTransaction,
-  ledgerId: string,
-  ledgerEntryId: string
-): Promise<LedgerEntryDto | null> {
-  const entry = await tx.query.ledgerEntries.findFirst({
-    where: and(
-      eq(ledgerEntries.ledgerId, ledgerId),
-      eq(ledgerEntries.id, ledgerEntryId),
-      isNull(ledgerEntries.deletedAt),
-      sql`EXISTS (
-        SELECT 1 FROM source_documents active_document
-        WHERE active_document.ledger_id = ${ledgerEntries.ledgerId}
-          AND active_document.id = ${ledgerEntries.sourceDocumentId}
-          AND active_document.deleted_at IS NULL
-          AND active_document.active_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
-      )`
-    ),
-    with: {
-      category: true,
-      sourceDocument: {
-        columns: {
-          id: true,
-          ledgerId: true,
-          title: true,
-          currentStatus: true,
-          type: true,
-          entryDate: true,
-          createdAt: true,
-          updatedAt: true,
-          deletedAt: true,
-        },
-      },
-    },
-  });
-  if (entry == null) return null;
-  const dto = mapLedgerEntryDto({
-    ...entry,
-    category: entry.category,
-    sourceDocument: entry.sourceDocument,
-  });
-  if (dto.sourceDocument != null && entry.sourceDocumentRevisionId != null) {
-    const file = await tx
-      .select({ id: revisionFiles.id })
-      .from(revisionFiles)
-      .where(eq(revisionFiles.revisionId, entry.sourceDocumentRevisionId))
-      .limit(1)
-      .then((rows) => rows[0]);
-    dto.sourceDocument = { ...dto.sourceDocument, hasImages: file != null };
-  }
-  return dto;
-}
-
-async function replaceProjection(
-  tx: PostgresTransaction,
+function changed(
+  entry: typeof ledgerEntries.$inferSelect,
   input: {
-    ledgerId: string;
-    sourceDocumentId: string;
-    activeRevisionId: string;
-    entries: readonly LedgerProjectionEntryContract[];
+    categoryId?: string | null;
+    amount?: string;
+    currency?: string | null;
+    itemName?: string;
+    description?: string | null;
   }
 ) {
-  await replaceActiveProjectionInTransaction(tx, {
-    ledgerId: input.ledgerId,
-    sourceDocumentId: input.sourceDocumentId,
-    expectedActiveRevisionId: input.activeRevisionId,
-    revisionId: crypto.randomUUID(),
-    entries: input.entries,
-  });
+  return (
+    (input.categoryId !== undefined && input.categoryId !== entry.categoryId) ||
+    (input.amount !== undefined && compareDecimal(input.amount, entry.amount) !== 0) ||
+    (input.currency !== undefined && input.currency !== entry.currency) ||
+    (input.itemName !== undefined && input.itemName !== entry.itemName) ||
+    (input.description !== undefined && input.description !== entry.description)
+  );
 }
 
-export async function createLedgerEntryInTransaction(
-  tx: PostgresTransaction,
-  input: CreateCommand
-): Promise<LedgerEntryDto> {
-  const replay = await getEntryInTransaction(tx, input.ledgerId, input.ledgerEntryId);
-  if (replay != null) return replay;
-  const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
-  const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
-  if (document.activeRevisionId == null) throw new NotFoundError("Active source document");
-  await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
-  const effectiveCurrency = input.currency ?? ledger.mainCurrency;
+async function prepareCreateConversion(input: {
+  ledgerId: string;
+  sourceDocumentId: string;
+  amount: string;
+  currency?: string;
+}) {
+  const context = await db
+    .select({
+      mainCurrency: ledgers.mainCurrency,
+      entryDate: sourceDocuments.entryDate,
+    })
+    .from(sourceDocuments)
+    .innerJoin(
+      ledgers,
+      and(eq(ledgers.id, sourceDocuments.ledgerId), eq(ledgers.id, input.ledgerId))
+    )
+    .where(
+      and(
+        eq(sourceDocuments.id, input.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, input.ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .then((rows) => rows[0]);
+  if (context == null) throw new NotFoundError("Source document");
+  const effectiveCurrency = input.currency ?? context.mainCurrency;
   const conversion = await convertEntryAmount(
     {
       amount: input.amount,
       fromCurrency: effectiveCurrency,
-      toCurrency: ledger.mainCurrency,
-      ...(document.entryDate != null ? { date: document.entryDate } : {}),
+      toCurrency: context.mainCurrency,
+      ...(context.entryDate == null ? {} : { date: context.entryDate }),
     },
     postgresFxRateBook
   );
-  const entries = await listProjectionEntries(
-    tx,
-    input.ledgerId,
-    document.id,
-    document.activeRevisionId
-  );
-  await replaceProjection(tx, {
-    ledgerId: input.ledgerId,
-    sourceDocumentId: document.id,
-    activeRevisionId: document.activeRevisionId,
-    entries: [
-      ...entries.map(toProjectionEntry),
-      {
-        id: input.ledgerEntryId,
-        categoryId: input.categoryId ?? null,
-        amount: roundToCurrency(input.amount, effectiveCurrency),
-        currency: input.currency ?? effectiveCurrency,
-        itemName: input.itemName,
-        description: input.description ?? null,
-        convertedAmount: conversion?.convertedAmount ?? null,
-        exchangeRate: conversion?.exchangeRate ?? null,
-      },
-    ],
-  });
-  const created = await getEntryInTransaction(tx, input.ledgerId, input.ledgerEntryId);
-  if (created == null) throw new AppError("Failed to create ledger entry", "ENTRY_CREATE_FAILED");
-  return created;
+  return { ...context, effectiveCurrency, conversion };
 }
 
-export async function updateLedgerEntryInTransaction(
-  tx: PostgresTransaction,
-  input: UpdateCommand
-): Promise<LedgerEntryDto> {
-  const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
-  const target = await tx.query.ledgerEntries.findFirst({
-    where: and(
-      eq(ledgerEntries.ledgerId, input.ledgerId),
-      eq(ledgerEntries.id, input.ledgerEntryId),
-      isNull(ledgerEntries.deletedAt)
-    ),
-  });
-  if (target?.sourceDocumentId == null) throw new NotFoundError("Active ledger entry projection");
-  const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, target.sourceDocumentId);
-  if (
-    document.activeRevisionId == null ||
-    target.sourceDocumentRevisionId !== document.activeRevisionId
-  ) {
+async function prepareUpdateConversion(input: {
+  ledgerId: string;
+  sourceDocumentId: string;
+  ledgerEntryId: string;
+  amount?: string;
+  currency?: string | null;
+}) {
+  if (input.amount === undefined && input.currency === undefined) return null;
+  const context = await db
+    .select({
+      mainCurrency: ledgers.mainCurrency,
+      entryDate: sourceDocuments.entryDate,
+      amount: ledgerEntries.amount,
+      currency: ledgerEntries.currency,
+    })
+    .from(ledgerEntries)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, input.ledgerId),
+        eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .innerJoin(
+      ledgers,
+      and(eq(ledgers.id, sourceDocuments.ledgerId), eq(ledgers.id, input.ledgerId))
+    )
+    .where(
+      and(
+        eq(ledgerEntries.id, input.ledgerEntryId),
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
+        isNull(ledgerEntries.deletedAt)
+      )
+    )
+    .then((rows) => rows[0]);
+  if (context == null) throw new NotFoundError("Active ledger entry projection");
+  const nextCurrency = input.currency !== undefined ? input.currency : context.currency;
+  const effectiveCurrency = nextCurrency ?? context.mainCurrency;
+  const nextAmount = input.amount ?? context.amount;
+  const conversion = await convertEntryAmount(
+    {
+      amount: nextAmount,
+      fromCurrency: effectiveCurrency,
+      toCurrency: context.mainCurrency,
+      ...(context.entryDate == null ? {} : { date: context.entryDate }),
+    },
+    postgresFxRateBook
+  );
+  return { ...context, effectiveCurrency, nextAmount, conversion };
+}
+
+async function prepareBatchConversions(input: {
+  ledgerId: string;
+  targets: VersionedTarget[];
+  ledgerEntryIds: string[];
+  amount?: string;
+  currency?: string | null;
+}) {
+  if (input.amount === undefined && input.currency === undefined) return null;
+  const requestedIds = [...new Set(input.ledgerEntryIds)].sort();
+  const targetIds = input.targets.map((target) => target.sourceDocumentId);
+  const rows = await db
+    .select({
+      id: ledgerEntries.id,
+      sourceDocumentId: ledgerEntries.sourceDocumentId,
+      mainCurrency: ledgers.mainCurrency,
+      entryDate: sourceDocuments.entryDate,
+      amount: ledgerEntries.amount,
+      currency: ledgerEntries.currency,
+    })
+    .from(ledgerEntries)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, input.ledgerId),
+        eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+        inArray(sourceDocuments.id, targetIds),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .innerJoin(
+      ledgers,
+      and(eq(ledgers.id, sourceDocuments.ledgerId), eq(ledgers.id, input.ledgerId))
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        inArray(ledgerEntries.id, requestedIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+  if (rows.length !== requestedIds.length) {
     throw new NotFoundError("Active ledger entry projection");
   }
-  await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
-  const nextCurrency = input.currency !== undefined ? input.currency : target.currency;
-  const effectiveCurrency = nextCurrency ?? ledger.mainCurrency;
-  const nextAmount = input.amount ?? target.amount;
-  let convertedAmount = target.convertedAmount;
-  let exchangeRate = target.exchangeRate;
-  if (input.amount !== undefined || input.currency !== undefined) {
-    const conversion = await convertEntryAmount(
-      {
-        amount: nextAmount,
-        fromCurrency: effectiveCurrency,
-        toCurrency: ledger.mainCurrency,
-        ...(document.entryDate != null ? { date: document.entryDate } : {}),
-      },
-      postgresFxRateBook
-    );
-    convertedAmount = conversion?.convertedAmount ?? null;
-    exchangeRate = conversion?.exchangeRate ?? null;
-  }
-  const entries = await listProjectionEntries(
-    tx,
-    input.ledgerId,
-    document.id,
-    document.activeRevisionId
+  const conversions = await Promise.all(
+    rows.map(async (entry) => {
+      const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
+      const effectiveCurrency = nextCurrency ?? entry.mainCurrency;
+      const nextAmount = input.amount ?? entry.amount;
+      const conversion = await convertEntryAmount(
+        {
+          amount: nextAmount,
+          fromCurrency: effectiveCurrency,
+          toCurrency: entry.mainCurrency,
+          ...(entry.entryDate == null ? {} : { date: entry.entryDate }),
+        },
+        postgresFxRateBook
+      );
+      return [entry.id, { ...entry, effectiveCurrency, nextAmount, conversion }] as const;
+    })
   );
-  await replaceProjection(tx, {
-    ledgerId: input.ledgerId,
-    sourceDocumentId: document.id,
-    activeRevisionId: document.activeRevisionId,
-    entries: entries.map((entry) =>
-      entry.id === input.ledgerEntryId
-        ? {
-            ...toProjectionEntry(entry),
-            categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
-            amount:
-              input.amount !== undefined || input.currency !== undefined
-                ? roundToCurrency(nextAmount, effectiveCurrency)
-                : entry.amount,
-            currency: input.currency !== undefined ? effectiveCurrency : entry.currency,
-            itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
-            description: input.description !== undefined ? input.description : entry.description,
-            convertedAmount,
-            exchangeRate,
-          }
-        : toProjectionEntry(entry)
-    ),
-  });
-  const updated = await getEntryInTransaction(tx, input.ledgerId, input.ledgerEntryId);
-  if (updated == null) throw new NotFoundError("Entry");
-  return updated;
+  return new Map(conversions);
 }
 
-export async function deleteLedgerEntryInTransaction(
-  tx: PostgresTransaction,
-  input: { ledgerId: string; ledgerEntryId: string }
-): Promise<DeleteLedgerEntryResultDto> {
-  await lockLedgerForUpdate(tx, input.ledgerId);
-  const target = await tx.query.ledgerEntries.findFirst({
-    where: and(
-      eq(ledgerEntries.ledgerId, input.ledgerId),
-      eq(ledgerEntries.id, input.ledgerEntryId),
-      isNull(ledgerEntries.deletedAt)
-    ),
-  });
-  if (target?.sourceDocumentId == null) {
-    return { ledgerEntryId: input.ledgerEntryId, deleted: false };
-  }
-  const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, target.sourceDocumentId);
-  if (
-    document.activeRevisionId == null ||
-    target.sourceDocumentRevisionId !== document.activeRevisionId
-  ) {
-    return { ledgerEntryId: input.ledgerEntryId, deleted: false };
-  }
-  const entries = await listProjectionEntries(
-    tx,
-    input.ledgerId,
-    document.id,
-    document.activeRevisionId
-  );
-  await replaceProjection(tx, {
-    ledgerId: input.ledgerId,
-    sourceDocumentId: document.id,
-    activeRevisionId: document.activeRevisionId,
-    entries: entries.filter((entry) => entry.id !== input.ledgerEntryId).map(toProjectionEntry),
-  });
-  return {
-    ledgerEntryId: input.ledgerEntryId,
-    deleted: true,
-    sourceDocumentId: document.id,
-  };
+function targetMap(targets: readonly VersionedTarget[]) {
+  return new Map(targets.map((target) => [target.sourceDocumentId, target] as const));
 }
+
+export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
+  async create(input) {
+    const prepared = await prepareCreateConversion({
+      ledgerId: input.ledgerId,
+      sourceDocumentId: input.target.sourceDocumentId,
+      amount: input.amount,
+      ...(input.currency === undefined ? {} : { currency: input.currency }),
+    });
+    return db.transaction(async (tx): Promise<EntryResult> => {
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      const document = await lockSourceDocumentForUpdate(
+        tx,
+        input.ledgerId,
+        input.target.sourceDocumentId
+      );
+      if (document.stateVersion !== input.target.expectedVersion) {
+        return stale(input.target, document.stateVersion);
+      }
+      if (document.activeRevisionId == null || document.currentStatus !== "completed") {
+        throw new NotFoundError("Active source document");
+      }
+      if (ledger.mainCurrency !== prepared.mainCurrency) {
+        throw new ConflictError("Ledger currency changed before the entry was committed");
+      }
+      await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
+      const entries = await listProjectionEntries(
+        tx,
+        input.ledgerId,
+        document.id,
+        document.activeRevisionId
+      );
+      const ledgerEntryId = crypto.randomUUID();
+      await replaceActiveProjectionInTransaction(tx, {
+        ledgerId: input.ledgerId,
+        sourceDocumentId: document.id,
+        expectedActiveRevisionId: document.activeRevisionId,
+        expectedStateVersion: input.target.expectedVersion,
+        revisionId: crypto.randomUUID(),
+        entries: [
+          ...entries.map(toProjectionEntry),
+          {
+            id: ledgerEntryId,
+            categoryId: input.categoryId ?? null,
+            amount: roundToCurrency(input.amount, prepared.effectiveCurrency),
+            currency: prepared.effectiveCurrency,
+            itemName: input.itemName,
+            description: input.description ?? null,
+            convertedAmount: prepared.conversion.convertedAmount,
+            exchangeRate: prepared.conversion.exchangeRate,
+          },
+        ],
+      });
+      return {
+        ok: true,
+        sourceDocumentId: document.id,
+        version: input.target.expectedVersion + 1,
+        data: { ledgerEntryId },
+      };
+    });
+  },
+
+  async update(input) {
+    const prepared = await prepareUpdateConversion({
+      ledgerId: input.ledgerId,
+      sourceDocumentId: input.target.sourceDocumentId,
+      ledgerEntryId: input.ledgerEntryId,
+      ...(input.amount === undefined ? {} : { amount: input.amount }),
+      ...(input.currency === undefined ? {} : { currency: input.currency }),
+    });
+    return db.transaction(async (tx): Promise<EntryResult> => {
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      const document = await lockSourceDocumentForUpdate(
+        tx,
+        input.ledgerId,
+        input.target.sourceDocumentId
+      );
+      if (document.stateVersion !== input.target.expectedVersion) {
+        return stale(input.target, document.stateVersion);
+      }
+      if (document.activeRevisionId == null || document.currentStatus !== "completed") {
+        throw new NotFoundError("Active source document");
+      }
+      const entries = await listProjectionEntries(
+        tx,
+        input.ledgerId,
+        document.id,
+        document.activeRevisionId
+      );
+      const target = entries.find((entry) => entry.id === input.ledgerEntryId);
+      if (target == null) throw new NotFoundError("Active ledger entry projection");
+      await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
+      if (!changed(target, input)) {
+        return {
+          ok: true,
+          sourceDocumentId: document.id,
+          version: document.stateVersion,
+          data: { ledgerEntryId: target.id },
+        };
+      }
+      let convertedAmount = target.convertedAmount;
+      let exchangeRate = target.exchangeRate;
+      if (prepared != null) {
+        if (ledger.mainCurrency !== prepared.mainCurrency) {
+          throw new ConflictError("Ledger currency changed before the entry was committed");
+        }
+        convertedAmount = prepared.conversion.convertedAmount;
+        exchangeRate = prepared.conversion.exchangeRate;
+      }
+      await replaceActiveProjectionInTransaction(tx, {
+        ledgerId: input.ledgerId,
+        sourceDocumentId: document.id,
+        expectedActiveRevisionId: document.activeRevisionId,
+        expectedStateVersion: input.target.expectedVersion,
+        revisionId: crypto.randomUUID(),
+        entries: entries.map((entry) =>
+          entry.id === target.id
+            ? {
+                ...toProjectionEntry(entry),
+                categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
+                amount:
+                  input.amount !== undefined || input.currency !== undefined
+                    ? roundToCurrency(prepared!.nextAmount, prepared!.effectiveCurrency)
+                    : entry.amount,
+                currency:
+                  input.currency !== undefined ? prepared!.effectiveCurrency : entry.currency,
+                itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
+                description:
+                  input.description !== undefined ? input.description : entry.description,
+                convertedAmount,
+                exchangeRate,
+              }
+            : toProjectionEntry(entry)
+        ),
+      });
+      return {
+        ok: true,
+        sourceDocumentId: document.id,
+        version: input.target.expectedVersion + 1,
+        data: { ledgerEntryId: target.id },
+      };
+    });
+  },
+
+  delete(input) {
+    return db.transaction(async (tx): Promise<DeleteEntryResult> => {
+      await lockLedgerForUpdate(tx, input.ledgerId);
+      const document = await lockSourceDocumentForUpdate(
+        tx,
+        input.ledgerId,
+        input.target.sourceDocumentId
+      );
+      if (document.stateVersion !== input.target.expectedVersion) {
+        return stale(input.target, document.stateVersion);
+      }
+      if (document.activeRevisionId == null || document.currentStatus !== "completed") {
+        throw new NotFoundError("Active source document");
+      }
+      const entries = await listProjectionEntries(
+        tx,
+        input.ledgerId,
+        document.id,
+        document.activeRevisionId
+      );
+      if (!entries.some((entry) => entry.id === input.ledgerEntryId)) {
+        throw new NotFoundError("Active ledger entry projection");
+      }
+      await replaceActiveProjectionInTransaction(tx, {
+        ledgerId: input.ledgerId,
+        sourceDocumentId: document.id,
+        expectedActiveRevisionId: document.activeRevisionId,
+        expectedStateVersion: input.target.expectedVersion,
+        revisionId: crypto.randomUUID(),
+        entries: entries.filter((entry) => entry.id !== input.ledgerEntryId).map(toProjectionEntry),
+      });
+      return {
+        ok: true,
+        sourceDocumentId: document.id,
+        version: input.target.expectedVersion + 1,
+        data: { ledgerEntryId: input.ledgerEntryId, deleted: true },
+      };
+    });
+  },
+
+  async batchUpdate(input) {
+    const prepared = await prepareBatchConversions(input);
+    return db.transaction(async (tx) => {
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      const targets = [...input.targets].sort((left, right) =>
+        left.sourceDocumentId.localeCompare(right.sourceDocumentId)
+      );
+      const expectedByDocument = targetMap(targets);
+      const documents = [];
+      for (const target of targets) {
+        documents.push(
+          await lockSourceDocumentForUpdate(tx, input.ledgerId, target.sourceDocumentId)
+        );
+      }
+      const staleTargets = documents.flatMap((document) => {
+        const target = expectedByDocument.get(document.id)!;
+        return document.stateVersion === target.expectedVersion
+          ? []
+          : [{ ...target, currentVersion: document.stateVersion }];
+      });
+      if (staleTargets.length > 0) {
+        return { ok: false as const, reason: "stale" as const, staleTargets };
+      }
+      if (
+        prepared != null &&
+        [...prepared.values()].some((entry) => entry.mainCurrency !== ledger.mainCurrency)
+      ) {
+        throw new ConflictError("Ledger currency changed before the entries were committed");
+      }
+      if (documents.some((document) => document.activeRevisionId == null)) {
+        throw new NotFoundError("Active source document");
+      }
+      await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
+      const requestedIds = [...new Set(input.ledgerEntryIds)].sort();
+      const entries = await tx
+        .select()
+        .from(ledgerEntries)
+        .where(
+          and(
+            eq(ledgerEntries.ledgerId, input.ledgerId),
+            inArray(
+              ledgerEntries.sourceDocumentId,
+              documents.map((document) => document.id)
+            ),
+            isNull(ledgerEntries.deletedAt)
+          )
+        )
+        .orderBy(ledgerEntries.sourceDocumentId, ledgerEntries.position, ledgerEntries.id);
+      const activeRevisionByDocument = new Map(
+        documents.map((document) => [document.id, document.activeRevisionId!] as const)
+      );
+      const activeEntries = entries.filter(
+        (entry) =>
+          entry.sourceDocumentId != null &&
+          entry.sourceDocumentRevisionId === activeRevisionByDocument.get(entry.sourceDocumentId)
+      );
+      const selectedById = new Map(
+        activeEntries
+          .filter((entry) => requestedIds.includes(entry.id))
+          .map((entry) => [entry.id, entry] as const)
+      );
+      if (selectedById.size !== requestedIds.length) {
+        throw new NotFoundError("Active ledger entry projection");
+      }
+      const selectedDocumentIds = new Set(
+        [...selectedById.values()].map((entry) => entry.sourceDocumentId!)
+      );
+      if (
+        selectedDocumentIds.size !== targets.length ||
+        targets.some((target) => !selectedDocumentIds.has(target.sourceDocumentId))
+      ) {
+        throw new NotFoundError("Source document target");
+      }
+
+      const changedIds = new Set(
+        [...selectedById.values()].filter((entry) => changed(entry, input)).map((entry) => entry.id)
+      );
+      if (changedIds.size === 0) {
+        return {
+          ok: true as const,
+          versions: documents.map((document) => ({
+            sourceDocumentId: document.id,
+            version: document.stateVersion,
+          })),
+          data: { ledgerEntryIds: requestedIds, affectedCount: 0 },
+        };
+      }
+
+      const nextById = new Map<string, LedgerProjectionEntryContract>();
+      for (const entry of selectedById.values()) {
+        if (!changedIds.has(entry.id)) continue;
+        const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
+        const effectiveCurrency = nextCurrency ?? ledger.mainCurrency;
+        const nextAmount = input.amount ?? entry.amount;
+        const needsConversion = input.amount !== undefined || input.currency !== undefined;
+        const conversion = needsConversion ? prepared!.get(entry.id)!.conversion : null;
+        nextById.set(entry.id, {
+          ...toProjectionEntry(entry),
+          categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
+          amount: needsConversion ? roundToCurrency(nextAmount, effectiveCurrency) : entry.amount,
+          currency: input.currency !== undefined ? effectiveCurrency : entry.currency,
+          itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
+          description: input.description !== undefined ? input.description : entry.description,
+          convertedAmount: needsConversion
+            ? (conversion?.convertedAmount ?? null)
+            : entry.convertedAmount,
+          exchangeRate: needsConversion ? (conversion?.exchangeRate ?? null) : entry.exchangeRate,
+        });
+      }
+
+      const changedDocuments = documents.filter((document) =>
+        activeEntries.some(
+          (entry) => entry.sourceDocumentId === document.id && changedIds.has(entry.id)
+        )
+      );
+      for (const document of changedDocuments) {
+        await replaceActiveProjectionInTransaction(tx, {
+          ledgerId: input.ledgerId,
+          sourceDocumentId: document.id,
+          expectedActiveRevisionId: document.activeRevisionId!,
+          expectedStateVersion: document.stateVersion,
+          revisionId: crypto.randomUUID(),
+          entries: activeEntries
+            .filter((entry) => entry.sourceDocumentId === document.id)
+            .map((entry) => nextById.get(entry.id) ?? toProjectionEntry(entry)),
+        });
+      }
+      const changedDocumentIds = new Set(changedDocuments.map((document) => document.id));
+      return {
+        ok: true as const,
+        versions: documents.map((document) => ({
+          sourceDocumentId: document.id,
+          version: document.stateVersion + (changedDocumentIds.has(document.id) ? 1 : 0),
+        })),
+        data: { ledgerEntryIds: requestedIds, affectedCount: changedIds.size },
+      };
+    });
+  },
+
+  async batchDelete(input) {
+    const requestedIds = [...new Set(input.ledgerEntryIds)].sort();
+    const result: import("@/modules/source-document/contracts").PartialBatchCommandResult = {
+      succeeded: [],
+      stale: [],
+      failed: [],
+    };
+    const ownership = await db
+      .select({
+        id: ledgerEntries.id,
+        sourceDocumentId: ledgerEntries.sourceDocumentId,
+        sourceDocumentRevisionId: ledgerEntries.sourceDocumentRevisionId,
+      })
+      .from(ledgerEntries)
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, input.ledgerId),
+          inArray(ledgerEntries.id, requestedIds),
+          isNull(ledgerEntries.deletedAt)
+        )
+      );
+    const ownershipById = new Map(ownership.map((row) => [row.id, row] as const));
+    const groups = new Map<string, string[]>();
+    for (const id of requestedIds) {
+      const row = ownershipById.get(id);
+      if (row?.sourceDocumentId == null) {
+        result.failed.push({ id, code: "NOT_FOUND" });
+        continue;
+      }
+      const ids = groups.get(row.sourceDocumentId) ?? [];
+      ids.push(id);
+      groups.set(row.sourceDocumentId, ids);
+    }
+    const targets = targetMap(input.targets);
+    for (const [sourceDocumentId, entryIds] of [...groups].sort(([left], [right]) =>
+      left.localeCompare(right)
+    )) {
+      const target = targets.get(sourceDocumentId);
+      if (target == null) {
+        result.failed.push(...entryIds.map((id) => ({ id, code: "MISSING_TARGET" })));
+        continue;
+      }
+      try {
+        const groupResult = await db.transaction(async (tx) => {
+          await lockLedgerForUpdate(tx, input.ledgerId);
+          const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
+          if (document.stateVersion !== target.expectedVersion) return document.stateVersion;
+          if (document.activeRevisionId == null) throw new NotFoundError("Active source document");
+          const entries = await listProjectionEntries(
+            tx,
+            input.ledgerId,
+            sourceDocumentId,
+            document.activeRevisionId
+          );
+          const selected = new Set(entryIds);
+          if (entryIds.some((id) => !entries.some((entry) => entry.id === id))) {
+            throw new NotFoundError("Active ledger entry projection");
+          }
+          await replaceActiveProjectionInTransaction(tx, {
+            ledgerId: input.ledgerId,
+            sourceDocumentId,
+            expectedActiveRevisionId: document.activeRevisionId,
+            expectedStateVersion: target.expectedVersion,
+            revisionId: crypto.randomUUID(),
+            entries: entries.filter((entry) => !selected.has(entry.id)).map(toProjectionEntry),
+          });
+          return null;
+        });
+        if (groupResult != null) {
+          result.stale.push(
+            ...entryIds.map((id) => ({
+              id,
+              sourceDocumentId,
+              expectedVersion: target.expectedVersion,
+              currentVersion: groupResult,
+            }))
+          );
+        } else {
+          result.succeeded.push(
+            ...entryIds.map((id) => ({
+              id,
+              sourceDocumentId,
+              version: target.expectedVersion + 1,
+            }))
+          );
+        }
+      } catch (error) {
+        result.failed.push(
+          ...entryIds.map((id) => ({
+            id,
+            code: error instanceof NotFoundError ? error.code : "INTERNAL",
+          }))
+        );
+      }
+    }
+    return result;
+  },
+};

@@ -1,16 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  invalidateCalendar,
-  invalidateEntryCategories,
-  invalidateLedger,
-  invalidateLedgerEntries,
-  invalidateLedgerSettings,
-  invalidateLedgerSettingsView,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-  invalidateSourceDocumentStreamTotal,
-  queryKeys,
-} from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 
 describe("queryKeys", () => {
   const ledgerId = "test-ledger-123";
@@ -27,13 +16,13 @@ describe("queryKeys", () => {
 
   describe("ledgerEntries keys", () => {
     it("应该生成正确的ledgerEntries query key", () => {
-      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledgerEntries", ledgerId, {}]);
+      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledger", ledgerId, "entries", {}]);
     });
 
     it("应该生成带结构化过滤器的ledgerEntries query key", () => {
       expect(
         queryKeys.ledgerEntries(ledgerId, { status: "pending", startDate: "2024-01-01" })
-      ).toEqual(["ledgerEntries", ledgerId, { status: "pending", startDate: "2024-01-01" }]);
+      ).toEqual(["ledger", ledgerId, "entries", { status: "pending", startDate: "2024-01-01" }]);
     });
 
     it("应该保留结构化过滤器中的字段位置", () => {
@@ -44,14 +33,15 @@ describe("queryKeys", () => {
           search: "value",
         })
       ).toEqual([
-        "ledgerEntries",
+        "ledger",
         ledgerId,
+        "entries",
         { status: "pending", startDate: null, search: "value" },
       ]);
     });
 
     it("应该生成没有过滤器的空参数对象", () => {
-      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledgerEntries", ledgerId, {}]);
+      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledger", ledgerId, "entries", {}]);
     });
 
     it("应该生成正确的ledgerEntry query key", () => {
@@ -72,7 +62,12 @@ describe("queryKeys", () => {
 
   describe("sourceDocuments keys", () => {
     it("应该生成正确的sourceDocuments query key", () => {
-      expect(queryKeys.sourceDocuments(ledgerId)).toEqual(["sourceDocuments", ledgerId, {}]);
+      expect(queryKeys.sourceDocuments(ledgerId)).toEqual([
+        "ledger",
+        ledgerId,
+        "source-documents",
+        {},
+      ]);
     });
 
     it("应该生成带多种过滤器的sourceDocuments query key", () => {
@@ -83,8 +78,9 @@ describe("queryKeys", () => {
           startDate: "2024-01-01",
         })
       ).toEqual([
-        "sourceDocuments",
+        "ledger",
         ledgerId,
+        "source-documents",
         { view: "unified", page: 1, startDate: "2024-01-01" },
       ]);
     });
@@ -153,8 +149,9 @@ describe("queryKeys", () => {
           maxAmount: "100",
         })
       ).toEqual([
-        "sourceDocuments",
+        "ledger",
         ledgerId,
+        "source-documents",
         "stream",
         {
           startDate: "2026-03-01",
@@ -167,8 +164,9 @@ describe("queryKeys", () => {
 
     it("应该生成正确的sourceDocumentStreamPrefix query key", () => {
       expect(queryKeys.sourceDocumentStreamPrefix(ledgerId)).toEqual([
-        "sourceDocuments",
+        "ledger",
         ledgerId,
+        "source-documents",
         "stream",
       ]);
     });
@@ -183,9 +181,10 @@ describe("queryKeys", () => {
           statuses: "completed,failed",
         })
       ).toEqual([
-        "sourceDocuments",
+        "ledger",
         ledgerId,
-        "streamTotal",
+        "source-documents",
+        "stream-total",
         {
           startDate: "2026-03-01",
           endDate: "2026-03-31",
@@ -199,44 +198,51 @@ describe("queryKeys", () => {
 
   describe("categories keys", () => {
     it("应该生成正确的categories query keys", () => {
-      expect(queryKeys.entryCategories(ledgerId)).toEqual(["entryCategories", ledgerId]);
-      expect(queryKeys.ledgerSettings(ledgerId)).toEqual(["ledgerSettings", ledgerId]);
+      expect(queryKeys.entryCategories(ledgerId)).toEqual(["ledger", ledgerId, "categories"]);
+      expect(queryKeys.ledgerSettings(ledgerId)).toEqual(["ledger", ledgerId, "settings"]);
     });
   });
 
   describe("stats keys", () => {
     it("应该生成正确的summary query key", () => {
-      expect(queryKeys.summary(ledgerId)).toEqual(["summary", ledgerId, {}]);
+      expect(queryKeys.summary(ledgerId)).toEqual(["ledger", ledgerId, "summary", {}]);
     });
 
     it("应该生成带参数的summary query key", () => {
       expect(
         queryKeys.summary(ledgerId, { startDate: "2024-01-01", endDate: "2024-12-31" })
-      ).toEqual(["summary", ledgerId, { startDate: "2024-01-01", endDate: "2024-12-31" }]);
+      ).toEqual([
+        "ledger",
+        ledgerId,
+        "summary",
+        { startDate: "2024-01-01", endDate: "2024-12-31" },
+      ]);
     });
 
     it("应该把summary中的undefined参数固定为null", () => {
       expect(queryKeys.summary(ledgerId, { startDate: "2024-01-01", endDate: undefined })).toEqual([
-        "summary",
+        "ledger",
         ledgerId,
+        "summary",
         { startDate: "2024-01-01", endDate: null },
       ]);
     });
 
     it("应该生成正确的tokenStats query key", () => {
-      expect(queryKeys.tokenStats(ledgerId)).toEqual(["token-stats", ledgerId]);
+      expect(queryKeys.tokenStats(ledgerId)).toEqual(["ledger", ledgerId, "token-stats"]);
     });
 
     it("应该生成正确的enhancedStats query key", () => {
-      expect(queryKeys.enhancedStats(ledgerId)).toEqual(["enhanced-stats", ledgerId, {}]);
+      expect(queryKeys.enhancedStats(ledgerId)).toEqual(["ledger", ledgerId, "enhanced-stats", {}]);
     });
   });
 
   describe("currency keys", () => {
     it("应该生成正确的convert query key", () => {
       expect(queryKeys.convert("ledger-1", "100", "USD", "CNY", "2026-08-06")).toEqual([
-        "convert",
+        "ledger",
         "ledger-1",
+        "convert",
         "100",
         "USD",
         "CNY",
@@ -246,8 +252,9 @@ describe("queryKeys", () => {
 
     it("应该生成带日期的convert query key", () => {
       expect(queryKeys.convert("ledger-1", "100", "USD", "CNY", "2024-01-01")).toEqual([
-        "convert",
+        "ledger",
         "ledger-1",
+        "convert",
         "100",
         "USD",
         "CNY",
@@ -263,9 +270,10 @@ describe("queryKeys", () => {
   describe("calendar keys", () => {
     it("应该生成正确的calendarHeatmap query key", () => {
       expect(queryKeys.calendarHeatmap(ledgerId, "month", "2024-03-01")).toEqual([
+        "ledger",
+        ledgerId,
         "calendar",
         "heatmap",
-        ledgerId,
         "month",
         "2024-03-01",
         undefined,
@@ -279,9 +287,10 @@ describe("queryKeys", () => {
           categoryId: "cat-1",
         })
       ).toEqual([
+        "ledger",
+        ledgerId,
         "calendar",
         "heatmap",
-        ledgerId,
         "year",
         "2024-01-01",
         { currency: "CNY", categoryId: "cat-1" },
@@ -290,9 +299,10 @@ describe("queryKeys", () => {
 
     it("应该生成正确的calendarHeatmapForRange query key", () => {
       expect(queryKeys.calendarHeatmapForRange(ledgerId, "2024-01-01", "2024-12-31")).toEqual([
+        "ledger",
+        ledgerId,
         "calendar",
         "heatmap-range",
-        ledgerId,
         "2024-01-01",
         "2024-12-31",
         undefined,
@@ -303,9 +313,10 @@ describe("queryKeys", () => {
       expect(
         queryKeys.calendarHeatmapForRange(ledgerId, "2024-01-01", "2024-12-31", { currency: "USD" })
       ).toEqual([
+        "ledger",
+        ledgerId,
         "calendar",
         "heatmap-range",
-        ledgerId,
         "2024-01-01",
         "2024-12-31",
         { currency: "USD" },
@@ -314,9 +325,10 @@ describe("queryKeys", () => {
 
     it("应该生成正确的calendarDayDetail query key", () => {
       expect(queryKeys.calendarDayDetail(ledgerId, "2024-03-15")).toEqual([
+        "ledger",
+        ledgerId,
         "calendar",
         "day",
-        ledgerId,
         "2024-03-15",
         undefined,
       ]);
@@ -324,100 +336,13 @@ describe("queryKeys", () => {
 
     it("应该生成带过滤器的calendarDayDetail query key", () => {
       expect(queryKeys.calendarDayDetail(ledgerId, "2024-03-15", { categoryId: "cat-1" })).toEqual([
+        "ledger",
+        ledgerId,
         "calendar",
         "day",
-        ledgerId,
         "2024-03-15",
         { categoryId: "cat-1" },
       ]);
     });
-  });
-});
-
-describe("query invalidation helpers", () => {
-  const ledgerId = "test-ledger-123";
-  it("matches ledger resource keys narrowly", () => {
-    expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledger(ledgerId) })).toBe(true);
-    expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledgers() })).toBe(false);
-  });
-
-  it("matches ledger entries queries only", () => {
-    expect(invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
-      false
-    );
-  });
-
-  it("matches source document queries only", () => {
-    expect(
-      invalidateSourceDocuments(ledgerId)({
-        queryKey: queryKeys.sourceDocumentStream(ledgerId),
-      })
-    ).toBe(true);
-    expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
-      false
-    );
-  });
-
-  it("matches only stream total queries for the selected ledger", () => {
-    expect(
-      invalidateSourceDocumentStreamTotal(ledgerId)({
-        queryKey: queryKeys.sourceDocumentStreamTotal(ledgerId),
-      })
-    ).toBe(true);
-    expect(
-      invalidateSourceDocumentStreamTotal(ledgerId)({
-        queryKey: queryKeys.sourceDocumentStream(ledgerId),
-      })
-    ).toBe(false);
-  });
-
-  it("matches summary and enhanced stats queries", () => {
-    expect(invalidateLedgerStats(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(true);
-    expect(invalidateLedgerStats(ledgerId)({ queryKey: queryKeys.enhancedStats(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateLedgerStats(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId) })).toBe(
-      false
-    );
-  });
-
-  it("matches settings queries only", () => {
-    expect(
-      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })
-    ).toBe(true);
-    expect(
-      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })
-    ).toBe(true);
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
-      false
-    );
-  });
-
-  it("targets category settings without matching credentials or sibling settings", () => {
-    expect(
-      invalidateEntryCategories(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })
-    ).toBe(true);
-    expect(
-      invalidateLedgerSettingsView(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })
-    ).toBe(true);
-  });
-
-  it("matches calendar queries only", () => {
-    expect(
-      invalidateCalendar(ledgerId)({
-        queryKey: queryKeys.calendarHeatmap(ledgerId, "month", "2024-01-01"),
-      })
-    ).toBe(true);
-    expect(
-      invalidateCalendar(ledgerId)({
-        queryKey: queryKeys.calendarHeatmapForRange(ledgerId, "2024-01-01", "2024-01-31"),
-      })
-    ).toBe(true);
-    expect(invalidateCalendar(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId) })).toBe(
-      false
-    );
   });
 });

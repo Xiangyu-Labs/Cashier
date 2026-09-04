@@ -8,7 +8,7 @@ import { lockLedgerForUpdate } from "../transaction-locks";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 
-import { recalculateCurrentEntries } from "./shared";
+import { recalculateCurrentEntries } from "../source-document-aggregate/recalculate-current-entries";
 
 export const postgresCurrencyAdapter: CurrencyPort = {
   async convert(amount, from, to, date) {

@@ -52,8 +52,6 @@ describe("retrySourceDocument", () => {
       scheduleProcessing.mock.invocationCallOrder[0]!
     );
     expect(result).toEqual({
-      sourceDocumentId: "doc-1",
-      previousSourceDocumentId: "doc-1",
       status: "processing",
     });
   });

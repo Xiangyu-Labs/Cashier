@@ -357,11 +357,15 @@ describe("getLedgerPageBootstrap", () => {
     expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
     const statsQuery = result?.dehydratedState.queries.find(
-      (query) => query.queryKey[0] === "enhanced-stats"
+      (query) =>
+        query.queryKey[0] === "ledger" &&
+        query.queryKey[1] === "ledger-1" &&
+        query.queryKey[2] === "enhanced-stats"
     );
     expect(statsQuery?.queryKey).toEqual([
-      "enhanced-stats",
+      "ledger",
       "ledger-1",
+      "enhanced-stats",
       expect.objectContaining({
         rangeType: "month",
         comparisonMode: "same_period",
@@ -393,7 +397,10 @@ describe("getLedgerPageBootstrap", () => {
       });
 
       const statsQuery = result?.dehydratedState.queries.find(
-        (query) => query.queryKey[0] === "enhanced-stats"
+        (query) =>
+          query.queryKey[0] === "ledger" &&
+          query.queryKey[1] === "ledger-1" &&
+          query.queryKey[2] === "enhanced-stats"
       );
       expect(statsQuery).toBeDefined();
 
@@ -403,10 +410,11 @@ describe("getLedgerPageBootstrap", () => {
         mainCurrency: "USD",
       });
       expect(statsQuery?.queryKey).toEqual(expectedDescriptor.queryKey);
-      expect(statsQuery?.queryKey).toHaveLength(3);
-      expect(statsQuery?.queryKey[0]).toBe("enhanced-stats");
+      expect(statsQuery?.queryKey).toHaveLength(4);
+      expect(statsQuery?.queryKey[0]).toBe("ledger");
       expect(statsQuery?.queryKey[1]).toBe("ledger-1");
-      expect(statsQuery?.queryKey[2]).toEqual(
+      expect(statsQuery?.queryKey[2]).toBe("enhanced-stats");
+      expect(statsQuery?.queryKey[3]).toEqual(
         expect.objectContaining({
           startDate: expect.any(String),
           endDate: expect.any(String),
@@ -438,10 +446,13 @@ describe("getLedgerPageBootstrap", () => {
         ledgerDto: createPreAuthorizedLedgerDto(),
       });
       const statsQuery = result?.dehydratedState.queries.find(
-        (query) => query.queryKey[0] === "enhanced-stats"
+        (query) =>
+          query.queryKey[0] === "ledger" &&
+          query.queryKey[1] === "ledger-1" &&
+          query.queryKey[2] === "enhanced-stats"
       );
 
-      expect(statsQuery?.queryKey[2]).toMatchObject({
+      expect(statsQuery?.queryKey[3]).toMatchObject({
         rangeType: "year",
         startDate: "2024-01-01",
       });
@@ -493,9 +504,10 @@ describe("getLedgerPageBootstrap", () => {
     const streamQuery = result?.dehydratedState.queries.find(
       (q) =>
         Array.isArray(q.queryKey) &&
-        q.queryKey[0] === "sourceDocuments" &&
+        q.queryKey[0] === "ledger" &&
         q.queryKey[1] === "ledger-1" &&
-        q.queryKey[2] === "stream"
+        q.queryKey[2] === "source-documents" &&
+        q.queryKey[3] === "stream"
     );
     expect(streamQuery).toBeDefined();
     expect(streamQuery?.state.data).toEqual({

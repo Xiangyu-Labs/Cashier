@@ -1,5 +1,4 @@
 import type { z } from "zod";
-import type { SourceDocumentDto } from "./document-contracts";
 import type {
   saveSourceDocumentChangesInputSchema,
   splitSourceDocumentInputSchema,
@@ -36,13 +35,49 @@ export type {
 
 export interface CreateSourceDocumentResponseDto {
   sourceDocumentId: string;
-  revisionId: string;
-  revisionState: "processing";
+  version: 1;
+  status: "processing";
+}
+
+export interface VersionedTarget {
+  sourceDocumentId: string;
+  expectedVersion: number;
+}
+
+export type VersionedCommandResult<T> =
+  | { ok: true; sourceDocumentId: string; version: number; data: T }
+  | {
+      ok: false;
+      reason: "stale";
+      sourceDocumentId: string;
+      expectedVersion: number;
+      currentVersion: number;
+    };
+
+export type AtomicBatchCommandResult<T> =
+  | { ok: true; versions: Array<{ sourceDocumentId: string; version: number }>; data: T }
+  | {
+      ok: false;
+      reason: "stale";
+      staleTargets: Array<{
+        sourceDocumentId: string;
+        expectedVersion: number;
+        currentVersion: number;
+      }>;
+    };
+
+export interface PartialBatchCommandResult<TId extends string = string> {
+  succeeded: Array<{ id: TId; sourceDocumentId: string; version: number }>;
+  stale: Array<{
+    id: TId;
+    sourceDocumentId: string;
+    expectedVersion: number;
+    currentVersion: number;
+  }>;
+  failed: Array<{ id: TId; code: string }>;
 }
 
 export interface RetrySourceDocumentResponseDto {
-  sourceDocumentId: string;
-  previousSourceDocumentId: string;
   status: "processing";
 }
 
@@ -60,20 +95,15 @@ export interface CreatedRecordResult {
 export type SaveSourceDocumentChangesInput = z.infer<typeof saveSourceDocumentChangesInputSchema>;
 
 export interface SaveSourceDocumentChangesResultDto {
-  activeRevisionId: string;
-  sourceDocument: SourceDocumentDto;
+  updatedEntryIds: string[];
 }
 
 export type SplitSourceDocumentInput = z.infer<typeof splitSourceDocumentInputSchema>;
 
 export interface SplitSourceDocumentResultDto {
-  sourceDocumentId: string;
-  sourceDocumentActiveRevisionId: string;
   splitSourceDocumentId: string;
-  splitSourceDocumentActiveRevisionId: string;
+  splitVersion: 1;
   movedEntryCount: number;
-  sourceDocument: SourceDocumentDto;
-  splitSourceDocument: SourceDocumentDto;
 }
 
 export interface BatchUpdateSourceDocumentsResultDto {
@@ -87,20 +117,13 @@ export interface DeleteSourceDocumentResultDto {
 }
 
 export interface AcceptCandidateResponseDto {
-  sourceDocumentId: string;
-  revisionId: string;
   status: "completed" | "duplicate_pending";
 }
 
 export interface AbandonCandidateResponseDto {
-  sourceDocumentId: string;
-  revisionId: string;
-  status: "abandoned";
+  status: "completed" | "duplicate_pending";
 }
 
 export interface CancelProcessingResponseDto {
-  sourceDocumentId: string;
-  revisionId: string;
-  status: "cancelled" | "abandoned";
-  restoredActiveResult: boolean;
+  status: "cancelled" | "completed" | "duplicate_pending";
 }

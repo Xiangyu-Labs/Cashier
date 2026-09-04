@@ -120,7 +120,11 @@ describe("ledger refresh", () => {
       .where(eq(sourceDocumentRevisions.id, revisionId));
     await getTestDb()
       .update(sourceDocuments)
-      .set({ activeRevisionId: revisionId, pendingRevisionId: null })
+      .set({
+        activeRevisionId: revisionId,
+        pendingRevisionId: null,
+        currentStatus: "completed",
+      })
       .where(eq(sourceDocuments.id, documentId));
     expect((await refresh(processing.version)).hasTransitionalWork).toBe(false);
   });

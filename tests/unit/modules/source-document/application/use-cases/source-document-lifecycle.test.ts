@@ -22,7 +22,7 @@ describe("abandonSourceDocumentCandidate", () => {
           sourceDocumentId: "document-1",
           revisionId: "revision-1",
         },
-        lifecycle(vi.fn(async () => false))
+        lifecycle(vi.fn(async () => null))
       )
     ).rejects.toBeInstanceOf(NotFoundError);
   });

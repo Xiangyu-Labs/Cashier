@@ -2,10 +2,7 @@
 
 import { useCallback } from "react";
 import { useSelection } from "@/hooks/use-selection";
-import {
-  sourceDocumentDeferredContextKey,
-  type SourceDocumentDeferredAction,
-} from "./source-document-deferred-action";
+import type { SourceDocumentDeferredAction } from "./source-document-deferred-action";
 import type { UseSourceDocumentDetailControllerOptions } from "./source-document-detail-controller.types";
 import { useSourceDocumentDeferredActions } from "./useSourceDocumentDeferredActions";
 import { useSourceDocumentDetailDialogState } from "./useSourceDocumentDetailDialogState";
@@ -114,15 +111,8 @@ export function useSourceDocumentDetailController(
     [batchActions, dialogState, entryActions, options]
   );
   const deferred = useSourceDocumentDeferredActions({
-    contextKey: sourceDocumentDeferredContextKey({
-      sourceDocumentId: sourceDocument?.id,
-      activeRevisionId: sourceDocument?.activeRevisionId,
-      pendingRevisionId: sourceDocument?.pendingRevisionId,
-      entryIds: ledgerEntries.map((entry) => entry.id),
-      selectedIds: selection.selectedIds,
-    }),
     interactionDisabled: session.interactionDisabled,
-    hasRevisionConflict: session.revision.hasRevisionConflict,
+    hasVersionConflict: session.revision.hasVersionConflict,
     hasPendingChanges: session.pending.hasPendingChanges,
     saveAll: session.handleSaveAll,
     discardAllChanges: session.pending.discardAllChanges,
@@ -146,7 +136,7 @@ export function useSourceDocumentDetailController(
       isSplitting: session.isSplitting,
       isReloading: session.isReloading,
       reloadError: session.reloadError,
-      hasRevisionConflict: session.revision.hasRevisionConflict,
+      hasVersionConflict: session.revision.hasVersionConflict,
       setIsRetrying: session.setIsRetrying,
     },
     dialogs: {

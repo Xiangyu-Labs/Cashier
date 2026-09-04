@@ -5,7 +5,8 @@ import { AppError, ConflictError, ValidationError } from "@/lib/errors";
 import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 
-import { mapLedgerSettings, recalculateCurrentEntries, settingsColumns } from "./shared";
+import { recalculateCurrentEntries } from "../source-document-aggregate/recalculate-current-entries";
+import { mapLedgerSettings, settingsColumns } from "./shared";
 
 export const postgresSettingsAdapter: SettingsPort = {
   async get(ledgerId) {

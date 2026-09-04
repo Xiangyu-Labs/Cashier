@@ -650,11 +650,18 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       },
     ]);
 
-    await postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "2026-06-01");
+    await expect(
+      postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "2026-06-01")
+    ).resolves.toBe(2);
 
-    const entries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.ledgerId, ledgerId),
-    });
+    const [entries, documentsAfterChange] = await Promise.all([
+      db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.ledgerId, ledgerId),
+      }),
+      db.query.sourceDocuments.findMany({
+        where: eq(sourceDocuments.ledgerId, ledgerId),
+      }),
+    ]);
     const byName = new Map(entries.map((entry) => [entry.itemName, entry]));
 
     // 100 USD * (7.65 / 1.08) = 708.33 CNY
@@ -663,5 +670,26 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     // Undated entries use the latest stored rate (2026-06-01), not 7.0.
     expect(byName.get("Undated")?.convertedAmount).toBe("1416.670");
     expect(byName.get("Undated")?.exchangeRate).toBe("7.083333333333");
+    expect(documentsAfterChange.every((document) => document.stateVersion === 2)).toBe(true);
+
+    await expect(
+      postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "2026-06-01")
+    ).resolves.toBe(0);
+    const documentsAfterNoop = await db.query.sourceDocuments.findMany({
+      where: eq(sourceDocuments.ledgerId, ledgerId),
+    });
+    expect(
+      documentsAfterNoop.map((document) => ({
+        id: document.id,
+        stateVersion: document.stateVersion,
+        updatedAt: document.updatedAt,
+      }))
+    ).toEqual(
+      documentsAfterChange.map((document) => ({
+        id: document.id,
+        stateVersion: document.stateVersion,
+        updatedAt: document.updatedAt,
+      }))
+    );
   });
 });

@@ -1,39 +1,17 @@
 "use server";
-import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
-import { parseMutationIdentity } from "@/modules/source-document/contract-schemas";
-import { deleteSourceDocument } from "../application/use-cases/delete-source-document";
+import { versionedTargetSchema } from "@/modules/source-document/contract-schemas";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { serverComposition } from "@/application/server-composition-root";
-import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 /**
  * Delete a single source document (soft delete with cascade).
  */
 export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
-  async (
-    { ledgerId, userId },
-    sourceId: string,
-    operationId?: string
-  ): Promise<DeleteSourceDocumentResultDto> => {
-    const identity = parseMutationIdentity({
+  async ({ ledgerId }, sourceId: string, expectedVersion: number) => {
+    const target = versionedTargetSchema.parse({
       sourceDocumentId: sourceId,
-      ...(operationId === undefined ? {} : { operationId }),
+      expectedVersion,
     });
-
-    const mutation = () =>
-      deleteSourceDocument(
-        { ledgerId, sourceDocumentId: identity.sourceDocumentId },
-        serverComposition.sourceDocumentRevisions
-      );
-    return identity.operationId == null
-      ? mutation()
-      : serverComposition.userMutationIdempotency.run(
-          {
-            userId,
-            key: `source-document:delete:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
-            fingerprint: sourceDocumentFingerprint({}),
-          },
-          mutation
-        );
+    return serverComposition.sourceDocumentAggregate.deleteDocuments({ ledgerId, target });
   }
 );

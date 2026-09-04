@@ -214,4 +214,35 @@ describe("findBoundaryViolations", () => {
       "src/modules/ledger/server-actions/entries.ts: server actions must call application ports/use cases",
     ]);
   });
+
+  it("restricts source-document writes to registered aggregate writers", () => {
+    expect(
+      findBoundaryViolations(
+        "src/application/adapters/postgres/unregistered-writer.ts",
+        "await tx.update(sourceDocuments).set({ title });"
+      )
+    ).toEqual([
+      "src/application/adapters/postgres/unregistered-writer.ts: sourceDocuments writes must use the registered aggregate gateway",
+    ]);
+    expect(
+      findBoundaryViolations(
+        "src/application/adapters/postgres/source-document-updates.ts",
+        "await tx.update(sourceDocuments).set({ title });"
+      )
+    ).toEqual([]);
+  });
+
+  it.each(["activeRevisionId", "expectedRevisionId", "operationId", "resourceGroups"])(
+    "rejects browser concurrency token %s",
+    (token) => {
+      expect(
+        findBoundaryViolations(
+          "src/modules/source-document/hooks/useCommand.ts",
+          `const ${token} = value;`
+        )
+      ).toEqual([
+        `src/modules/source-document/hooks/useCommand.ts: browser source-document code must not use ${token}`,
+      ]);
+    }
+  );
 });

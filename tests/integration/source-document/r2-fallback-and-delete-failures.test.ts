@@ -33,13 +33,15 @@ describe("source-document delete tolerance", () => {
       .insert(sourceDocuments)
       .values({ ledgerId, currentStatus: "completed" })
       .returning();
-    await expect(deleteSourceDocumentAction(ledgerId, document!.id)).resolves.toEqual({
+    await expect(
+      deleteSourceDocumentAction(ledgerId, document!.id, document!.stateVersion)
+    ).resolves.toMatchObject({
+      ok: true,
       sourceDocumentId: document!.id,
-      deleted: true,
+      data: { deleted: true },
     });
-    await expect(deleteSourceDocumentAction(ledgerId, document!.id)).resolves.toEqual({
-      sourceDocumentId: document!.id,
-      deleted: false,
-    });
+    await expect(
+      deleteSourceDocumentAction(ledgerId, document!.id, document!.stateVersion)
+    ).rejects.toThrow();
   });
 });

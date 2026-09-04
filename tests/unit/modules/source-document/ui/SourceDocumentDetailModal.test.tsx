@@ -153,6 +153,7 @@ const secondEntry: LedgerEntry = {
 
 const sourceDocument: SourceDocumentLight = {
   id: "doc-1",
+  version: 1,
   ledgerId: "ledger-1",
   title: "Receipt",
   text: null,
@@ -164,9 +165,8 @@ const sourceDocument: SourceDocumentLight = {
   createdAt: "2026-07-28T00:00:00.000Z",
   hasImages: false,
   supportedActions: [],
+  canEdit: true,
   errorCode: null,
-  pendingRevisionId: null,
-  activeRevisionId: "revision-1",
 };
 
 function modal(
@@ -279,7 +279,7 @@ describe("SourceDocumentDetailModal batch mode", () => {
         ...sourceDocument,
         id: "doc-2",
         title: "Second receipt",
-        activeRevisionId: "revision-2",
+        version: 2,
       })
     );
 
@@ -294,7 +294,7 @@ describe("SourceDocumentDetailModal batch mode", () => {
     fireEvent.click(screen.getByText("edit"));
     fireEvent.click(screen.getByText("change-draft"));
 
-    rerender(modal(onSaveAll, { ...sourceDocument, activeRevisionId: "revision-2" }, { onReload }));
+    rerender(modal(onSaveAll, { ...sourceDocument, version: 2 }, { onReload }));
 
     expect(screen.getByRole("alert")).toHaveTextContent("revisionConflict");
     expect(screen.getByText("saveChanges")).toBeDisabled();
@@ -312,7 +312,7 @@ describe("SourceDocumentDetailModal batch mode", () => {
     const { rerender } = render(modal(undefined, sourceDocument, { onReload }));
     fireEvent.click(screen.getByText("edit"));
     fireEvent.click(screen.getByText("change-draft"));
-    rerender(modal(undefined, { ...sourceDocument, activeRevisionId: "revision-2" }, { onReload }));
+    rerender(modal(undefined, { ...sourceDocument, version: 2 }, { onReload }));
 
     fireEvent.click(screen.getByText("reloadServerData"));
     await waitFor(() => expect(onReload).toHaveBeenCalledOnce());
@@ -336,48 +336,23 @@ describe("SourceDocumentDetailModal batch mode", () => {
     await waitFor(() => expect(screen.getByText("add-entry-dialog")).toBeInTheDocument());
   });
 
-  it.each([
-    {
-      name: "revision",
-      changeContext: ({ rerender }: ReturnType<typeof render>) =>
-        rerender(
-          modal(
-            undefined,
-            { ...sourceDocument, activeRevisionId: "revision-2" },
-            {
-              onAddEntry: vi.fn(async () => undefined),
-            }
-          )
-        ),
-    },
-    {
-      name: "pending revision",
-      changeContext: ({ rerender }: ReturnType<typeof render>) =>
-        rerender(
-          modal(
-            undefined,
-            { ...sourceDocument, pendingRevisionId: "pending-revision-2" },
-            {
-              onAddEntry: vi.fn(async () => undefined),
-            }
-          )
-        ),
-    },
-    {
-      name: "entry set",
-      changeContext: ({ rerender }: ReturnType<typeof render>) =>
-        rerender(
-          modal(undefined, sourceDocument, {
-            ledgerEntries: [entry, secondEntry],
-            onAddEntry: vi.fn(async () => undefined),
-          })
-        ),
-    },
-    {
-      name: "selection",
-      changeContext: () => fireEvent.click(screen.getByText("select-first")),
-    },
-  ])("does not execute a deferred action after the $name changes", async ({ changeContext }) => {
+  it("keeps the draft and deferred action blocked when save rejects", async () => {
+    const onSaveAll = vi.fn().mockRejectedValue(new Error("stale"));
+    const onAddEntry = vi.fn(async () => undefined);
+    render(modal(onSaveAll, sourceDocument, { onAddEntry }));
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+    fireEvent.click(screen.getByText("add-entry"));
+    fireEvent.click(screen.getByText("confirm-save"));
+
+    await waitFor(() => expect(onSaveAll).toHaveBeenCalledOnce());
+    expect(screen.getByText("saveBeforeActionTitle")).toBeInTheDocument();
+    expect(screen.getByText("editing")).toBeInTheDocument();
+    expect(screen.queryByText("add-entry-dialog")).not.toBeInTheDocument();
+    expect(onAddEntry).not.toHaveBeenCalled();
+  });
+
+  it("closes a deferred confirmation when the server version changes", async () => {
     const rendered = render(
       modal(undefined, sourceDocument, { onAddEntry: vi.fn(async () => undefined) })
     );
@@ -386,10 +361,8 @@ describe("SourceDocumentDetailModal batch mode", () => {
     fireEvent.click(screen.getByText("add-entry"));
     expect(screen.getByText("saveBeforeActionTitle")).toBeInTheDocument();
 
-    changeContext(rendered);
-    fireEvent.click(screen.getByText("confirm-discard"));
-
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("actionContextChanged"));
+    rendered.rerender(modal(undefined, { ...sourceDocument, version: 2 }, { onAddEntry: vi.fn() }));
+    expect(screen.queryByText("saveBeforeActionTitle")).not.toBeInTheDocument();
     expect(screen.queryByText("add-entry-dialog")).not.toBeInTheDocument();
   });
 
@@ -406,7 +379,7 @@ describe("SourceDocumentDetailModal batch mode", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("reuses the save operation ID after a failed attempt", async () => {
+  it("retries a failed save against the same base version", async () => {
     const onSaveAll = vi
       .fn()
       .mockRejectedValueOnce(new Error("temporary failure"))
@@ -420,10 +393,12 @@ describe("SourceDocumentDetailModal batch mode", () => {
     fireEvent.click(screen.getByText("saveChanges"));
     await waitFor(() => expect(onSaveAll).toHaveBeenCalledTimes(2));
 
-    expect(onSaveAll.mock.calls[0]![0].operationId).toBe(onSaveAll.mock.calls[1]![0].operationId);
+    expect(onSaveAll.mock.calls[0]![0].expectedVersion).toBe(1);
+    expect(onSaveAll.mock.calls[1]![0].expectedVersion).toBe(1);
+    expect(onSaveAll.mock.calls[0]![0]).not.toHaveProperty("operationId");
   });
 
-  it("uses a new save operation ID when the payload changes after a failed attempt", async () => {
+  it("sends changed draft values without browser operation identity", async () => {
     const onSaveAll = vi.fn().mockRejectedValue(new Error("temporary failure"));
     renderModal(onSaveAll);
     fireEvent.click(screen.getByText("edit"));
@@ -438,19 +413,22 @@ describe("SourceDocumentDetailModal batch mode", () => {
     expect(onSaveAll.mock.calls[1]![0]).toMatchObject({
       changes: { sourceDoc: { title: "Changed again" } },
     });
-    expect(onSaveAll.mock.calls[1]![0].operationId).not.toBe(
-      onSaveAll.mock.calls[0]![0].operationId
-    );
+    expect(onSaveAll.mock.calls[1]![0]).not.toHaveProperty("operationId");
   });
 
-  it("reuses split identities when retrying the same payload", async () => {
+  it("retries split using only the document version", async () => {
     const onSplit = vi
       .fn()
       .mockRejectedValueOnce(new Error("temporary failure"))
       .mockResolvedValueOnce({
+        ok: true,
         sourceDocumentId: "doc-1",
-        splitSourceDocumentId: "doc-2",
-        movedEntryCount: 1,
+        version: 2,
+        data: {
+          splitSourceDocumentId: "doc-2",
+          splitVersion: 1,
+          movedEntryCount: 1,
+        },
       });
     render(
       modal(
@@ -471,12 +449,13 @@ describe("SourceDocumentDetailModal batch mode", () => {
     const firstInput = onSplit.mock.calls[0]![0];
     const secondInput = onSplit.mock.calls[1]![0];
     expect(firstInput).toMatchObject({
-      expectedRevisionId: "revision-1",
+      expectedVersion: 1,
       ledgerEntryIds: ["entry-1"],
       entryDate: "2026-09-03",
     });
-    expect(secondInput.operationId).toBe(firstInput.operationId);
-    expect(secondInput.newSourceDocumentId).toBe(firstInput.newSourceDocumentId);
+    expect(secondInput).toEqual(firstInput);
+    expect(secondInput).not.toHaveProperty("operationId");
+    expect(secondInput).not.toHaveProperty("newSourceDocumentId");
     await waitFor(() => expect(screen.queryByText("submit-split")).not.toBeInTheDocument());
   });
 

@@ -4,7 +4,7 @@ import { buildSourceDocumentRetrySeed } from "@/modules/source-document/ui/sourc
 describe("source document retry seed", () => {
   it("uses stored-file URLs while preserving file identity order", () => {
     const seed = buildSourceDocumentRetrySeed(
-      { id: "doc-1", text: "fallback", files: [], hasImages: true },
+      { id: "doc-1", version: 1, text: "fallback", files: [], hasImages: true },
       {
         text: "receipt",
         files: [

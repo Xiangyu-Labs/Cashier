@@ -26,6 +26,7 @@ function card(
 ): SourceDocumentListItemDto {
   return {
     id,
+    version: 1,
     ledgerId: "ledger-1",
     title: `Doc ${id}`,
     text: null,
@@ -37,8 +38,8 @@ function card(
     updatedAt: "2026-07-15T00:00:00.000Z",
     hasImages: false,
     supportedActions: [],
+    canEdit: false,
     errorCode: null,
-    pendingRevisionId: null,
     ...overrides,
   };
 }

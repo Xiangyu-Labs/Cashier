@@ -71,7 +71,7 @@ describe("cancel source-document processing", () => {
       }),
       postgresRevisionAdapter.get(ledgerId, pending.document.id),
     ]);
-    expect(document?.pendingRevisionId).toBe(pending.revision.id);
+    expect(document?.pendingRevisionId).toBeNull();
     expect(revision?.outcome).toBe("cancelled");
     expect(outbox?.status).toBe("cancelled");
     expect(attempt?.status).toBe("cancelled");

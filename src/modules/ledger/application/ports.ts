@@ -5,6 +5,12 @@ import type {
   LedgerEntrySummary,
 } from "../contracts";
 import type { LedgerEntryFilterParams } from "../filters";
+import type {
+  AtomicBatchCommandResult,
+  PartialBatchCommandResult,
+  VersionedCommandResult,
+  VersionedTarget,
+} from "@/modules/source-document/contracts";
 import type { BatchActionResult } from "@/lib/batch-ids";
 
 export interface BatchEntryDateImpact {
@@ -81,42 +87,44 @@ export interface LedgerMutationPort {
   batchDeleteEntries(ledgerId: string, ledgerEntryIds: string[]): Promise<BatchActionResult>;
 }
 
-interface IdempotentLedgerEntryCommandIdentity {
-  userId: string;
-  ledgerId: string;
-  operationId: string;
-  fingerprint: string;
-}
-
-export interface IdempotentLedgerEntryCommandPort {
-  create(
-    input: IdempotentLedgerEntryCommandIdentity & {
-      command: {
-        ledgerEntryId: string;
-        amount: string;
-        currency?: string;
-        itemName: string;
-        categoryId?: string;
-        description?: string | null;
-        sourceDocumentId: string;
-      };
-    }
-  ): Promise<LedgerEntryDto>;
-  update(
-    input: IdempotentLedgerEntryCommandIdentity & {
-      command: {
-        ledgerEntryId: string;
-        categoryId?: string | null;
-        amount?: string;
-        currency?: string | null;
-        itemName?: string;
-        description?: string | null;
-      };
-    }
-  ): Promise<LedgerEntryDto>;
-  delete(
-    input: IdempotentLedgerEntryCommandIdentity & {
-      command: { ledgerEntryId: string };
-    }
-  ): Promise<DeleteLedgerEntryResultDto>;
+export interface LedgerEntryCommandPort {
+  create(input: {
+    ledgerId: string;
+    target: VersionedTarget;
+    amount: string;
+    currency?: string;
+    itemName: string;
+    categoryId?: string;
+    description?: string | null;
+  }): Promise<VersionedCommandResult<{ ledgerEntryId: string }>>;
+  update(input: {
+    ledgerId: string;
+    target: VersionedTarget;
+    ledgerEntryId: string;
+    categoryId?: string | null;
+    amount?: string;
+    currency?: string | null;
+    itemName?: string;
+    description?: string | null;
+  }): Promise<VersionedCommandResult<{ ledgerEntryId: string }>>;
+  delete(input: {
+    ledgerId: string;
+    target: VersionedTarget;
+    ledgerEntryId: string;
+  }): Promise<VersionedCommandResult<{ ledgerEntryId: string; deleted: true }>>;
+  batchUpdate(input: {
+    ledgerId: string;
+    targets: VersionedTarget[];
+    ledgerEntryIds: string[];
+    categoryId?: string | null;
+    amount?: string;
+    currency?: string | null;
+    itemName?: string;
+    description?: string | null;
+  }): Promise<AtomicBatchCommandResult<{ ledgerEntryIds: string[]; affectedCount: number }>>;
+  batchDelete(input: {
+    ledgerId: string;
+    targets: VersionedTarget[];
+    ledgerEntryIds: string[];
+  }): Promise<PartialBatchCommandResult>;
 }

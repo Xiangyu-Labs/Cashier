@@ -27,6 +27,7 @@ export type SupportedSourceDocumentAction =
 export interface SourceDocumentContract {
   id: SourceDocumentId;
   ledgerId: LedgerId;
+  version: number;
   activeRevisionId: RevisionId | null;
   pendingRevisionId: RevisionId | null;
   supportedActions: readonly SupportedSourceDocumentAction[];
@@ -305,6 +306,7 @@ export interface PendingRevisionSubmissionContract {
 export interface SourceDocumentSubmissionInput {
   ledgerId: LedgerId;
   sourceDocumentId?: SourceDocumentId;
+  expectedVersion?: number;
   submittedText?: string | null;
   storedFileIds?: readonly StoredFileId[];
   entryDate?: string | null;

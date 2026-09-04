@@ -3,7 +3,7 @@ import type { AuthenticatedServiceCredentialContract } from "@/application/contr
 import { serverComposition } from "@/application/server-composition-root";
 import { ValidationError } from "@/lib/errors";
 import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
-import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentSubmissionContract } from "@/application/contracts";
 import { preparedApiV1SourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
 import { scheduleProcessingAfter } from "../server-actions/schedule-processing";
@@ -22,7 +22,7 @@ export async function createSourceDocumentFromCredentialRequest(input: {
   idempotencyKey?: string;
   requestId?: string;
   payload: unknown;
-}): Promise<CreateSourceDocumentResponseDto> {
+}): Promise<SourceDocumentSubmissionContract> {
   const parsed = preparedApiV1SourceDocumentInputSchema.safeParse(input.payload);
   if (!parsed.success) {
     throw new ValidationError("Validation failed", { issues: parsed.error.issues });

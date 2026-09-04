@@ -40,8 +40,12 @@ describe("Source Document Update Actions", () => {
       await db.insert(sourceDocuments).values([docData1, docData2]);
 
       // Batch update
-      await batchUpdateSourceDocumentsAction(ledgerData.id, [docData1.id, docData2.id], {
-        title: "Updated documents",
+      await batchUpdateSourceDocumentsAction(ledgerData.id, {
+        targets: [docData1, docData2].map((document) => ({
+          sourceDocumentId: document.id,
+          expectedVersion: 1,
+        })),
+        data: { title: "Updated documents" },
       });
 
       // Verify updates
@@ -89,8 +93,9 @@ describe("Source Document Update Actions", () => {
         })
         .onConflictDoNothing();
 
-      await batchUpdateSourceDocumentsAction(ledgerData.id, [document.id], {
-        entryDate: "2024-03-15",
+      await batchUpdateSourceDocumentsAction(ledgerData.id, {
+        targets: [{ sourceDocumentId: document.id, expectedVersion: 1 }],
+        data: { entryDate: "2024-03-15" },
       });
 
       const [updatedDocument, updatedEntry] = await Promise.all([
@@ -108,8 +113,9 @@ describe("Source Document Update Actions", () => {
       await db.insert(ledgers).values(ledgerData);
 
       await expect(
-        batchUpdateSourceDocumentsAction(ledgerData.id, [], {
-          title: "Ignored",
+        batchUpdateSourceDocumentsAction(ledgerData.id, {
+          targets: [],
+          data: { title: "Ignored" },
         })
       ).rejects.toThrow();
     });

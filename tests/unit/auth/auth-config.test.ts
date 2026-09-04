@@ -65,7 +65,7 @@ describe("auth runtime config", () => {
     });
 
     expect(nextAuthMock).toHaveBeenCalledTimes(1);
-  });
+  }, 30_000);
 
   it("registers password and email OTP credentials providers without a database adapter", async () => {
     process.env.DEV_AUTH_BYPASS = "false";

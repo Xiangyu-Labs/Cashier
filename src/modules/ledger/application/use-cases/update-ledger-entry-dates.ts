@@ -1,4 +1,8 @@
 import type { BatchEntryDateImpact } from "../ports";
+import type {
+  AtomicBatchCommandResult,
+  VersionedTarget,
+} from "@/modules/source-document/contracts";
 
 /**
  * Updates the linked source documents and returns the impact committed by the
@@ -7,6 +11,7 @@ import type { BatchEntryDateImpact } from "../ports";
 export async function updateLedgerEntryDates(
   input: {
     ledgerId: string;
+    targets: VersionedTarget[];
     ledgerEntryIds: string[];
     entryDate: string;
   },
@@ -14,11 +19,12 @@ export async function updateLedgerEntryDates(
     updates: {
       updateDates(input: {
         ledgerId: string;
+        targets: VersionedTarget[];
         ledgerEntryIds: string[];
         entryDate: string;
-      }): Promise<BatchEntryDateImpact>;
+      }): Promise<AtomicBatchCommandResult<{ impact: BatchEntryDateImpact }>>;
     };
   }
-): Promise<BatchEntryDateImpact> {
+): Promise<AtomicBatchCommandResult<{ impact: BatchEntryDateImpact }>> {
   return dependencies.updates.updateDates(input);
 }

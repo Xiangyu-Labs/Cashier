@@ -10,6 +10,7 @@ const {
   acceptSourceDocumentCandidateActionMock,
   abandonSourceDocumentCandidateActionMock,
   retrySourceDocumentActionMock,
+  batchUpdateSourceDocumentsActionMock,
   toastSuccessMock,
   toastErrorMock,
   toastWarningMock,
@@ -18,6 +19,7 @@ const {
   acceptSourceDocumentCandidateActionMock: vi.fn(),
   abandonSourceDocumentCandidateActionMock: vi.fn(),
   retrySourceDocumentActionMock: vi.fn(),
+  batchUpdateSourceDocumentsActionMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastWarningMock: vi.fn(),
@@ -34,7 +36,7 @@ vi.mock("sonner", () => ({
 vi.mock("@/modules/source-document/actions", () => ({
   acceptSourceDocumentCandidateAction: acceptSourceDocumentCandidateActionMock,
   abandonSourceDocumentCandidateAction: abandonSourceDocumentCandidateActionMock,
-  batchUpdateSourceDocumentsAction: vi.fn(),
+  batchUpdateSourceDocumentsAction: batchUpdateSourceDocumentsActionMock,
   batchDeleteSourceDocumentsAction: vi.fn(),
   batchResolveDuplicateReviewsAction: vi.fn(),
   batchRetrySourceDocumentsAction: vi.fn(),
@@ -72,7 +74,12 @@ describe("source document mutation toast ownership", () => {
       wrapper: createWrapper(),
     });
 
-    deleteSourceDocumentActionMock.mockResolvedValueOnce(undefined);
+    deleteSourceDocumentActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { sourceDocumentId: "document-1", deleted: true },
+    });
     await act(async () => {
       await result.current.deleteSourceDocument.mutateAsync("document-1");
     });
@@ -98,7 +105,12 @@ describe("source document mutation toast ownership", () => {
     });
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
-    deleteSourceDocumentActionMock.mockResolvedValueOnce(undefined);
+    deleteSourceDocumentActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { sourceDocumentId: "document-1", deleted: true },
+    });
     const clearSelection = vi.fn();
     const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", clearSelection), {
       wrapper: createWrapper(queryClient),
@@ -126,7 +138,12 @@ describe("source document mutation toast ownership", () => {
     });
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("offline"));
-    deleteSourceDocumentActionMock.mockResolvedValueOnce(undefined);
+    deleteSourceDocumentActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { sourceDocumentId: "document-1", deleted: true },
+    });
     const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", vi.fn()), {
       wrapper: createWrapper(queryClient),
     });
@@ -142,20 +159,55 @@ describe("source document mutation toast ownership", () => {
     expect(toastErrorMock).toHaveBeenCalledTimes(1);
   });
 
+  it("does not clear selection or show success for stale atomic updates", async () => {
+    batchUpdateSourceDocumentsActionMock.mockResolvedValueOnce({
+      ok: false,
+      reason: "stale",
+      staleTargets: [{ sourceDocumentId: "document-1", expectedVersion: 1, currentVersion: 2 }],
+    });
+    const clearSelection = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useBatchSourceDocumentActions(
+          "ledger-1",
+          clearSelection,
+          undefined,
+          new Map([["document-1", 1]])
+        ),
+      { wrapper: createWrapper() }
+    );
+
+    await expect(
+      result.current.batchUpdateDates.mutateAsync({
+        ids: ["document-1"],
+        entryDate: "2026-09-04",
+      })
+    ).rejects.toMatchObject({ code: "SOURCE_DOCUMENT_STALE" });
+
+    expect(clearSelection).not.toHaveBeenCalled();
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith("error");
+  });
+
   it("runs candidate success feedback before refresh settles and remains pending", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
-    acceptSourceDocumentCandidateActionMock.mockResolvedValueOnce(undefined);
+    acceptSourceDocumentCandidateActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { status: "completed" },
+    });
     const onSuccess = vi.fn();
     const { result } = renderHook(
       () =>
         useSourceDocumentRecoveryMutations({
           ledgerId: "ledger-1",
           sourceDocumentId: "document-1",
-          revisionId: "revision-1",
+          version: 1,
           onSuccess,
         }),
       { wrapper: createWrapper(queryClient) }
@@ -183,12 +235,18 @@ describe("source document mutation toast ownership", () => {
         useSourceDocumentRecoveryMutations({
           ledgerId: "ledger-1",
           sourceDocumentId: "document-1",
+          version: 1,
           onSuccess,
         }),
       { wrapper: createWrapper() }
     );
 
-    retrySourceDocumentActionMock.mockResolvedValueOnce(undefined);
+    retrySourceDocumentActionMock.mockResolvedValueOnce({
+      ok: true,
+      sourceDocumentId: "document-1",
+      version: 2,
+      data: { status: "processing" },
+    });
     await act(async () => {
       await result.current.retry();
     });

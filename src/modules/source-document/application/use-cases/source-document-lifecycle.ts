@@ -9,29 +9,32 @@ import { NotFoundError } from "@/lib/errors";
 interface RevisionLifecycleInput {
   ledgerId: string;
   sourceDocumentId: string;
-  revisionId: string;
+  /** Internal compatibility only; browser transports never provide revision identity. */
+  revisionId?: string;
+  expectedVersion?: number;
 }
 
 export async function acceptSourceDocumentCandidate(
-  { ledgerId, sourceDocumentId, revisionId }: RevisionLifecycleInput,
+  { ledgerId, sourceDocumentId, expectedVersion }: RevisionLifecycleInput,
   lifecycle: SourceDocumentLifecyclePort
-): Promise<AcceptCandidateResponseDto> {
-  const status = await lifecycle.acceptCandidate(ledgerId, sourceDocumentId, revisionId);
-  return { sourceDocumentId, revisionId, status };
+): Promise<{ version: number; data: AcceptCandidateResponseDto }> {
+  const result = await lifecycle.acceptCandidate(ledgerId, sourceDocumentId, expectedVersion);
+  return { version: result.version, data: { status: result.status } };
 }
 
 export async function abandonSourceDocumentCandidate(
-  { ledgerId, sourceDocumentId, revisionId }: RevisionLifecycleInput,
+  { ledgerId, sourceDocumentId, expectedVersion }: RevisionLifecycleInput,
   lifecycle: SourceDocumentLifecyclePort
-): Promise<AbandonCandidateResponseDto> {
-  const abandoned = await lifecycle.abandonCandidate(ledgerId, sourceDocumentId, revisionId);
+): Promise<{ version: number; data: AbandonCandidateResponseDto }> {
+  const abandoned = await lifecycle.abandonCandidate(ledgerId, sourceDocumentId, expectedVersion);
   if (!abandoned) throw new NotFoundError("Source document");
-  return { sourceDocumentId, revisionId, status: "abandoned" };
+  return { version: abandoned.version, data: { status: abandoned.status } };
 }
 
-export function cancelSourceDocumentProcessing(
-  { ledgerId, sourceDocumentId, revisionId }: RevisionLifecycleInput,
+export async function cancelSourceDocumentProcessing(
+  { ledgerId, sourceDocumentId, expectedVersion }: RevisionLifecycleInput,
   lifecycle: SourceDocumentLifecyclePort
-): Promise<CancelProcessingResponseDto> {
-  return lifecycle.cancelPending(ledgerId, sourceDocumentId, revisionId);
+): Promise<{ version: number; data: CancelProcessingResponseDto }> {
+  const result = await lifecycle.cancelPending(ledgerId, sourceDocumentId, expectedVersion);
+  return { version: result.version, data: { status: result.status } };
 }

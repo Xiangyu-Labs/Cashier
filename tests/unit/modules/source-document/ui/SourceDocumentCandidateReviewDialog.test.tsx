@@ -23,10 +23,22 @@ describe("SourceDocumentCandidateReviewDialog", () => {
     vi.clearAllMocks();
     reviewActionMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
+      version: 1,
       active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
       candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
     });
-    abandonActionMock.mockResolvedValue({ status: "abandoned" });
+    abandonActionMock.mockResolvedValue({
+      ok: true,
+      sourceDocumentId: "doc-1",
+      version: 2,
+      data: { status: "completed" },
+    });
+    acceptActionMock.mockResolvedValue({
+      ok: true,
+      sourceDocumentId: "doc-1",
+      version: 2,
+      data: { status: "completed" },
+    });
   });
 
   it("requires confirmation before abandoning the candidate", async () => {
@@ -60,12 +72,14 @@ describe("SourceDocumentCandidateReviewDialog", () => {
     reviewActionMock
       .mockResolvedValueOnce({
         sourceDocumentId: "doc-1",
+        version: 1,
         active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
         candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
       })
       .mockRejectedValueOnce(new Error("refresh failed"))
       .mockResolvedValueOnce({
         sourceDocumentId: "doc-1",
+        version: 2,
         active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
         candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
       });
@@ -103,13 +117,15 @@ describe("SourceDocumentCandidateReviewDialog", () => {
     reviewActionMock
       .mockResolvedValueOnce({
         sourceDocumentId: "doc-1",
+        version: 1,
         active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
         candidate: { revisionId: "rev-2", entries: [], entryCount: 0, total: "0" },
       })
       .mockResolvedValueOnce({
         sourceDocumentId: "doc-1",
+        version: 2,
         active: { revisionId: "rev-1", entries: [], entryCount: 0, total: "0" },
-        candidate: { revisionId: "rev-3", entries: [], entryCount: 0, total: "0" },
+        candidate: { entries: [], entryCount: 0, total: "0" },
       });
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -133,8 +149,13 @@ describe("SourceDocumentCandidateReviewDialog", () => {
       queryKey: queryKeys.sourceDocumentCandidateReview("ledger-1", "doc-1"),
     });
     await waitFor(() => expect(reviewActionMock).toHaveBeenCalledTimes(2));
-
-    fireEvent.click(screen.getAllByRole("button", { name: "保留原结果" }).at(-1)!);
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<{ version: number }>(
+          queryKeys.sourceDocumentCandidateReview("ledger-1", "doc-1")
+        )?.version
+      ).toBe(2)
+    );
 
     await waitFor(() =>
       expect(screen.queryByText("新的解析结果将被丢弃，当前账目不会改变。")).not.toBeInTheDocument()
