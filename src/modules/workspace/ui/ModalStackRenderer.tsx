@@ -7,7 +7,7 @@ import { closeLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { ledgerDetailLeaveGuardKey } from "@/lib/navigation/ledger-detail-key";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
-interface ModalStackRendererProps {
+export interface ModalStackRendererProps {
   categories: EntryCategory[];
   mainCurrency: string;
   preferredCurrencies: string[];

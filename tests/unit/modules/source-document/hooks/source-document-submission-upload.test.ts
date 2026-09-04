@@ -3,6 +3,10 @@ import { uploadSourceDocumentSubmissionImages } from "@/modules/source-document/
 
 const onePixel = "data:image/jpeg;base64,AQ==";
 
+function imageDataUrl(byteSize: number): string {
+  return `data:image/jpeg;base64,${Buffer.alloc(byteSize, 1).toString("base64")}`;
+}
+
 describe("source-document inline submission preparation", () => {
   it("leaves text-only submissions unchanged", async () => {
     await expect(
@@ -13,7 +17,7 @@ describe("source-document inline submission preparation", () => {
     ).resolves.toEqual({ entryDate: "2026-07-15", text: "Lunch" });
   });
 
-  it("uploads compressed JPEG images through a signed direct plan", async () => {
+  it("uploads compliant JPEG images without compressing them again", async () => {
     const compress = vi.fn().mockResolvedValue({ data: onePixel, mimeType: "image/jpeg" });
     const createPlan = vi.fn().mockResolvedValue({
       id: "session-1",
@@ -31,7 +35,7 @@ describe("source-document inline submission preparation", () => {
       { compress, createPlan, put, finalize }
     );
 
-    expect(compress).toHaveBeenCalledWith(expect.any(File), 1080, 1080, 0.78, undefined);
+    expect(compress).not.toHaveBeenCalled();
     expect(result).toEqual({
       entryDate: "2026-07-15",
       storedFileIds: ["file-1"],
@@ -46,7 +50,10 @@ describe("source-document inline submission preparation", () => {
     await expect(
       uploadSourceDocumentSubmissionImages(
         "ledger-1",
-        { entryDate: "2026-07-15", images: [{ data: onePixel, mimeType: "image/jpeg" }] },
+        {
+          entryDate: "2026-07-15",
+          images: [{ data: imageDataUrl(3 * 1024 * 1024 + 1), mimeType: "image/jpeg" }],
+        },
         { compress: vi.fn().mockRejectedValue(new Error("decode failed")) }
       )
     ).rejects.toMatchObject({ stage: "prepare" });
@@ -65,6 +72,46 @@ describe("source-document inline submission preparation", () => {
       )
     ).rejects.toThrow("Maximum 3 images");
     expect(compress).not.toHaveBeenCalled();
+  });
+
+  it("compresses every image in a batch concurrently before creating the plan", async () => {
+    const resolvers: Array<(value: { data: string; mimeType: string }) => void> = [];
+    const compress = vi.fn(
+      () =>
+        new Promise<{ data: string; mimeType: string }>((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+    const createPlan = vi.fn().mockResolvedValue({
+      id: "session-1",
+      finalizationToken: "token",
+      targets: Array.from({ length: 3 }, (_, index) => ({
+        id: `target-${index}`,
+        url: `https://upload.test/${index}`,
+        requiredHeaders: {},
+      })),
+    });
+    const put = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const finalize = vi.fn().mockResolvedValue(["file-1", "file-2", "file-3"]);
+    const data = imageDataUrl(1024 * 1024 + 1);
+
+    const submission = uploadSourceDocumentSubmissionImages(
+      "ledger-1",
+      {
+        entryDate: "2026-07-15",
+        images: Array.from({ length: 3 }, () => ({ data, mimeType: "image/jpeg" })),
+      },
+      { compress, createPlan, put, finalize }
+    );
+
+    await vi.waitFor(() => expect(compress).toHaveBeenCalledTimes(3));
+    expect(createPlan).not.toHaveBeenCalled();
+    resolvers.forEach((resolve) => resolve({ data: onePixel, mimeType: "image/jpeg" }));
+
+    await expect(submission).resolves.toMatchObject({
+      storedFileIds: ["file-1", "file-2", "file-3"],
+    });
+    expect(createPlan).toHaveBeenCalledTimes(1);
   });
 
   it("stops after a pending upload plan resolves when the batch was cancelled", async () => {

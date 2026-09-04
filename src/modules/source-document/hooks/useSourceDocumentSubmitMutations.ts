@@ -28,7 +28,6 @@ import {
 
 interface CreateVariables {
   payload: SourceDocumentSubmitPayload;
-  payloadFingerprint: string;
   clientSubmissionId: string;
   signal: AbortSignal;
 }
@@ -39,7 +38,7 @@ interface RetryVariables {
 }
 
 interface CreateSubmissionIdentity {
-  payloadFingerprint: string;
+  payload: SourceDocumentSubmitPayload;
   clientSubmissionId: string;
   uploadedPayload: SourceDocumentSubmitPayload | null;
 }
@@ -61,6 +60,51 @@ function waitForPaint(): Promise<void> {
       globalThis.setTimeout(resolve, 0);
     }
   });
+}
+
+function arraysEqual<T>(
+  left: readonly T[] | undefined,
+  right: readonly T[] | undefined,
+  equals: (leftItem: T, rightItem: T) => boolean
+): boolean {
+  const leftLength = left?.length ?? 0;
+  if (leftLength !== (right?.length ?? 0)) return false;
+  for (let index = 0; index < leftLength; index += 1) {
+    if (!equals(left![index]!, right![index]!)) return false;
+  }
+  return true;
+}
+
+function sourceDocumentPayloadsEqual(
+  left: SourceDocumentSubmitPayload,
+  right: SourceDocumentSubmitPayload
+): boolean {
+  return (
+    left.entryDate === right.entryDate &&
+    left.timezone === right.timezone &&
+    left.text === right.text &&
+    arraysEqual(left.storedFileIds, right.storedFileIds, (leftId, rightId) => leftId === rightId) &&
+    arraysEqual(
+      left.images,
+      right.images,
+      (leftImage, rightImage) =>
+        leftImage.data === rightImage.data &&
+        leftImage.mimeType === rightImage.mimeType &&
+        leftImage.storedFileId === rightImage.storedFileId
+    )
+  );
+}
+
+function snapshotPayload(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
+  return {
+    entryDate: payload.entryDate,
+    ...(payload.timezone === undefined ? {} : { timezone: payload.timezone }),
+    ...(payload.text === undefined ? {} : { text: payload.text }),
+    ...(payload.storedFileIds === undefined ? {} : { storedFileIds: [...payload.storedFileIds] }),
+    ...(payload.images === undefined
+      ? {}
+      : { images: payload.images.map((image) => ({ ...image })) }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -98,8 +142,7 @@ export function useSourceDocumentSubmitMutations({
     mutationFn: async (variables: CreateVariables) => {
       const currentIdentity = createSubmissionIdentityRef.current;
       let uploadedPayload =
-        currentIdentity?.clientSubmissionId === variables.clientSubmissionId &&
-        currentIdentity.payloadFingerprint === variables.payloadFingerprint
+        currentIdentity?.clientSubmissionId === variables.clientSubmissionId
           ? currentIdentity.uploadedPayload
           : null;
       if (uploadedPayload == null) {
@@ -110,9 +153,7 @@ export function useSourceDocumentSubmitMutations({
           setMonotonicProgress
         );
         if (
-          createSubmissionIdentityRef.current?.clientSubmissionId ===
-            variables.clientSubmissionId &&
-          createSubmissionIdentityRef.current.payloadFingerprint === variables.payloadFingerprint
+          createSubmissionIdentityRef.current?.clientSubmissionId === variables.clientSubmissionId
         ) {
           createSubmissionIdentityRef.current.uploadedPayload = uploadedPayload;
         }
@@ -217,12 +258,14 @@ export function useSourceDocumentSubmitMutations({
     const controller = new AbortController();
     uploadControllerRef.current = controller;
     setProgress({ phase: "preparing", percent: 0 });
-    const payloadFingerprint = JSON.stringify(payload);
     if (mode === "create") {
       const currentIdentity = createSubmissionIdentityRef.current;
-      if (currentIdentity?.payloadFingerprint !== payloadFingerprint) {
+      if (
+        currentIdentity == null ||
+        !sourceDocumentPayloadsEqual(currentIdentity.payload, payload)
+      ) {
         createSubmissionIdentityRef.current = {
-          payloadFingerprint,
+          payload: snapshotPayload(payload),
           clientSubmissionId: crypto.randomUUID(),
           uploadedPayload: null,
         };
@@ -244,7 +287,6 @@ export function useSourceDocumentSubmitMutations({
 
       createMutation.mutate({
         payload,
-        payloadFingerprint,
         clientSubmissionId: createSubmissionIdentityRef.current!.clientSubmissionId,
         signal: controller.signal,
       });

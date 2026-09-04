@@ -113,8 +113,9 @@ export function LedgerEntriesUnifiedGroups({
  * Static (startup snapshot) rendering: keeps the per-group `content-visibility`
  * optimization and renders no list motion — the snapshot never changes.
  */
-function StaticUnifiedGroups(props: UnifiedStreamGroupProps) {
-  const selectedIdSet = useMemo(() => new Set(props.selectedIds), [props.selectedIds]);
+function StaticUnifiedGroups(
+  props: UnifiedStreamGroupProps & { selectedIdSet: ReadonlySet<string> }
+) {
   return (
     <div className="space-y-6 pt-2">
       {props.streamGroups.map((dateGroup) => (
@@ -144,15 +145,16 @@ function StaticUnifiedGroups(props: UnifiedStreamGroupProps) {
                   : {})}
                 onDeleteSourceConfirm={props.onDeleteSourceConfirm}
                 selectionMode={props.isSelectionMode}
-                selected={selectedIdSet.has(item.sourceDocument.id)}
+                selected={props.selectedIdSet.has(item.sourceDocument.id)}
                 selectionDisabled={
-                  props.disableUnselected === true && !selectedIdSet.has(item.sourceDocument.id)
+                  props.disableUnselected === true &&
+                  !props.selectedIdSet.has(item.sourceDocument.id)
                 }
                 onToggleSelection={props.onToggleSelection}
                 getItemProps={props.getItemProps}
                 readOnly={props.readOnly === true}
                 defaultExpanded={!props.collapseEntriesDefault}
-                {...(props.recovery != null ? { recovery: props.recovery } : {})}
+                {...recoveryProps(props.recovery, item.sourceDocument.id)}
               />
             ))}
           </div>
@@ -281,7 +283,7 @@ function AnimatedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
             defaultExpanded={!props.collapseEntriesDefault}
             expanded={props.getExpanded(item.sourceDocument.id)}
             onExpandedChange={props.onExpandedChange}
-            {...(props.recovery != null ? { recovery: props.recovery } : {})}
+            {...recoveryProps(props.recovery, item.sourceDocument.id)}
           />
         </StreamCardMotion>
       );
@@ -419,7 +421,7 @@ function VirtualizedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
                   defaultExpanded={!props.collapseEntriesDefault}
                   expanded={props.getExpanded(row.item.sourceDocument.id)}
                   onExpandedChange={props.onExpandedChange}
-                  {...(props.recovery != null ? { recovery: props.recovery } : {})}
+                  {...recoveryProps(props.recovery, row.item.sourceDocument.id)}
                 />
               </div>
             )}
@@ -488,7 +490,33 @@ interface UnifiedStreamItemRowProps {
   defaultExpanded: boolean;
   expanded?: boolean;
   onExpandedChange?: (sourceDocumentId: string, expanded: boolean) => void;
-  recovery?: ReturnType<typeof useStreamSourceDocumentRecoveryMutations>;
+  isRetrying?: boolean;
+  isCancelling?: boolean;
+  isAbandoning?: boolean;
+  onRetry?: (variables: { sourceDocumentId: string; expectedVersion: number }) => Promise<void>;
+  onCancelProcessing?: (variables: {
+    sourceDocumentId: string;
+    expectedVersion: number;
+  }) => Promise<void>;
+  onAbandonCandidate?: (variables: {
+    sourceDocumentId: string;
+    expectedVersion: number;
+  }) => Promise<void>;
+}
+
+function recoveryProps(
+  recovery: ReturnType<typeof useStreamSourceDocumentRecoveryMutations> | undefined,
+  sourceDocumentId: string
+) {
+  if (recovery == null) return {};
+  return {
+    isRetrying: recovery.retryingIds.has(sourceDocumentId),
+    isCancelling: recovery.cancellingIds.has(sourceDocumentId),
+    isAbandoning: recovery.abandoningIds.has(sourceDocumentId),
+    onRetry: recovery.retry,
+    onCancelProcessing: recovery.cancelProcessing,
+    onAbandonCandidate: recovery.abandonCandidate,
+  };
 }
 
 const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
@@ -509,7 +537,12 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   defaultExpanded,
   expanded,
   onExpandedChange,
-  recovery,
+  isRetrying = false,
+  isCancelling = false,
+  isAbandoning = false,
+  onRetry,
+  onCancelProcessing,
+  onAbandonCandidate,
 }: UnifiedStreamItemRowProps) {
   const sourceDocument = item.sourceDocument as SourceDocument;
   const ledgerEntries = item.ledgerEntries as LedgerEntry[];
@@ -547,15 +580,15 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         defaultExpanded={defaultExpanded}
         {...(expanded === undefined ? {} : { expanded })}
         {...(onExpandedChange === undefined ? {} : { onExpandedChange: handleExpandedChange })}
-        isRetrying={recovery?.retryingIds.has(sourceDocument.id) ?? false}
-        isCancelling={recovery?.cancellingIds.has(sourceDocument.id) ?? false}
-        isAbandoning={recovery?.abandoningIds.has(sourceDocument.id) ?? false}
-        {...(recovery == null
+        isRetrying={isRetrying}
+        isCancelling={isCancelling}
+        isAbandoning={isAbandoning}
+        {...(onRetry == null || onCancelProcessing == null || onAbandonCandidate == null
           ? {}
           : {
-              onRetry: () => recovery.retry(recoveryVariables),
-              onCancelProcessing: () => recovery.cancelProcessing(recoveryVariables),
-              onAbandonCandidate: () => recovery.abandonCandidate(recoveryVariables),
+              onRetry: () => onRetry(recoveryVariables),
+              onCancelProcessing: () => onCancelProcessing(recoveryVariables),
+              onAbandonCandidate: () => onAbandonCandidate(recoveryVariables),
             })}
       />
     </div>

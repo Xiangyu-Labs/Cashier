@@ -143,6 +143,14 @@ export async function listLedgerEntryPage({
                     },
                   },
                 },
+                extras: {
+                  hasImages: sql<boolean>`EXISTS (
+                    SELECT 1
+                    FROM ${revisionFiles} page_revision_file
+                    WHERE page_revision_file.ledger_id = ${ledgerEntries.ledgerId}
+                      AND page_revision_file.revision_id = ${ledgerEntries.sourceDocumentRevisionId}
+                  )`.as("has_images"),
+                },
               })
               .then((found) =>
                 found.toSorted(
@@ -159,20 +167,6 @@ export async function listLedgerEntryPage({
         );
       }
 
-      const revisionIds = rows.flatMap((row) =>
-        row.sourceDocumentRevisionId == null ? [] : [row.sourceDocumentRevisionId]
-      );
-      const revisionsWithFiles = new Set(
-        revisionIds.length === 0
-          ? []
-          : (
-              await tx
-                .select({ revisionId: revisionFiles.revisionId })
-                .from(revisionFiles)
-                .where(inArray(revisionFiles.revisionId, revisionIds))
-            ).map((row) => row.revisionId)
-      );
-
       const items = rows.map((row) => {
         const dto = mapLedgerEntryDto({
           ...row,
@@ -183,9 +177,7 @@ export async function listLedgerEntryPage({
         if (dto.sourceDocument != null) {
           dto.sourceDocument = {
             ...dto.sourceDocument,
-            hasImages:
-              row.sourceDocumentRevisionId != null &&
-              revisionsWithFiles.has(row.sourceDocumentRevisionId),
+            hasImages: row.hasImages,
           };
         }
 

@@ -164,7 +164,12 @@ describe("useSourceDocumentSubmitMutations", () => {
       images: [{ data: "data:image/png;base64,AQ==", mimeType: "image/png" }],
     };
 
-    act(() => result.current.submit(payload));
+    act(() =>
+      result.current.submit({
+        ...payload,
+        images: payload.images.map((image) => ({ ...image })),
+      })
+    );
     await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(result.current.isPending).toBe(false));
     const firstSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[2];

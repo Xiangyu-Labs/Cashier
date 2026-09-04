@@ -22,16 +22,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LedgerTabPanels } from "./LedgerTabPanels";
 import { NewRecordDialog } from "./NewRecordDialog";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import dynamic from "next/dynamic";
-import { ModalStackLoadingFallback } from "./ModalStackLoadingFallback";
-
-const ModalStackRenderer = dynamic(
-  () =>
-    import("@/modules/workspace/ui/ModalStackRenderer").then((module) => ({
-      default: module.ModalStackRenderer,
-    })),
-  { ssr: false, loading: () => <ModalStackLoadingFallback /> }
-);
+import { ModalStackGate } from "./ModalStackGate";
 
 interface LedgerPageClientProps {
   ledgerId: string;
@@ -255,7 +246,7 @@ export function LedgerPageClient({
           onConfirm={confirmDiscard}
         />
 
-        <ModalStackRenderer
+        <ModalStackGate
           categories={categories}
           mainCurrency={mainCurrency}
           preferredCurrencies={preferredCurrencies}

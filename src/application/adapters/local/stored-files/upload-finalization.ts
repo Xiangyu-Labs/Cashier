@@ -4,7 +4,7 @@ import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cle
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { processImage, validateStoredImageBytes } from "@/lib/storage/image-processing";
+import { processImage } from "@/lib/storage/image-processing";
 import { MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
 import { storedFiles, uploadSessionFiles, uploadSessions } from "@/persistence";
 import {
@@ -126,7 +126,6 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
             actual.bytes,
             targets[position]!.expectedContentType!
           );
-          await validateStoredImageBytes(processed.buffer, processed.mimeType);
           return {
             bytes: processed.buffer,
             contentType: processed.mimeType,

@@ -58,6 +58,7 @@ describe("useStreamSourceDocumentRecoveryMutations", () => {
       action.mockReturnValue(command.promise);
       awaitInvalidation.mockReturnValue(invalidation.promise);
       const { result } = renderHook(() => useStreamSourceDocumentRecoveryMutations("ledger-1"));
+      const initialAction = result.current[method];
 
       expect(mutationObservers).toHaveBeenCalledTimes(3);
       act(() => {
@@ -66,6 +67,7 @@ describe("useStreamSourceDocumentRecoveryMutations", () => {
       });
       expect(action).toHaveBeenCalledTimes(1);
       expect(result.current[pendingKey].has("doc-1")).toBe(true);
+      expect(result.current[method]).toBe(initialAction);
 
       command.resolve({ ok: true, data: {} });
       await waitFor(() => expect(awaitInvalidation).toHaveBeenCalledTimes(1));
@@ -78,6 +80,7 @@ describe("useStreamSourceDocumentRecoveryMutations", () => {
 
       invalidation.resolve();
       await waitFor(() => expect(result.current[pendingKey].has("doc-1")).toBe(false));
+      expect(result.current[method]).toBe(initialAction);
     }
   );
 });

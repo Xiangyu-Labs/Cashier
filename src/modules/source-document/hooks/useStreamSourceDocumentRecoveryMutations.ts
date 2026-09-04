@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import {
   abandonSourceDocumentCandidateAction,
@@ -68,6 +68,12 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
     errorMessage: tActions("abandonError"),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
+  const retryMutationRef = useRef(retryMutation.mutateAsync);
+  const cancelMutationRef = useRef(cancelMutation.mutateAsync);
+  const abandonMutationRef = useRef(abandonMutation.mutateAsync);
+  retryMutationRef.current = retryMutation.mutateAsync;
+  cancelMutationRef.current = cancelMutation.mutateAsync;
+  abandonMutationRef.current = abandonMutation.mutateAsync;
 
   const run = useCallback(
     async (
@@ -90,15 +96,31 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
     [updatePending]
   );
 
-  return {
-    retryingIds,
-    cancellingIds,
-    abandoningIds,
-    retry: (variables: StreamRecoveryVariables) =>
-      run(variables, retryMutation.mutateAsync, setRetryingIds),
-    cancelProcessing: (variables: StreamRecoveryVariables) =>
-      run(variables, cancelMutation.mutateAsync, setCancellingIds),
-    abandonCandidate: (variables: StreamRecoveryVariables) =>
-      run(variables, abandonMutation.mutateAsync, setAbandoningIds),
-  };
+  const retry = useCallback(
+    (variables: StreamRecoveryVariables) =>
+      run(variables, retryMutationRef.current, setRetryingIds),
+    [run]
+  );
+  const cancelProcessing = useCallback(
+    (variables: StreamRecoveryVariables) =>
+      run(variables, cancelMutationRef.current, setCancellingIds),
+    [run]
+  );
+  const abandonCandidate = useCallback(
+    (variables: StreamRecoveryVariables) =>
+      run(variables, abandonMutationRef.current, setAbandoningIds),
+    [run]
+  );
+
+  return useMemo(
+    () => ({
+      retryingIds,
+      cancellingIds,
+      abandoningIds,
+      retry,
+      cancelProcessing,
+      abandonCandidate,
+    }),
+    [abandoningIds, abandonCandidate, cancellingIds, cancelProcessing, retry, retryingIds]
+  );
 }

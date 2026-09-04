@@ -246,14 +246,7 @@ describe("protected home streaming boundary", () => {
       ledgerId: "ledger-1",
       ledgerDto,
       initialTab: "stream",
-      advancedFilters: {
-        categoryId: null,
-        currency: null,
-        minAmount: null,
-        maxAmount: null,
-      },
       userEmail: "user@test.com",
-      locale: "en",
     });
 
     expect(element.props.initialLedger).toBe(ledgerDto);
@@ -271,13 +264,6 @@ describe("protected home streaming boundary", () => {
       ledgerId: "ledger-1",
       ledgerDto,
       initialTab: "stream",
-      advancedFilters: {
-        categoryId: null,
-        currency: null,
-        minAmount: null,
-        maxAmount: null,
-      },
-      locale: "en",
     });
 
     expect(element.props.initialLedger).toBe(ledgerDto);

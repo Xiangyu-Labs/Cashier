@@ -41,4 +41,27 @@ describe("source-document input images", () => {
       ])
     ).resolves.toEqual([{ kind: "unsupported", fileName: "receipt.heic" }]);
   });
+
+  it("starts all selected image conversions before any one resolves", async () => {
+    const resolvers: Array<(value: { data: string; mimeType: string }) => void> = [];
+    compressImageMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+    const files = ["first.png", "second.png", "third.png"].map(
+      (name) => new File([new Uint8Array([1])], name, { type: "image/png" })
+    );
+
+    const loading = loadSourceDocumentInputFiles(files);
+    expect(compressImageMock).toHaveBeenCalledTimes(3);
+
+    resolvers.forEach((resolve, index) =>
+      resolve({ data: `data:image/jpeg;base64,${index + 1}`, mimeType: "image/jpeg" })
+    );
+    const results = await loading;
+
+    expect(results.map((result) => result.kind)).toEqual(["ready", "ready", "ready"]);
+  });
 });

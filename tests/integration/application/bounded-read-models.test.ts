@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
+import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { serverComposition } from "@/application/server-composition-root";
 import { getSourceDocumentFullQuery as getSourceDocumentFullQueryUseCase } from "@/modules/source-document/application/queries/get-source-document-full";
 import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
-import { sourceDocuments } from "@/persistence";
+import { ledgerEntries, sourceDocuments, storedFiles } from "@/persistence";
 import {
   activateTestSourceDocumentProjection,
   createTestUserWithLedger,
@@ -157,6 +158,15 @@ describe("bounded target read models", () => {
       .insert(sourceDocuments)
       .values({ ledgerId, currentStatus: "completed", entryDate: "2026-09-03" })
       .returning();
+    await db.insert(ledgerEntries).values({
+      ledgerId,
+      sourceDocumentId: document!.id,
+      amount: "12.00",
+      currency: "CNY",
+      convertedAmount: "12.00",
+      exchangeRate: "1.000000",
+      itemName: "Bounded item",
+    });
     await activateTestSourceDocumentProjection(db, document!.id, {
       text: "bounded evidence",
       imageUrls: ["/api/uploads/bounded.jpg"],
@@ -174,21 +184,58 @@ describe("bounded target read models", () => {
       const afterDetail = readStatements(getStatements()).length;
       await listStreamPage(ledgerId, { limit: 20 });
       const afterStream = readStatements(getStatements()).length;
+      const ledgerPage = await listLedgerEntries(ledgerId, { limit: 20 });
+      const afterLedgerPage = readStatements(getStatements()).length;
       return {
         list,
         detail,
+        ledgerPage,
         listReadCount: afterList,
         detailReadCount: afterDetail - afterList,
         streamReadCount: afterStream - afterDetail,
+        ledgerPageReadCount: afterLedgerPage - afterStream,
       };
     });
 
     expect(capture.result.list.items).toHaveLength(1);
     expect(capture.result.detail?.files).toHaveLength(1);
-    expect(capture.result.detail?.ledgerEntries).toEqual([]);
+    expect(capture.result.detail?.ledgerEntries).toHaveLength(1);
+    expect(capture.result.ledgerPage.items).toHaveLength(1);
     expect(capture.result.listReadCount).toBeLessThanOrEqual(4);
-    expect(capture.result.detailReadCount).toBeLessThanOrEqual(5);
+    expect(capture.result.detailReadCount).toBeLessThanOrEqual(3);
     expect(capture.result.streamReadCount).toBe(4);
+    expect(capture.result.ledgerPageReadCount).toBeLessThanOrEqual(2);
+  });
+
+  it.each([1, 3])("checks ownership for %i stored files with one select", async (fileCount) => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const files = await db
+      .insert(storedFiles)
+      .values(
+        Array.from({ length: fileCount }, (_, index) => ({
+          ledgerId,
+          storageProvider: "local",
+          storageKey: `bounded-ownership/${fileCount}/${index}`,
+          contentType: "image/jpeg",
+          byteSize: 1,
+          finalizedAt: new Date(),
+        }))
+      )
+      .returning({ id: storedFiles.id });
+
+    const capture = await captureSqlStatements(async () =>
+      postgresRevisionAdapter.createPending({
+        ledgerId,
+        storedFileIds: files.map((file) => file.id),
+      })
+    );
+    const ownershipSelects = capture.statements
+      .map(normalizeSql)
+      .filter((statement) => statement.startsWith("select"))
+      .filter((statement) => statement.includes('from "stored_files"'));
+
+    expect(ownershipSelects).toHaveLength(1);
   });
 
   it("paginates a large source-document history with a bounded list DTO", async () => {

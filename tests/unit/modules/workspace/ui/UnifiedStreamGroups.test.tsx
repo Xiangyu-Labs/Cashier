@@ -255,6 +255,94 @@ describe("LedgerEntriesUnifiedGroups", () => {
     );
   });
 
+  it("only rerenders the stream row whose recovery state changed", () => {
+    const groups = [
+      {
+        date: "2026-07-15",
+        dateProvenance: "transaction" as const,
+        total: "0",
+        unconvertedCount: 0,
+        currencyTotals: {},
+        items: [
+          {
+            sourceDocument: {
+              id: "document-1",
+              ledgerId: "ledger-1",
+              version: 1,
+              status: "failed",
+            },
+            ledgerEntries: [],
+            effectiveDate: "2026-07-15",
+            dateProvenance: "transaction" as const,
+          },
+          {
+            sourceDocument: {
+              id: "document-2",
+              ledgerId: "ledger-1",
+              version: 1,
+              status: "failed",
+            },
+            ledgerEntries: [],
+            effectiveDate: "2026-07-15",
+            dateProvenance: "transaction" as const,
+          },
+        ],
+      },
+    ] as unknown as UnifiedStreamGroup[];
+    const retry = vi.fn(async () => undefined);
+    const cancelProcessing = vi.fn(async () => undefined);
+    const abandonCandidate = vi.fn(async () => undefined);
+    const commonProps = {
+      streamGroups: groups,
+      mainCurrency: "CNY",
+      onViewSourceDetail: vi.fn(),
+      onDeleteSourceConfirm: vi.fn(),
+      isSelectionMode: false,
+      selectedIds: [],
+      onToggleSelection: vi.fn(),
+      noRecordsText: "No records",
+      getItemProps: () => ({}),
+    };
+    cardProps.mockClear();
+
+    const { rerender } = render(
+      <LedgerEntriesUnifiedGroups
+        {...commonProps}
+        recovery={{
+          retryingIds: new Set(),
+          cancellingIds: new Set(),
+          abandoningIds: new Set(),
+          retry,
+          cancelProcessing,
+          abandonCandidate,
+        }}
+      />
+    );
+    expect(cardProps).toHaveBeenCalledTimes(2);
+
+    rerender(
+      <LedgerEntriesUnifiedGroups
+        {...commonProps}
+        recovery={{
+          retryingIds: new Set(["document-1"]),
+          cancellingIds: new Set(),
+          abandoningIds: new Set(),
+          retry,
+          cancelProcessing,
+          abandonCandidate,
+        }}
+      />
+    );
+
+    expect(cardProps).toHaveBeenCalledTimes(3);
+    expect(cardProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        sourceDocument: groups[0]!.items[0]!.sourceDocument,
+        isRetrying: true,
+      })
+    );
+  });
+
   it("keeps FLIP motion through 80 documents and virtualizes the 81st", () => {
     useStreamListMotionMock.mockClear();
     const commonProps = {
