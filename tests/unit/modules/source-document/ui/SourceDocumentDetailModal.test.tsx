@@ -211,7 +211,7 @@ function modal(
       {...(overrides.isAbandoning !== undefined ? { isAbandoning: overrides.isAbandoning } : {})}
       {...(overrides.isCancelling !== undefined ? { isCancelling: overrides.isCancelling } : {})}
       onBatchUpdate={vi.fn(async () => ({ affectedCount: 1 }))}
-      onBatchDeleteEntries={vi.fn(async () => [])}
+      onBatchDeleteEntries={vi.fn(async () => ({ succeeded: [], stale: [], failed: [] }))}
     />
   );
 }

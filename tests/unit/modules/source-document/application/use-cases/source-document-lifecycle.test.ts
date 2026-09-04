@@ -20,7 +20,7 @@ describe("abandonSourceDocumentCandidate", () => {
         {
           ledgerId: "ledger-1",
           sourceDocumentId: "document-1",
-          revisionId: "revision-1",
+          expectedVersion: 1,
         },
         lifecycle(vi.fn(async () => null))
       )

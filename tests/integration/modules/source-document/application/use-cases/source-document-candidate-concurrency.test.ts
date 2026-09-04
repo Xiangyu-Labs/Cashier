@@ -70,10 +70,18 @@ async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledg
   );
   expect(stored).toBe(true);
 
+  const documentVersion = await db.query.sourceDocuments
+    .findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+      columns: { stateVersion: true },
+    })
+    .then((row) => row!.stateVersion);
+
   return {
     sourceDocumentId: created.sourceDocumentId,
     originalActiveRevisionId,
     candidateRevisionId: pending.revision.id,
+    documentVersion,
   };
 }
 
@@ -148,12 +156,12 @@ describe("candidate concurrency invariants", () => {
 
     // Run 5 iterations to increase the chance of catching a timing issue.
     for (let i = 0; i < 5; i++) {
-      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId, documentVersion } =
         await setupDocumentWithCandidate(db, ledgerId);
 
       await Promise.allSettled([
-        acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
-        abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        acceptCandidateRevision(ledgerId, sourceDocumentId, documentVersion),
+        abandonCandidateRevision(ledgerId, sourceDocumentId, documentVersion),
       ]);
 
       await assertDocumentConsistency(
@@ -182,11 +190,11 @@ describe("candidate concurrency invariants", () => {
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-accept-delete");
 
     for (let i = 0; i < 5; i++) {
-      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId, documentVersion } =
         await setupDocumentWithCandidate(db, ledgerId);
 
       await Promise.allSettled([
-        acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        acceptCandidateRevision(ledgerId, sourceDocumentId, documentVersion),
         postgresLedgerProjectionAdapter.softDelete(ledgerId, sourceDocumentId),
       ]);
 
@@ -242,11 +250,11 @@ describe("candidate concurrency invariants", () => {
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-abandon-delete");
 
     for (let i = 0; i < 5; i++) {
-      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+      const { sourceDocumentId, originalActiveRevisionId, documentVersion } =
         await setupDocumentWithCandidate(db, ledgerId);
 
       await Promise.allSettled([
-        abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        abandonCandidateRevision(ledgerId, sourceDocumentId, documentVersion),
         postgresLedgerProjectionAdapter.softDelete(ledgerId, sourceDocumentId),
       ]);
 
@@ -293,13 +301,13 @@ describe("candidate concurrency invariants", () => {
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-abandon-retry");
 
     for (let i = 0; i < 5; i++) {
-      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId, documentVersion } =
         await setupDocumentWithCandidate(db, ledgerId);
 
       // Run abandon and retry (createPendingRevisionInTransaction) concurrently.
       // Both acquire the source-document lock, so they serialise.
       await Promise.allSettled([
-        abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        abandonCandidateRevision(ledgerId, sourceDocumentId, documentVersion),
         db.transaction(async (tx) => {
           return createPendingRevisionInTransaction(tx, {
             ledgerId,

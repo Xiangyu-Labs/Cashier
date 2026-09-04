@@ -1,6 +1,7 @@
 "use client";
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type {
+  PartialBatchCommandResult,
   SourceDocumentLight,
   SplitSourceDocumentInput,
   SplitSourceDocumentResultDto,
@@ -50,7 +51,7 @@ interface SourceDocumentDetailModalProps {
       description?: string;
     }
   ) => Promise<{ affectedCount: number } | undefined>;
-  onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
+  onBatchDeleteEntries: (ids: string[]) => Promise<PartialBatchCommandResult>;
   onAddEntry?: (data: AddEntryData) => Promise<void>;
   onDeleteEntry?: (entryId: string) => Promise<void>;
   onDelete?: () => void | Promise<void>;

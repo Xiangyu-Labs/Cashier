@@ -3,13 +3,18 @@ import type { LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { compare as compareDecimal } from "@/lib/money/decimal";
+import { transitionSourceDocument } from "@/modules/source-document/application/source-document-state";
 import {
   duplicateReviews,
   ledgerEntries,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "../transaction-locks";
+import {
+  lockLedgerForUpdate,
+  lockSourceDocumentForUpdate,
+  lockSourceDocumentsForUpdate,
+} from "../transaction-locks";
 import { completeProcessingLeaseInTransaction } from "../processing-terminal";
 import { softDeleteSourceDocumentInTransaction } from "../source-document-delete";
 
@@ -67,6 +72,10 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
       await replaceProjection(tx, input);
       const now = new Date();
+      const { state } = transitionSourceDocument(
+        { status: "processing", hasActiveResult: false },
+        { type: "processing_succeeded", duplicate: false }
+      );
       await tx
         .update(sourceDocumentRevisions)
         .set({
@@ -82,7 +91,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: input.revisionId,
           pendingRevisionId: null,
-          currentStatus: "completed",
+          currentStatus: state.status,
           stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
           ...(input.title == null || input.title === "" ? {} : { title: input.title }),
           updatedAt: now,
@@ -380,18 +389,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           changedUpdates.map((update) => currentById.get(update.ledgerEntryId)!.sourceDocumentId!)
         ),
       ].sort();
-      await tx
-        .select({ id: sourceDocuments.id })
-        .from(sourceDocuments)
-        .where(
-          and(
-            eq(sourceDocuments.ledgerId, input.ledgerId),
-            inArray(sourceDocuments.id, documentIds),
-            isNull(sourceDocuments.deletedAt)
-          )
-        )
-        .orderBy(sourceDocuments.id)
-        .for("update");
+      await lockSourceDocumentsForUpdate(tx, input.ledgerId, documentIds);
       const changes = JSON.stringify(
         changedUpdates.map((update) => ({
           id: update.ledgerEntryId,

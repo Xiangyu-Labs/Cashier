@@ -7,12 +7,16 @@ import {
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { PartialBatchCommandResult } from "@/modules/source-document/contracts";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
-import { unwrapAtomicBatchCommandResult } from "@/modules/source-document/command-results";
+import {
+  requireSourceDocumentVersion,
+  unwrapAtomicBatchCommandResult,
+} from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentEntryMutationsOptions {
   ledgerId: string | undefined;
   sourceDocumentId: string;
-  version: number;
+  /** Read fresh at submission time — never captured ahead of the actual click. */
+  version: number | null;
 }
 
 export function useSourceDocumentEntryMutations({
@@ -27,10 +31,11 @@ export function useSourceDocumentEntryMutations({
   >(ledgerId, {
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
+      const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
       const { amount, ...rest } = data;
       const result = await batchUpdateLedgerEntriesAction(
         ledgerId,
-        [{ sourceDocumentId, expectedVersion: version }],
+        [{ sourceDocumentId, expectedVersion }],
         ids,
         {
           ...rest,
@@ -46,9 +51,10 @@ export function useSourceDocumentEntryMutations({
   const batchDeleteMutation = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
     mutationFn: async (entryIds) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
       return batchDeleteLedgerEntriesAction(
         ledgerId,
-        [{ sourceDocumentId, expectedVersion: version }],
+        [{ sourceDocumentId, expectedVersion }],
         entryIds
       );
     },

@@ -4,6 +4,7 @@ import {
   transitionSourceDocument,
   type SourceDocumentState,
   type SourceDocumentStateEvent,
+  type SourceDocumentTransitionResult,
 } from "@/modules/source-document/application/source-document-state";
 
 describe("source-document state model", () => {
@@ -34,51 +35,74 @@ describe("source-document state model", () => {
     }
   );
 
-  it.each<[SourceDocumentState, SourceDocumentStateEvent, SourceDocumentState]>([
+  it.each<[SourceDocumentState, SourceDocumentStateEvent, SourceDocumentTransitionResult]>([
     [
       { status: "completed", hasActiveResult: true },
       { type: "install_retry" },
-      { status: "processing", hasActiveResult: true },
+      { state: { status: "processing", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "processing", hasActiveResult: false },
       { type: "processing_succeeded", duplicate: false },
-      { status: "completed", hasActiveResult: true },
+      { state: { status: "completed", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "processing", hasActiveResult: false },
       { type: "processing_succeeded", duplicate: true },
-      { status: "duplicate_pending", hasActiveResult: true },
+      { state: { status: "duplicate_pending", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "processing", hasActiveResult: true },
       { type: "processing_candidate_succeeded" },
-      { status: "candidate_pending", hasActiveResult: true },
+      { state: { status: "candidate_pending", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "processing", hasActiveResult: true },
       { type: "processing_failed", outcome: "failed" },
-      { status: "failed", hasActiveResult: true },
+      { state: { status: "failed", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "processing", hasActiveResult: false },
-      { type: "cancel_processing" },
-      { status: "cancelled", hasActiveResult: false },
+      { type: "cancel_processing", activeDuplicateReviewPending: false },
+      { state: { status: "cancelled", hasActiveResult: false }, disposition: "active" },
+    ],
+    [
+      { status: "processing", hasActiveResult: true },
+      { type: "cancel_processing", activeDuplicateReviewPending: false },
+      { state: { status: "completed", hasActiveResult: true }, disposition: "active" },
+    ],
+    [
+      { status: "processing", hasActiveResult: true },
+      { type: "cancel_processing", activeDuplicateReviewPending: true },
+      { state: { status: "duplicate_pending", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "candidate_pending", hasActiveResult: true },
       { type: "accept_candidate", duplicate: false },
-      { status: "completed", hasActiveResult: true },
+      { state: { status: "completed", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "candidate_pending", hasActiveResult: true },
-      { type: "abandon_candidate" },
-      { status: "completed", hasActiveResult: true },
+      { type: "abandon_candidate", activeDuplicateReviewPending: false },
+      { state: { status: "completed", hasActiveResult: true }, disposition: "active" },
+    ],
+    [
+      { status: "candidate_pending", hasActiveResult: true },
+      { type: "abandon_candidate", activeDuplicateReviewPending: true },
+      { state: { status: "duplicate_pending", hasActiveResult: true }, disposition: "active" },
     ],
     [
       { status: "duplicate_pending", hasActiveResult: true },
       { type: "keep_duplicate" },
-      { status: "completed", hasActiveResult: true },
+      { state: { status: "completed", hasActiveResult: true }, disposition: "active" },
+    ],
+    [
+      { status: "duplicate_pending", hasActiveResult: true },
+      { type: "discard_duplicate" },
+      {
+        state: { status: "duplicate_pending", hasActiveResult: true },
+        disposition: "soft_deleted",
+      },
     ],
   ])("transitions %#", (current, event, expected) => {
     expect(transitionSourceDocument(current, event)).toEqual(expected);
@@ -89,8 +113,14 @@ describe("source-document state model", () => {
       { status: "completed", hasActiveResult: true },
       { type: "accept_candidate", duplicate: false },
     ],
-    [{ status: "processing", hasActiveResult: false }, { type: "abandon_candidate" }],
-    [{ status: "cancelled", hasActiveResult: false }, { type: "cancel_processing" }],
+    [
+      { status: "processing", hasActiveResult: false },
+      { type: "abandon_candidate", activeDuplicateReviewPending: false },
+    ],
+    [
+      { status: "cancelled", hasActiveResult: false },
+      { type: "cancel_processing", activeDuplicateReviewPending: false },
+    ],
   ] as const)("rejects illegal transition %#", (current, event) => {
     expect(() => transitionSourceDocument(current, event)).toThrow(
       "Invalid source document transition"

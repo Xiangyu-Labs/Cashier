@@ -65,6 +65,12 @@ const registeredSourceDocumentWriters = new Set([
   "src/application/adapters/postgres/source-document-aggregate/recalculate-current-entries.ts",
 ]);
 const wholeLedgerDeleteWriter = "src/application/adapters/postgres/business-ports/ledger.ts";
+const forbiddenLegacyLedgerMutationPaths = [
+  /^@\/application\/adapters\/postgres\/mutate-ledger-entries(?:\/|$)/,
+  /^@\/application\/adapters\/postgres\/delete-ledger-entry(?:\/|$)/,
+  /^@\/modules\/ledger\/application\/use-cases\/mutate-ledger-entries(?:\/|$)/,
+  /^@\/modules\/ledger\/application\/use-cases\/delete-ledger-entry(?:\/|$)/,
+];
 const browserSourceDocumentPath =
   /^src\/modules\/(?:source-document\/(?:hooks|ui)|ledger\/hooks|workspace)\//;
 const forbiddenBrowserConcurrencyTokens = [
@@ -136,6 +142,11 @@ export function findBoundaryViolations(relativePath, source) {
   }
 
   for (const specifier of specifiers) {
+    if (forbiddenLegacyLedgerMutationPaths.some((pattern) => pattern.test(specifier))) {
+      violations.push(
+        `${relativePath}: legacy ledger mutation path is forbidden; use the versioned source-document aggregate`
+      );
+    }
     if (isModule && appPattern.test(specifier)) {
       violations.push(`${relativePath}: modules must not import app entrypoints`);
     }

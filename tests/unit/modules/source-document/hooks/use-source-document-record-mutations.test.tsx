@@ -51,6 +51,7 @@ describe("useSourceDocumentRecordMutations", () => {
     });
     expect(onClose).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();
-    expect(toastErrorMock).toHaveBeenCalledWith("deleteFailed");
+    // Stale is distinct from a genuine delete failure.
+    expect(toastErrorMock).toHaveBeenCalledWith("actionContextChanged");
   });
 });

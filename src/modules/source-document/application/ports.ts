@@ -5,6 +5,7 @@ import type {
   LedgerProjectionPort,
   StoredFileContract,
   SourceDocumentPort,
+  SourceDocumentSubmissionInput,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
@@ -112,14 +113,16 @@ export interface SourceDocumentAggregateWritePort {
   batchUpdateEntries: LedgerEntryCommandPort["batchUpdate"];
   batchDeleteEntries: LedgerEntryCommandPort["batchDelete"];
   splitEntries: SourceDocumentUpdatePort["split"];
-  installRetry: SourceDocumentSubmissionPort["createPendingWithIntent"];
+  installRetry(
+    input: SourceDocumentSubmissionInput & { sourceDocumentId: string; expectedVersion: number }
+  ): ReturnType<SourceDocumentSubmissionPort["createPendingWithIntent"]>;
   acceptCandidate: SourceDocumentLifecyclePort["acceptCandidate"];
   abandonCandidate: SourceDocumentLifecyclePort["abandonCandidate"];
   cancelProcessing: SourceDocumentLifecyclePort["cancelPending"];
   resolveDuplicate(input: {
     ledgerId: string;
     sourceDocumentId: string;
-    expectedVersion?: number;
+    expectedVersion: number;
     decision: "keep" | "discard";
   }): Promise<{ version: number; status: "completed" | "deleted" } | null>;
   deleteDocuments(input: {
@@ -171,27 +174,27 @@ export interface SourceDocumentLifecyclePort {
   acceptCandidate(
     ledgerId: string,
     sourceDocumentId: string,
-    expectedVersion?: number
+    expectedVersion: number
   ): Promise<{ version: number; status: "completed" | "duplicate_pending" }>;
   abandonCandidate(
     ledgerId: string,
     sourceDocumentId: string,
-    expectedVersion?: number
+    expectedVersion: number
   ): Promise<{ version: number; status: "completed" | "duplicate_pending" } | null>;
   keepDuplicate(
     ledgerId: string,
     sourceDocumentId: string,
-    expectedVersion?: number
+    expectedVersion: number
   ): Promise<{ version: number; status: "completed" } | null>;
   discardDuplicate(
     ledgerId: string,
     sourceDocumentId: string,
-    expectedVersion?: number
+    expectedVersion: number
   ): Promise<{ version: number; status: "deleted" } | null>;
   cancelPending(
     ledgerId: string,
     sourceDocumentId: string,
-    expectedVersion?: number
+    expectedVersion: number
   ): Promise<{
     version: number;
     status: "cancelled" | "completed" | "duplicate_pending";

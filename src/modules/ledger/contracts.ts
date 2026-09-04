@@ -148,12 +148,6 @@ export interface LedgerSettingsViewDto {
   credentials: ServiceCredentialDto[];
 }
 
-export interface DeleteLedgerEntryResultDto {
-  ledgerEntryId: string;
-  deleted: boolean;
-  sourceDocumentId?: string;
-}
-
 export interface DeleteEntryCategoryResultDto {
   categoryId: string;
   deleted: boolean;

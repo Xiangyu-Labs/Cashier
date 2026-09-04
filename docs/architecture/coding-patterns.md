@@ -31,6 +31,16 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
 - Keep keyset ordering and cursor fields identical. A cursor includes a fingerprint of its query.
 - Use the persisted accounting amount for Details, Stats, and Stream summaries. Cross-currency 1:1
   fallback is forbidden.
+- Source-document writes go through the versioned aggregate (`SourceDocumentAggregateWritePort`), not
+  a second write path. External IO — FX conversion, provider calls — runs before the transaction
+  starts, never inside it; a write transaction locks the ledger row first, then locks the target
+  document row(s) in ascending ID order, and only then compares the locked row's `stateVersion`
+  against the caller's `expectedVersion`. Ledger-wide configuration the write depends on (for example
+  `mainCurrency`) is not covered by a document's `stateVersion` and must be re-verified against the
+  locked ledger row inside the same transaction. A failed check aborts before any write; a command
+  that changes nothing observable for the caller (a no-op replay, an unchanged field) must not
+  increment `stateVersion` — every aggregate command that does produce a user-observable change
+  increments the target document's `stateVersion` by exactly one.
 
 ## Frontend
 

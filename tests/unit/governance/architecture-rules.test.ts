@@ -215,6 +215,22 @@ describe("findBoundaryViolations", () => {
     ]);
   });
 
+  it.each([
+    "@/application/adapters/postgres/mutate-ledger-entries",
+    "@/application/adapters/postgres/delete-ledger-entry",
+    "@/modules/ledger/application/use-cases/mutate-ledger-entries",
+    "@/modules/ledger/application/use-cases/delete-ledger-entry",
+  ])("forbids importing the legacy ledger mutation path %s", (specifier) => {
+    expect(
+      findBoundaryViolations(
+        "src/application/server-composition-root.ts",
+        `import { deleteLedgerEntry } from "${specifier}";`
+      )
+    ).toEqual([
+      "src/application/server-composition-root.ts: legacy ledger mutation path is forbidden; use the versioned source-document aggregate",
+    ]);
+  });
+
   it("restricts source-document writes to registered aggregate writers", () => {
     expect(
       findBoundaryViolations(

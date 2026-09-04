@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, StaleSourceDocumentVersionError } from "@/lib/errors";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 
 const ledger = {
@@ -18,7 +18,7 @@ describe("retrySourceDocument", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     createPendingWithIntent.mockResolvedValue({
-      document: { id: "doc-1" },
+      document: { id: "doc-1", version: 2 },
       revision: { id: "revision-2" },
       intent: { id: "intent-2" },
     });
@@ -28,21 +28,40 @@ describe("retrySourceDocument", () => {
     createPendingWithIntent.mockRejectedValueOnce(new NotFoundError("Source document"));
     await expect(
       retrySourceDocument(
-        { ledgerId: ledger.id, ledger, sourceDocumentId: "missing" },
+        { ledgerId: ledger.id, ledger, sourceDocumentId: "missing", expectedVersion: 1 },
         { submissions: { createPendingWithIntent }, scheduleProcessing }
       )
     ).rejects.toThrow(NotFoundError);
     expect(scheduleProcessing).not.toHaveBeenCalled();
   });
 
+  it("reports a stale version instead of dispatching", async () => {
+    createPendingWithIntent.mockRejectedValueOnce(
+      new StaleSourceDocumentVersionError("doc-1", 1, 2)
+    );
+    const result = await retrySourceDocument(
+      { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1", expectedVersion: 1 },
+      { submissions: { createPendingWithIntent }, scheduleProcessing }
+    );
+    expect(result).toEqual({
+      ok: false,
+      reason: "stale",
+      sourceDocumentId: "doc-1",
+      expectedVersion: 1,
+      currentVersion: 2,
+    });
+    expect(scheduleProcessing).not.toHaveBeenCalled();
+  });
+
   it("creates a new revision under the stable document identity and inherits evidence", async () => {
     const result = await retrySourceDocument(
-      { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1" },
+      { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1", expectedVersion: 1 },
       { submissions: { createPendingWithIntent }, scheduleProcessing }
     );
     expect(createPendingWithIntent).toHaveBeenCalledWith({
       ledgerId: ledger.id,
       sourceDocumentId: "doc-1",
+      expectedVersion: 1,
       inheritEvidence: true,
       supersedeProcessing: true,
     });
@@ -52,7 +71,10 @@ describe("retrySourceDocument", () => {
       scheduleProcessing.mock.invocationCallOrder[0]!
     );
     expect(result).toEqual({
-      status: "processing",
+      ok: true,
+      sourceDocumentId: "doc-1",
+      version: 2,
+      data: { status: "processing" },
     });
   });
 
@@ -62,6 +84,7 @@ describe("retrySourceDocument", () => {
         ledgerId: ledger.id,
         ledger,
         sourceDocumentId: "doc-1",
+        expectedVersion: 1,
         input: {
           text: "corrected",
           entryDate: "2026-07-16",
@@ -73,6 +96,7 @@ describe("retrySourceDocument", () => {
     expect(createPendingWithIntent).toHaveBeenCalledWith({
       ledgerId: ledger.id,
       sourceDocumentId: "doc-1",
+      expectedVersion: 1,
       inheritEvidence: true,
       supersedeProcessing: true,
       submittedText: "corrected",
@@ -88,6 +112,7 @@ describe("retrySourceDocument", () => {
           ledgerId: ledger.id,
           ledger,
           sourceDocumentId: "doc-1",
+          expectedVersion: 1,
           input: { images: [{ data: "raw", mimeType: "image/jpeg" }] },
         },
         { submissions: { createPendingWithIntent }, scheduleProcessing }

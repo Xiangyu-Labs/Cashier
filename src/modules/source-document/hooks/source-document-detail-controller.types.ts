@@ -1,6 +1,7 @@
 import type { useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type {
+  PartialBatchCommandResult,
   SourceDocument,
   SourceDocumentLight,
   SplitSourceDocumentInput,
@@ -35,7 +36,7 @@ export interface UseSourceDocumentDetailControllerOptions {
       description?: string;
     }
   ) => Promise<{ affectedCount: number } | undefined>;
-  onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
+  onBatchDeleteEntries: (ids: string[]) => Promise<PartialBatchCommandResult>;
   onAddEntry?: ((data: AddEntryData) => Promise<void>) | undefined;
   onDeleteEntry?: ((entryId: string) => Promise<void>) | undefined;
   onDelete?: (() => void | Promise<void>) | undefined;

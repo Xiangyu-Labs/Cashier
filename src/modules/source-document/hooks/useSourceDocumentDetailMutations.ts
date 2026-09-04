@@ -12,7 +12,10 @@ import type {
   SplitSourceDocumentInput,
   SplitSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
-import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
+import {
+  requireSourceDocumentVersion,
+  unwrapVersionedCommandResult,
+} from "@/modules/source-document/command-results";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
@@ -21,7 +24,8 @@ import type { BatchEntryUpdateData } from "./source-document-detail-cache";
 interface UseSourceDocumentDetailMutationsOptions {
   id: string;
   ledgerId: string | undefined;
-  version: number;
+  /** Read fresh at submission time — never captured ahead of the actual click. */
+  version: number | null;
   onClose: () => void;
 }
 
@@ -103,9 +107,10 @@ export function useSourceDocumentDetailMutations({
   const addEntryMutation = useLedgerMutation<{ ledgerEntryId: string }, AddEntryData>(ledgerId, {
     mutationFn: async (data: AddEntryData) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const expectedVersion = requireSourceDocumentVersion(version, id);
       const result = await createLedgerEntryAction(
         ledgerId,
-        { sourceDocumentId: id, expectedVersion: version },
+        { sourceDocumentId: id, expectedVersion },
         { sourceDocumentId: id, ...data, amount: String(data.amount) }
       );
       return unwrapVersionedCommandResult(result);
@@ -120,9 +125,10 @@ export function useSourceDocumentDetailMutations({
     {
       mutationFn: async (entryId: string) => {
         if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+        const expectedVersion = requireSourceDocumentVersion(version, id);
         const result = await deleteLedgerEntryAction(
           ledgerId,
-          { sourceDocumentId: id, expectedVersion: version },
+          { sourceDocumentId: id, expectedVersion },
           entryId
         );
         return unwrapVersionedCommandResult(result);
@@ -147,10 +153,7 @@ export function useSourceDocumentDetailMutations({
     },
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
-    batchDeleteEntries: async (entryIds: string[]) => {
-      const result = await batchDeleteMutation.mutateAsync(entryIds);
-      return [...result.stale, ...result.failed].map((item) => item.id);
-    },
+    batchDeleteEntries: (entryIds: string[]) => batchDeleteMutation.mutateAsync(entryIds),
     deleteDocument: async () => {
       await deleteDocumentMutation.mutateAsync();
     },

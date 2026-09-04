@@ -4,7 +4,12 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import type { useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
+import type {
+  PartialBatchCommandResult,
+  SourceDocument,
+  SourceDocumentLight,
+} from "@/modules/source-document/contracts";
+import { SourceDocumentStaleCommandError } from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentEntryBatchActionsOptions {
   busy: boolean;
@@ -32,7 +37,7 @@ interface UseSourceDocumentEntryBatchActionsOptions {
       description?: string;
     }
   ) => Promise<{ affectedCount: number } | undefined>;
-  onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
+  onBatchDeleteEntries: (ids: string[]) => Promise<PartialBatchCommandResult>;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -110,8 +115,12 @@ export function useSourceDocumentEntryBatchActions({
         const affectedCount = result?.affectedCount ?? 0;
         if (affectedCount > 0) toast.success(t("batchUpdateSuccess", { count: affectedCount }));
         clearSelection();
-      } catch {
-        toast.error(t("batchUpdateError"));
+      } catch (error) {
+        toast.error(
+          error instanceof SourceDocumentStaleCommandError
+            ? t("actionContextChanged")
+            : t("batchUpdateError")
+        );
       } finally {
         setIsSaving(false);
       }
@@ -133,12 +142,16 @@ export function useSourceDocumentEntryBatchActions({
     if (busy) return;
     setIsSaving(true);
     try {
-      const failed = await onBatchDeleteEntries(selectedIds);
-      if (failed.length === 0) clearSelection();
-      else retainSelection(failed);
-      const succeededCount = selectedIds.length - failed.length;
-      if (succeededCount > 0) toast.success(t("batchDeleteSuccess", { count: succeededCount }));
-      if (failed.length > 0) toast.error(t("batchDeletePartial", { count: failed.length }));
+      const result = await onBatchDeleteEntries(selectedIds);
+      const unresolved = [...result.stale, ...result.failed].map((item) => item.id);
+      if (unresolved.length === 0) clearSelection();
+      else retainSelection(unresolved);
+      if (result.succeeded.length > 0) {
+        toast.success(t("batchDeleteSuccess", { count: result.succeeded.length }));
+      }
+      if (unresolved.length > 0) {
+        toast.error(t("batchDeletePartial", { count: unresolved.length }));
+      }
       setShowBatchDeleteConfirm(false);
     } catch {
       toast.error(t("batchDeleteError"));

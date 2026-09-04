@@ -5,7 +5,10 @@ import type {
   SourceDocumentPort,
   SourceDocumentRevisionContract,
 } from "@/application/contracts";
-import { deriveSourceDocumentCapabilities } from "@/modules/source-document/application/source-document-state";
+import {
+  deriveSourceDocumentCapabilities,
+  transitionSourceDocument,
+} from "@/modules/source-document/application/source-document-state";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { MAX_FILES, MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
@@ -412,10 +415,14 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         )
         .returning({ id: sourceDocumentRevisions.id });
       if (updated.length === 0) return false;
+      const { state } = transitionSourceDocument(
+        { status: "processing", hasActiveResult: document.activeRevisionId != null },
+        { type: "processing_failed", outcome: input.outcome }
+      );
       await tx
         .update(sourceDocuments)
         .set({
-          currentStatus: input.outcome,
+          currentStatus: state.status,
           stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
           updatedAt: new Date(),
         })

@@ -3,12 +3,16 @@
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { VersionedCommandResult } from "@/modules/source-document/contracts";
-import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
+import {
+  requireSourceDocumentVersion,
+  unwrapVersionedCommandResult,
+} from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentRevisionDecisionMutationOptions<TResult> {
   ledgerId: string;
   sourceDocumentId: string;
-  expectedVersion: number;
+  /** Read fresh at submission time — never captured ahead of the actual click. */
+  expectedVersion: number | null;
   action: (
     ledgerId: string,
     sourceDocumentId: string,
@@ -32,7 +36,8 @@ export function useSourceDocumentRevisionDecisionMutation<TResult>({
 
   return useLedgerMutation<TResult, void>(ledgerId, {
     mutationFn: async () => {
-      const result = await action(ledgerId, sourceDocumentId, expectedVersion);
+      const version = requireSourceDocumentVersion(expectedVersion, sourceDocumentId);
+      const result = await action(ledgerId, sourceDocumentId, version);
       return unwrapVersionedCommandResult(result);
     },
     invalidationErrorMessage: tCommon("savedRefreshFailed"),

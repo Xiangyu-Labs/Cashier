@@ -9,9 +9,7 @@ import { NotFoundError } from "@/lib/errors";
 interface RevisionLifecycleInput {
   ledgerId: string;
   sourceDocumentId: string;
-  /** Internal compatibility only; browser transports never provide revision identity. */
-  revisionId?: string;
-  expectedVersion?: number;
+  expectedVersion: number;
 }
 
 export async function acceptSourceDocumentCandidate(

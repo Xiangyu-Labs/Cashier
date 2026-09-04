@@ -17,7 +17,10 @@ import type {
 } from "./source-document-input-controller.types";
 import { uploadSourceDocumentSubmissionImages } from "./source-document-submission-upload";
 import { useSubmitProgress } from "./source-document-submit-progress";
-import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
+import {
+  requireSourceDocumentVersion,
+  unwrapVersionedCommandResult,
+} from "@/modules/source-document/command-results";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -157,6 +160,12 @@ export function useSourceDocumentSubmitMutations({
     {
       mutationFn: async (variables: RetryVariables) => {
         if (sourceDocumentId == null) throw new Error("No source document ID for retry");
+        // Fail before uploading anything: a missing version must not upload
+        // files or call the action, and the form content stays intact for retry.
+        const expectedVersion = requireSourceDocumentVersion(
+          sourceDocumentVersion,
+          sourceDocumentId
+        );
         const { payload } = variables;
         const uploadedPayload = await uploadSourceDocumentSubmissionImages(
           ledgerId,
@@ -169,7 +178,7 @@ export function useSourceDocumentSubmitMutations({
           ledgerId,
           sourceDocumentId,
           uploadedPayload,
-          sourceDocumentVersion ?? 1
+          expectedVersion
         );
         return unwrapVersionedCommandResult(result);
       },

@@ -2,6 +2,7 @@ import type { SourceDocumentLifecyclePort } from "@/modules/source-document/appl
 import type { VersionedCommandResult } from "@/modules/source-document/contracts";
 import { versionedTargetSchema } from "@/modules/source-document/contract-schemas";
 import { StaleSourceDocumentVersionError } from "@/lib/errors";
+import { staleVersionedCommandResult } from "@/modules/source-document/application/versioned-command-result";
 import { serverComposition } from "@/application/server-composition-root";
 import { withSourceDocumentLedgerAccess } from "./access";
 
@@ -41,13 +42,7 @@ export function revisionLifecycleAction<TResult>(useCase: RevisionLifecycleUseCa
         };
       } catch (error) {
         if (error instanceof StaleSourceDocumentVersionError) {
-          return {
-            ok: false,
-            reason: "stale",
-            sourceDocumentId: error.sourceDocumentId,
-            expectedVersion: error.expectedVersion,
-            currentVersion: error.currentVersion,
-          };
+          return staleVersionedCommandResult<TResult>(error);
         }
         throw error;
       }

@@ -11,6 +11,7 @@ import type {
   SplitSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
+import { SourceDocumentStaleCommandError } from "@/modules/source-document/command-results";
 import type { AddEntryData } from "./useSourceDocumentDetailMutations";
 
 interface UseSourceDocumentEntryActionsOptions {
@@ -97,8 +98,12 @@ export function useSourceDocumentEntryActions({
               }),
           },
         });
-      } catch {
-        toast.error(t("splitFailed"));
+      } catch (error) {
+        toast.error(
+          error instanceof SourceDocumentStaleCommandError
+            ? t("actionContextChanged")
+            : t("splitFailed")
+        );
       } finally {
         setIsSplitting(false);
       }
@@ -128,8 +133,12 @@ export function useSourceDocumentEntryActions({
         await onAddEntry(data);
         toast.success(t("addEntrySuccess"));
         return true;
-      } catch {
-        toast.error(t("addEntryError"));
+      } catch (error) {
+        toast.error(
+          error instanceof SourceDocumentStaleCommandError
+            ? t("actionContextChanged")
+            : t("addEntryError")
+        );
         return false;
       } finally {
         setIsSaving(false);
@@ -146,14 +155,18 @@ export function useSourceDocumentEntryActions({
         await onDeleteEntry(entryId);
         toast.success(tCommon("deleteSuccess"));
         return true;
-      } catch {
-        toast.error(tCommon("deleteFailed"));
+      } catch (error) {
+        toast.error(
+          error instanceof SourceDocumentStaleCommandError
+            ? t("actionContextChanged")
+            : tCommon("deleteFailed")
+        );
         return false;
       } finally {
         setIsSaving(false);
       }
     },
-    [onDeleteEntry, busy, setIsSaving, tCommon]
+    [onDeleteEntry, busy, setIsSaving, t, tCommon]
   );
 
   const handleRequestDeleteEntry = useCallback(

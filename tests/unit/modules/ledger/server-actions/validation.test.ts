@@ -45,11 +45,6 @@ vi.mock("@/application/adapters/postgres/ledger-entry-idempotency", () => ({
   runIdempotentUserMutation: vi.fn((_input, mutation) => mutation()),
 }));
 
-vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
-  batchUpdateLedgerEntries: vi.fn(),
-  createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
-  updateLedgerEntryWithConversion: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/use-cases/create-entry-category", () => ({
   createEntryCategory: createEntryCategoryMock,
 }));
@@ -61,9 +56,6 @@ vi.mock("@/modules/ledger/application/use-cases/create-service-credential", () =
 }));
 vi.mock("@/modules/ledger/application/use-cases/delete-entry-category", () => ({
   deleteEntryCategory: vi.fn(),
-}));
-vi.mock("@/modules/ledger/application/use-cases/delete-ledger-entry", () => ({
-  deleteLedgerEntry: vi.fn(),
 }));
 vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
   deleteServiceCredential: deleteServiceCredentialMock,

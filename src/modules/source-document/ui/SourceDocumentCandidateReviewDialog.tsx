@@ -50,7 +50,7 @@ export function SourceDocumentCandidateReviewDialog({
     enabled: open,
     staleTime: 0,
   });
-  const version = reviewQuery.data?.version ?? 1;
+  const version = reviewQuery.data?.version ?? null;
   const recovery = useSourceDocumentRecoveryMutations({
     ledgerId,
     sourceDocumentId,

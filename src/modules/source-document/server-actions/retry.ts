@@ -73,8 +73,8 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
     sourceDocumentId: string,
-    input?: RetrySourceDocumentInputContract,
-    expectedVersion = 1
+    input: RetrySourceDocumentInputContract | undefined,
+    expectedVersion: number
   ): Promise<VersionedCommandResult<RetrySourceDocumentResponseDto>> => {
     const identity = versionedTargetSchema.parse({
       sourceDocumentId,

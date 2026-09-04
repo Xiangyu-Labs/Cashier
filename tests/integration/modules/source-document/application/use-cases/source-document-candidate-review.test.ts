@@ -17,6 +17,7 @@ import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persi
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
+import { StaleSourceDocumentVersionError } from "@/lib/errors";
 
 const activeEntry = {
   categoryId: null,
@@ -77,10 +78,18 @@ async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledg
   );
   expect(stored).toBe(true);
 
+  const documentVersion = await db.query.sourceDocuments
+    .findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+      columns: { stateVersion: true },
+    })
+    .then((row) => row!.stateVersion);
+
   return {
     sourceDocumentId: created.sourceDocumentId,
     originalActiveRevisionId,
     candidateRevisionId: pending.revision.id,
+    documentVersion,
   };
 }
 
@@ -133,14 +142,12 @@ describe("source document candidates", () => {
   it("abandons an existing candidate before creating a replacement retry", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-retry-replacement");
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
-      db,
-      ledgerId
-    );
+    const { sourceDocumentId, candidateRevisionId, documentVersion } =
+      await setupDocumentWithCandidate(db, ledgerId);
     const scheduleProcessing = vi.fn();
 
     await retrySourceDocument(
-      { ledgerId, sourceDocumentId },
+      { ledgerId, sourceDocumentId, expectedVersion: documentVersion },
       { submissions: postgresSourceDocumentSubmissionAdapter, scheduleProcessing }
     );
 
@@ -199,7 +206,7 @@ describe("source document candidates", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-accept");
 
-    const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+    const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId, documentVersion } =
       await setupDocumentWithCandidate(db, ledgerId);
 
     const pendingDocument = await db.query.sourceDocuments.findFirst({
@@ -212,8 +219,8 @@ describe("source document candidates", () => {
     expect(candidateRevision?.title).toBe("Updated Title");
 
     // Accept the candidate
-    const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
-    expect(accepted).toBe("completed");
+    const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, documentVersion);
+    expect(accepted).toMatchObject({ status: "completed", version: documentVersion + 1 });
 
     // Verify: document pointers updated
     const document = await db.query.sourceDocuments.findFirst({
@@ -245,28 +252,41 @@ describe("source document candidates", () => {
     expect(activeEntries[0]?.itemName).toBe("Dinner");
   });
 
-  it("accept candidate is idempotent when already accepted", async () => {
+  it("accept candidate: A/B stale-version matrix", async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "candidate-accept-idempotent");
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-accept-ab-matrix");
 
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
+    const { sourceDocumentId, documentVersion: staleVersion } = await setupDocumentWithCandidate(
       db,
       ledgerId
     );
 
-    // Accept once
-    await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
+    // A advances the document N -> N+1 by accepting the candidate.
+    const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, staleVersion);
+    expect(accepted).toMatchObject({ status: "completed", version: staleVersion + 1 });
 
-    // Accept again should be idempotent
-    const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
-    expect(accepted).toBe("completed");
+    // B holds the pre-accept version N. Its call is rejected as stale, with zero writes.
+    await expect(acceptCandidateRevision(ledgerId, sourceDocumentId, staleVersion)).rejects.toThrow(
+      StaleSourceDocumentVersionError
+    );
+    const afterStaleReplay = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    expect(afterStaleReplay?.stateVersion).toBe(staleVersion + 1);
+
+    // B refreshes to N+1 and retries: the candidate is already resolved (no
+    // pending revision left), so this reports a conflict rather than a silent
+    // no-op — accept is not idempotent once it has committed.
+    await expect(
+      acceptCandidateRevision(ledgerId, sourceDocumentId, staleVersion + 1)
+    ).rejects.toThrow("Cannot accept candidate");
   });
 
   it("abandons a candidate, preserving the original active projection", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-abandon");
 
-    const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+    const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId, documentVersion } =
       await setupDocumentWithCandidate(db, ledgerId);
 
     await db
@@ -275,12 +295,8 @@ describe("source document candidates", () => {
       .where(eq(sourceDocuments.id, sourceDocumentId));
 
     // Abandon the candidate
-    const abandoned = await abandonCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      candidateRevisionId
-    );
-    expect(abandoned).toBe(true);
+    const abandoned = await abandonCandidateRevision(ledgerId, sourceDocumentId, documentVersion);
+    expect(abandoned).toMatchObject({ status: "completed", version: documentVersion + 1 });
 
     // Verify: document pointers updated
     const document = await db.query.sourceDocuments.findFirst({
@@ -311,10 +327,8 @@ describe("source document candidates", () => {
   it("preserves the current title when accepting a candidate with an empty title", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-empty-title");
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
-      db,
-      ledgerId
-    );
+    const { sourceDocumentId, candidateRevisionId, documentVersion } =
+      await setupDocumentWithCandidate(db, ledgerId);
     await db
       .update(sourceDocumentRevisions)
       .set({ title: null })
@@ -324,7 +338,7 @@ describe("source document candidates", () => {
       .set({ title: "Current title" })
       .where(eq(sourceDocuments.id, sourceDocumentId));
 
-    await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
+    await acceptCandidateRevision(ledgerId, sourceDocumentId, documentVersion);
 
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
@@ -332,49 +346,52 @@ describe("source document candidates", () => {
     expect(document?.title).toBe("Current title");
   });
 
-  it("abandon candidate is idempotent when already abandoned", async () => {
+  it("abandoning an already-abandoned candidate reports stale or conflict, never a silent replay", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-abandon-idempotent");
 
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
+    const { sourceDocumentId, documentVersion: staleVersion } = await setupDocumentWithCandidate(
       db,
       ledgerId
     );
 
-    // Abandon once
-    await abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
+    // Abandon once, advancing N -> N+1.
+    await abandonCandidateRevision(ledgerId, sourceDocumentId, staleVersion);
 
-    // Abandon again should be idempotent
-    const abandoned = await abandonCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      candidateRevisionId
-    );
-    expect(abandoned).toBe(true);
+    // A stale replay at the pre-abandon version N is rejected, zero writes.
+    await expect(
+      abandonCandidateRevision(ledgerId, sourceDocumentId, staleVersion)
+    ).rejects.toThrow(StaleSourceDocumentVersionError);
+
+    // Refreshing to the current version N+1, there is no pending candidate left
+    // to abandon, so this reports a conflict rather than a silent no-op.
+    await expect(
+      abandonCandidateRevision(ledgerId, sourceDocumentId, staleVersion + 1)
+    ).rejects.toThrow("Cannot abandon candidate");
   });
 
-  it("throws ConflictError on accept with stale candidate revision ID", async () => {
+  it("throws a stale-version error on accept with an incorrect expected version", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-stale-accept");
 
-    const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
+    const { sourceDocumentId, documentVersion } = await setupDocumentWithCandidate(db, ledgerId);
 
-    // Try to accept with a wrong revision ID — now throws ConflictError under the lock.
+    // An expected version that does not match the document's current version
+    // is rejected before any pointer is even inspected.
     await expect(
-      acceptCandidateRevision(ledgerId, sourceDocumentId, crypto.randomUUID())
-    ).rejects.toThrow("Cannot accept candidate");
+      acceptCandidateRevision(ledgerId, sourceDocumentId, documentVersion + 1)
+    ).rejects.toThrow(StaleSourceDocumentVersionError);
   });
 
-  it("throws ConflictError on abandon with stale candidate revision ID", async () => {
+  it("throws a stale-version error on abandon with an incorrect expected version", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-stale-abandon");
 
-    const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
+    const { sourceDocumentId, documentVersion } = await setupDocumentWithCandidate(db, ledgerId);
 
-    // Try to abandon with a wrong revision ID — now throws ConflictError under the lock.
     await expect(
-      abandonCandidateRevision(ledgerId, sourceDocumentId, crypto.randomUUID())
-    ).rejects.toThrow("Cannot abandon candidate");
+      abandonCandidateRevision(ledgerId, sourceDocumentId, documentVersion + 1)
+    ).rejects.toThrow(StaleSourceDocumentVersionError);
   });
 
   it("read model derives candidate_pending status", async () => {
@@ -405,17 +422,15 @@ describe("source document candidates", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-accept-then-abandon");
 
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
-      db,
-      ledgerId
-    );
+    const { sourceDocumentId, documentVersion } = await setupDocumentWithCandidate(db, ledgerId);
 
     // Accept first
-    await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
+    await acceptCandidateRevision(ledgerId, sourceDocumentId, documentVersion);
 
-    // Try to abandon after accept — throws ConflictError because pendingRevisionId is already cleared.
+    // Try to abandon after accept, at the post-accept version — throws
+    // ConflictError because pendingRevisionId is already cleared.
     await expect(
-      abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId)
+      abandonCandidateRevision(ledgerId, sourceDocumentId, documentVersion + 1)
     ).rejects.toThrow("Cannot abandon candidate");
   });
 

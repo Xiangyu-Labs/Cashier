@@ -11,11 +11,23 @@ export type SourceDocumentStateEvent =
   | { type: "processing_succeeded"; duplicate: boolean }
   | { type: "processing_candidate_succeeded" }
   | { type: "processing_failed"; outcome: "anomaly" | "failed" }
-  | { type: "cancel_processing" }
+  | { type: "cancel_processing"; activeDuplicateReviewPending: boolean }
   | { type: "accept_candidate"; duplicate: boolean }
-  | { type: "abandon_candidate" }
+  | { type: "abandon_candidate"; activeDuplicateReviewPending: boolean }
   | { type: "keep_duplicate" }
   | { type: "discard_duplicate" };
+
+/**
+ * `disposition` separates "what the row's logical status is" from "whether
+ * the row stays visible". `discard_duplicate` never produces a `completed`
+ * status — the underlying document is soft-deleted, and its `currentStatus`
+ * column is deliberately left untouched by the write path, so the state here
+ * is unchanged from the input and only the disposition flips.
+ */
+export interface SourceDocumentTransitionResult {
+  state: SourceDocumentState;
+  disposition: "active" | "soft_deleted";
+}
 
 export function deriveSourceDocumentCapabilities(input: SourceDocumentState): {
   canEdit: boolean;
@@ -70,37 +82,59 @@ function invalidTransition(state: SourceDocumentState, event: SourceDocumentStat
 export function transitionSourceDocument(
   current: SourceDocumentState,
   event: SourceDocumentStateEvent
-): SourceDocumentState {
+): SourceDocumentTransitionResult {
   switch (event.type) {
     case "install_retry":
-      return { status: "processing", hasActiveResult: current.hasActiveResult };
+      return {
+        state: { status: "processing", hasActiveResult: current.hasActiveResult },
+        disposition: "active",
+      };
     case "processing_succeeded":
       if (current.status !== "processing" || current.hasActiveResult) {
         return invalidTransition(current, event);
       }
       return {
-        status: event.duplicate ? "duplicate_pending" : "completed",
-        hasActiveResult: true,
+        state: {
+          status: event.duplicate ? "duplicate_pending" : "completed",
+          hasActiveResult: true,
+        },
+        disposition: "active",
       };
     case "processing_candidate_succeeded":
       if (current.status !== "processing" || !current.hasActiveResult) {
         return invalidTransition(current, event);
       }
-      return { status: "candidate_pending", hasActiveResult: true };
+      return {
+        state: { status: "candidate_pending", hasActiveResult: true },
+        disposition: "active",
+      };
     case "processing_failed":
       if (current.status !== "processing") return invalidTransition(current, event);
-      return { status: event.outcome, hasActiveResult: current.hasActiveResult };
+      return {
+        state: { status: event.outcome, hasActiveResult: current.hasActiveResult },
+        disposition: "active",
+      };
     case "cancel_processing":
       if (current.status !== "processing") return invalidTransition(current, event);
       return {
-        status: current.hasActiveResult ? "completed" : "cancelled",
-        hasActiveResult: current.hasActiveResult,
+        state: {
+          status: current.hasActiveResult
+            ? event.activeDuplicateReviewPending
+              ? "duplicate_pending"
+              : "completed"
+            : "cancelled",
+          hasActiveResult: current.hasActiveResult,
+        },
+        disposition: "active",
       };
     case "accept_candidate":
       if (current.status !== "candidate_pending") return invalidTransition(current, event);
       return {
-        status: event.duplicate ? "duplicate_pending" : "completed",
-        hasActiveResult: true,
+        state: {
+          status: event.duplicate ? "duplicate_pending" : "completed",
+          hasActiveResult: true,
+        },
+        disposition: "active",
       };
     case "abandon_candidate":
       if (
@@ -109,12 +143,21 @@ export function transitionSourceDocument(
       ) {
         return invalidTransition(current, event);
       }
-      return { status: "completed", hasActiveResult: true };
+      return {
+        state: {
+          status: event.activeDuplicateReviewPending ? "duplicate_pending" : "completed",
+          hasActiveResult: true,
+        },
+        disposition: "active",
+      };
     case "keep_duplicate":
       if (current.status !== "duplicate_pending") return invalidTransition(current, event);
-      return { status: "completed", hasActiveResult: true };
+      return {
+        state: { status: "completed", hasActiveResult: true },
+        disposition: "active",
+      };
     case "discard_duplicate":
       if (current.status !== "duplicate_pending") return invalidTransition(current, event);
-      return { status: "completed", hasActiveResult: true };
+      return { state: current, disposition: "soft_deleted" };
   }
 }

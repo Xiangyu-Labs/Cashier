@@ -70,9 +70,19 @@ describe("source document mutation toast ownership", () => {
 
   it("reports list deletion success and failure exactly once", async () => {
     const clearSelection = vi.fn();
-    const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", clearSelection), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () =>
+        useBatchSourceDocumentActions(
+          "ledger-1",
+          clearSelection,
+          undefined,
+          new Map([
+            ["document-1", 1],
+            ["document-2", 1],
+          ])
+        ),
+      { wrapper: createWrapper() }
+    );
 
     deleteSourceDocumentActionMock.mockResolvedValueOnce({
       ok: true,
@@ -112,9 +122,16 @@ describe("source document mutation toast ownership", () => {
       data: { sourceDocumentId: "document-1", deleted: true },
     });
     const clearSelection = vi.fn();
-    const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", clearSelection), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderHook(
+      () =>
+        useBatchSourceDocumentActions(
+          "ledger-1",
+          clearSelection,
+          undefined,
+          new Map([["document-1", 1]])
+        ),
+      { wrapper: createWrapper(queryClient) }
+    );
 
     let mutation!: Promise<void>;
     act(() => {
@@ -144,9 +161,11 @@ describe("source document mutation toast ownership", () => {
       version: 2,
       data: { sourceDocumentId: "document-1", deleted: true },
     });
-    const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", vi.fn()), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderHook(
+      () =>
+        useBatchSourceDocumentActions("ledger-1", vi.fn(), undefined, new Map([["document-1", 1]])),
+      { wrapper: createWrapper(queryClient) }
+    );
 
     await act(async () => {
       await result.current.deleteSourceDocument.mutateAsync("document-1");
@@ -186,7 +205,7 @@ describe("source document mutation toast ownership", () => {
 
     expect(clearSelection).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();
-    expect(toastErrorMock).toHaveBeenCalledWith("error");
+    expect(toastErrorMock).toHaveBeenCalledWith("selectionChanged");
   });
 
   it("runs candidate success feedback before refresh settles and remains pending", async () => {

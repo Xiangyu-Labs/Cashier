@@ -10,12 +10,16 @@ import {
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useSourceDocumentRevisionDecisionMutation } from "./useSourceDocumentRevisionDecisionMutation";
-import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
+import {
+  requireSourceDocumentVersion,
+  unwrapVersionedCommandResult,
+} from "@/modules/source-document/command-results";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
   ledgerId: string;
   sourceDocumentId: string;
-  version: number;
+  /** Read fresh at submission time — never captured ahead of the actual click. */
+  version: number | null;
   onSuccess?: () => void;
 }
 
@@ -71,7 +75,8 @@ export function useSourceDocumentRecoveryMutations({
 
   const retryMutation = useLedgerMutation<unknown, void>(ledgerId, {
     mutationFn: async () => {
-      const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId, version);
+      const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
+      const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId, expectedVersion);
       return unwrapVersionedCommandResult(result);
     },
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
@@ -84,10 +89,11 @@ export function useSourceDocumentRecoveryMutations({
 
   const cancelMutation = useLedgerMutation<unknown, void>(ledgerId, {
     mutationFn: async () => {
+      const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
       const result = await cancelSourceDocumentProcessingAction(
         ledgerId,
         sourceDocumentId,
-        version
+        expectedVersion
       );
       return unwrapVersionedCommandResult(result);
     },

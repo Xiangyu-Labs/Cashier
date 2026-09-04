@@ -35,11 +35,6 @@ vi.mock("@/modules/ledger/access", () => ({
       handler({ userId: "00000000-0000-4000-8000-000000000001" }, ledgerId, ...args),
 }));
 
-vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
-  batchUpdateLedgerEntries: batchUpdateLedgerEntriesMock,
-  createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
-  updateLedgerEntryWithConversion: updateLedgerEntryWithConversionMock,
-}));
 vi.mock("@/application/server-composition-root", () => ({
   serverComposition: {
     ledgerEntryCommands: {
@@ -50,7 +45,6 @@ vi.mock("@/application/server-composition-root", () => ({
     sourceDocumentAggregate: {
       batchUpdateEntries: batchUpdateLedgerEntriesMock,
     },
-    ledgerMutations: {},
     categories: {},
     ledgerReads: {},
     ledgerEntryDates: {},
@@ -73,9 +67,6 @@ vi.mock("@/modules/ledger/application/use-cases/delete-entry-category", () => ({
 }));
 vi.mock("@/modules/ledger/application/use-cases/delete-ledger", () => ({
   deleteLedger: vi.fn(),
-}));
-vi.mock("@/modules/ledger/application/use-cases/delete-ledger-entry", () => ({
-  deleteLedgerEntry: vi.fn(),
 }));
 vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
   deleteServiceCredential: vi.fn(),

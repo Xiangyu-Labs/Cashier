@@ -15,7 +15,11 @@ import type {
 } from "@/modules/source-document/contract-schemas";
 import { postgresFxRateBook } from "./exchange-rate";
 import { replaceActiveProjectionInTransaction } from "./ledger-projections";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import {
+  lockLedgerForUpdate,
+  lockSourceDocumentForUpdate,
+  lockSourceDocumentsForUpdate,
+} from "./transaction-locks";
 import type { UpdateLedgerEntryInput } from "@/modules/ledger/contract-schemas";
 import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
 
@@ -317,12 +321,6 @@ export async function batchUpdateSourceDocuments({
   const expectedVersions = new Map(
     targets.map((target) => [target.sourceDocumentId, target.expectedVersion] as const)
   );
-  const updatePatch = {
-    updatedAt: new Date(),
-    stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
-    ...(data.title !== undefined ? { title: data.title } : {}),
-    ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
-  };
 
   const initialDocuments =
     data.entryDate === undefined
@@ -359,26 +357,14 @@ export async function batchUpdateSourceDocuments({
       await lockLedgerForUpdate(tx, ledgerId);
     }
 
-    const documents = await tx
-      .select({
-        id: sourceDocuments.id,
-        type: sourceDocuments.type,
-        activeRevisionId: sourceDocuments.activeRevisionId,
-        pendingRevisionId: sourceDocuments.pendingRevisionId,
-        stateVersion: sourceDocuments.stateVersion,
-      })
-      .from(sourceDocuments)
-      .where(
-        and(
-          eq(sourceDocuments.ledgerId, ledgerId),
-          inArray(sourceDocuments.id, requestedIds),
-          isNull(sourceDocuments.deletedAt)
-        )
-      )
-      .orderBy(asc(sourceDocuments.id))
-      .for("update");
-    if (documents.length !== requestedIds.length) {
-      throw new ConflictError("Source documents changed before the batch edit");
+    let documents: Array<typeof sourceDocuments.$inferSelect>;
+    try {
+      documents = await lockSourceDocumentsForUpdate(tx, ledgerId, requestedIds);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw new ConflictError("Source documents changed before the batch edit");
+      }
+      throw error;
     }
     const staleTargets = documents.flatMap((document) => {
       const expectedVersion = expectedVersions.get(document.id)!;
@@ -392,7 +378,9 @@ export async function batchUpdateSourceDocuments({
             },
           ];
     });
-    if (staleTargets.length > 0) return { updated: [], staleTargets };
+    if (staleTargets.length > 0) {
+      return { changedIds: new Set<string>(), impact: undefined, staleTargets };
+    }
 
     let impact: BatchEntryDateImpact | undefined;
     if (selectedLedgerEntryIds != null) {
@@ -481,18 +469,29 @@ export async function batchUpdateSourceDocuments({
       const conversionByEntryId = new Map(
         projectionEntries.map((entry, index) => [entry.id, plan.conversions[index]!] as const)
       );
-      for (const document of documents) {
+      // Every requested document must be in a valid state for the batch to
+      // commit — but only documents whose title or date actually changes get
+      // a new revision; a document already at the target date/title is a
+      // true no-op and keeps its current version untouched.
+      const changedDocuments = documents.filter((document) => {
         if (document.activeRevisionId == null || document.pendingRevisionId != null) {
           throw new ConflictError("Source document has processing work");
         }
+        return (
+          (data.title !== undefined && data.title !== document.title) ||
+          data.entryDate !== document.entryDate
+        );
+      });
+      for (const document of changedDocuments) {
         const entries = projectionEntries.filter((entry) => entry.sourceDocumentId === document.id);
         await replaceActiveProjectionInTransaction(tx, {
           ledgerId,
           sourceDocumentId: document.id,
-          expectedActiveRevisionId: document.activeRevisionId,
+          expectedActiveRevisionId: document.activeRevisionId!,
+          expectedStateVersion: document.stateVersion,
           revisionId: crypto.randomUUID(),
-          incrementVersion: false,
           entryDate: data.entryDate!,
+          ...(data.title === undefined ? {} : { title: data.title }),
           entries: entries.map((entry) => {
             const conversion = conversionByEntryId.get(entry.id);
             if (conversion == null) {
@@ -502,19 +501,45 @@ export async function batchUpdateSourceDocuments({
           }),
         });
       }
+      return {
+        changedIds: new Set(changedDocuments.map((document) => document.id)),
+        impact,
+        staleTargets: [],
+      };
     }
 
-    const updated = await tx
-      .update(sourceDocuments)
-      .set(updatePatch)
-      .where(
-        and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, requestedIds))
-      )
-      .returning({ id: sourceDocuments.id });
-    if (updated.length !== requestedIds.length) {
-      throw new ConflictError("Source documents changed during the batch edit");
+    // Title-only batch: only documents whose title actually differs get a
+    // single-writer `+1`; documents already at the target title are no-ops.
+    const changedDocuments = documents.filter(
+      (document) => data.title !== undefined && data.title !== document.title
+    );
+    if (changedDocuments.length > 0) {
+      const updated = await tx
+        .update(sourceDocuments)
+        .set({
+          title: data.title,
+          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            whereSourceDocumentNotDeleted(ledgerId),
+            inArray(
+              sourceDocuments.id,
+              changedDocuments.map((document) => document.id)
+            )
+          )
+        )
+        .returning({ id: sourceDocuments.id });
+      if (updated.length !== changedDocuments.length) {
+        throw new ConflictError("Source documents changed during the batch edit");
+      }
     }
-    return { updated, impact, staleTargets: [] };
+    return {
+      changedIds: new Set(changedDocuments.map((document) => document.id)),
+      impact,
+      staleTargets: [],
+    };
   });
 
   if (transactionResult.staleTargets.length > 0) {
@@ -529,11 +554,13 @@ export async function batchUpdateSourceDocuments({
     ok: true as const,
     versions: targets.map((target) => ({
       sourceDocumentId: target.sourceDocumentId,
-      version: target.expectedVersion + 1,
+      version: transactionResult.changedIds.has(target.sourceDocumentId)
+        ? target.expectedVersion + 1
+        : target.expectedVersion,
     })),
     data: {
       sourceDocumentIds: requestedIds,
-      updatedCount: transactionResult.updated.length,
+      updatedCount: transactionResult.changedIds.size,
       ...(transactionResult.impact == null ? {} : { impact: transactionResult.impact }),
     },
   };

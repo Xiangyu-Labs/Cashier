@@ -59,7 +59,7 @@ export function SourceDocumentDetailWrapper({
   } = useSourceDocumentDetailMutations({
     id,
     ledgerId,
-    version: sourceDocument?.version ?? 1,
+    version: sourceDocument?.version ?? null,
     onClose,
   });
 
@@ -73,7 +73,7 @@ export function SourceDocumentDetailWrapper({
   } = useSourceDocumentRecoveryMutations({
     ledgerId: detailLedgerId ?? ledgerId,
     sourceDocumentId: id,
-    version: sourceDocument?.version ?? 1,
+    version: sourceDocument?.version ?? null,
     onSuccess: onClose,
   });
 

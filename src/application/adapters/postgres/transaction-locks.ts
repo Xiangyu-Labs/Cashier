@@ -1,7 +1,7 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ledgers, sourceDocuments } from "@/persistence";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 
 /** Drizzle transaction client type used by all Postgres adapters. */
 export type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -64,4 +64,44 @@ export async function lockSourceDocumentForUpdate(
   }
 
   return rows[0]!;
+}
+
+/**
+ * Acquire `FOR UPDATE` row locks on multiple source-document rows in a single
+ * query, always in ascending ID order — the fixed order is what prevents
+ * deadlocks when several transactions lock overlapping document sets.
+ * Throws {@link ValidationError} for a duplicate ID (a programming error: no
+ * caller ever legitimately targets the same document twice in one command)
+ * and {@link NotFoundError} when any requested document does not exist, is
+ * soft-deleted, or does not belong to `ledgerId`.
+ */
+export async function lockSourceDocumentsForUpdate(
+  tx: PostgresTransaction,
+  ledgerId: string,
+  sourceDocumentIds: readonly string[]
+): Promise<Array<typeof sourceDocuments.$inferSelect>> {
+  const uniqueIds = new Set(sourceDocumentIds);
+  if (uniqueIds.size !== sourceDocumentIds.length) {
+    throw new ValidationError("A source document may only be locked once per command");
+  }
+  const orderedIds = [...uniqueIds].sort();
+
+  const rows = await tx
+    .select()
+    .from(sourceDocuments)
+    .where(
+      and(
+        eq(sourceDocuments.ledgerId, ledgerId),
+        inArray(sourceDocuments.id, orderedIds),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .orderBy(asc(sourceDocuments.id))
+    .for("update");
+
+  if (rows.length !== orderedIds.length) {
+    throw new NotFoundError("Source document");
+  }
+
+  return rows;
 }

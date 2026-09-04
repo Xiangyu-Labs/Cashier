@@ -9,8 +9,6 @@ import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/l
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStatsQuery } from "@/modules/stats/application/queries/get-enhanced-stats";
 import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
-import { updateLedgerEntryWithConversion as updateLedgerEntryWithConversionUseCase } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
-import { deleteLedgerEntry as deleteLedgerEntryUseCase } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
 import { serverComposition } from "@/application/server-composition-root";
 import {
   entryCategories,
@@ -31,11 +29,15 @@ const calculateLedgerStats = (
   ledgerId: string,
   query: Parameters<typeof calculateLedgerStatsUseCase>[1] = {}
 ) => calculateLedgerStatsUseCase(ledgerId, query, serverComposition.ledgerReads);
-const updateLedgerEntryWithConversion = (
-  input: Parameters<typeof updateLedgerEntryWithConversionUseCase>[0]
-) => updateLedgerEntryWithConversionUseCase(input, serverComposition.ledgerMutations);
-const deleteLedgerEntry = (ledgerId: string, entryId: string) =>
-  deleteLedgerEntryUseCase(ledgerId, entryId, serverComposition.ledgerMutations);
+async function currentVersion(sourceDocumentId: string): Promise<number> {
+  const db = getTestDb();
+  const row = await db.query.sourceDocuments.findFirst({
+    where: eq(sourceDocuments.id, sourceDocumentId),
+    columns: { stateVersion: true },
+  });
+  if (row == null) throw new Error("Source document not found");
+  return row.stateVersion;
+}
 const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
   listStreamPageUseCase(ledgerId, input, {
     documents: serverComposition.sourceDocumentReads,
@@ -356,9 +358,11 @@ describe("target upper workflows", () => {
         isNull(ledgerEntries.deletedAt)
       ),
     });
+    const initialVersion = await currentVersion(created.sourceDocumentId);
 
-    const updated = await updateLedgerEntryWithConversion({
+    const updated = await serverComposition.ledgerEntryCommands.update({
       ledgerId,
+      target: { sourceDocumentId: created.sourceDocumentId, expectedVersion: initialVersion },
       ledgerEntryId: original!.id,
       amount: "18",
     });
@@ -378,8 +382,9 @@ describe("target upper workflows", () => {
       ),
     });
 
-    expect(updated).toMatchObject({ id: original!.id, amount: "18.000" });
+    expect(updated).toMatchObject({ ok: true, data: { ledgerEntryId: original!.id } });
     expect(document?.activeRevisionId).not.toBe(created.revisionId);
+    expect(document?.stateVersion).toBe(initialVersion + 1);
     expect(revisions).toHaveLength(2);
     expect(active).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(archived).toHaveLength(1);
@@ -416,8 +421,10 @@ describe("target upper workflows", () => {
       ),
     });
 
-    await updateLedgerEntryWithConversion({
+    const versionBeforeUpdate = await currentVersion(pending.document.id);
+    await serverComposition.ledgerEntryCommands.update({
       ledgerId,
+      target: { sourceDocumentId: pending.document.id, expectedVersion: versionBeforeUpdate },
       ledgerEntryId: original!.id,
       amount: "18",
     });
@@ -433,8 +440,12 @@ describe("target upper workflows", () => {
     expect(stats.convertedTotal).toEqual({ total: "18", currency: "CNY" });
 
     await expect(
-      updateLedgerEntryWithConversion({
+      serverComposition.ledgerEntryCommands.update({
         ledgerId,
+        target: {
+          sourceDocumentId: pending.document.id,
+          expectedVersion: afterUpdate!.stateVersion,
+        },
         ledgerEntryId: original!.id,
         categoryId: otherCategory!.id,
       })
@@ -445,17 +456,30 @@ describe("target upper workflows", () => {
     expect(afterRollback?.activeRevisionId).toBe(afterUpdate?.activeRevisionId);
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(revisionCount);
     await expect(
-      updateLedgerEntryWithConversion({
+      serverComposition.ledgerEntryCommands.update({
         ledgerId: otherLedgerId,
+        target: {
+          sourceDocumentId: pending.document.id,
+          expectedVersion: afterUpdate!.stateVersion,
+        },
         ledgerEntryId: original!.id,
         amount: "99",
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
-    await expect(deleteLedgerEntry(ledgerId, original!.id)).resolves.toEqual({
-      ledgerEntryId: original!.id,
-      deleted: true,
-      sourceDocumentId: expect.any(String),
+    await expect(
+      serverComposition.ledgerEntryCommands.delete({
+        ledgerId,
+        target: {
+          sourceDocumentId: pending.document.id,
+          expectedVersion: afterUpdate!.stateVersion,
+        },
+        ledgerEntryId: original!.id,
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      sourceDocumentId: pending.document.id,
+      data: { ledgerEntryId: original!.id, deleted: true },
     });
     await expect(listLedgerEntries(ledgerId, { limit: 20 })).resolves.toMatchObject({ items: [] });
     await expect(getLedgerEntryDetail(original!.id, ledgerId)).resolves.toBeNull();

@@ -15,6 +15,8 @@ import type {
 } from "@/modules/source-document/contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
+  requireSourceDocumentVersion,
+  SourceDocumentStaleCommandError,
   unwrapAtomicBatchCommandResult,
   unwrapVersionedCommandResult,
 } from "@/modules/source-document/command-results";
@@ -33,14 +35,16 @@ function getDuplicateBatchVariables(variables: DuplicateBatchVariables) {
 export function useBatchSourceDocumentActions(
   ledgerId: string,
   clearSelection: () => void,
-  retainSelection?: (ids: string[]) => void,
-  versions: ReadonlyMap<string, number> = new Map()
+  retainSelection: ((ids: string[]) => void) | undefined,
+  versions: ReadonlyMap<string, number>
 ) {
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
+  const versionFor = (sourceDocumentId: string) =>
+    requireSourceDocumentVersion(versions.get(sourceDocumentId), sourceDocumentId);
   const deleteSourceDocument = useLedgerMutation<void, string>(ledgerId, {
     mutationFn: async (id: string) => {
-      const result = await deleteSourceDocumentAction(ledgerId, id, versions.get(id) ?? 1);
+      const result = await deleteSourceDocumentAction(ledgerId, id, versionFor(id));
       unwrapVersionedCommandResult(result);
     },
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
@@ -59,7 +63,7 @@ export function useBatchSourceDocumentActions(
       const result = await batchUpdateSourceDocumentsAction(ledgerId, {
         targets: ids.map((sourceDocumentId) => ({
           sourceDocumentId,
-          expectedVersion: versions.get(sourceDocumentId) ?? 1,
+          expectedVersion: versionFor(sourceDocumentId),
         })),
         data: { entryDate },
       });
@@ -70,8 +74,12 @@ export function useBatchSourceDocumentActions(
       toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
       clearSelection();
     },
-    onError: () => {
-      toast.error(tCommon("error"));
+    onError: (error) => {
+      toast.error(
+        error instanceof SourceDocumentStaleCommandError
+          ? tBatch("selectionChanged")
+          : tCommon("error")
+      );
     },
   });
 
@@ -99,7 +107,7 @@ export function useBatchSourceDocumentActions(
   const targetsFor = (ids: string[]): VersionedTarget[] =>
     ids.map((sourceDocumentId) => ({
       sourceDocumentId,
-      expectedVersion: versions.get(sourceDocumentId) ?? 1,
+      expectedVersion: versionFor(sourceDocumentId),
     }));
 
   const batchDelete = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {

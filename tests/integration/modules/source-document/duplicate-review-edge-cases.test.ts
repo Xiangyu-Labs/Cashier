@@ -18,6 +18,18 @@ import { duplicateReviews, ledgers, sourceDocumentRevisions, sourceDocuments } f
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
+async function currentVersion(
+  db: ReturnType<typeof getTestDb>,
+  sourceDocumentId: string
+): Promise<number> {
+  const row = await db.query.sourceDocuments.findFirst({
+    where: eq(sourceDocuments.id, sourceDocumentId),
+    columns: { stateVersion: true },
+  });
+  if (row == null) throw new Error("Source document not found");
+  return row.stateVersion;
+}
+
 const entry = {
   categoryId: null,
   amount: "38.00",
@@ -188,11 +200,19 @@ describe("duplicate review edge cases", () => {
 
     // Keep and discard both remain executable against the stable snapshot.
     await expect(
-      activateDuplicatePendingRevision(ledgerId, b.sourceDocumentId, b.revisionId)
-    ).resolves.toBe(true);
+      activateDuplicatePendingRevision(
+        ledgerId,
+        b.sourceDocumentId,
+        await currentVersion(db, b.sourceDocumentId)
+      )
+    ).resolves.toMatchObject({ status: "completed" });
     await expect(
-      discardDuplicatePendingRevision(ledgerId, b2.sourceDocumentId, b2.revisionId)
-    ).resolves.toBe(true);
+      discardDuplicatePendingRevision(
+        ledgerId,
+        b2.sourceDocumentId,
+        await currentVersion(db, b2.sourceDocumentId)
+      )
+    ).resolves.toMatchObject({ status: "deleted" });
   });
 
   it("shows the detection-time revision after A is modified by a retry", async () => {
@@ -214,9 +234,10 @@ describe("duplicate review edge cases", () => {
     await storeCandidateRevision(ledgerId, a.sourceDocumentId, aRetry.revisionId, "Updated A", [
       entry,
     ]);
-    expect(await acceptCandidateRevision(ledgerId, a.sourceDocumentId, aRetry.revisionId)).toBe(
-      "completed"
-    );
+    const aVersion = await currentVersion(db, a.sourceDocumentId);
+    expect(await acceptCandidateRevision(ledgerId, a.sourceDocumentId, aVersion)).toMatchObject({
+      status: "completed",
+    });
 
     const aDocument = await findDocument(db, a.sourceDocumentId);
     expect(aDocument?.activeRevisionId).toBe(aRetry.revisionId);
@@ -318,7 +339,11 @@ describe("duplicate review edge cases", () => {
     expect((await findReview(db, b.sourceDocumentId, retry.revisionId))?.status).toBe("staged");
     expect((await findReview(db, b.sourceDocumentId, b.revisionId))?.status).toBe("pending");
 
-    await abandonCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId);
+    await abandonCandidateRevision(
+      ledgerId,
+      b.sourceDocumentId,
+      await currentVersion(db, b.sourceDocumentId)
+    );
 
     document = await findDocument(db, b.sourceDocumentId);
     expect(document?.currentStatus).toBe("duplicate_pending");
@@ -350,9 +375,13 @@ describe("duplicate review edge cases", () => {
     await storeCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId, "Fixed parse", [
       entry,
     ]);
-    expect(await acceptCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId)).toBe(
-      "completed"
-    );
+    expect(
+      await acceptCandidateRevision(
+        ledgerId,
+        b.sourceDocumentId,
+        await currentVersion(db, b.sourceDocumentId)
+      )
+    ).toMatchObject({ status: "completed" });
 
     const document = await findDocument(db, b.sourceDocumentId);
     expect(document?.activeRevisionId).toBe(retry.revisionId);
@@ -387,9 +416,13 @@ describe("duplicate review edge cases", () => {
       undefined,
       reviewSnapshot(a, { reason: "Retry verdict", confidence: 0.9 })
     );
-    expect(await acceptCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId)).toBe(
-      "duplicate_pending"
-    );
+    expect(
+      await acceptCandidateRevision(
+        ledgerId,
+        b.sourceDocumentId,
+        await currentVersion(db, b.sourceDocumentId)
+      )
+    ).toMatchObject({ status: "duplicate_pending" });
 
     const document = await findDocument(db, b.sourceDocumentId);
     expect(document?.activeRevisionId).toBe(retry.revisionId);
@@ -421,9 +454,15 @@ describe("duplicate review edge cases", () => {
       reviewSnapshot(a, { reason: "Same bill", confidence: 0.9 })
     );
 
-    const retry = await createRetry(db, ledgerId, b.sourceDocumentId);
-    const cancelled = await cancelPendingRevision(ledgerId, b.sourceDocumentId, retry.revisionId);
-    expect(cancelled.status).toBe("cancelled");
+    await createRetry(db, ledgerId, b.sourceDocumentId);
+    // The pending revision being cancelled is itself "cancelled", but the
+    // document's own status restores to the still-pending duplicate review.
+    const cancelled = await cancelPendingRevision(
+      ledgerId,
+      b.sourceDocumentId,
+      await currentVersion(db, b.sourceDocumentId)
+    );
+    expect(cancelled.status).toBe("duplicate_pending");
 
     let document = await findDocument(db, b.sourceDocumentId);
     expect(document?.activeRevisionId).toBe(b.revisionId);
@@ -454,7 +493,11 @@ describe("duplicate review edge cases", () => {
     expect(document?.currentStatus).toBe("failed");
     expect((await findReview(db, b2.sourceDocumentId, b2.revisionId))?.status).toBe("pending");
 
-    await abandonCandidateRevision(ledgerId, b2.sourceDocumentId, failedRetry.revisionId);
+    await abandonCandidateRevision(
+      ledgerId,
+      b2.sourceDocumentId,
+      await currentVersion(db, b2.sourceDocumentId)
+    );
     document = await findDocument(db, b2.sourceDocumentId);
     expect(document?.currentStatus).toBe("duplicate_pending");
     expect(document?.activeRevisionId).toBe(b2.revisionId);
@@ -485,9 +528,10 @@ describe("duplicate review edge cases", () => {
       reviewSnapshot(a, { reason: "Retry verdict", confidence: 0.9 })
     );
 
+    const raceVersion = await currentVersion(db, b.sourceDocumentId);
     const results = await Promise.allSettled([
-      acceptCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId),
-      abandonCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId),
+      acceptCandidateRevision(ledgerId, b.sourceDocumentId, raceVersion),
+      abandonCandidateRevision(ledgerId, b.sourceDocumentId, raceVersion),
     ]);
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
 
@@ -535,9 +579,13 @@ describe("duplicate review edge cases", () => {
     await storeCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId, "Retry title", [
       entry,
     ]);
-    expect(await acceptCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId)).toBe(
-      "completed"
-    );
+    expect(
+      await acceptCandidateRevision(
+        ledgerId,
+        b.sourceDocumentId,
+        await currentVersion(db, b.sourceDocumentId)
+      )
+    ).toMatchObject({ status: "completed" });
 
     const document = await findDocument(db, b.sourceDocumentId);
     expect(document?.currentStatus).toBe("completed");
@@ -603,7 +651,7 @@ describe("duplicate review edge cases", () => {
 
     // Keep/discard remain executable without a snapshot.
     await expect(
-      activateDuplicatePendingRevision(ledgerId, b.sourceDocumentId, b.revisionId)
-    ).resolves.toBe(true);
+      activateDuplicatePendingRevision(ledgerId, b.sourceDocumentId, document!.stateVersion)
+    ).resolves.toMatchObject({ status: "completed" });
   });
 });

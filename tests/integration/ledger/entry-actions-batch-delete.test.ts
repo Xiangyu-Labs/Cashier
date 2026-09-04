@@ -157,4 +157,124 @@ describe("batchDeleteLedgerEntriesAction", () => {
     );
     expect(result.failed[0]?.code).toBe("NOT_FOUND");
   });
+
+  it("commits one document's deletion independently of another document's failure in the same batch", async () => {
+    const db = getTestDb();
+    const okDoc = await seedDoc(db, ledgerId);
+    const badDoc = await seedDoc(db, ledgerId);
+    const [okEntry] = await db
+      .insert(ledgerEntries)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: okDoc.id,
+        itemName: "Keeper's sibling",
+        amount: "10",
+        currency: "CNY",
+        convertedAmount: "10",
+      })
+      .returning();
+    await activateTestSourceDocumentProjection(db, okDoc.id);
+    // A ledger entry that does not belong to `badDoc`'s active projection —
+    // this group's transaction throws, so it must land in `failed`.
+    const foreignEntryId = uuidv4();
+
+    const result = await batchDeleteLedgerEntriesAction(
+      ledgerId,
+      [
+        { sourceDocumentId: okDoc.id, expectedVersion: 1 },
+        { sourceDocumentId: badDoc.id, expectedVersion: 1 },
+      ],
+      [okEntry!.id, foreignEntryId]
+    );
+
+    expect(result.succeeded).toEqual([{ id: okEntry!.id, sourceDocumentId: okDoc.id, version: 2 }]);
+    expect(result.stale).toEqual([]);
+    expect(result.failed).toEqual([{ id: foreignEntryId, code: "NOT_FOUND" }]);
+
+    const okDocument = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, okDoc.id),
+    });
+    expect(okDocument?.stateVersion).toBe(2);
+    const badDocument = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, badDoc.id),
+    });
+    // `badDoc` was never targeted by a real write — its own group failed
+    // before touching its document row.
+    expect(badDocument?.stateVersion).toBe(1);
+  });
+
+  it("rolls back every entry in one document's group when part of that group fails", async () => {
+    const db = getTestDb();
+    const doc = await seedDoc(db, ledgerId);
+    const entries = await db
+      .insert(ledgerEntries)
+      .values(
+        [10, 20].map((amount, index) => ({
+          id: uuidv4(),
+          ledgerId,
+          sourceDocumentId: doc.id,
+          itemName: `Group item ${index}`,
+          amount: String(amount),
+          currency: "CNY",
+          convertedAmount: String(amount),
+        }))
+      )
+      .returning();
+    await activateTestSourceDocumentProjection(db, doc.id);
+    // A second, non-active revision plus a real, non-deleted ledger entry
+    // linked to it: the entry groups with the document's other entries (same
+    // `sourceDocumentId`, not deleted, so it passes the ownership check) but
+    // is absent from the *active* projection the group's transaction reads —
+    // so the whole group's transaction fails, not just this one id.
+    const [otherRevision] = await db
+      .insert(sourceDocumentRevisions)
+      .values({
+        ledgerId,
+        sourceDocumentId: doc.id,
+        revisionNumber: 2,
+        outcome: "abandoned",
+      })
+      .returning();
+    const [inactiveEntry] = await db
+      .insert(ledgerEntries)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        sourceDocumentRevisionId: otherRevision!.id,
+        itemName: "Not on the active revision",
+        amount: "5",
+        currency: "CNY",
+        convertedAmount: "5",
+      })
+      .returning();
+
+    const result = await batchDeleteLedgerEntriesAction(
+      ledgerId,
+      [{ sourceDocumentId: doc.id, expectedVersion: 1 }],
+      [...entries.map((entry) => entry.id), inactiveEntry!.id]
+    );
+
+    expect(result.succeeded).toEqual([]);
+    expect(result.stale).toEqual([]);
+    expect(result.failed.map((failure) => failure.id).sort()).toEqual(
+      [...entries.map((entry) => entry.id), inactiveEntry!.id].sort()
+    );
+
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+    // Zero writes: the document's version and active entries are untouched.
+    expect(document?.stateVersion).toBe(1);
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.sourceDocumentId, doc.id),
+        eq(ledgerEntries.sourceDocumentRevisionId, document!.activeRevisionId!)
+      ),
+    });
+    expect(activeEntries.map((entry) => entry.id).sort()).toEqual(
+      entries.map((entry) => entry.id).sort()
+    );
+  });
 });

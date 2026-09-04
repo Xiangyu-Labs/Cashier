@@ -119,5 +119,62 @@ describe("Source Document Update Actions", () => {
         })
       ).rejects.toThrow();
     });
+
+    it("treats an already-matching title as a no-op: zero writes, version unchanged", async () => {
+      const db = getTestDb();
+      const ledgerData = createLedgerData({ userId: testUserId });
+      await db.insert(ledgers).values(ledgerData);
+      const docData = createSourceDocumentData(ledgerData.id, { title: "Same title" });
+      await db.insert(sourceDocuments).values(docData);
+
+      const result = await batchUpdateSourceDocumentsAction(ledgerData.id, {
+        targets: [{ sourceDocumentId: docData.id, expectedVersion: 1 }],
+        data: { title: "Same title" },
+      });
+
+      expect(result).toMatchObject({
+        ok: true,
+        versions: [{ sourceDocumentId: docData.id, version: 1 }],
+        data: { updatedCount: 0 },
+      });
+      const document = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, docData.id),
+      });
+      expect(document?.stateVersion).toBe(1);
+    });
+
+    it("rolls back the whole batch — including the non-stale document — when one target is stale", async () => {
+      const db = getTestDb();
+      const ledgerData = createLedgerData({ userId: testUserId });
+      await db.insert(ledgers).values(ledgerData);
+      const okDoc = createSourceDocumentData(ledgerData.id, { title: "Original A" });
+      const staleDoc = createSourceDocumentData(ledgerData.id, { title: "Original B" });
+      await db.insert(sourceDocuments).values([okDoc, staleDoc]);
+      // Advance staleDoc's version out from under the caller's expectation.
+      await db
+        .update(sourceDocuments)
+        .set({ stateVersion: 2 })
+        .where(eq(sourceDocuments.id, staleDoc.id));
+
+      const result = await batchUpdateSourceDocumentsAction(ledgerData.id, {
+        targets: [
+          { sourceDocumentId: okDoc.id, expectedVersion: 1 },
+          { sourceDocumentId: staleDoc.id, expectedVersion: 1 },
+        ],
+        data: { title: "Batch title" },
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "stale",
+        staleTargets: [{ sourceDocumentId: staleDoc.id, expectedVersion: 1, currentVersion: 2 }],
+      });
+      // The non-stale document's write is rolled back too — atomic, not partial.
+      const okDocument = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, okDoc.id),
+      });
+      expect(okDocument?.title).toBe("Original A");
+      expect(okDocument?.stateVersion).toBe(1);
+    });
   });
 });

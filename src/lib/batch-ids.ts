@@ -15,15 +15,3 @@ export function parseBatchIds(input: unknown): string[] {
   }
   return ids as string[];
 }
-
-interface BatchActionIssue {
-  id: string;
-  reason: string;
-}
-
-export interface BatchActionResult {
-  requestedCount: number;
-  succeededIds: string[];
-  skipped: BatchActionIssue[];
-  failed: BatchActionIssue[];
-}

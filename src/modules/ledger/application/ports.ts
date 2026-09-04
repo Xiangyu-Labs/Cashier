@@ -1,9 +1,4 @@
-import type {
-  DeleteLedgerEntryResultDto,
-  LedgerEntryDto,
-  LedgerEntryEmbeddedViewDto,
-  LedgerEntrySummary,
-} from "../contracts";
+import type { LedgerEntryDto, LedgerEntryEmbeddedViewDto, LedgerEntrySummary } from "../contracts";
 import type { LedgerEntryFilterParams } from "../filters";
 import type {
   AtomicBatchCommandResult,
@@ -11,7 +6,6 @@ import type {
   VersionedCommandResult,
   VersionedTarget,
 } from "@/modules/source-document/contracts";
-import type { BatchActionResult } from "@/lib/batch-ids";
 
 export interface BatchEntryDateImpact {
   selectedEntryCount: number;
@@ -52,39 +46,6 @@ export interface LedgerReadPort {
     /** Also load pending-revision entries of duplicate_pending documents. */
     includeDuplicatePending?: boolean;
   }): Promise<Map<string, LedgerEntryEmbeddedViewDto[]>>;
-}
-
-export interface LedgerMutationPort {
-  createEntry(input: {
-    ledgerId: string;
-    ledgerEntryId?: string;
-    amount: string;
-    currency?: string;
-    itemName: string;
-    categoryId?: string;
-    description?: string | null;
-    sourceDocumentId: string;
-  }): Promise<LedgerEntryDto>;
-  updateEntry(input: {
-    ledgerId: string;
-    ledgerEntryId: string;
-    categoryId?: string | null;
-    amount?: string;
-    currency?: string | null;
-    itemName?: string;
-    description?: string | null;
-  }): Promise<LedgerEntryDto>;
-  batchUpdateEntries(input: {
-    ledgerId: string;
-    ledgerEntryIds: string[];
-    categoryId?: string | null;
-    currency?: string | null;
-    amount?: string;
-    description?: string | null;
-    itemName?: string;
-  }): Promise<number>;
-  deleteEntry(ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto>;
-  batchDeleteEntries(ledgerId: string, ledgerEntryIds: string[]): Promise<BatchActionResult>;
 }
 
 export interface LedgerEntryCommandPort {

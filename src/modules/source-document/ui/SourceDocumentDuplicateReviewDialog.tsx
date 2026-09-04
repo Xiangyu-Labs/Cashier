@@ -53,7 +53,7 @@ export function SourceDocumentDuplicateReviewDialog({
     enabled: open,
     staleTime: 0,
   });
-  const version = reviewQuery.data?.version ?? 1;
+  const version = reviewQuery.data?.version ?? null;
 
   const removeResolvedDocumentQueries = useCallback(() => {
     queryClient.removeQueries({ queryKey: reviewQueryKey });

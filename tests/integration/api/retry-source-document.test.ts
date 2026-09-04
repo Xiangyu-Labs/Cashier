@@ -116,12 +116,21 @@ describe("source-document retry action", () => {
   });
 
   it("rejects raw image payloads that bypass upload finalization", async () => {
+    const db = getTestDb();
     const created = await createDocument("Lunch 25");
     await processAllPendingTasks();
+    const before = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
     await expect(
-      editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
-        images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
-      })
+      editRetrySourceDocumentAction(
+        ledgerId,
+        created.sourceDocumentId,
+        {
+          images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
+        },
+        before!.stateVersion
+      )
     ).rejects.toThrow("Invalid base64 image data");
   });
 

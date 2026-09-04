@@ -1,6 +1,5 @@
 import { and, eq, inArray, isNull, max, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
-import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
 import {
@@ -9,7 +8,6 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "../transaction-locks";
 import type { PostgresTransaction } from "../transaction-locks";
 
 import {
@@ -235,8 +233,7 @@ export async function replaceActiveProjectionInTransaction(
     ledgerId: string;
     sourceDocumentId: string;
     expectedActiveRevisionId: string;
-    expectedStateVersion?: number;
-    incrementVersion?: boolean;
+    expectedStateVersion: number;
     revisionId: string;
     entries: readonly LedgerProjectionEntryContract[];
     title?: string;
@@ -327,9 +324,7 @@ export async function replaceActiveProjectionInTransaction(
       activeRevisionId: revision.id,
       pendingRevisionId: null,
       currentStatus: "completed",
-      ...(input.incrementVersion === false
-        ? {}
-        : { stateVersion: sql`${sourceDocuments.stateVersion} + 1` }),
+      stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
       ...(input.title === undefined ? {} : { title: input.title }),
       ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
       updatedAt: new Date(),
@@ -338,34 +333,13 @@ export async function replaceActiveProjectionInTransaction(
       and(
         activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
         eq(sourceDocuments.activeRevisionId, input.expectedActiveRevisionId),
-        ...(input.expectedStateVersion === undefined
-          ? []
-          : [eq(sourceDocuments.stateVersion, input.expectedStateVersion)])
+        eq(sourceDocuments.stateVersion, input.expectedStateVersion)
       )
     )
     .returning({ id: sourceDocuments.id })
     .then((rows) => rows[0]);
   if (updated == null) throw new ConflictError("Source document changed during the edit");
   return revision.id;
-}
-
-export async function ensureTargetLedgerProjection(
-  ledgerId: string,
-  sourceDocumentId: string
-): Promise<string> {
-  return db.transaction(async (tx) => {
-    // Lock the ledger row to serialise with concurrent main-currency changes.
-    await lockLedgerForUpdate(tx, ledgerId);
-
-    // Also lock the source document row to serialise with concurrent soft-delete.
-    // Lock order: ledger → source document (prevents deadlocks).
-    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-    if (document.activeRevisionId != null) return document.activeRevisionId;
-    if (document.currentStatus !== "completed") {
-      throw new ConflictError("Source document has no completed active projection");
-    }
-    throw new ConflictError("Source document is missing its canonical active revision");
-  });
 }
 
 export async function copyRevisionFiles(

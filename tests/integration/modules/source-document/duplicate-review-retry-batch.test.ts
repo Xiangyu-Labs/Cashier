@@ -117,7 +117,11 @@ describe("duplicate review lifecycle", () => {
         ?.status
     ).toBe("duplicate_pending");
 
-    await activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId);
+    const beforeKeep = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+      columns: { stateVersion: true },
+    });
+    await activateDuplicatePendingRevision(ledgerId, sourceDocumentId, beforeKeep!.stateVersion);
     const afterKeep = await calculateCompletedSourceDocumentTotal({ ledgerId });
     expect(afterKeep.total).toBe("76");
   });
@@ -175,7 +179,10 @@ describe("duplicate review lifecycle", () => {
       discardDuplicate: discardDuplicatePendingRevision,
     } as unknown as SourceDocumentLifecyclePort;
     await expect(
-      keepDuplicateDocument({ ledgerId, sourceDocumentId, revisionId }, lifecycle)
+      keepDuplicateDocument(
+        { ledgerId, sourceDocumentId, expectedVersion: document!.stateVersion },
+        lifecycle
+      )
     ).rejects.toThrow();
   });
 
@@ -186,13 +193,13 @@ describe("duplicate review lifecycle", () => {
     } as unknown as SourceDocumentLifecyclePort;
     await expect(
       keepDuplicateDocument(
-        { ledgerId: "ledger-1", sourceDocumentId: "doc-1", revisionId: "rev-1" },
+        { ledgerId: "ledger-1", sourceDocumentId: "doc-1", expectedVersion: 1 },
         lifecycle
       )
     ).rejects.toThrow("Source document");
     await expect(
       discardDuplicateDocument(
-        { ledgerId: "ledger-1", sourceDocumentId: "doc-1", revisionId: "rev-1" },
+        { ledgerId: "ledger-1", sourceDocumentId: "doc-1", expectedVersion: 1 },
         lifecycle
       )
     ).rejects.toThrow("Source document");

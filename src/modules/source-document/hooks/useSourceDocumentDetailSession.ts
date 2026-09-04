@@ -8,6 +8,7 @@ import { ledgerDetailLeaveGuardKey } from "@/lib/navigation/ledger-detail-key";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
+import { SourceDocumentStaleCommandError } from "@/modules/source-document/command-results";
 import { usePendingChanges } from "./usePendingChanges";
 import { useSourceDocumentRevisionGuard } from "./useSourceDocumentRevisionGuard";
 
@@ -85,8 +86,16 @@ export function useSourceDocumentDetailSession({
       pending.discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pending.pendingChangesCount }));
       return true;
-    } catch {
-      toast.error(t("saveAllFailed"));
+    } catch (error) {
+      // Stale is a distinct outcome from a genuine failure: the pending edits
+      // are preserved either way (no discardAllChanges above), but the
+      // message tells the user their edits are based on outdated data rather
+      // than implying the save itself failed.
+      toast.error(
+        error instanceof SourceDocumentStaleCommandError
+          ? t("actionContextChanged")
+          : t("saveAllFailed")
+      );
       return false;
     } finally {
       setIsSaving(false);

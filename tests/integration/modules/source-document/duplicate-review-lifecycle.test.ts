@@ -22,6 +22,17 @@ import { deleteSourceDocument } from "@/modules/source-document/application/use-
 import { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
+import { StaleSourceDocumentVersionError } from "@/lib/errors";
+
+async function currentVersion(sourceDocumentId: string): Promise<number> {
+  const db = getTestDb();
+  const row = await db.query.sourceDocuments.findFirst({
+    where: eq(sourceDocuments.id, sourceDocumentId),
+    columns: { stateVersion: true },
+  });
+  if (row == null) throw new Error("Source document not found");
+  return row.stateVersion;
+}
 
 const entry = {
   categoryId: null,
@@ -162,8 +173,9 @@ describe("duplicate review lifecycle", () => {
       reviewSnapshot(matched, { confidence: 0.8 })
     );
 
-    const kept = await activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId);
-    expect(kept).toBe(true);
+    const staleVersion = await currentVersion(sourceDocumentId);
+    const kept = await activateDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion);
+    expect(kept).toMatchObject({ status: "completed", version: staleVersion + 1 });
 
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
@@ -178,10 +190,17 @@ describe("duplicate review lifecycle", () => {
     expect(review?.status).toBe("kept");
     expect(review?.decision).toBe("keep_duplicate");
 
-    // Idempotent repeat.
+    // Replaying at the now-current (post-keep) version is a no-op success:
+    // the review is already "kept" for this same active revision, so the
+    // version does not advance further.
     await expect(
-      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(true);
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion + 1)
+    ).resolves.toMatchObject({ status: "completed", version: staleVersion + 1 });
+
+    // A stale replay at the pre-keep version is rejected, with zero writes.
+    await expect(
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion)
+    ).rejects.toThrow(StaleSourceDocumentVersionError);
 
     // The document is now a normal completed bill (review no longer attached).
     const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
@@ -272,8 +291,13 @@ describe("duplicate review lifecycle", () => {
       })
     );
 
-    const discarded = await discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId);
-    expect(discarded).toBe(true);
+    const staleVersion = await currentVersion(sourceDocumentId);
+    const discarded = await discardDuplicatePendingRevision(
+      ledgerId,
+      sourceDocumentId,
+      staleVersion
+    );
+    expect(discarded).toMatchObject({ status: "deleted", version: staleVersion + 1 });
 
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
@@ -306,13 +330,21 @@ describe("duplicate review lifecycle", () => {
       ],
     });
 
+    // Replaying discard at the now-current (post-discard) version is a no-op
+    // success: the document is already tombstoned by this same decision.
     await expect(
-      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(true);
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion + 1)
+    ).resolves.toMatchObject({ status: "deleted", version: staleVersion + 1 });
 
+    // A stale replay at the pre-discard version is rejected.
     await expect(
-      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(false);
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion)
+    ).rejects.toThrow(StaleSourceDocumentVersionError);
+
+    // Activating (keeping) after discard finds no non-deleted document to act on.
+    await expect(
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion + 1)
+    ).resolves.toBeNull();
   });
 
   it("blocks active projection replacement while a duplicate review is pending", async () => {
@@ -335,6 +367,7 @@ describe("duplicate review lifecycle", () => {
       [entry],
       reviewSnapshot(matched, { reason: "Same bill" })
     );
+    const staleVersion = await currentVersion(sourceDocumentId);
 
     await expect(
       postgresLedgerProjectionAdapter.replaceActive({
@@ -351,8 +384,8 @@ describe("duplicate review lifecycle", () => {
     expect(document?.activeRevisionId).toBe(revisionId);
     expect(document?.currentStatus).toBe("duplicate_pending");
     await expect(
-      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(true);
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, staleVersion)
+    ).resolves.toMatchObject({ status: "completed", version: staleVersion + 1 });
   });
 
   it("retires a pending duplicate review when the document is deleted", async () => {
@@ -388,25 +421,24 @@ describe("duplicate review lifecycle", () => {
       decision: "superseded",
     });
     await expect(getSourceDocumentDuplicateReview(ledgerId, sourceDocumentId)).rejects.toThrow();
+    const versionAfterDelete = await currentVersion(sourceDocumentId);
     await expect(
-      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(false);
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, versionAfterDelete)
+    ).resolves.toBeNull();
     await expect(
-      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(false);
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, versionAfterDelete)
+    ).resolves.toBeNull();
   });
 
-  it("returns false for a missing duplicate document", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "duplicate-missing");
+  it("returns null for a missing duplicate document", async () => {
+    const { ledgerId } = await createTestUserWithLedger(getTestDb(), "duplicate-missing");
     const sourceDocumentId = crypto.randomUUID();
-    const revisionId = crypto.randomUUID();
 
     await expect(
-      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(false);
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, 1)
+    ).resolves.toBeNull();
     await expect(
-      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
-    ).resolves.toBe(false);
+      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, 1)
+    ).resolves.toBeNull();
   });
 });

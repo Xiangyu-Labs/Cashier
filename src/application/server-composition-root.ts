@@ -22,18 +22,7 @@ import {
   updateLedgerEntryDatesAtomically,
   postgresSourceDocumentAggregateAdapter,
 } from "@/application/adapters/postgres";
-import {
-  batchUpdateLedgerEntries,
-  batchDeleteLedgerEntries,
-  createLedgerEntryWithConversion,
-  updateLedgerEntryWithConversion,
-} from "@/application/adapters/postgres/mutate-ledger-entries";
-import { deleteLedgerEntry } from "@/application/adapters/postgres/delete-ledger-entry";
 import { postgresAccountSecurityAdapter } from "@/application/adapters/postgres/account-security";
-import {
-  activateDuplicatePendingRevision,
-  discardDuplicatePendingRevision,
-} from "@/application/adapters/postgres/ledger-projections/activate-revision";
 import { postgresCredentialSourceDocumentReadAdapter } from "@/application/adapters/postgres/credential-source-document-status";
 import { postgresLedgerChangeReadAdapter } from "@/application/adapters/postgres/ledger-changes";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
@@ -65,13 +54,6 @@ export const serverComposition = {
   fetchExchangeRatesWithRetry,
   ledgers: postgresLedgerAdapter,
   ledgerProjections: postgresLedgerProjectionAdapter,
-  ledgerMutations: {
-    batchUpdateEntries: batchUpdateLedgerEntries,
-    batchDeleteEntries: batchDeleteLedgerEntries,
-    createEntry: createLedgerEntryWithConversion,
-    deleteEntry: deleteLedgerEntry,
-    updateEntry: updateLedgerEntryWithConversion,
-  },
   ledgerEntryCommands: postgresLedgerEntryCommandAdapter,
   ledgerEntryDates: { updateDates: updateLedgerEntryDatesAtomically },
   ledgerReads: {
@@ -100,10 +82,18 @@ export const serverComposition = {
   sourceDocumentLifecycle: {
     acceptCandidate: postgresSourceDocumentAggregateAdapter.acceptCandidate,
     abandonCandidate: postgresSourceDocumentAggregateAdapter.abandonCandidate,
-    keepDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion?: number) =>
-      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion),
-    discardDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion?: number) =>
-      discardDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion),
+    keepDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion: number) =>
+      postgresSourceDocumentAggregateAdapter
+        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "keep" })
+        .then((result) =>
+          result == null ? null : { version: result.version, status: "completed" as const }
+        ),
+    discardDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion: number) =>
+      postgresSourceDocumentAggregateAdapter
+        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "discard" })
+        .then((result) =>
+          result == null ? null : { version: result.version, status: "deleted" as const }
+        ),
     cancelPending: postgresSourceDocumentAggregateAdapter.cancelProcessing,
   },
   sourceDocumentRevisions: postgresRevisionAdapter,

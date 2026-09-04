@@ -11,7 +11,11 @@ import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/pers
 import { postgresFxRateBook } from "./exchange-rate";
 import { replaceActiveProjectionInTransaction } from "./ledger-projections";
 import type { PostgresTransaction } from "./transaction-locks";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import {
+  lockLedgerForUpdate,
+  lockSourceDocumentForUpdate,
+  lockSourceDocumentsForUpdate,
+} from "./transaction-locks";
 
 type EntryResult = VersionedCommandResult<{ ledgerEntryId: string }>;
 type DeleteEntryResult = VersionedCommandResult<{ ledgerEntryId: string; deleted: true }>;
@@ -445,16 +449,13 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
     const prepared = await prepareBatchConversions(input);
     return db.transaction(async (tx) => {
       const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
-      const targets = [...input.targets].sort((left, right) =>
-        left.sourceDocumentId.localeCompare(right.sourceDocumentId)
-      );
+      const targets = input.targets;
       const expectedByDocument = targetMap(targets);
-      const documents = [];
-      for (const target of targets) {
-        documents.push(
-          await lockSourceDocumentForUpdate(tx, input.ledgerId, target.sourceDocumentId)
-        );
-      }
+      const documents = await lockSourceDocumentsForUpdate(
+        tx,
+        input.ledgerId,
+        targets.map((target) => target.sourceDocumentId)
+      );
       const staleTargets = documents.flatMap((document) => {
         const target = expectedByDocument.get(document.id)!;
         return document.stateVersion === target.expectedVersion
