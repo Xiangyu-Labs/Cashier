@@ -40,41 +40,39 @@ export const postgresUploadSessionRepository: UploadSessionRepository = {
       const fifteenMinutesAgo = new Date(input.createdAt.getTime() - 15 * 60 * 1000);
       const utcDayStart = new Date(input.createdAt);
       utcDayStart.setUTCHours(0, 0, 0, 0);
-      const [recentPlans, openSessions, dailyBytes] = await Promise.all([
-        tx
-          .select({ count: sql<number>`count(*)::int` })
-          .from(uploadSessions)
-          .innerJoin(ledgers, eq(ledgers.id, uploadSessions.ledgerId))
-          .where(
-            and(eq(ledgers.userId, ledger.userId), gte(uploadSessions.createdAt, fifteenMinutesAgo))
+      const recentPlans = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(uploadSessions)
+        .innerJoin(ledgers, eq(ledgers.id, uploadSessions.ledgerId))
+        .where(
+          and(eq(ledgers.userId, ledger.userId), gte(uploadSessions.createdAt, fifteenMinutesAgo))
+        )
+        .then((rows) => rows[0]?.count ?? 0);
+      const openSessions = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(uploadSessions)
+        .where(
+          and(
+            eq(uploadSessions.ledgerId, input.ledgerId),
+            inArray(uploadSessions.status, ["open", "finalizing"])
           )
-          .then((rows) => rows[0]?.count ?? 0),
-        tx
-          .select({ count: sql<number>`count(*)::int` })
-          .from(uploadSessions)
-          .where(
-            and(
-              eq(uploadSessions.ledgerId, input.ledgerId),
-              inArray(uploadSessions.status, ["open", "finalizing"])
-            )
+        )
+        .then((rows) => rows[0]?.count ?? 0);
+      const dailyBytes = await tx
+        .select({
+          bytes: sql<number>`coalesce(sum(${uploadSessionFiles.expectedByteSize}), 0)::bigint`,
+        })
+        .from(uploadSessionFiles)
+        .innerJoin(uploadSessions, eq(uploadSessions.id, uploadSessionFiles.uploadSessionId))
+        .innerJoin(ledgers, eq(ledgers.id, uploadSessions.ledgerId))
+        .where(
+          and(
+            eq(ledgers.userId, ledger.userId),
+            gte(uploadSessions.createdAt, utcDayStart),
+            inArray(uploadSessions.status, ["open", "finalizing", "finalized"])
           )
-          .then((rows) => rows[0]?.count ?? 0),
-        tx
-          .select({
-            bytes: sql<number>`coalesce(sum(${uploadSessionFiles.expectedByteSize}), 0)::bigint`,
-          })
-          .from(uploadSessionFiles)
-          .innerJoin(uploadSessions, eq(uploadSessions.id, uploadSessionFiles.uploadSessionId))
-          .innerJoin(ledgers, eq(ledgers.id, uploadSessions.ledgerId))
-          .where(
-            and(
-              eq(ledgers.userId, ledger.userId),
-              gte(uploadSessions.createdAt, utcDayStart),
-              inArray(uploadSessions.status, ["open", "finalizing", "finalized"])
-            )
-          )
-          .then((rows) => Number(rows[0]?.bytes ?? 0)),
-      ]);
+        )
+        .then((rows) => Number(rows[0]?.bytes ?? 0));
       const reservedBytes = input.targets.reduce((sum, target) => sum + target.byteSize, 0);
       if (
         recentPlans >= runtimeEnv.uploadPlanLimitPer15Min ||

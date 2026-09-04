@@ -47,50 +47,6 @@ import {
   type SourceDocumentStoredFileAggregateRow,
 } from "./mappers";
 
-export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
-  const document = await db
-    .select({
-      ledgerId: sourceDocuments.ledgerId,
-      activeRevisionId: sourceDocuments.activeRevisionId,
-      pendingRevisionId: sourceDocuments.pendingRevisionId,
-    })
-    .from(sourceDocuments)
-    .where(and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)))
-    .limit(1)
-    .then((rows) => rows[0]);
-  if (document == null) return null;
-  const selectedRevisionId = document.pendingRevisionId ?? document.activeRevisionId;
-  if (selectedRevisionId == null) return { ledgerId: document.ledgerId, hasImages: false };
-  const file = await db
-    .select({ id: storedFiles.id })
-    .from(revisionFiles)
-    .innerJoin(
-      sourceDocumentRevisions,
-      and(
-        eq(sourceDocumentRevisions.ledgerId, revisionFiles.ledgerId),
-        eq(sourceDocumentRevisions.id, revisionFiles.revisionId),
-        eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId)
-      )
-    )
-    .innerJoin(
-      storedFiles,
-      and(
-        eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-        eq(storedFiles.id, revisionFiles.storedFileId),
-        isNull(storedFiles.deletedAt)
-      )
-    )
-    .where(
-      and(
-        eq(revisionFiles.ledgerId, document.ledgerId),
-        eq(revisionFiles.revisionId, selectedRevisionId)
-      )
-    )
-    .limit(1)
-    .then((rows) => rows[0]);
-  return { ledgerId: document.ledgerId, hasImages: file != null };
-}
-
 export async function listPendingDuplicateReviews(
   ledgerId: string,
   sourceDocumentIds: readonly string[]

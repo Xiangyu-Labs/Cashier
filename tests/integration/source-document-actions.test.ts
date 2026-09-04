@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from "uuid";
 import { NotFoundError } from "@/lib/errors";
 import { activateTestSourceDocumentProjection } from "../helpers/schema-setup";
 import { getTargetSourceDocumentAccessContext } from "@/application/adapters/postgres/source-document-reads";
+import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -114,6 +115,30 @@ describe("getSourceDocumentLightAction", () => {
       .update(storedFiles)
       .set({ deletedAt: new Date() })
       .where(eq(storedFiles.id, fileLink!.storedFileId));
+
+    expect(await getTargetSourceDocumentAccessContext(docData.id)).toEqual({
+      ledgerId: ledgerData.id,
+      hasImages: false,
+    });
+  });
+
+  it("checks the pending revision before the active revision for image access", async () => {
+    const db = getTestDb();
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const docData = createSourceDocumentData(ledgerData.id);
+    await db.insert(sourceDocuments).values(docData);
+    await activateTestSourceDocumentProjection(db, docData.id, {
+      imageUrls: ["data:image/jpeg;base64,/9j/4AAQ..."],
+    });
+    await db.transaction((tx) =>
+      createPendingRevisionInTransaction(tx, {
+        ledgerId: ledgerData.id,
+        sourceDocumentId: docData.id,
+        submittedText: "replacement without images",
+      })
+    );
 
     expect(await getTargetSourceDocumentAccessContext(docData.id)).toEqual({
       ledgerId: ledgerData.id,

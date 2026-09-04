@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { StoredFileContract, UploadFinalizationContract } from "@/application/contracts";
 import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cleanup";
 import { db } from "@/lib/db";
@@ -373,15 +373,19 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
           `Total stored bytes ${totalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
         );
       }
-      const bytesByStoredFileId = new Map(files.map((file) => [file.id, file.byteSize]));
-      await Promise.all(
-        targets.map((target) =>
-          tx
-            .update(uploadSessionFiles)
-            .set({ expectedByteSize: bytesByStoredFileId.get(target.storedFileId!)! })
-            .where(eq(uploadSessionFiles.id, target.id))
-        )
-      );
+      await tx.execute(sql`
+        UPDATE ${uploadSessionFiles} AS target
+        SET expected_byte_size = file.byte_size
+        FROM ${storedFiles} AS file
+        WHERE target.ledger_id = ${session.ledgerId}
+          AND target.upload_session_id = ${session.id}
+          AND target.target_id IN (${sql.join(
+            targetIds.map((targetId) => sql`${targetId}`),
+            sql`, `
+          )})
+          AND file.ledger_id = target.ledger_id
+          AND file.id = target.stored_file_id
+      `);
       await tx
         .update(storedFiles)
         .set({ finalizedAt: now })
