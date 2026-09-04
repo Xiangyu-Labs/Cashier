@@ -18,11 +18,11 @@ describe("splitSourceDocumentAction", () => {
     });
   });
 
-  async function seed() {
+  async function seed(entryCount = 3) {
     const db = getTestDb();
     const ledger = createLedgerData({ userId, mainCurrency: "USD" });
     const document = createSourceDocumentData(ledger.id, { status: "completed", type: "manual" });
-    const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+    const ids = Array.from({ length: entryCount }, () => crypto.randomUUID());
     await db.insert(ledgers).values(ledger);
     await db.insert(sourceDocuments).values(document);
     await db.insert(ledgerEntries).values(
@@ -93,5 +93,33 @@ describe("splitSourceDocumentAction", () => {
       reason: "stale",
       currentVersion: 2,
     });
+  });
+
+  it("moves a 100-entry batch with contiguous positions", async () => {
+    const fixture = await seed(101);
+    const movedIds = fixture.ids.slice(0, 100);
+    const result = await splitSourceDocumentAction(fixture.ledger.id, {
+      sourceDocumentId: fixture.document.id,
+      expectedVersion: 1,
+      ledgerEntryIds: movedIds,
+      entryDate: "2026-08-16",
+    });
+    expect(result).toMatchObject({ ok: true, data: { movedEntryCount: 100 } });
+    if (!result.ok) throw new Error("Expected split success");
+
+    const live = await fixture.db
+      .select()
+      .from(ledgerEntries)
+      .where(and(eq(ledgerEntries.ledgerId, fixture.ledger.id), isNull(ledgerEntries.deletedAt)));
+    const splitEntries = live
+      .filter((entry) => entry.sourceDocumentId === result.data.splitSourceDocumentId)
+      .sort((left, right) => left.position - right.position);
+    const retainedEntries = live.filter((entry) => entry.sourceDocumentId === fixture.document.id);
+    expect(splitEntries.map((entry) => entry.id)).toEqual(movedIds);
+    expect(splitEntries.map((entry) => entry.position)).toEqual(
+      Array.from({ length: 100 }, (_, index) => index)
+    );
+    expect(retainedEntries).toHaveLength(1);
+    expect(retainedEntries[0]?.position).toBe(0);
   });
 });

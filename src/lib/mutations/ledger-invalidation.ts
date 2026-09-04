@@ -53,7 +53,7 @@ function invalidationsForGroup(
   }
 }
 
-export function getLedgerQueryInvalidations(
+function getLedgerQueryInvalidations(
   ledgerId: string,
   groups: readonly LedgerInvalidationGroup[]
 ): LedgerQueryInvalidation[] {
