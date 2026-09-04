@@ -44,7 +44,9 @@ describe("frontend motion policy", () => {
   });
 
   it("uses the shared group header across ledger list views", () => {
-    expect(read("src/modules/workspace/ui/UnifiedStreamGroups.tsx")).toContain("<EntryGroupHeader");
+    expect(read("src/modules/workspace/ui/unified-stream/group-header.tsx")).toContain(
+      "<EntryGroupHeader"
+    );
     expect(read("src/modules/ledger/ui/LedgerEntryGroupsView.tsx")).toContain("<EntryGroupHeader");
     expect(read("src/modules/workspace/ui/DetailsTabView.tsx")).toContain("<LedgerEntryGroupsView");
   });
