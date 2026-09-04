@@ -1,29 +1,18 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
 import type {
+  LedgerProjectionEntryContract,
+  LedgerProjectionPort,
   RevisionProcessingRequestContract,
+  RevisionProcessingContextContract,
   RevisionProcessingResultContract,
   RevisionProcessorPort,
+  SettingsPort,
+  SourceDocumentPort,
 } from "@/application/contracts";
-import {
-  postgresLedgerProjectionAdapter,
-  storeCandidateRevision,
-} from "@/application/adapters/postgres/ledger-projections";
-import { storeDuplicatePendingRevision } from "@/application/adapters/postgres/ledger-projections";
-import { listDuplicateDetectionCandidates } from "@/application/adapters/postgres/duplicate-candidates";
-import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
-import { postgresSettingsAdapter } from "@/application/adapters/postgres/business-ports";
-import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import type { AIContext } from "@/lib/tasks/types";
-import {
-  entryCategories,
-  revisionFiles,
-  sourceDocumentRevisions,
-  sourceDocuments,
-} from "@/persistence";
 import { compare } from "@/lib/money/decimal";
-import { postgresFxRateBook } from "@/application/adapters/postgres/exchange-rate";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
+import type { FxRateBook } from "@/modules/currency/application/ports";
 import {
   buildEntriesForInsert,
   getEntryFallbackDate,
@@ -43,11 +32,54 @@ import { detectDuplicateBill } from "@/modules/source-document/application/dupli
 import {
   isFailedLoadImageResult,
   isSuccessfulLoadImageResult,
-  loadStoredFilesForAI,
-} from "@/application/adapters/in-process/stored-image-loader";
+  type LoadImageResult,
+} from "./stored-image-loader";
+import type { DuplicateCandidateContract } from "@/modules/source-document/application/duplicate-detection";
+
+type DuplicateReviewSnapshot = {
+  matchedSourceDocumentId: string;
+  matchedRevisionId: string;
+  matchedTitle: string | null;
+  matchedEntryDate: string | null;
+  matchedCreatedAt: string;
+  reason: string | null;
+  confidence: number | null;
+};
 
 export interface CurrentRevisionProcessorOptions {
   createAIContext: (signal: AbortSignal) => AIContext;
+  loadContext: (
+    request: RevisionProcessingRequestContract
+  ) => Promise<RevisionProcessingContextContract>;
+  getSettings: SettingsPort["get"];
+  loadStoredFiles: (ledgerId: string, storedFileIds: string[]) => Promise<LoadImageResult[]>;
+  listDuplicateCandidates: (
+    ledgerId: string,
+    entryDate: string,
+    excludeSourceDocumentId: string
+  ) => Promise<DuplicateCandidateContract[]>;
+  getRates: FxRateBook["getRates"];
+  preserveTerminalOutcome: SourceDocumentPort["preserveTerminalOutcome"];
+  getRevision: SourceDocumentPort["get"];
+  activateRevision: LedgerProjectionPort["activateRevision"];
+  storeCandidateRevision: (
+    ledgerId: string,
+    sourceDocumentId: string,
+    revisionId: string,
+    title: string | null | undefined,
+    entries: readonly LedgerProjectionEntryContract[],
+    lease?: RevisionProcessingRequestContract["lease"],
+    duplicateReview?: DuplicateReviewSnapshot
+  ) => Promise<boolean>;
+  storeDuplicatePendingRevision: (
+    ledgerId: string,
+    sourceDocumentId: string,
+    revisionId: string,
+    title: string | null | undefined,
+    entries: readonly LedgerProjectionEntryContract[],
+    review: DuplicateReviewSnapshot,
+    lease?: RevisionProcessingRequestContract["lease"]
+  ) => Promise<boolean>;
 }
 
 export class CurrentRevisionProcessor implements RevisionProcessorPort {
@@ -58,20 +90,11 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
   ): Promise<RevisionProcessingResultContract> {
     const signal = request.signal ?? AbortSignal.any([]);
     throwIfProcessingCancelled(signal);
-    const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: and(
-        eq(sourceDocumentRevisions.ledgerId, request.ledgerId),
-        eq(sourceDocumentRevisions.sourceDocumentId, request.sourceDocumentId),
-        eq(sourceDocumentRevisions.id, request.revisionId)
-      ),
-    });
-    const document = await db.query.sourceDocuments.findFirst({
-      where: and(
-        eq(sourceDocuments.ledgerId, request.ledgerId),
-        eq(sourceDocuments.id, request.sourceDocumentId),
-        isNull(sourceDocuments.deletedAt)
-      ),
-    });
+    const [context, ledgerSettings] = await Promise.all([
+      this.options.loadContext(request),
+      this.options.getSettings(request.ledgerId),
+    ]);
+    const { revision, document, storedFileIds, categories } = context;
     if (revision == null || document == null) throw new NotFoundError("Pending revision");
     if (document.activeRevisionId === request.revisionId && revision.outcome === "completed") {
       return { outcome: "completed" };
@@ -81,41 +104,8 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     }
     throwIfProcessingCancelled(signal);
 
-    // Load current ledger settings for parser input
-    const ledgerSettings = await postgresSettingsAdapter.get(request.ledgerId);
-
-    const [files, categories] = await Promise.all([
-      db
-        .select({ id: revisionFiles.storedFileId })
-        .from(revisionFiles)
-        .where(
-          and(
-            eq(revisionFiles.ledgerId, request.ledgerId),
-            eq(revisionFiles.revisionId, request.revisionId)
-          )
-        )
-        .orderBy(asc(revisionFiles.position)),
-      db
-        .select({
-          id: entryCategories.id,
-          name: entryCategories.name,
-          description: entryCategories.description,
-        })
-        .from(entryCategories)
-        .where(
-          and(eq(entryCategories.ledgerId, request.ledgerId), isNull(entryCategories.deletedAt))
-        )
-        .orderBy(
-          asc(entryCategories.sortOrder),
-          asc(entryCategories.createdAt),
-          asc(entryCategories.id)
-        ),
-    ]);
     throwIfProcessingCancelled(signal);
-    const loadedEvidence = await loadStoredFilesForAI(
-      request.ledgerId,
-      files.map((file) => file.id)
-    );
+    const loadedEvidence = await this.options.loadStoredFiles(request.ledgerId, storedFileIds);
     throwIfProcessingCancelled(signal);
     const failedEvidence = loadedEvidence.filter(isFailedLoadImageResult);
     if (failedEvidence.length > 0) {
@@ -157,7 +147,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       const anomalyReason =
         output.anomalyReason ??
         (output.verificationStatus === "invalid" ? "Invalid content" : "Parsing results diverged");
-      const preserved = await postgresRevisionAdapter.preserveTerminalOutcome({
+      const preserved = await this.options.preserveTerminalOutcome({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
         outcome: "anomaly",
@@ -173,7 +163,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     throwIfProcessingCancelled(signal);
     if (!validation.isValid) {
       const anomalyReason = validation.reason ?? "No valid entries";
-      const preserved = await postgresRevisionAdapter.preserveTerminalOutcome({
+      const preserved = await this.options.preserveTerminalOutcome({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
         outcome: "anomaly",
@@ -186,7 +176,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     }
     const mainCurrency = ledgerSettings?.mainCurrency ?? "CNY";
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
-    const ratesByDate = new Map<string, Awaited<ReturnType<typeof postgresFxRateBook.getRates>>>();
+    const ratesByDate = new Map<string, Awaited<ReturnType<FxRateBook["getRates"]>>>();
     const entries = await buildEntriesForInsert({
       validEntries: output.ledgerEntries.filter(
         (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true
@@ -200,7 +190,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         const rateDate = date ?? "latest";
         let rates = ratesByDate.get(rateDate);
         if (rates == null) {
-          rates = await postgresFxRateBook.getRates(date);
+          rates = await this.options.getRates(date);
           ratesByDate.set(rateDate, rates);
         }
         return convertWithRates(amount, rates, fromCurrency, toCurrency);
@@ -228,7 +218,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       ledgerSettings?.duplicateDetectionEnabled !== false &&
       document.entryDate != null
     ) {
-      const candidates = await listDuplicateDetectionCandidates(
+      const candidates = await this.options.listDuplicateCandidates(
         request.ledgerId,
         document.entryDate,
         request.sourceDocumentId
@@ -247,10 +237,10 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         currentEntryDate: document.entryDate,
         currentTitle: output.title ?? null,
         currentEntries: entryInputs,
-        currentStoredFileIds: files.map((file) => file.id),
+        currentStoredFileIds: storedFileIds,
         candidates,
         loadImages: async (storedFileIds) => {
-          const loaded = await loadStoredFilesForAI(request.ledgerId, [...storedFileIds]);
+          const loaded = await this.options.loadStoredFiles(request.ledgerId, [...storedFileIds]);
           return loaded
             .filter(isSuccessfulLoadImageResult)
             .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
@@ -280,7 +270,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           if (document.activeRevisionId == null) {
             // First parse: activate the projection with a pending review.
             throwIfProcessingCancelled(signal);
-            const stored = await storeDuplicatePendingRevision(
+            const stored = await this.options.storeDuplicatePendingRevision(
               request.ledgerId,
               request.sourceDocumentId,
               request.revisionId,
@@ -297,7 +287,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           }
           // Retry: keep the revision as a candidate and stage the review.
           throwIfProcessingCancelled(signal);
-          const stored = await storeCandidateRevision(
+          const stored = await this.options.storeCandidateRevision(
             request.ledgerId,
             request.sourceDocumentId,
             request.revisionId,
@@ -318,7 +308,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     if (document.activeRevisionId == null) {
       // First parse: activate revision (replace projection, update pointers)
       throwIfProcessingCancelled(signal);
-      const activated = await postgresLedgerProjectionAdapter.activateRevision({
+      const activated = await this.options.activateRevision({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
         ...(output.title == null ? {} : { title: output.title }),
@@ -326,10 +316,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       });
       if (!activated) {
         if (request.lease != null) throw new ProcessingCancelledError();
-        const current = await postgresRevisionAdapter.get(
-          request.ledgerId,
-          request.sourceDocumentId
-        );
+        const current = await this.options.getRevision(request.ledgerId, request.sourceDocumentId);
         if (current?.activeRevisionId !== request.revisionId) {
           throw new Error("Revision completion is stale");
         }
@@ -337,7 +324,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     } else {
       // Document already has an active projection -> store as candidate revision
       throwIfProcessingCancelled(signal);
-      const stored = await storeCandidateRevision(
+      const stored = await this.options.storeCandidateRevision(
         request.ledgerId,
         request.sourceDocumentId,
         request.revisionId,

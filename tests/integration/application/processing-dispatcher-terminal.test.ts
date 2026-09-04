@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
+import { serverComposition } from "@/application/server-composition-root";
 import {
   PostgresProcessingIntentAdapter,
   postgresRevisionAdapter,
@@ -88,7 +88,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
-    const execution = executeSingleProcessingIntent(intent);
+    const execution = serverComposition.executeSingleProcessingIntent(intent);
     await generationStarted;
     await vi.advanceTimersByTimeAsync(15_000);
 
@@ -160,7 +160,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
-    const result = await executeSingleProcessingIntent(intent);
+    const result = await serverComposition.executeSingleProcessingIntent(intent);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({
@@ -210,7 +210,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
       .set({ pendingRevisionId: staleRevisionId })
       .where(eq(sourceDocuments.id, intent.sourceDocumentId));
 
-    const result = await executeSingleProcessingIntent(intent);
+    const result = await serverComposition.executeSingleProcessingIntent(intent);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({

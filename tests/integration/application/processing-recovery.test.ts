@@ -130,17 +130,15 @@ describe("Processing Recovery", () => {
       selectRecoverableProcessingIntents(ledgerId, config, adapter),
     ]);
 
-    // At most one of the two calls should have recovered the intent.
-    const total = first.length + second.length;
-    expect(total).toBeLessThanOrEqual(2); // Same intent might appear in both
+    const recoveredIds = [...first, ...second].map((candidate) => candidate.id);
+    expect(recoveredIds).toEqual([intent.id]);
 
     // The intent should have been incrementally scheduled
     const db = getTestDb();
     const row = await db.query.processingOutbox.findFirst({
       where: eq(processingOutbox.id, intent.id),
     });
-    expect(row!.scheduleAttemptCount).toBeGreaterThanOrEqual(1);
-    expect(row!.scheduleAttemptCount).toBeLessThanOrEqual(2);
+    expect(row!.scheduleAttemptCount).toBe(1);
   });
 
   it("skips recovery when the source document has been deleted", async () => {

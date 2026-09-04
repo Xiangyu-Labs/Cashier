@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { CurrentRevisionProcessor } from "@/application/adapters/in-process";
+import { serverComposition } from "@/application/server-composition-root";
 import {
   PostgresProcessingIntentAdapter,
   postgresRevisionAdapter,
@@ -97,9 +97,7 @@ describe("leased processor fencing", () => {
         reasoning: "single item",
       }),
     }));
-    const processor = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate }),
-    });
+    const processor = serverComposition.createRevisionProcessor(() => ({ generate }));
 
     await expect(
       processor.process({
@@ -152,9 +150,7 @@ describe("leased processor fencing", () => {
         reasoning: "blurry image",
       }),
     }));
-    const processor = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate }),
-    });
+    const processor = serverComposition.createRevisionProcessor(() => ({ generate }));
 
     await expect(
       processor.process({

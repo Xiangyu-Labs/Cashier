@@ -221,19 +221,10 @@ export interface SourceDocumentLifecyclePort {
 }
 
 export interface ProcessingRecoveryPort {
-  reconcileResidualIntents(ledgerId: string, limit: number): Promise<number>;
-  exhaustStaleIntents(ledgerId: string, maxAttempts: number, limit: number): Promise<number>;
-  selectRecoverable(
+  recoverBatch(
     ledgerId: string,
-    maxAttempts: number,
-    limit: number
+    config: import("@/application/contracts").ProcessingRecoveryConfig
   ): Promise<readonly RecoverableProcessingIntentContract[]>;
-  scheduleRecovery(
-    revisionId: string,
-    intentId: string,
-    ledgerId: string,
-    cooldownSeconds: number
-  ): Promise<boolean>;
 }
 
 export interface CredentialSourceDocumentStatusResult {

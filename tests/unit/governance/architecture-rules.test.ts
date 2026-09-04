@@ -182,6 +182,20 @@ describe("findBoundaryViolations", () => {
     ).toEqual([]);
   });
 
+  it.each(["@/lib/db", "@/persistence", "@/application/adapters/postgres/revisions"])(
+    "rejects in-process adapters importing concrete runtime dependency %s",
+    (specifier) => {
+      expect(
+        findBoundaryViolations(
+          "src/application/adapters/in-process/processor.ts",
+          `import { dependency } from "${specifier}";`
+        )
+      ).toEqual([
+        "src/application/adapters/in-process/processor.ts: in-process adapters must receive persistence and concrete adapters explicitly",
+      ]);
+    }
+  );
+
   it("catches dynamic imports and re-exports", () => {
     expect(
       findBoundaryViolations(

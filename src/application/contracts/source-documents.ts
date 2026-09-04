@@ -124,6 +124,7 @@ export interface ProcessingCompletionContract {
 }
 
 export interface ProcessingClaimContract {
+  ledgerId: LedgerId;
   intent: ProcessingIntentContract;
   claimToken: string;
   expiresAt: string;

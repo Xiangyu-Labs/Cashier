@@ -152,6 +152,7 @@ export function findBoundaryViolations(relativePath, source) {
   const isContracts = /^src\/application\/contracts\//.test(relativePath);
   const isPersistence = /^src\/persistence\//.test(relativePath);
   const isApiRoute = /^src\/app\/api\//.test(relativePath);
+  const isInProcessAdapter = /^src\/application\/adapters\/in-process\//.test(relativePath);
   const isClientComponent = hasClientDirective(source);
 
   for (const property of collectRawLogIdentifierProperties(source)) {
@@ -259,6 +260,16 @@ export function findBoundaryViolations(relativePath, source) {
     ) {
       violations.push(
         `${relativePath}: application contracts must not import persistence, database, provider SDKs, or application adapters`
+      );
+    }
+    if (
+      isInProcessAdapter &&
+      (persistencePattern.test(specifier) ||
+        libDbPattern.test(specifier) ||
+        applicationAdaptersPattern.test(specifier))
+    ) {
+      violations.push(
+        `${relativePath}: in-process adapters must receive persistence and concrete adapters explicitly`
       );
     }
     if (

@@ -41,6 +41,19 @@ export interface RevisionProcessingResultContract {
   anomalyReason?: string;
 }
 
+export interface RevisionProcessingContextContract {
+  revision: { submittedText: string | null; outcome: RevisionOutcome } | null;
+  document: {
+    activeRevisionId: RevisionId | null;
+    pendingRevisionId: RevisionId | null;
+    type: "ai_parsed" | "manual";
+    entryDate: string | null;
+    createdAt: Date;
+  } | null;
+  storedFileIds: string[];
+  categories: Array<{ id: string; name: string; description: string | null }>;
+}
+
 export interface RevisionProcessorPort {
   process(request: RevisionProcessingRequestContract): Promise<RevisionProcessingResultContract>;
 }

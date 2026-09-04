@@ -18,12 +18,24 @@ import {
   listTargetSourceDocuments,
   postgresSourceDocumentAggregateAdapter,
 } from "@/application/adapters/postgres";
+import { listDuplicateDetectionCandidates } from "@/application/adapters/postgres/duplicate-candidates";
+import { loadRevisionProcessingContext } from "@/application/adapters/postgres/revision-processing-context";
+import {
+  postgresLedgerProjectionAdapter,
+  storeCandidateRevision,
+  storeDuplicatePendingRevision,
+} from "@/application/adapters/postgres/ledger-projections";
+import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { postgresAccountSecurityAdapter } from "@/application/adapters/postgres/account-security";
 import { postgresCredentialSourceDocumentReadAdapter } from "@/application/adapters/postgres/credential-source-document-status";
 import { postgresLedgerChangeReadAdapter } from "@/application/adapters/postgres/ledger-changes";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { resendEmailAdapter } from "@/application/adapters/email/resend";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
+import {
+  createExecuteSingleProcessingIntent,
+  CurrentRevisionProcessor,
+  loadStoredFilesForAI,
+} from "@/application/adapters/in-process";
 import { storedFileAdapter } from "@/application/adapters/storage";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
 import { getBatchEntryDateImpact } from "@/application/adapters/postgres/ledger-reads/get-batch-entry-date-impact";
@@ -37,6 +49,46 @@ import {
   fetchWithRetry as fetchExchangeRatesWithRetry,
 } from "@/application/adapters/postgres/exchange-rate";
 import { categoryMetadataGeneratorAdapter } from "@/application/adapters/ai/category-metadata-generator";
+import { createAIContext } from "@/lib/tasks/ai-context";
+import { getOpenAIClient } from "@/lib/ai/openai-client";
+import { runtimeEnv } from "@/lib/env/runtime";
+import type { AIContext } from "@/lib/tasks/types";
+
+function createRevisionProcessor(
+  createContext: (signal: AbortSignal) => AIContext = (signal) =>
+    createAIContext({
+      signal,
+      getClient: getOpenAIClient,
+      modelConfig: { text: runtimeEnv.aiModel, vision: runtimeEnv.aiModel },
+    })
+) {
+  return new CurrentRevisionProcessor({
+    createAIContext: createContext,
+    loadContext: loadRevisionProcessingContext,
+    getSettings: (ledgerId) => postgresSettingsAdapter.get(ledgerId),
+    loadStoredFiles: (ledgerId, storedFileIds) =>
+      loadStoredFilesForAI(
+        (authorizedLedgerId, storedFileId) =>
+          storedFileAdapter.readAuthorized(authorizedLedgerId, storedFileId),
+        ledgerId,
+        storedFileIds
+      ),
+    listDuplicateCandidates: listDuplicateDetectionCandidates,
+    getRates: (date) => postgresFxRateBook.getRates(date),
+    preserveTerminalOutcome: (input) => postgresRevisionAdapter.preserveTerminalOutcome(input),
+    getRevision: (ledgerId, sourceDocumentId) =>
+      postgresRevisionAdapter.get(ledgerId, sourceDocumentId),
+    activateRevision: (input) => postgresLedgerProjectionAdapter.activateRevision(input),
+    storeCandidateRevision,
+    storeDuplicatePendingRevision,
+  });
+}
+
+const executeSingleProcessingIntent = createExecuteSingleProcessingIntent({
+  createIntentAdapter: () => new PostgresProcessingIntentAdapter(),
+  createRevisionProcessor: () => createRevisionProcessor(),
+  preserveTerminalOutcome: (input) => postgresRevisionAdapter.preserveTerminalOutcome(input),
+});
 
 /** Composition root for the PostgreSQL-backed Docker runtime. */
 export const serverComposition = {
@@ -77,6 +129,7 @@ export const serverComposition = {
   credentialSourceDocuments: postgresCredentialSourceDocumentReadAdapter,
   ledgerChanges: postgresLedgerChangeReadAdapter,
   processingRecovery: new PostgresProcessingIntentAdapter(),
+  createRevisionProcessor,
   executeSingleProcessingIntent,
   userAccounts: postgresUserAccountAdapter,
   userPreferences: postgresUserPreferencesAdapter,
