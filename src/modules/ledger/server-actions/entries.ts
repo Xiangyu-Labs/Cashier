@@ -32,7 +32,7 @@ export const createLedgerEntryAction = withLedgerAccess(
     if (validated.sourceDocumentId !== validatedTarget.sourceDocumentId) {
       throw new Error("Source document target does not match entry payload");
     }
-    return serverComposition.ledgerEntryCommands.create({
+    return serverComposition.sourceDocumentAggregate.addEntry({
       ledgerId,
       target: validatedTarget,
       amount: String(validated.amount),
@@ -54,7 +54,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
     const validatedTarget = parseVersionedTarget(target);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     const validated = parseUpdateLedgerEntryInput(data);
-    return serverComposition.ledgerEntryCommands.update({
+    return serverComposition.sourceDocumentAggregate.updateEntries({
       ledgerId,
       target: validatedTarget,
       ledgerEntryId: validatedLedgerEntryId,
@@ -71,7 +71,7 @@ export const deleteLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, target: VersionedTarget, ledgerEntryId: string) => {
     const validatedTarget = parseVersionedTarget(target);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
-    return serverComposition.ledgerEntryCommands.delete({
+    return serverComposition.sourceDocumentAggregate.deleteEntries({
       ledgerId,
       target: validatedTarget,
       ledgerEntryId: validatedLedgerEntryId,
@@ -150,7 +150,7 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
         entryDate: validated.entryDate,
       },
       {
-        updates: serverComposition.ledgerEntryDates,
+        updates: { updateDates: serverComposition.sourceDocumentAggregate.updateEntryDates },
       }
     );
     return impact;

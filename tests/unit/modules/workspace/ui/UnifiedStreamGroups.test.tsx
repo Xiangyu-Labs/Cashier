@@ -1,15 +1,69 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/UnifiedStreamGroups";
 
-const cardProps = vi.fn();
+const { cardProps, useStreamListMotionMock, virtualizerOptions } = vi.hoisted(() => ({
+  cardProps: vi.fn(),
+  virtualizerOptions: vi.fn(),
+  useStreamListMotionMock: vi.fn(() => ({
+    entering: new Set<string>(),
+    exiting: [],
+    updated: new Set<string>(),
+    reducedMotion: false,
+    registerNode: vi.fn(),
+  })),
+}));
 vi.mock("@/modules/source-document/ui/SourceDocumentCard", () => ({
   SourceDocumentCard: (props: unknown) => {
     cardProps(props);
     return <div>Source document</div>;
   },
 }));
+vi.mock("@/modules/workspace/ui/use-stream-list-motion", () => ({
+  useStreamListMotion: useStreamListMotionMock,
+}));
+vi.mock("@tanstack/react-virtual", () => ({
+  useWindowVirtualizer: (options: { count: number; scrollMargin: number }) => {
+    virtualizerOptions(options);
+    return {
+      getTotalSize: () => options.count * 88,
+      getVirtualItems: () =>
+        Array.from({ length: Math.min(options.count, 10) }, (_, index) => ({
+          index,
+          start: index * 88,
+        })),
+      measureElement: vi.fn(),
+    };
+  },
+}));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+function largeGroup(count: number): UnifiedStreamGroup {
+  return {
+    date: "2026-07-15",
+    dateProvenance: "transaction",
+    total: "0",
+    unconvertedCount: 0,
+    currencyTotals: {},
+    items: Array.from({ length: count }, (_, index) => ({
+      sourceDocument: {
+        id: `document-${index}`,
+        ledgerId: "ledger-1",
+        version: 1,
+        updatedAt: "2026-07-15T00:00:00.000Z",
+        status: "completed",
+      },
+      ledgerEntries: [],
+      effectiveDate: "2026-07-15",
+      dateProvenance: "transaction" as const,
+    })),
+  } as unknown as UnifiedStreamGroup;
+}
 
 describe("LedgerEntriesUnifiedGroups", () => {
   it("renders stream groups correctly", () => {
@@ -199,5 +253,114 @@ describe("LedgerEntriesUnifiedGroups", () => {
         isSelected: true,
       })
     );
+  });
+
+  it("keeps FLIP motion through 80 documents and virtualizes the 81st", () => {
+    useStreamListMotionMock.mockClear();
+    const commonProps = {
+      mainCurrency: "CNY",
+      onViewSourceDetail: vi.fn(),
+      onDeleteSourceConfirm: vi.fn(),
+      isSelectionMode: false,
+      selectedIds: [],
+      onToggleSelection: vi.fn(),
+      noRecordsText: "No records",
+      getItemProps: () => ({}),
+    };
+    const { rerender } = render(
+      <LedgerEntriesUnifiedGroups streamGroups={[largeGroup(80)]} {...commonProps} />
+    );
+    expect(useStreamListMotionMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("virtualized-source-document-stream")).not.toBeInTheDocument();
+
+    rerender(<LedgerEntriesUnifiedGroups streamGroups={[largeGroup(81)]} {...commonProps} />);
+    expect(screen.getByTestId("virtualized-source-document-stream")).toBeInTheDocument();
+    expect(useStreamListMotionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("mounts only the virtual window for a 500-document stream", () => {
+    cardProps.mockClear();
+    const commonProps = {
+      mainCurrency: "CNY",
+      onViewSourceDetail: vi.fn(),
+      onDeleteSourceConfirm: vi.fn(),
+      isSelectionMode: false,
+      selectedIds: [],
+      onToggleSelection: vi.fn(),
+      noRecordsText: "No records",
+      getItemProps: () => ({}),
+      collapseEntriesDefault: true,
+    };
+    render(<LedgerEntriesUnifiedGroups streamGroups={[largeGroup(500)]} {...commonProps} />);
+    expect(screen.getByTestId("virtualized-source-document-stream")).toBeInTheDocument();
+    expect(cardProps.mock.calls.length).toBeGreaterThan(0);
+    expect(cardProps.mock.calls.length).toBeLessThan(500);
+    expect(cardProps).toHaveBeenCalledWith(
+      expect.objectContaining({ expanded: false, onExpandedChange: expect.any(Function) })
+    );
+  });
+
+  it("remeasures the window offset when preceding content changes size", () => {
+    let top = 120;
+    let notifyResize: (() => void) | undefined;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          notifyResize = callback;
+        }
+        observe = observe;
+        disconnect = disconnect;
+      }
+    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement
+    ) {
+      const elementTop = this.dataset.testid === "virtualized-source-document-stream" ? top : 0;
+      return {
+        top: elementTop,
+        bottom: elementTop,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: elementTop,
+        toJSON: () => ({}),
+      };
+    });
+    virtualizerOptions.mockClear();
+
+    const { unmount } = render(
+      <div>
+        <div data-testid="preceding-content" />
+        <LedgerEntriesUnifiedGroups
+          streamGroups={[largeGroup(81)]}
+          mainCurrency="CNY"
+          onViewSourceDetail={vi.fn()}
+          onDeleteSourceConfirm={vi.fn()}
+          isSelectionMode={false}
+          selectedIds={[]}
+          onToggleSelection={vi.fn()}
+          noRecordsText="No records"
+          getItemProps={() => ({})}
+        />
+      </div>
+    );
+    expect(virtualizerOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ scrollMargin: 120 })
+    );
+    expect(observe).toHaveBeenCalledWith(screen.getByTestId("preceding-content"));
+
+    top = 240;
+    act(() => notifyResize?.());
+    expect(virtualizerOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ scrollMargin: 240 })
+    );
+
+    unmount();
+    expect(disconnect).toHaveBeenCalledTimes(1);
   });
 });

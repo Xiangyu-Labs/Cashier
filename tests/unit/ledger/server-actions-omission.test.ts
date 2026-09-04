@@ -37,17 +37,15 @@ vi.mock("@/modules/ledger/access", () => ({
 
 vi.mock("@/application/server-composition-root", () => ({
   serverComposition: {
-    ledgerEntryCommands: {
-      create: createLedgerEntryWithConversionMock,
-      update: updateLedgerEntryWithConversionMock,
-      delete: vi.fn(),
-    },
     sourceDocumentAggregate: {
+      addEntry: createLedgerEntryWithConversionMock,
+      updateEntries: updateLedgerEntryWithConversionMock,
+      deleteEntries: vi.fn(),
       batchUpdateEntries: batchUpdateLedgerEntriesMock,
+      updateEntryDates: vi.fn(),
     },
     categories: {},
     ledgerReads: {},
-    ledgerEntryDates: {},
   },
 }));
 vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({

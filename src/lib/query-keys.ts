@@ -17,8 +17,10 @@ export const queryKeys = {
   // === Ledger Entries ===
   ledgerEntries: (ledgerId: string, params?: QueryKeyParams | null) =>
     ["ledger", ledgerId, "entries", normalizeQueryParams(params)] as const,
+  ledgerEntriesPrefix: (ledgerId: string) => ["ledger", ledgerId, "entries"] as const,
   ledgerEntry: (ledgerId: string, entryId: string) =>
     ["ledger", ledgerId, "entry", entryId] as const,
+  ledgerEntryPrefix: (ledgerId: string) => ["ledger", ledgerId, "entry"] as const,
 
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, params?: QueryKeyParams | null) =>
@@ -54,8 +56,12 @@ export const queryKeys = {
       "stream-total",
       normalizeQueryParams(filters),
     ] as const,
+  sourceDocumentStreamTotalPrefix: (ledgerId: string) =>
+    ["ledger", ledgerId, "source-documents", "stream-total"] as const,
   sourceDocument: (ledgerId: string, documentId: string) =>
     ["ledger", ledgerId, "source-document", documentId, "detail"] as const,
+  sourceDocumentDetailPrefix: (ledgerId: string) =>
+    ["ledger", ledgerId, "source-document"] as const,
   sourceDocumentLight: (ledgerId: string, documentId: string) =>
     ["ledger", ledgerId, "source-document", documentId, "light"] as const,
   sourceDocumentCandidateReview: (ledgerId: string, id: string) =>
@@ -74,6 +80,7 @@ export const queryKeys = {
   // === Summary & Stats ===
   summary: (ledgerId: string, params?: QueryKeyParams | null) =>
     ["ledger", ledgerId, "summary", normalizeQueryParams(params)] as const,
+  summaryPrefix: (ledgerId: string) => ["ledger", ledgerId, "summary"] as const,
   tokenStats: (ledgerId: string) => ["ledger", ledgerId, "token-stats"] as const,
   enhancedStats: (
     ledgerId: string,
@@ -87,6 +94,7 @@ export const queryKeys = {
       mainCurrency?: string | null | undefined;
     }
   ) => ["ledger", ledgerId, "enhanced-stats", normalizeQueryParams(params)] as const,
+  enhancedStatsPrefix: (ledgerId: string) => ["ledger", ledgerId, "enhanced-stats"] as const,
 
   // === Currency ===
   convert: (ledgerId: string, amount: string, from: string, to: string, date: string) =>
@@ -114,6 +122,7 @@ export const queryKeys = {
     date: string,
     filters?: { currency?: string; categoryId?: string }
   ) => ["ledger", ledgerId, "calendar", "day", date, filters] as const,
+  calendarPrefix: (ledgerId: string) => ["ledger", ledgerId, "calendar"] as const,
 } as const;
 
 type QueryKeyParams = Readonly<Record<string, unknown>>;

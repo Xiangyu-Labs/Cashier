@@ -18,7 +18,7 @@ import type {
   VersionedTarget,
 } from "@/modules/source-document/contracts";
 import { ValidationError } from "@/lib/errors";
-import { revisionLifecycleAction } from "./revision-lifecycle-action";
+import { revisionLifecycleAction, sourceDocumentLifecyclePort } from "./revision-lifecycle-action";
 
 export const getSourceDocumentDuplicateReviewAction = withSourceDocumentLedgerAccess(
   async (
@@ -59,7 +59,7 @@ export const batchResolveDuplicateReviewsAction = withSourceDocumentLedgerAccess
     }
     return batchResolveDuplicateReviews(
       { ledgerId, targets, decision },
-      serverComposition.sourceDocumentLifecycle
+      sourceDocumentLifecyclePort()
     );
   }
 );

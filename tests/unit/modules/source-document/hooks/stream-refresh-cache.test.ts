@@ -23,51 +23,72 @@ describe("applyStreamRefreshToCache", () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it("invalidates the ledger root once after a change", () => {
+  it("invalidates only changed stream projections", async () => {
     const client = new QueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries");
+    client.setQueryData(["ledger", "ledger-1", "source-documents", "refresh"], makeResult());
 
-    applyStreamRefreshToCache(client, "ledger-1", makeResult({ changed: true }));
+    await applyStreamRefreshToCache(client, "ledger-1", makeResult({ changed: true }));
 
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["ledger", "ledger-1"],
-      refetchType: "active",
-    });
+    expect(invalidate.mock.calls.map(([filters]) => filters)).toEqual([
+      { queryKey: ["ledger", "ledger-1", "source-documents", "stream"], refetchType: "active" },
+      {
+        queryKey: ["ledger", "ledger-1", "source-documents", "stream-total"],
+        refetchType: "active",
+      },
+      { queryKey: ["ledger", "ledger-1", "entries"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "entry"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "source-document"], refetchType: "active" },
+    ]);
+    expect(
+      client.getQueryState(["ledger", "ledger-1", "source-documents", "refresh"])?.isInvalidated
+    ).toBe(false);
   });
 
-  it.each([
-    ["categories", { categories: true, settings: false, stats: false }],
-    ["settings", { categories: false, settings: true, stats: false }],
-  ])("invalidates ledger settings for %s changes", (_name, invalidations) => {
+  it("invalidates category-bearing projections for category changes", async () => {
     const client = new QueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries");
 
-    applyStreamRefreshToCache(client, "ledger-1", makeResult({ invalidations }));
+    await applyStreamRefreshToCache(
+      client,
+      "ledger-1",
+      makeResult({ invalidations: { categories: true, settings: false, stats: false } })
+    );
 
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["ledger", "ledger-1"],
-      refetchType: "active",
-    });
+    expect(invalidate.mock.calls.map(([filters]) => filters)).toEqual([
+      { queryKey: ["ledger", "ledger-1", "categories"], exact: true, refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "source-documents", "stream"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "entries"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "entry"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "source-document"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "summary"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "enhanced-stats"], refetchType: "active" },
+    ]);
   });
 
-  it("invalidates stats for a stats signal", () => {
+  it("invalidates settings and stats families precisely", async () => {
     const client = new QueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries");
 
-    applyStreamRefreshToCache(
+    await applyStreamRefreshToCache(
       client,
       "ledger-1",
       makeResult({
-        invalidations: { categories: false, settings: false, stats: true },
+        invalidations: { categories: false, settings: true, stats: true },
       })
     );
 
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["ledger", "ledger-1"],
-      refetchType: "active",
-    });
+    expect(invalidate.mock.calls.map(([filters]) => filters)).toEqual([
+      { queryKey: ["ledger", "ledger-1"], exact: true, refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "settings"], exact: true, refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "summary"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "enhanced-stats"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "calendar"], refetchType: "active" },
+      { queryKey: ["ledger", "ledger-1", "token-stats"], exact: true, refetchType: "active" },
+      {
+        queryKey: ["ledger", "ledger-1", "source-documents", "stream-total"],
+        refetchType: "active",
+      },
+    ]);
   });
 });

@@ -15,13 +15,20 @@ import {
 } from "../source-document-updates";
 import { splitSourceDocumentAtomically } from "../source-document-splits";
 import { deleteSourceDocumentAtomically } from "../source-document-delete";
+import { updateLedgerEntryDatesAtomically } from "../source-document-updates";
 
 export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWritePort = {
   createProcessingDocument: (input) =>
     postgresSourceDocumentSubmissionAdapter.createPendingWithIntent(input),
+  createIdempotentProcessingDocument: (idempotency, prepare) =>
+    postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+      idempotency,
+      prepare
+    ),
   createManualDocument: (input) => postgresLedgerProjectionAdapter.createManual(input),
   saveChanges: saveSourceDocumentChangesAtomically,
   updateDocuments: batchUpdateSourceDocuments,
+  updateEntryDates: updateLedgerEntryDatesAtomically,
   addEntry: (input) => postgresLedgerEntryCommandAdapter.create(input),
   updateEntries: (input) => postgresLedgerEntryCommandAdapter.update(input),
   deleteEntries: (input) => postgresLedgerEntryCommandAdapter.delete(input),
@@ -29,6 +36,11 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   batchDeleteEntries: (input) => postgresLedgerEntryCommandAdapter.batchDelete(input),
   splitEntries: splitSourceDocumentAtomically,
   installRetry: (input) => postgresSourceDocumentSubmissionAdapter.createPendingWithIntent(input),
+  installIdempotentRetry: (idempotency, prepare) =>
+    postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+      idempotency,
+      prepare
+    ),
   acceptCandidate: acceptCandidateRevision,
   abandonCandidate: abandonCandidateRevision,
   cancelProcessing: cancelPendingRevision,

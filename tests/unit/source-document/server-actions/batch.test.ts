@@ -33,9 +33,10 @@ vi.mock("@/modules/source-document/server-actions/schedule-processing", () => ({
 
 vi.mock("@/application/server-composition-root", () => ({
   serverComposition: {
-    sourceDocumentRevisions: {},
-    sourceDocumentSubmissions: {},
-    sourceDocumentAggregate: { deleteDocuments: deleteDocumentsMock },
+    sourceDocumentAggregate: {
+      deleteDocuments: deleteDocumentsMock,
+      installRetry: vi.fn(),
+    },
   },
 }));
 

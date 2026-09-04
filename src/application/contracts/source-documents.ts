@@ -3,6 +3,10 @@
  * describe business values only; persistence and provider details stay in adapters.
  */
 
+import type { ApplicationErrorCode } from "./errors";
+
+export type { ApplicationErrorCode, ApplicationErrorContract } from "./errors";
+
 export type SourceDocumentId = string;
 export type RevisionId = string;
 export type LedgerId = string;
@@ -125,21 +129,6 @@ export interface ProcessingClaimContract {
   expiresAt: string;
 }
 
-export type ApplicationErrorCode =
-  | "VALIDATION_FAILED"
-  | "UNAUTHENTICATED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "IDEMPOTENCY_CONFLICT"
-  | "UPLOAD_QUOTA_EXCEEDED"
-  | "STATS_RANGE_TOO_LARGE"
-  | "PAYLOAD_TOO_LARGE"
-  | "RATE_LIMITED"
-  | "PROCESSING_UNAVAILABLE"
-  | "STORAGE_UNAVAILABLE"
-  | "INTERNAL";
-
 /**
  * Stable, user-facing anomaly codes for documents that parsed but need user attention.
  * These are localized and sanitized before being shown in the UI.
@@ -238,12 +227,6 @@ export function toStableAnomalyCode(reason: string | null | undefined): AnomalyC
   }
 
   return "insufficient_evidence";
-}
-
-export interface ApplicationErrorContract {
-  code: ApplicationErrorCode;
-  message: string;
-  correlationId?: string;
 }
 
 export interface SourceDocumentSubmissionContract {

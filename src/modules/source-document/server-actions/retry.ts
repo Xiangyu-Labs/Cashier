@@ -47,7 +47,15 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
         expectedVersion: identity.expectedVersion,
       },
       {
-        submissions: serverComposition.sourceDocumentSubmissions,
+        submissions: {
+          createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
+          ...(serverComposition.sourceDocumentAggregate.installIdempotentRetry == null
+            ? {}
+            : {
+                createIdempotentPendingWithIntent:
+                  serverComposition.sourceDocumentAggregate.installIdempotentRetry,
+              }),
+        },
         storedFiles: serverComposition.storedFiles,
         processImage,
         scheduleProcessing,
@@ -95,7 +103,15 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
         ...(validatedInput == null ? {} : { input: validatedInput }),
       },
       {
-        submissions: serverComposition.sourceDocumentSubmissions,
+        submissions: {
+          createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
+          ...(serverComposition.sourceDocumentAggregate.installIdempotentRetry == null
+            ? {}
+            : {
+                createIdempotentPendingWithIntent:
+                  serverComposition.sourceDocumentAggregate.installIdempotentRetry,
+              }),
+        },
         storedFiles: serverComposition.storedFiles,
         processImage,
         scheduleProcessing,

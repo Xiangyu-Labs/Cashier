@@ -2,13 +2,9 @@ import { and, eq, inArray, isNull, max, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
-import {
-  duplicateReviews,
-  ledgerEntries,
-  sourceDocumentRevisions,
-  sourceDocuments,
-} from "@/persistence";
+import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import type { PostgresTransaction } from "../transaction-locks";
+import { hasEditableActiveProjection } from "../source-document-write-guards";
 
 import {
   activeDocumentWhere,
@@ -240,50 +236,24 @@ export async function replaceActiveProjectionInTransaction(
     entryDate?: string;
   }
 ): Promise<string> {
-  const pendingDuplicateReview = await tx
-    .select({ id: duplicateReviews.id })
-    .from(duplicateReviews)
-    .where(
-      and(
-        eq(duplicateReviews.ledgerId, input.ledgerId),
-        eq(duplicateReviews.sourceDocumentId, input.sourceDocumentId),
-        eq(duplicateReviews.status, "pending")
-      )
-    )
-    .then((rows) => rows[0]);
-  if (pendingDuplicateReview != null) {
-    throw new ConflictError("Source document has a pending duplicate review");
-  }
-
   const document = await tx
     .select({
       activeRevisionId: sourceDocuments.activeRevisionId,
       pendingRevisionId: sourceDocuments.pendingRevisionId,
+      currentStatus: sourceDocuments.currentStatus,
+      stateVersion: sourceDocuments.stateVersion,
     })
     .from(sourceDocuments)
     .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
     .then((rows) => rows[0]);
-  if (
-    document?.activeRevisionId == null ||
-    document.activeRevisionId !== input.expectedActiveRevisionId
-  ) {
-    throw new ConflictError("Source document active revision changed");
+  if (document == null || document.stateVersion !== input.expectedStateVersion) {
+    throw new ConflictError("Source document changed during the edit");
   }
-  if (document.pendingRevisionId != null) {
-    const pending = await tx
-      .select({ outcome: sourceDocumentRevisions.outcome })
-      .from(sourceDocumentRevisions)
-      .where(
-        and(
-          eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-          eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
-          eq(sourceDocumentRevisions.id, document.pendingRevisionId)
-        )
-      )
-      .then((rows) => rows[0]);
-    if (pending?.outcome === "processing" || pending?.outcome === "completed") {
-      throw new ConflictError("Source document has processing work");
-    }
+  if (!hasEditableActiveProjection(document)) {
+    throw new ConflictError("Source document is not editable");
+  }
+  if (document.activeRevisionId !== input.expectedActiveRevisionId) {
+    throw new ConflictError("Source document active revision changed");
   }
 
   const activeRevision = await tx

@@ -45,7 +45,16 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
         },
       },
       {
-        submissions: serverComposition.sourceDocumentSubmissions,
+        submissions: {
+          createPendingWithIntent:
+            serverComposition.sourceDocumentAggregate.createProcessingDocument,
+          ...(serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument == null
+            ? {}
+            : {
+                createIdempotentPendingWithIntent:
+                  serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument,
+              }),
+        },
         storedFiles: serverComposition.storedFiles,
         processImage: processImageFn,
         scheduleProcessing,

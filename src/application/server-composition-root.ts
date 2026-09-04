@@ -5,12 +5,9 @@ import {
   postgresLedgerAdapter,
   postgresOtpTokenAdapter,
   postgresServiceCredentialAdapter,
-  postgresLedgerProjectionAdapter,
-  postgresSourceDocumentSubmissionAdapter,
   postgresSettingsAdapter,
   postgresUserAccountAdapter,
   postgresUserPreferencesAdapter,
-  postgresRevisionAdapter,
   calculateCompletedSourceDocumentTotal,
   getTargetSourceDocument,
   getTargetSourceDocumentAccessContext,
@@ -19,7 +16,6 @@ import {
   listPendingDuplicateReviews,
   PostgresProcessingIntentAdapter,
   listTargetSourceDocuments,
-  updateLedgerEntryDatesAtomically,
   postgresSourceDocumentAggregateAdapter,
 } from "@/application/adapters/postgres";
 import { postgresAccountSecurityAdapter } from "@/application/adapters/postgres/account-security";
@@ -41,7 +37,6 @@ import {
   fetchWithRetry as fetchExchangeRatesWithRetry,
 } from "@/application/adapters/postgres/exchange-rate";
 import { categoryMetadataGeneratorAdapter } from "@/application/adapters/ai/category-metadata-generator";
-import { postgresLedgerEntryCommandAdapter } from "@/application/adapters/postgres/ledger-entry-commands";
 
 /** Composition root for the PostgreSQL-backed Docker runtime. */
 export const serverComposition = {
@@ -53,9 +48,6 @@ export const serverComposition = {
   exchangeRates: postgresFxRateBook,
   fetchExchangeRatesWithRetry,
   ledgers: postgresLedgerAdapter,
-  ledgerProjections: postgresLedgerProjectionAdapter,
-  ledgerEntryCommands: postgresLedgerEntryCommandAdapter,
-  ledgerEntryDates: { updateDates: updateLedgerEntryDatesAtomically },
   ledgerReads: {
     hasActiveEntries: hasActiveLedgerEntries,
     calculateStats: calculateLedgerEntryStats,
@@ -72,31 +64,7 @@ export const serverComposition = {
   serviceCredentials: postgresServiceCredentialAdapter,
   settings: postgresSettingsAdapter,
   storedFiles: storedFileAdapter,
-  sourceDocumentSubmissions: postgresSourceDocumentSubmissionAdapter,
   sourceDocumentAggregate: postgresSourceDocumentAggregateAdapter,
-  sourceDocumentUpdates: {
-    batchUpdate: postgresSourceDocumentAggregateAdapter.updateDocuments,
-    saveChangesAtomically: postgresSourceDocumentAggregateAdapter.saveChanges,
-    split: postgresSourceDocumentAggregateAdapter.splitEntries,
-  },
-  sourceDocumentLifecycle: {
-    acceptCandidate: postgresSourceDocumentAggregateAdapter.acceptCandidate,
-    abandonCandidate: postgresSourceDocumentAggregateAdapter.abandonCandidate,
-    keepDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion: number) =>
-      postgresSourceDocumentAggregateAdapter
-        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "keep" })
-        .then((result) =>
-          result == null ? null : { version: result.version, status: "completed" as const }
-        ),
-    discardDuplicate: (ledgerId: string, sourceDocumentId: string, expectedVersion: number) =>
-      postgresSourceDocumentAggregateAdapter
-        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "discard" })
-        .then((result) =>
-          result == null ? null : { version: result.version, status: "deleted" as const }
-        ),
-    cancelPending: postgresSourceDocumentAggregateAdapter.cancelProcessing,
-  },
-  sourceDocumentRevisions: postgresRevisionAdapter,
   sourceDocumentReads: {
     candidateReview: getSourceDocumentCandidateReview,
     calculateCompletedTotal: calculateCompletedSourceDocumentTotal,

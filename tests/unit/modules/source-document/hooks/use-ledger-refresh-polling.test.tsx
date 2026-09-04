@@ -121,6 +121,25 @@ describe("useLedgerRefreshPolling", () => {
     expect(getStreamRefreshActionMock).toHaveBeenCalledTimes(2);
   });
 
+  it("backs off consecutive failures to the thirty-second cap", async () => {
+    getStreamRefreshActionMock.mockRejectedValue(new Error("temporary outage"));
+    const { wrapper } = setup();
+
+    renderHook(() => useLedgerRefreshPolling("ledger-1"), { wrapper });
+    await flush();
+    const intervals = [3_000, 6_000, 12_000, 24_000, 30_000, 30_000];
+    for (const [index, interval] of intervals.entries()) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(interval - 1);
+      });
+      expect(getStreamRefreshActionMock).toHaveBeenCalledTimes(index + 1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(getStreamRefreshActionMock).toHaveBeenCalledTimes(index + 2);
+    }
+  });
+
   it("pauses in the background and refreshes on focus and reconnect", async () => {
     getStreamRefreshActionMock
       .mockResolvedValueOnce({ ...unchanged, hasTransitionalWork: true })

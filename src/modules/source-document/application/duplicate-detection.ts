@@ -348,8 +348,10 @@ function visualPromptParts(
     const currentSummary = summarizeEntries(input.currentEntries);
     const parts: AiMessageContentPart[] = [];
     const imageSets = await Promise.all([
-      input.loadImages(input.currentStoredFileIds),
-      ...shortlist.map((candidate) => input.loadImages(candidate.storedFileIds)),
+      input.loadImages(input.currentStoredFileIds.slice(0, MAX_IMAGES_PER_DOCUMENT)),
+      ...shortlist.map((candidate) =>
+        input.loadImages(candidate.storedFileIds.slice(0, MAX_IMAGES_PER_DOCUMENT))
+      ),
     ]);
 
     parts.push({

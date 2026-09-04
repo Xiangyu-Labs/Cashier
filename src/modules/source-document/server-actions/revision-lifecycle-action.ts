@@ -17,6 +17,27 @@ type RevisionLifecycleUseCase<TResult> = (
   lifecycle: SourceDocumentLifecyclePort
 ) => Promise<{ version: number; data: TResult }>;
 
+export function sourceDocumentLifecyclePort(): SourceDocumentLifecyclePort {
+  const aggregate = serverComposition.sourceDocumentAggregate;
+  return {
+    acceptCandidate: aggregate.acceptCandidate,
+    abandonCandidate: aggregate.abandonCandidate,
+    keepDuplicate: (ledgerId, sourceDocumentId, expectedVersion) =>
+      aggregate
+        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "keep" })
+        .then((result) =>
+          result == null ? null : { version: result.version, status: "completed" as const }
+        ),
+    discardDuplicate: (ledgerId, sourceDocumentId, expectedVersion) =>
+      aggregate
+        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "discard" })
+        .then((result) =>
+          result == null ? null : { version: result.version, status: "deleted" as const }
+        ),
+    cancelPending: aggregate.cancelProcessing,
+  };
+}
+
 export function revisionLifecycleAction<TResult>(useCase: RevisionLifecycleUseCase<TResult>) {
   return withSourceDocumentLedgerAccess(
     async (
@@ -32,7 +53,7 @@ export function revisionLifecycleAction<TResult>(useCase: RevisionLifecycleUseCa
             sourceDocumentId: target.sourceDocumentId,
             expectedVersion: target.expectedVersion,
           },
-          serverComposition.sourceDocumentLifecycle
+          sourceDocumentLifecyclePort()
         );
         return {
           ok: true,

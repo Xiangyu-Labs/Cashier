@@ -8,12 +8,8 @@ import {
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { useTranslations } from "next-intl";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useSourceDocumentRevisionDecisionMutation } from "./useSourceDocumentRevisionDecisionMutation";
-import {
-  requireSourceDocumentVersion,
-  unwrapVersionedCommandResult,
-} from "@/modules/source-document/command-results";
+import { useVersionedSourceDocumentMutation } from "./useVersionedSourceDocumentMutation";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
   ledgerId: string;
@@ -39,7 +35,6 @@ export function useSourceDocumentRecoveryMutations({
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const actionLockRef = useRef(false);
   const tActions = useTranslations("CandidateAction");
-  const tCommon = useTranslations("Common");
 
   // -----------------------------------------------------------------------
   // Accept candidate
@@ -73,13 +68,11 @@ export function useSourceDocumentRecoveryMutations({
   // Direct retry
   // -----------------------------------------------------------------------
 
-  const retryMutation = useLedgerMutation<unknown, void>(ledgerId, {
-    mutationFn: async () => {
-      const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
-      const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId, expectedVersion);
-      return unwrapVersionedCommandResult(result);
-    },
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  const retryMutation = useVersionedSourceDocumentMutation({
+    ledgerId,
+    sourceDocumentId,
+    expectedVersion: version,
+    action: retrySourceDocumentAction,
     successMessage: tActions("retrySuccess"),
     errorMessage: tActions("retryError"),
     onSuccess: () => {
@@ -87,17 +80,11 @@ export function useSourceDocumentRecoveryMutations({
     },
   });
 
-  const cancelMutation = useLedgerMutation<unknown, void>(ledgerId, {
-    mutationFn: async () => {
-      const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
-      const result = await cancelSourceDocumentProcessingAction(
-        ledgerId,
-        sourceDocumentId,
-        expectedVersion
-      );
-      return unwrapVersionedCommandResult(result);
-    },
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  const cancelMutation = useVersionedSourceDocumentMutation({
+    ledgerId,
+    sourceDocumentId,
+    expectedVersion: version,
+    action: cancelSourceDocumentProcessingAction,
     successMessage: tActions("cancelSuccess"),
     errorMessage: tActions("cancelError"),
     onSuccess: () => {

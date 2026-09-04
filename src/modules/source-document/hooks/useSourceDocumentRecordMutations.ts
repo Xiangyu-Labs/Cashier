@@ -1,14 +1,10 @@
 "use client";
 import { toast } from "sonner";
 import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useTranslations } from "next-intl";
-import {
-  requireSourceDocumentVersion,
-  SourceDocumentStaleCommandError,
-  unwrapVersionedCommandResult,
-} from "@/modules/source-document/command-results";
+import { SourceDocumentStaleCommandError } from "@/modules/source-document/command-results";
 import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
+import { useVersionedSourceDocumentMutation } from "./useVersionedSourceDocumentMutation";
 
 interface UseSourceDocumentRecordMutationsOptions {
   id: string;
@@ -31,16 +27,13 @@ export function useSourceDocumentRecordMutations({
   // Delete source document
   // -----------------------------------------------------------------------
 
-  const deleteDocumentMutation = useLedgerMutation<DeleteSourceDocumentResultDto, void>(ledgerId, {
-    mutationFn: async () => {
-      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-      const expectedVersion = requireSourceDocumentVersion(version, id);
-      const result = await deleteSourceDocumentAction(ledgerId, id, expectedVersion);
-      return unwrapVersionedCommandResult(result);
-    },
+  const deleteDocumentMutation = useVersionedSourceDocumentMutation<DeleteSourceDocumentResultDto>({
+    ledgerId,
+    sourceDocumentId: id,
+    expectedVersion: version,
+    action: deleteSourceDocumentAction,
     successMessage: tCommon("deleteSuccess"),
     errorMessage: null,
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onError: (error) => {
       toast.error(
         error instanceof SourceDocumentStaleCommandError

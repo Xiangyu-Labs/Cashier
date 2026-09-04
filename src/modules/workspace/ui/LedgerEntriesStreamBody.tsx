@@ -34,6 +34,12 @@ interface LedgerEntriesStreamBodyProps {
   sentinelRef: (node: HTMLDivElement | null) => void;
 }
 
+const EMPTY_ITEM_PROPS = Object.freeze({});
+
+function getEmptyItemProps() {
+  return EMPTY_ITEM_PROPS;
+}
+
 /** The stream tab's list body: loading state, grouped results, empty state, and pagination footer. */
 export function LedgerEntriesStreamBody({
   isLoading,
@@ -80,7 +86,7 @@ export function LedgerEntriesStreamBody({
               disableUnselected={disableUnselected}
               onToggleSelection={onToggleSelection}
               noRecordsText={tCommon("noRecords")}
-              getItemProps={() => ({})}
+              getItemProps={getEmptyItemProps}
               {...(timeZone != null ? { timeZone } : {})}
               collapseEntriesDefault={collapseEntriesDefault}
             />

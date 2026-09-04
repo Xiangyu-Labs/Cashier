@@ -382,6 +382,43 @@ describe("detectDuplicateBill", () => {
     expect(maxConcurrentLoads).toBe(3);
   });
 
+  it("loads and preserves only the first two images for each document", async () => {
+    const loadImages = vi.fn(async (ids: readonly string[]) =>
+      ids.map((id) => ({ url: id, dataUrl: `data:image/jpeg;base64,${id}` }))
+    );
+    const generate = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        duplicate: false,
+        matchedSourceDocumentId: null,
+        confidence: 0,
+        reason: null,
+      }),
+    });
+    await detectDuplicateBill(
+      buildInput({
+        currentStoredFileIds: ["current-1", "current-2", "current-3"],
+        candidates: [candidate({ storedFileIds: ["candidate-1", "candidate-2", "candidate-3"] })],
+        loadImages,
+        ai: { generate },
+      })
+    );
+
+    expect(loadImages.mock.calls.map(([ids]) => ids)).toEqual([
+      ["current-1", "current-2"],
+      ["candidate-1", "candidate-2"],
+    ]);
+    const content = generate.mock.calls[0]?.[0]?.messages?.[0]?.content;
+    const imageUrls = (content ?? []).flatMap((part: { image_url?: { url: string } }) =>
+      part.image_url == null ? [] : [part.image_url.url]
+    );
+    expect(imageUrls).toEqual([
+      "data:image/jpeg;base64,current-1",
+      "data:image/jpeg;base64,current-2",
+      "data:image/jpeg;base64,candidate-1",
+      "data:image/jpeg;base64,candidate-2",
+    ]);
+  });
+
   it("fails open when image loading exceeds the visual timeout", async () => {
     vi.useFakeTimers();
     try {

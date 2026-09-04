@@ -102,7 +102,15 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
         const retried = await retrySourceDocument(
           { ledgerId, sourceDocumentId: id, expectedVersion: target.expectedVersion },
           {
-            submissions: serverComposition.sourceDocumentSubmissions,
+            submissions: {
+              createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
+              ...(serverComposition.sourceDocumentAggregate.installIdempotentRetry == null
+                ? {}
+                : {
+                    createIdempotentPendingWithIntent:
+                      serverComposition.sourceDocumentAggregate.installIdempotentRetry,
+                  }),
+            },
             scheduleProcessing: (intent) => intents.push(intent),
           }
         );

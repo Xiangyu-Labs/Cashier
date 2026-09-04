@@ -68,44 +68,47 @@ async function fetchAggregatedRows(
   }));
 }
 
-function buildBucket(rows: readonly AggregatedRow[], mainCurrency: string): EnhancedStatsBucket {
-  const bucket: EnhancedStatsBucket = {
+function emptyBucket(): EnhancedStatsBucket {
+  return {
     total: new Decimal(0),
     categories: new Map(),
     days: new Map(),
   };
+}
 
-  for (const row of rows) {
-    if (row.entryCount === 0 || row.totalAmount == null) continue;
-    const converted = new Decimal(row.totalAmount);
-    bucket.total = bucket.total.plus(converted);
+function addRowToBucket(
+  bucket: EnhancedStatsBucket,
+  row: AggregatedRow,
+  mainCurrency: string
+): void {
+  if (row.entryCount === 0 || row.totalAmount == null) return;
+  const converted = new Decimal(row.totalAmount);
+  bucket.total = bucket.total.plus(converted);
 
-    const categoryKey = row.categoryId ?? "uncategorized";
-    const category = bucket.categories.get(categoryKey) ?? {
-      id: row.categoryId,
-      name: row.categoryName ?? "Uncategorized",
-      icon: row.categoryIcon ?? null,
+  const categoryKey = row.categoryId ?? "uncategorized";
+  const category = bucket.categories.get(categoryKey) ?? {
+    id: row.categoryId,
+    name: row.categoryName ?? "Uncategorized",
+    icon: row.categoryIcon ?? null,
+    total: new Decimal(0),
+    count: 0,
+  };
+  category.total = category.total.plus(converted);
+  category.count += row.entryCount;
+  bucket.categories.set(categoryKey, category);
+
+  const date = row.effectiveDate ?? "";
+  if (date !== "") {
+    const day = bucket.days.get(date) ?? {
       total: new Decimal(0),
       count: 0,
+      currencies: new Set<string>(),
     };
-    category.total = category.total.plus(converted);
-    category.count += row.entryCount;
-    bucket.categories.set(categoryKey, category);
-
-    const date = row.effectiveDate ?? "";
-    if (date !== "") {
-      const day = bucket.days.get(date) ?? {
-        total: new Decimal(0),
-        count: 0,
-        currencies: new Set<string>(),
-      };
-      day.total = day.total.plus(converted);
-      day.count += row.entryCount;
-      day.currencies.add(row.currency ?? mainCurrency);
-      bucket.days.set(date, day);
-    }
+    day.total = day.total.plus(converted);
+    day.count += row.entryCount;
+    day.currencies.add(row.currency ?? mainCurrency);
+    bucket.days.set(date, day);
   }
-  return bucket;
 }
 
 export async function getEnhancedStatsQuery({
@@ -116,24 +119,23 @@ export async function getEnhancedStatsQuery({
 }: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
   const rows = await fetchAggregatedRows(ledgerId, queryRange, compareRange);
   const mainCurrency = rows[0]?.mainCurrency ?? "CNY";
-  const unconvertedCount = rows
-    .filter((row) => row.period === "current")
-    .reduce((total, row) => total + row.unconvertedCount, 0);
+  const current = emptyBucket();
+  const previous = emptyBucket();
+  let unconvertedCount = 0;
+  for (const row of rows) {
+    if (row.period === "current") {
+      unconvertedCount += row.unconvertedCount;
+      addRowToBucket(current, row, mainCurrency);
+    } else {
+      addRowToBucket(previous, row, mainCurrency);
+    }
+  }
   if (unconvertedCount > 0) {
     logger.warn(
       { unconvertedCount, operation: "enhanced_stats" },
       "Entries missing exchange rates were excluded from main-currency statistics"
     );
   }
-  const current = buildBucket(
-    rows.filter((row) => row.period === "current"),
-    mainCurrency
-  );
-  const previous = buildBucket(
-    rows.filter((row) => row.period === "previous"),
-    mainCurrency
-  );
-
   return buildEnhancedStatsDto({
     mainCurrency,
     unconvertedCount,

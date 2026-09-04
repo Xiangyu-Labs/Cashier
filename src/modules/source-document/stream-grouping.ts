@@ -99,45 +99,34 @@ export function buildUnifiedStreamGroups(
   items: readonly SourceDocumentListItemDto[],
   mainCurrency?: string
 ): UnifiedStreamGroup[] {
-  // 1. Map to presentation items preserving server order
-  const mapped: UnifiedStreamItem[] = items.map((item) => {
-    const { date, provenance } = getEffectiveDate(item);
-    return {
-      sourceDocument: item,
-      ledgerEntries: item.ledgerEntries ?? [],
+  const groups: UnifiedStreamGroup[] = [];
+  for (const sourceDocument of items) {
+    const entries = sourceDocument.ledgerEntries ?? [];
+    const { date, provenance } = getEffectiveDate(sourceDocument);
+    const item: UnifiedStreamItem = {
+      sourceDocument,
+      ledgerEntries: entries,
       effectiveDate: date,
       dateProvenance: provenance,
     };
-  });
-
-  // 2. Group consecutive items by effective date (preserving order)
-  const groups: UnifiedStreamGroup[] = [];
-  for (const item of mapped) {
     const lastGroup = groups.at(-1);
+    let group: UnifiedStreamGroup;
     if (lastGroup != null && lastGroup.date === item.effectiveDate) {
       lastGroup.items.push(item);
+      group = lastGroup;
     } else {
-      groups.push({
+      group = {
         date: item.effectiveDate,
         dateProvenance: item.dateProvenance,
         total: "0",
         unconvertedCount: 0,
         currencyTotals: {},
         items: [item],
-      });
+      };
+      groups.push(group);
     }
-  }
-
-  // 3. Compute totals for all active accounting projections. A pending
-  // duplicate is valid until the user chooses to delete it.
-  for (const group of groups) {
-    for (const item of group.items) {
-      if (
-        item.sourceDocument.status === "completed" ||
-        item.sourceDocument.status === "duplicate_pending"
-      ) {
-        addEntries(group, item.ledgerEntries, mainCurrency);
-      }
+    if (sourceDocument.status === "completed" || sourceDocument.status === "duplicate_pending") {
+      addEntries(group, entries, mainCurrency);
     }
   }
 

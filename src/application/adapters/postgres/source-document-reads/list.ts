@@ -514,38 +514,59 @@ async function hydrateSourceDocumentRows(
   const selectedRevisionIds = baseRows.flatMap((row) =>
     row.selectedRevisionId == null ? [] : [row.selectedRevisionId]
   );
-  const fileRows =
-    selectedRevisionIds.length === 0
-      ? []
-      : await executor
-          .select({
-            revisionId: revisionFiles.revisionId,
-            id: storedFiles.id,
-            contentType: storedFiles.contentType,
-            byteSize: storedFiles.byteSize,
-            originalFilename: storedFiles.originalFilename,
-          })
-          .from(revisionFiles)
-          .innerJoin(
-            storedFiles,
-            and(
-              eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-              eq(storedFiles.id, revisionFiles.storedFileId),
-              isNull(storedFiles.deletedAt)
-            )
-          )
-          .where(
-            and(
-              eq(revisionFiles.ledgerId, ledgerId),
-              inArray(revisionFiles.revisionId, selectedRevisionIds)
-            )
-          )
-          .orderBy(asc(revisionFiles.revisionId), asc(revisionFiles.position));
   const filesByRevision = new Map<string, SourceDocumentStoredFileAggregateRow[]>();
-  for (const file of fileRows) {
-    const files = filesByRevision.get(file.revisionId) ?? [];
-    files.push(file);
-    filesByRevision.set(file.revisionId, files);
+  const revisionsWithFiles = new Set<string>();
+  if (selectedRevisionIds.length > 0 && includeDetail) {
+    const fileRows = await executor
+      .select({
+        revisionId: revisionFiles.revisionId,
+        id: storedFiles.id,
+        contentType: storedFiles.contentType,
+        byteSize: storedFiles.byteSize,
+        originalFilename: storedFiles.originalFilename,
+      })
+      .from(revisionFiles)
+      .innerJoin(
+        storedFiles,
+        and(
+          eq(storedFiles.ledgerId, revisionFiles.ledgerId),
+          eq(storedFiles.id, revisionFiles.storedFileId),
+          isNull(storedFiles.deletedAt)
+        )
+      )
+      .where(
+        and(
+          eq(revisionFiles.ledgerId, ledgerId),
+          inArray(revisionFiles.revisionId, selectedRevisionIds)
+        )
+      )
+      .orderBy(asc(revisionFiles.revisionId), asc(revisionFiles.position));
+    for (const file of fileRows) {
+      revisionsWithFiles.add(file.revisionId);
+      const files = filesByRevision.get(file.revisionId) ?? [];
+      files.push(file);
+      filesByRevision.set(file.revisionId, files);
+    }
+  } else if (selectedRevisionIds.length > 0) {
+    const fileRevisions = await executor
+      .select({ revisionId: revisionFiles.revisionId })
+      .from(revisionFiles)
+      .innerJoin(
+        storedFiles,
+        and(
+          eq(storedFiles.ledgerId, revisionFiles.ledgerId),
+          eq(storedFiles.id, revisionFiles.storedFileId),
+          isNull(storedFiles.deletedAt)
+        )
+      )
+      .where(
+        and(
+          eq(revisionFiles.ledgerId, ledgerId),
+          inArray(revisionFiles.revisionId, selectedRevisionIds)
+        )
+      )
+      .groupBy(revisionFiles.revisionId);
+    for (const file of fileRevisions) revisionsWithFiles.add(file.revisionId);
   }
 
   const relevantRevisionIds = includeDetail
@@ -639,9 +660,7 @@ async function hydrateSourceDocumentRows(
       row.activeRevisionId == null ? [] : (entriesByRevision.get(row.activeRevisionId) ?? []);
     return {
       ...row,
-      hasImages:
-        row.selectedRevisionId != null &&
-        (filesByRevision.get(row.selectedRevisionId)?.length ?? 0) > 0,
+      hasImages: row.selectedRevisionId != null && revisionsWithFiles.has(row.selectedRevisionId),
       files:
         includeDetail && row.selectedRevisionId != null
           ? (filesByRevision.get(row.selectedRevisionId) ?? [])

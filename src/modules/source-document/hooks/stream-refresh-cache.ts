@@ -7,13 +7,48 @@ export function applyStreamRefreshToCache(
   ledgerId: string,
   result: LedgerRefreshResult
 ): Promise<void> {
-  const shouldInvalidate =
-    result.changed ||
-    result.invalidations.categories ||
-    result.invalidations.settings ||
-    result.invalidations.stats;
-  if (!shouldInvalidate) return Promise.resolve();
-  return queryClient
-    .invalidateQueries({ queryKey: queryKeys.ledger(ledgerId), refetchType: "active" })
-    .then(() => undefined);
+  const invalidations = new Map<string, { queryKey: readonly unknown[]; exact?: true }>();
+  const add = (queryKey: readonly unknown[], exact?: true) => {
+    invalidations.set(JSON.stringify(queryKey), {
+      queryKey,
+      ...(exact === true ? { exact: true } : {}),
+    });
+  };
+
+  if (result.changed) {
+    add(queryKeys.sourceDocumentStreamPrefix(ledgerId));
+    add(queryKeys.sourceDocumentStreamTotalPrefix(ledgerId));
+    add(queryKeys.ledgerEntriesPrefix(ledgerId));
+    add(queryKeys.ledgerEntryPrefix(ledgerId));
+    add(queryKeys.sourceDocumentDetailPrefix(ledgerId));
+  }
+  if (result.invalidations.categories) {
+    add(queryKeys.entryCategories(ledgerId), true);
+    add(queryKeys.sourceDocumentStreamPrefix(ledgerId));
+    add(queryKeys.ledgerEntriesPrefix(ledgerId));
+    add(queryKeys.ledgerEntryPrefix(ledgerId));
+    add(queryKeys.sourceDocumentDetailPrefix(ledgerId));
+    add(queryKeys.summaryPrefix(ledgerId));
+    add(queryKeys.enhancedStatsPrefix(ledgerId));
+  }
+  if (result.invalidations.settings) {
+    add(queryKeys.ledger(ledgerId), true);
+    add(queryKeys.ledgerSettings(ledgerId), true);
+    add(queryKeys.summaryPrefix(ledgerId));
+    add(queryKeys.enhancedStatsPrefix(ledgerId));
+    add(queryKeys.calendarPrefix(ledgerId));
+  }
+  if (result.invalidations.stats) {
+    add(queryKeys.summaryPrefix(ledgerId));
+    add(queryKeys.tokenStats(ledgerId), true);
+    add(queryKeys.enhancedStatsPrefix(ledgerId));
+    add(queryKeys.calendarPrefix(ledgerId));
+    add(queryKeys.sourceDocumentStreamTotalPrefix(ledgerId));
+  }
+
+  return Promise.all(
+    [...invalidations.values()].map((filters) =>
+      queryClient.invalidateQueries({ ...filters, refetchType: "active" })
+    )
+  ).then(() => undefined);
 }

@@ -5,6 +5,7 @@ import type {
   LedgerProjectionPort,
   StoredFileContract,
   SourceDocumentPort,
+  SourceDocumentIdempotencyInput,
   SourceDocumentSubmissionInput,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
@@ -104,9 +105,23 @@ export interface SourceDocumentUpdatePort {
 /** The only application-facing boundary for writes that change a document's visible projection. */
 export interface SourceDocumentAggregateWritePort {
   createProcessingDocument: SourceDocumentSubmissionPort["createPendingWithIntent"];
+  createIdempotentProcessingDocument?: (
+    idempotency: SourceDocumentIdempotencyInput,
+    prepare: () => Promise<SourceDocumentSubmissionInput>
+  ) => ReturnType<NonNullable<SourceDocumentSubmissionPort["createIdempotentPendingWithIntent"]>>;
   createManualDocument: LedgerProjectionPort["createManual"];
   saveChanges: SourceDocumentUpdatePort["saveChangesAtomically"];
   updateDocuments: SourceDocumentUpdatePort["batchUpdate"];
+  updateEntryDates(input: {
+    ledgerId: string;
+    targets: VersionedTarget[];
+    ledgerEntryIds: string[];
+    entryDate: string;
+  }): Promise<
+    AtomicBatchCommandResult<{
+      impact: import("@/modules/ledger/application/ports").BatchEntryDateImpact;
+    }>
+  >;
   addEntry: LedgerEntryCommandPort["create"];
   updateEntries: LedgerEntryCommandPort["update"];
   deleteEntries: LedgerEntryCommandPort["delete"];
@@ -116,6 +131,10 @@ export interface SourceDocumentAggregateWritePort {
   installRetry(
     input: SourceDocumentSubmissionInput & { sourceDocumentId: string; expectedVersion: number }
   ): ReturnType<SourceDocumentSubmissionPort["createPendingWithIntent"]>;
+  installIdempotentRetry?: (
+    idempotency: SourceDocumentIdempotencyInput,
+    prepare: () => Promise<SourceDocumentSubmissionInput>
+  ) => ReturnType<NonNullable<SourceDocumentSubmissionPort["createIdempotentPendingWithIntent"]>>;
   acceptCandidate: SourceDocumentLifecyclePort["acceptCandidate"];
   abandonCandidate: SourceDocumentLifecyclePort["abandonCandidate"];
   cancelProcessing: SourceDocumentLifecyclePort["cancelPending"];

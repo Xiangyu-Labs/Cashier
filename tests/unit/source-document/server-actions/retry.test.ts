@@ -19,7 +19,9 @@ vi.mock("@/modules/source-document/application/use-cases/retry-source-document",
 
 vi.mock("@/application/server-composition-root", () => ({
   serverComposition: {
-    sourceDocumentSubmissions: {},
+    sourceDocumentAggregate: {
+      installRetry: vi.fn(),
+    },
     storedFiles: {},
   },
 }));

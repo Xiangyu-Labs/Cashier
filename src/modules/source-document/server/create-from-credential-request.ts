@@ -43,7 +43,15 @@ export async function createSourceDocumentFromCredentialRequest(input: {
     },
     scheduleProcessing,
     {
-      submissions: serverComposition.sourceDocumentSubmissions,
+      submissions: {
+        createPendingWithIntent: serverComposition.sourceDocumentAggregate.createProcessingDocument,
+        ...(serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument == null
+          ? {}
+          : {
+              createIdempotentPendingWithIntent:
+                serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument,
+            }),
+      },
       storedFiles: serverComposition.storedFiles,
     }
   );

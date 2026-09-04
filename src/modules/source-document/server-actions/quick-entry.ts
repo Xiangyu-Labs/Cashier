@@ -27,7 +27,7 @@ export const createQuickEntryAction = withSourceDocumentLedgerAccess(
 
     return createQuickEntry(ledgerId, ledger, payload, {
       categories: serverComposition.categories,
-      projections: serverComposition.ledgerProjections,
+      projections: { createManual: serverComposition.sourceDocumentAggregate.createManualDocument },
       convertAmount: (input) => convertEntryAmount(input, serverComposition.exchangeRates),
     });
   }

@@ -5,6 +5,7 @@ import {
   toApiV1SourceDocumentCreateResponse,
 } from "@/app/api/v1/_shared/compatibility";
 import { toApplicationError } from "@/application/contracts/errors";
+import type { ApplicationErrorContract as CompatibilityApplicationErrorContract } from "@/application/contracts/source-documents";
 import { AppError } from "@/lib/errors";
 import {
   supportedSourceDocumentActions,
@@ -83,7 +84,7 @@ describe("target application contracts", () => {
   });
 
   it("maps infrastructure failures to stable, non-sensitive application errors", () => {
-    const error = toApplicationError(
+    const error: CompatibilityApplicationErrorContract = toApplicationError(
       new AppError(
         "Failed to download /private/uploads/secret.jpg",
         "LOCAL_STORAGE_DOWNLOAD_FAILED"

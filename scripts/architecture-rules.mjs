@@ -83,6 +83,15 @@ const forbiddenBrowserConcurrencyTokens = [
   "newSourceDocumentId",
   "resourceGroups",
 ];
+const forbiddenServerCompositionWriteProperties = [
+  "ledgerEntryCommands",
+  "ledgerEntryDates",
+  "ledgerProjections",
+  "sourceDocumentUpdates",
+  "sourceDocumentLifecycle",
+  "sourceDocumentSubmissions",
+  "sourceDocumentRevisions",
+];
 
 function collectSpecifiers(source) {
   const specifiers = [];
@@ -126,6 +135,16 @@ export function findBoundaryViolations(relativePath, source) {
     violations.push(
       `${relativePath}: sourceDocuments writes must use the registered aggregate gateway`
     );
+  }
+
+  if (isServerAction) {
+    for (const property of forbiddenServerCompositionWriteProperties) {
+      if (new RegExp(`\\bserverComposition\\.${property}\\b`).test(source)) {
+        violations.push(
+          `${relativePath}: server actions must obtain source-document writes from sourceDocumentAggregate`
+        );
+      }
+    }
   }
 
   if (browserSourceDocumentPath.test(relativePath)) {

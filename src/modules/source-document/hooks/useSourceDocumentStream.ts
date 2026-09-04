@@ -42,15 +42,14 @@ export interface UseSourceDocumentStreamOptions {
   };
 }
 
-/**
- * Deduplicate a list of source documents by id, preserving server order.
- * First occurrence wins.
- */
-function deduplicate(docs: SourceDocumentListItemDto[]): SourceDocumentListItemDto[] {
+function flattenAndDeduplicate(
+  pages: readonly { items: SourceDocumentListItemDto[] }[] | undefined
+): SourceDocumentListItemDto[] {
   const seen = new Set<string>();
   const result: SourceDocumentListItemDto[] = [];
-  for (const doc of docs) {
-    if (!seen.has(doc.id)) {
+  for (const page of pages ?? []) {
+    for (const doc of page.items) {
+      if (seen.has(doc.id)) continue;
       seen.add(doc.id);
       result.push(doc);
     }
@@ -218,7 +217,7 @@ export function useSourceDocumentStream(
     };
   }, [refetchRefresh]);
 
-  const items = useMemo(() => deduplicate(data?.pages.flatMap((page) => page.items) ?? []), [data]);
+  const items = useMemo(() => flattenAndDeduplicate(data?.pages), [data]);
 
   // Build unified stream groups (preserving server order)
   const streamGroups: UnifiedStreamGroup[] = useMemo(() => {

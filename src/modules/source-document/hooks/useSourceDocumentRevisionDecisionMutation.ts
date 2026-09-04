@@ -1,12 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { VersionedCommandResult } from "@/modules/source-document/contracts";
-import {
-  requireSourceDocumentVersion,
-  unwrapVersionedCommandResult,
-} from "@/modules/source-document/command-results";
+import { useVersionedSourceDocumentMutation } from "./useVersionedSourceDocumentMutation";
 
 interface UseSourceDocumentRevisionDecisionMutationOptions<TResult> {
   ledgerId: string;
@@ -32,15 +27,11 @@ export function useSourceDocumentRevisionDecisionMutation<TResult>({
   errorMessage,
   onSuccess,
 }: UseSourceDocumentRevisionDecisionMutationOptions<TResult>) {
-  const tCommon = useTranslations("Common");
-
-  return useLedgerMutation<TResult, void>(ledgerId, {
-    mutationFn: async () => {
-      const version = requireSourceDocumentVersion(expectedVersion, sourceDocumentId);
-      const result = await action(ledgerId, sourceDocumentId, version);
-      return unwrapVersionedCommandResult(result);
-    },
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  return useVersionedSourceDocumentMutation({
+    ledgerId,
+    sourceDocumentId,
+    expectedVersion,
+    action,
     successMessage,
     errorMessage,
     ...(onSuccess === undefined ? {} : { onSuccess }),

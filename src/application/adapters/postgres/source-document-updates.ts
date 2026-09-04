@@ -22,6 +22,7 @@ import {
 } from "./transaction-locks";
 import type { UpdateLedgerEntryInput } from "@/modules/ledger/contract-schemas";
 import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
+import { hasEditableActiveProjection } from "./source-document-write-guards";
 
 function whereSourceDocumentNotDeleted(ledgerId: string) {
   return and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt))!;
@@ -149,6 +150,8 @@ export async function saveSourceDocumentChangesAtomically(
       where: whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId),
       columns: {
         activeRevisionId: true,
+        pendingRevisionId: true,
+        currentStatus: true,
         stateVersion: true,
         title: true,
         entryDate: true,
@@ -177,8 +180,9 @@ export async function saveSourceDocumentChangesAtomically(
       currentVersion: document.stateVersion,
     };
   }
-  if (document.activeRevisionId == null)
-    throw new ConflictError("Source document has no active result");
+  if (!hasEditableActiveProjection(document)) {
+    throw new ConflictError("Source document is not editable");
+  }
   const activeEntries = initialEntries.filter(
     (entry) => entry.sourceDocumentRevisionId === document.activeRevisionId
   );
@@ -266,8 +270,8 @@ export async function saveSourceDocumentChangesAtomically(
     if (lockedDocument.stateVersion !== input.expectedVersion) {
       return false;
     }
-    if (lockedDocument.activeRevisionId == null) {
-      throw new ConflictError("Source document has no active result");
+    if (!hasEditableActiveProjection(lockedDocument)) {
+      throw new ConflictError("Source document is not editable");
     }
 
     await replaceActiveProjectionInTransaction(tx, {
@@ -322,26 +326,41 @@ export async function batchUpdateSourceDocuments({
     targets.map((target) => [target.sourceDocumentId, target.expectedVersion] as const)
   );
 
-  const initialDocuments =
-    data.entryDate === undefined
+  const initialDocuments = await db
+    .select({
+      id: sourceDocuments.id,
+      type: sourceDocuments.type,
+      activeRevisionId: sourceDocuments.activeRevisionId,
+      pendingRevisionId: sourceDocuments.pendingRevisionId,
+      currentStatus: sourceDocuments.currentStatus,
+      stateVersion: sourceDocuments.stateVersion,
+      title: sourceDocuments.title,
+      entryDate: sourceDocuments.entryDate,
+    })
+    .from(sourceDocuments)
+    .where(
+      and(
+        eq(sourceDocuments.ledgerId, ledgerId),
+        inArray(sourceDocuments.id, requestedIds),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .orderBy(asc(sourceDocuments.id));
+  const initialStaleTargets = initialDocuments.flatMap((document) => {
+    const expectedVersion = expectedVersions.get(document.id)!;
+    return document.stateVersion === expectedVersion
       ? []
-      : await db
-          .select({
-            id: sourceDocuments.id,
-            type: sourceDocuments.type,
-            activeRevisionId: sourceDocuments.activeRevisionId,
-            pendingRevisionId: sourceDocuments.pendingRevisionId,
-            stateVersion: sourceDocuments.stateVersion,
-          })
-          .from(sourceDocuments)
-          .where(
-            and(
-              eq(sourceDocuments.ledgerId, ledgerId),
-              inArray(sourceDocuments.id, requestedIds),
-              isNull(sourceDocuments.deletedAt)
-            )
-          )
-          .orderBy(asc(sourceDocuments.id));
+      : [{ sourceDocumentId: document.id, expectedVersion, currentVersion: document.stateVersion }];
+  });
+  if (initialStaleTargets.length > 0) {
+    return { ok: false as const, reason: "stale" as const, staleTargets: initialStaleTargets };
+  }
+  if (
+    initialDocuments.length !== requestedIds.length ||
+    initialDocuments.some((document) => !hasEditableActiveProjection(document))
+  ) {
+    throw new ConflictError("Source document is not editable");
+  }
   const plan =
     data.entryDate === undefined
       ? null
@@ -380,6 +399,9 @@ export async function batchUpdateSourceDocuments({
     });
     if (staleTargets.length > 0) {
       return { changedIds: new Set<string>(), impact: undefined, staleTargets };
+    }
+    if (documents.some((document) => !hasEditableActiveProjection(document))) {
+      throw new ConflictError("Source document is not editable");
     }
 
     let impact: BatchEntryDateImpact | undefined;
@@ -474,9 +496,6 @@ export async function batchUpdateSourceDocuments({
       // a new revision; a document already at the target date/title is a
       // true no-op and keeps its current version untouched.
       const changedDocuments = documents.filter((document) => {
-        if (document.activeRevisionId == null || document.pendingRevisionId != null) {
-          throw new ConflictError("Source document has processing work");
-        }
         return (
           (data.title !== undefined && data.title !== document.title) ||
           data.entryDate !== document.entryDate

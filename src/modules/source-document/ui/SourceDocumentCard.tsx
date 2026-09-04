@@ -4,7 +4,7 @@ import type {
   SourceDocumentLight,
   SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
-import { memo, useId, useMemo, useState } from "react";
+import { memo, useCallback, useId, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
@@ -24,6 +24,8 @@ interface SourceDocumentCardProps {
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   onEditRetry?: () => void | Promise<void>;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
@@ -79,6 +81,8 @@ function SourceDocumentCardBody({
   onViewLedgerEntry,
   onViewDetails,
   defaultExpanded = true,
+  expanded,
+  onExpandedChange,
   onEditRetry,
   status,
   anomalyReason,
@@ -93,7 +97,13 @@ function SourceDocumentCardBody({
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
   const tCommon = useTranslations("Common");
   const tCard = useTranslations("SourceDocumentCard");
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+  const isExpanded = expanded ?? localExpanded;
+  const toggleExpanded = useCallback(() => {
+    const next = !isExpanded;
+    if (expanded === undefined) setLocalExpanded(next);
+    onExpandedChange?.(next);
+  }, [expanded, isExpanded, onExpandedChange]);
   const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
   const hasExpandableContent =
@@ -120,7 +130,7 @@ function SourceDocumentCardBody({
         hasExpandableContent
           ? {
               isExpanded,
-              onToggleExpanded: () => setIsExpanded((expanded) => !expanded),
+              onToggleExpanded: toggleExpanded,
               expandLabel: isExpanded ? tCard("collapse") : tCard("expand"),
             }
           : undefined
@@ -148,7 +158,7 @@ function SourceDocumentCardBody({
           isExpanded={isExpanded}
           hasExpandableContent={hasExpandableContent}
           contentId={contentId}
-          onToggleExpanded={() => setIsExpanded((expanded) => !expanded)}
+          onToggleExpanded={toggleExpanded}
           onViewDetails={onViewDetails}
           onDirectRetry={handleDirectRetry}
           onCancelProcessing={recovery.cancelProcessing}

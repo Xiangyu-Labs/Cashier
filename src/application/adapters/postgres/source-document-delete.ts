@@ -27,6 +27,15 @@ export async function softDeleteSourceDocumentInTransaction(
     if (error instanceof NotFoundError) return false;
     throw error;
   }
+  return softDeleteLockedSourceDocument(tx, ledgerId, document);
+}
+
+async function softDeleteLockedSourceDocument(
+  tx: PostgresTransaction,
+  ledgerId: string,
+  document: typeof sourceDocuments.$inferSelect
+): Promise<boolean> {
+  const sourceDocumentId = document.id;
   const now = new Date();
   if (document.pendingRevisionId != null) {
     await tx
@@ -132,11 +141,7 @@ export async function deleteSourceDocumentAtomically(input: {
         currentVersion: document.stateVersion,
       };
     }
-    const deleted = await softDeleteSourceDocumentInTransaction(
-      tx,
-      input.ledgerId,
-      input.target.sourceDocumentId
-    );
+    const deleted = await softDeleteLockedSourceDocument(tx, input.ledgerId, document);
     if (!deleted) throw new NotFoundError("Source document");
     return {
       ok: true,

@@ -360,7 +360,7 @@ describe("target upper workflows", () => {
     });
     const initialVersion = await currentVersion(created.sourceDocumentId);
 
-    const updated = await serverComposition.ledgerEntryCommands.update({
+    const updated = await serverComposition.sourceDocumentAggregate.updateEntries({
       ledgerId,
       target: { sourceDocumentId: created.sourceDocumentId, expectedVersion: initialVersion },
       ledgerEntryId: original!.id,
@@ -422,7 +422,7 @@ describe("target upper workflows", () => {
     });
 
     const versionBeforeUpdate = await currentVersion(pending.document.id);
-    await serverComposition.ledgerEntryCommands.update({
+    await serverComposition.sourceDocumentAggregate.updateEntries({
       ledgerId,
       target: { sourceDocumentId: pending.document.id, expectedVersion: versionBeforeUpdate },
       ledgerEntryId: original!.id,
@@ -440,7 +440,7 @@ describe("target upper workflows", () => {
     expect(stats.convertedTotal).toEqual({ total: "18", currency: "CNY" });
 
     await expect(
-      serverComposition.ledgerEntryCommands.update({
+      serverComposition.sourceDocumentAggregate.updateEntries({
         ledgerId,
         target: {
           sourceDocumentId: pending.document.id,
@@ -456,7 +456,7 @@ describe("target upper workflows", () => {
     expect(afterRollback?.activeRevisionId).toBe(afterUpdate?.activeRevisionId);
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(revisionCount);
     await expect(
-      serverComposition.ledgerEntryCommands.update({
+      serverComposition.sourceDocumentAggregate.updateEntries({
         ledgerId: otherLedgerId,
         target: {
           sourceDocumentId: pending.document.id,
@@ -468,7 +468,7 @@ describe("target upper workflows", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     await expect(
-      serverComposition.ledgerEntryCommands.delete({
+      serverComposition.sourceDocumentAggregate.deleteEntries({
         ledgerId,
         target: {
           sourceDocumentId: pending.document.id,

@@ -38,6 +38,8 @@ describe("Source Document Update Actions", () => {
       const docData1 = createSourceDocumentData(ledgerData.id);
       const docData2 = createSourceDocumentData(ledgerData.id);
       await db.insert(sourceDocuments).values([docData1, docData2]);
+      await activateTestSourceDocumentProjection(db, docData1.id);
+      await activateTestSourceDocumentProjection(db, docData2.id);
 
       // Batch update
       await batchUpdateSourceDocumentsAction(ledgerData.id, {
@@ -126,6 +128,7 @@ describe("Source Document Update Actions", () => {
       await db.insert(ledgers).values(ledgerData);
       const docData = createSourceDocumentData(ledgerData.id, { title: "Same title" });
       await db.insert(sourceDocuments).values(docData);
+      await activateTestSourceDocumentProjection(db, docData.id);
 
       const result = await batchUpdateSourceDocumentsAction(ledgerData.id, {
         targets: [{ sourceDocumentId: docData.id, expectedVersion: 1 }],

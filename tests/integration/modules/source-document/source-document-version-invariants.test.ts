@@ -14,13 +14,13 @@
  * is added for it. That is the enforcement mechanism, not a comment.
  */
 import { describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { serverComposition } from "@/application/server-composition-root";
 import type { SourceDocumentAggregateWritePort } from "@/modules/source-document/application/ports";
 import { storeDuplicatePendingRevision } from "@/application/adapters/postgres";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import { ConflictError, NotFoundError, StaleSourceDocumentVersionError } from "@/lib/errors";
-import { sourceDocuments } from "@/persistence";
+import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
@@ -40,7 +40,9 @@ type ExistingDocumentCommand =
   | Exclude<
       keyof SourceDocumentAggregateWritePort,
       | "createProcessingDocument"
+      | "createIdempotentProcessingDocument"
       | "createManualDocument"
+      | "installIdempotentRetry"
       | "completeProcessing"
       | "applyMainCurrencyChange"
       | "recalculateConversions"
@@ -271,6 +273,48 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
     });
     expect(await currentVersion(sourceDocumentId)).toBe(2);
     expect(await currentTitle(sourceDocumentId)).toBe("Batch title");
+  },
+
+  async updateEntryDates() {
+    const ledgerId = await newLedger();
+    const { sourceDocumentId, entryIds } = await createActiveDocument(ledgerId);
+    const targets = (expectedVersion: number) => [{ sourceDocumentId, expectedVersion }];
+
+    const changed = await port.updateEntryDates({
+      ledgerId,
+      targets: targets(1),
+      ledgerEntryIds: entryIds,
+      entryDate: "2026-08-02",
+    });
+    expect(changed).toMatchObject({
+      ok: true,
+      versions: [{ sourceDocumentId, version: 2 }],
+    });
+
+    const noop = await port.updateEntryDates({
+      ledgerId,
+      targets: targets(2),
+      ledgerEntryIds: entryIds,
+      entryDate: "2026-08-02",
+    });
+    expect(noop).toMatchObject({
+      ok: true,
+      versions: [{ sourceDocumentId, version: 2 }],
+    });
+    expect(await currentVersion(sourceDocumentId)).toBe(2);
+
+    const stale = await port.updateEntryDates({
+      ledgerId,
+      targets: targets(1),
+      ledgerEntryIds: entryIds,
+      entryDate: "2026-08-03",
+    });
+    expect(stale).toMatchObject({
+      ok: false,
+      reason: "stale",
+      staleTargets: [{ sourceDocumentId, expectedVersion: 1, currentVersion: 2 }],
+    });
+    expect(await currentVersion(sourceDocumentId)).toBe(2);
   },
 
   async addEntry() {
@@ -703,4 +747,139 @@ describe("source document aggregate — version invariants", () => {
   >) {
     it(`${name}: +1 on change, no-op or well-defined replay, stale rejected with zero writes`, run);
   }
+
+  it.each([
+    "processing",
+    "candidate_pending",
+    "duplicate_pending",
+    "anomaly",
+    "failed",
+    "cancelled",
+  ] as const)(
+    "%s documents reject changed and no-op projection writes without side effects",
+    async (status) => {
+      const ledgerId = await newLedger();
+      const active = await createActiveDocumentWithRevision(ledgerId);
+      const db = getTestDb();
+      if (
+        status === "processing" ||
+        status === "candidate_pending" ||
+        status === "anomaly" ||
+        status === "failed"
+      ) {
+        const pending = await db.transaction((tx) =>
+          createPendingRevisionInTransaction(tx, {
+            ledgerId,
+            sourceDocumentId: active.sourceDocumentId,
+            submittedText: status,
+          })
+        );
+        if (status !== "processing") {
+          await db
+            .update(sourceDocumentRevisions)
+            .set({ outcome: status === "candidate_pending" ? "completed" : status })
+            .where(eq(sourceDocumentRevisions.id, pending.revision.id));
+          await db
+            .update(sourceDocuments)
+            .set({ currentStatus: status })
+            .where(eq(sourceDocuments.id, active.sourceDocumentId));
+        }
+      } else {
+        await db
+          .update(sourceDocuments)
+          .set({ currentStatus: status })
+          .where(eq(sourceDocuments.id, active.sourceDocumentId));
+      }
+
+      const version = await currentVersion(active.sourceDocumentId);
+      const snapshot = async () => {
+        const document = await db.query.sourceDocuments.findFirst({
+          where: eq(sourceDocuments.id, active.sourceDocumentId),
+          columns: {
+            stateVersion: true,
+            activeRevisionId: true,
+            pendingRevisionId: true,
+            title: true,
+            entryDate: true,
+          },
+        });
+        const entries = await db.query.ledgerEntries.findMany({
+          where: and(
+            eq(ledgerEntries.sourceDocumentId, active.sourceDocumentId),
+            isNull(ledgerEntries.deletedAt)
+          ),
+          columns: { id: true, itemName: true, sourceDocumentRevisionId: true },
+        });
+        const revisions = await db.query.sourceDocumentRevisions.findMany({
+          where: eq(sourceDocumentRevisions.sourceDocumentId, active.sourceDocumentId),
+          columns: { id: true, outcome: true },
+        });
+        return { document, entries, revisions };
+      };
+      const before = await snapshot();
+
+      const save = (title: string) =>
+        port.saveChanges({
+          ledgerId,
+          sourceDocumentId: active.sourceDocumentId,
+          expectedVersion: version,
+          sourceDocument: { title },
+          entries: [],
+        });
+      await expect(save("Changed")).rejects.toThrow(ConflictError);
+      await expect(save("Original")).rejects.toThrow(ConflictError);
+      await expect(
+        port.updateDocuments({
+          ledgerId,
+          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
+          data: { title: "Changed" },
+        })
+      ).rejects.toThrow(ConflictError);
+      await expect(
+        port.updateDocuments({
+          ledgerId,
+          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
+          data: { entryDate: "2026-08-01" },
+        })
+      ).rejects.toThrow(ConflictError);
+      await expect(
+        port.batchUpdateEntries({
+          ledgerId,
+          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
+          ledgerEntryIds: active.entryIds,
+          itemName: "Changed",
+        })
+      ).rejects.toThrow(NotFoundError);
+      await expect(
+        port.batchUpdateEntries({
+          ledgerId,
+          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
+          ledgerEntryIds: active.entryIds,
+          itemName: "Item 1",
+        })
+      ).rejects.toThrow(NotFoundError);
+      await expect(
+        port.batchDeleteEntries({
+          ledgerId,
+          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
+          ledgerEntryIds: active.entryIds,
+        })
+      ).resolves.toMatchObject({
+        succeeded: [],
+        stale: [],
+        failed: active.entryIds.map((id) => ({ id, code: "NOT_FOUND" })),
+      });
+      await expect(
+        port.saveChanges({
+          ledgerId,
+          sourceDocumentId: active.sourceDocumentId,
+          expectedVersion: version - 1,
+          sourceDocument: { title: "Stale" },
+          entries: [],
+        })
+      ).resolves.toMatchObject({ ok: false, reason: "stale", currentVersion: version });
+
+      expect(await snapshot()).toEqual(before);
+    }
+  );
 });

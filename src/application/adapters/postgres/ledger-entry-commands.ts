@@ -16,6 +16,7 @@ import {
   lockSourceDocumentForUpdate,
   lockSourceDocumentsForUpdate,
 } from "./transaction-locks";
+import { hasEditableActiveProjection } from "./source-document-write-guards";
 
 type EntryResult = VersionedCommandResult<{ ledgerEntryId: string }>;
 type DeleteEntryResult = VersionedCommandResult<{ ledgerEntryId: string; deleted: true }>;
@@ -280,7 +281,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       if (document.stateVersion !== input.target.expectedVersion) {
         return stale(input.target, document.stateVersion);
       }
-      if (document.activeRevisionId == null || document.currentStatus !== "completed") {
+      if (!hasEditableActiveProjection(document)) {
         throw new NotFoundError("Active source document");
       }
       if (ledger.mainCurrency !== prepared.mainCurrency) {
@@ -341,7 +342,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       if (document.stateVersion !== input.target.expectedVersion) {
         return stale(input.target, document.stateVersion);
       }
-      if (document.activeRevisionId == null || document.currentStatus !== "completed") {
+      if (!hasEditableActiveProjection(document)) {
         throw new NotFoundError("Active source document");
       }
       const entries = await listProjectionEntries(
@@ -416,7 +417,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       if (document.stateVersion !== input.target.expectedVersion) {
         return stale(input.target, document.stateVersion);
       }
-      if (document.activeRevisionId == null || document.currentStatus !== "completed") {
+      if (!hasEditableActiveProjection(document)) {
         throw new NotFoundError("Active source document");
       }
       const entries = await listProjectionEntries(
@@ -471,7 +472,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       ) {
         throw new ConflictError("Ledger currency changed before the entries were committed");
       }
-      if (documents.some((document) => document.activeRevisionId == null)) {
+      if (documents.some((document) => !hasEditableActiveProjection(document))) {
         throw new NotFoundError("Active source document");
       }
       await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
@@ -628,7 +629,9 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
           await lockLedgerForUpdate(tx, input.ledgerId);
           const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
           if (document.stateVersion !== target.expectedVersion) return document.stateVersion;
-          if (document.activeRevisionId == null) throw new NotFoundError("Active source document");
+          if (!hasEditableActiveProjection(document)) {
+            throw new NotFoundError("Active source document");
+          }
           const entries = await listProjectionEntries(
             tx,
             input.ledgerId,

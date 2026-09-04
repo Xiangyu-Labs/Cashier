@@ -36,7 +36,9 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
         targets: validated.targets,
         data: validated.data,
       },
-      serverComposition.sourceDocumentUpdates
+      {
+        batchUpdate: serverComposition.sourceDocumentAggregate.updateDocuments,
+      }
     );
   }
 );
@@ -57,7 +59,9 @@ export const saveSourceDocumentChangesAction = withSourceDocumentLedgerAccess(
           : { sourceDocument: validated.sourceDocument }),
         entries: validated.entries,
       },
-      serverComposition.sourceDocumentUpdates
+      {
+        saveChangesAtomically: serverComposition.sourceDocumentAggregate.saveChanges,
+      }
     );
   }
 );

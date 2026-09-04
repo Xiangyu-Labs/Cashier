@@ -1,5 +1,23 @@
-import type { ApplicationErrorCode, ApplicationErrorContract } from ".";
-import { AppError } from "@/lib/errors";
+export type ApplicationErrorCode =
+  | "VALIDATION_FAILED"
+  | "UNAUTHENTICATED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "CONFLICT"
+  | "IDEMPOTENCY_CONFLICT"
+  | "UPLOAD_QUOTA_EXCEEDED"
+  | "STATS_RANGE_TOO_LARGE"
+  | "PAYLOAD_TOO_LARGE"
+  | "RATE_LIMITED"
+  | "PROCESSING_UNAVAILABLE"
+  | "STORAGE_UNAVAILABLE"
+  | "INTERNAL";
+
+export interface ApplicationErrorContract {
+  code: ApplicationErrorCode;
+  message: string;
+  correlationId?: string;
+}
 
 const CODE_BY_LEGACY_CODE: Readonly<Record<string, ApplicationErrorCode>> = {
   VALIDATION_ERROR: "VALIDATION_FAILED",
@@ -22,25 +40,19 @@ const CODE_BY_LEGACY_CODE: Readonly<Record<string, ApplicationErrorCode>> = {
   TASK_RUNTIME_NOT_INITIALIZED: "PROCESSING_UNAVAILABLE",
 };
 
-function correlationId(): string {
-  return crypto.randomUUID();
-}
-
 export function toApplicationError(error: unknown): ApplicationErrorContract {
   const legacyCode = error instanceof AppError ? error.code : undefined;
   const code = legacyCode == null ? "INTERNAL" : (CODE_BY_LEGACY_CODE[legacyCode] ?? "INTERNAL");
-  const message =
-    code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE"
+  const hidesDetails =
+    code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE";
+  return {
+    code,
+    message: hidesDetails
       ? "The request could not be completed."
       : error instanceof AppError
         ? error.message
-        : "The request could not be completed.";
-
-  return {
-    code,
-    message,
-    ...(code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE"
-      ? { correlationId: correlationId() }
-      : {}),
+        : "The request could not be completed.",
+    ...(hidesDetails ? { correlationId: crypto.randomUUID() } : {}),
   };
 }
+import { AppError } from "@/lib/errors";
