@@ -132,7 +132,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
   });
 
   const saveCategories = useLedgerMutation<EntryCategory[], SaveEntryCategoriesInput>(ledgerId, {
-    invalidates: ["categories"],
+    invalidates: ["categories", "stats"],
     mutationFn: (input) => saveEntryCategoriesAction(ledgerId, input),
     successMessage: t("categoriesSaved"),
     errorMessage: t("saveCategoriesFailed"),

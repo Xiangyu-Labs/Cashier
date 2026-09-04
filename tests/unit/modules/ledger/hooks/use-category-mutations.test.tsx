@@ -128,6 +128,24 @@ describe("useCategoryMutations", () => {
     await waitFor(() => expect(result.current.saveCategories.isSuccess).toBe(true));
   });
 
+  it("invalidates calendar queries after a bulk category save", async () => {
+    const { queryClient, wrapper } = setup();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    saveAction.mockResolvedValue([{ ...category, name: "Dining" }]);
+    const { result } = renderHook(() => useCategoryMutations("ledger-1"), { wrapper });
+
+    await act(async () => {
+      await result.current.saveCategories.mutateAsync({
+        expectedRevision: "a".repeat(64),
+        categories: [{ id: category.id, name: "Dining", description: null, icon: null }],
+      });
+    });
+
+    expect(invalidate.mock.calls.map(([filters]) => filters!.queryKey)).toContainEqual(
+      queryKeys.calendarPrefix("ledger-1")
+    );
+  });
+
   it("tracks metadata generation until its invalidation finishes", async () => {
     const { queryClient, wrapper } = setup();
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();

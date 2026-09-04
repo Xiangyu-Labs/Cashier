@@ -146,7 +146,7 @@ describe("findBoundaryViolations", () => {
     ).toEqual([]);
   });
 
-  it.each(["@/modules/ledger/actions", "../actions"])(
+  it.each(["@/modules/ledger/actions", "./actions", "../actions", "../../actions"])(
     "rejects client imports from module actions barrel %s",
     (specifier) => {
       expect(

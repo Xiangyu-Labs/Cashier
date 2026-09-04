@@ -1,13 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "src/service-worker.ts!",
-    "src/modules/auth/actions.ts",
-    "src/modules/ledger/actions.ts",
-    "src/modules/source-document/actions.ts",
-    "scripts/**/*.mjs",
-    "tests/stubs/server-only.ts"
-  ],
+  "entry": ["src/service-worker.ts!", "scripts/**/*.mjs", "tests/stubs/server-only.ts"],
   "project": [
     "src/**/*.{ts,tsx}",
     "src/modules/source-document/**/*.{ts,tsx}!",
