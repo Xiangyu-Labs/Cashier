@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { convertCurrencyAction } from "../actions";
+import { convertCurrencyAction } from "@/modules/currency/server-actions/convert-currency";
 import type { ConvertCurrencyResult } from "../contracts";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { formatDateTimeForApi } from "@/lib/date-utils";

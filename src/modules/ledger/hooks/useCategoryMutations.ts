@@ -10,8 +10,8 @@ import {
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
   saveEntryCategoriesAction,
-} from "@/modules/ledger/actions";
-import { generateEntryCategoryMetadataAction } from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/categories";
+import { generateEntryCategoryMetadataAction } from "@/modules/ledger/server-actions/category-metadata";
 import type {
   DeleteEntryCategoryResultDto,
   ReorderEntryCategoriesResultDto,

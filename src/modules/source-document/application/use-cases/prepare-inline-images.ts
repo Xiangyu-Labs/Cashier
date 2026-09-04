@@ -8,6 +8,7 @@ import { ValidationError } from "@/lib/errors";
 import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import { decodeBase64Image } from "@/modules/source-document/base64-image";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 
 /**
  * Interface for the stored-files operations needed by prepareInlineImages.
@@ -110,7 +111,10 @@ export async function prepareInlineImages(
       await storedFiles.abandonUploadSession(ledgerId, plan.id);
     } catch {
       logger.error(
-        { ledgerId, uploadSessionId: plan.id },
+        {
+          ledgerSubject: logIdentifier("ledger", ledgerId),
+          uploadSessionSubject: logIdentifier("upload-session", plan.id),
+        },
         "Failed to abandon source-document upload session"
       );
     }

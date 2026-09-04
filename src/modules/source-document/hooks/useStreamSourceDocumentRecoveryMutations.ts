@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import {
   abandonSourceDocumentCandidateAction,
   cancelSourceDocumentProcessingAction,
-  retrySourceDocumentAction,
-} from "@/modules/source-document/actions";
+} from "@/modules/source-document/server-actions/candidates";
+import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
 

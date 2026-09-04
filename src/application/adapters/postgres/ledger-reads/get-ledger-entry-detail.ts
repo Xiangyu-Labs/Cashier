@@ -51,7 +51,10 @@ export async function getLedgerEntryDetail(
     const hasImages =
       entry.sourceDocumentRevisionId != null &&
       (await db.query.revisionFiles.findFirst({
-        where: eq(revisionFiles.revisionId, entry.sourceDocumentRevisionId),
+        where: and(
+          eq(revisionFiles.ledgerId, ledgerId),
+          eq(revisionFiles.revisionId, entry.sourceDocumentRevisionId)
+        ),
         columns: { id: true },
       })) != null;
     serializedEntry.sourceDocument = {

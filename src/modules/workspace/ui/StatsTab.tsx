@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { getEnhancedStats } from "@/modules/stats/actions";
+import { getEnhancedStats } from "@/modules/stats/server-actions/get-enhanced-stats";
 import {
   addPeriod,
   formatCivilDate,

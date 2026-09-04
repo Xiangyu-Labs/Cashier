@@ -5,7 +5,7 @@ import { signIn, type SignInResponse } from "next-auth/react";
 import { useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import { sendOTPAction } from "@/modules/auth/actions";
+import { sendOTPAction } from "@/modules/auth/server-actions/send-otp";
 import type { SendOTPActionResult } from "@/modules/auth/server-actions/send-otp";
 import { useLoginDraftStore } from "@/modules/auth/login-draft-store";
 import { useLoginUrlState, type LoginMode } from "./use-login-url-state";

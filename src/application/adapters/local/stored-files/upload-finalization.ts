@@ -4,6 +4,7 @@ import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cle
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { processImage } from "@/lib/storage/image-processing";
 import { MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
 import { storedFiles, uploadSessionFiles, uploadSessions } from "@/persistence";
@@ -250,7 +251,10 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
               ]
         )
       );
-      logger.warn({ uploadSessionId: session.id }, "Temporary S3 upload cleanup was incomplete");
+      logger.warn(
+        { uploadSessionSubject: logIdentifier("upload-session", session.id) },
+        "Temporary S3 upload cleanup was incomplete"
+      );
     }
     return files;
   }

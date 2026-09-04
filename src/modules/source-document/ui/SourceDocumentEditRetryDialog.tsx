@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { SourceDocumentInput } from "./SourceDocumentInput";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
+import { getSourceDocumentFullAction } from "@/modules/source-document/server-actions/queries";
 import { queryKeys } from "@/lib/query-keys";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";

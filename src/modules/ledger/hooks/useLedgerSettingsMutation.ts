@@ -3,7 +3,7 @@
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { updateLedgerSettingsAction } from "@/modules/ledger/actions";
+import { updateLedgerSettingsAction } from "@/modules/ledger/server-actions/update";
 import type { Ledger, UpdateLedgerActionErrorCode } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";

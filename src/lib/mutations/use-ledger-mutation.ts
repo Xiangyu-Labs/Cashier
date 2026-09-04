@@ -37,7 +37,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
       try {
         await onSuccess?.(data, variables);
       } catch (error) {
-        console.error("[useLedgerMutation] success callback failed", { ledgerId, error });
+        console.error("[useLedgerMutation] success callback failed", { error });
       }
 
       if (successMessage != null) toast.success(successMessage);
@@ -58,7 +58,6 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
             });
           } catch (invalidationError) {
             console.error("[useLedgerMutation] resource invalidation failed", {
-              ledgerId,
               error: invalidationError,
             });
             if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
@@ -70,7 +69,6 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
                 })
                 .catch((retryError) => {
                   console.error("[useLedgerMutation] resource invalidation retry failed", {
-                    ledgerId,
                     error: retryError,
                   });
                 });

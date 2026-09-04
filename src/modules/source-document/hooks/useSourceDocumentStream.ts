@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useCallback } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { listStreamPageAction } from "@/modules/source-document/actions";
+import { listStreamPageAction } from "@/modules/source-document/server-actions/queries";
 import type {
   SourceDocumentListItemDto,
   SourceDocumentStatusType,

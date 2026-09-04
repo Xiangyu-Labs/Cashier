@@ -5,8 +5,8 @@ import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
   cancelSourceDocumentProcessingAction,
-  retrySourceDocumentAction,
-} from "@/modules/source-document/actions";
+} from "@/modules/source-document/server-actions/candidates";
+import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import { useTranslations } from "next-intl";
 import { useSourceDocumentRevisionDecisionMutation } from "./useSourceDocumentRevisionDecisionMutation";
 import { useVersionedSourceDocumentMutation } from "./useVersionedSourceDocumentMutation";

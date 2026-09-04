@@ -144,7 +144,7 @@ async function processRecalculationJob(
     logger.error(
       {
         rateDate: job.rateDate,
-        ledgerId: maskLedgerId(job.ledgerId),
+        ledgerSubject: maskLedgerId(job.ledgerId),
         attempts: job.attempts + 1,
         errorCode,
         outcome,

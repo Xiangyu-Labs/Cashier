@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { saveSourceDocumentChangesAction } from "@/modules/source-document/server-actions/update";
+import { splitSourceDocumentAction } from "@/modules/source-document/server-actions/split";
 import {
-  saveSourceDocumentChangesAction,
-  splitSourceDocumentAction,
-} from "@/modules/source-document/actions";
-import { createLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+  createLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import type {
   SaveSourceDocumentChangesResultDto,
   SplitSourceDocumentInput,

@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import {
   ProcessingCancelledError,
   ProcessingFailure,
@@ -148,7 +149,10 @@ async function executeParsePipeline(
     // Both passes agree: use first result
     if (compareResults(first, second)) {
       logger.info(
-        { docId: ctx.docId, entries: first.ledger_entries.length },
+        {
+          revisionSubject: logIdentifier("revision", ctx.docId),
+          entries: first.ledger_entries.length,
+        },
         "parser: dual-run results agree"
       );
       return persistAndResolveSuccess({
@@ -161,7 +165,10 @@ async function executeParsePipeline(
     // Results disagree: arbitrate
     throwIfProcessingCancelled(ctx.signal);
 
-    logger.info({ docId: ctx.docId }, "parser: dual-run disagrees, arbitrating");
+    logger.info(
+      { revisionSubject: logIdentifier("revision", ctx.docId) },
+      "parser: dual-run disagrees, arbitrating"
+    );
     const arbitration = await arbitrateResults(
       { input: parserInput, result1: first, result2: second },
       ctx.ai,

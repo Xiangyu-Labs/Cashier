@@ -4,7 +4,7 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createServiceCredentialAction,
   deleteServiceCredentialAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/credentials";
 import type { CreatedServiceCredential } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 

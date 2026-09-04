@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { sendEmailChangeCodeAction, verifyEmailChangeCodeAction } from "../actions";
+import {
+  sendEmailChangeCodeAction,
+  verifyEmailChangeCodeAction,
+} from "@/modules/auth/server-actions/change-email";
 import type { EmailChangeErrorCode } from "../server-actions/change-email";
 import { ResendCountdown } from "./resend-countdown";
 import { Button } from "@/components/ui/button";

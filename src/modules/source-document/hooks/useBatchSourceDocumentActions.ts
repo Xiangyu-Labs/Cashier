@@ -1,13 +1,13 @@
 "use client";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
+import { batchUpdateSourceDocumentsAction } from "@/modules/source-document/server-actions/update";
 import {
-  deleteSourceDocumentAction,
-  batchUpdateSourceDocumentsAction,
   batchDeleteSourceDocumentsAction,
-  batchResolveDuplicateReviewsAction,
   batchRetrySourceDocumentsAction,
-} from "@/modules/source-document/actions";
+} from "@/modules/source-document/server-actions/batch";
+import { batchResolveDuplicateReviewsAction } from "@/modules/source-document/server-actions/duplicate-reviews";
 import type {
   PartialBatchCommandResult,
   BatchUpdateSourceDocumentsResultDto,

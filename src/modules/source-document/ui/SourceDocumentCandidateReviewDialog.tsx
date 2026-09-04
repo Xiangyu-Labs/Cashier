@@ -10,7 +10,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import { cn } from "@/lib/utils";
-import { getSourceDocumentCandidateReviewAction } from "@/modules/source-document/actions";
+import { getSourceDocumentCandidateReviewAction } from "@/modules/source-document/server-actions/candidates";
 import type {
   SourceDocumentCandidateReviewEntryDto,
   SourceDocumentCandidateReviewRevisionDto,

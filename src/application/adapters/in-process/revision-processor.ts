@@ -88,7 +88,12 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       db
         .select({ id: revisionFiles.storedFileId })
         .from(revisionFiles)
-        .where(eq(revisionFiles.revisionId, request.revisionId))
+        .where(
+          and(
+            eq(revisionFiles.ledgerId, request.ledgerId),
+            eq(revisionFiles.revisionId, request.revisionId)
+          )
+        )
         .orderBy(asc(revisionFiles.position)),
       db
         .select({

@@ -2,6 +2,7 @@ import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 
 /**
  * Unified request-bound processing scheduler.
@@ -23,9 +24,9 @@ export function scheduleProcessingAfter(
       logger.error(
         {
           error,
-          intentId: intent.id,
-          sourceDocumentId: intent.sourceDocumentId,
-          revisionId: intent.revisionId,
+          processingIntentSubject: logIdentifier("processing-intent", intent.id),
+          sourceDocumentSubject: logIdentifier("source-document", intent.sourceDocumentId),
+          revisionSubject: logIdentifier("revision", intent.revisionId),
           requestedAt: intent.requestedAt,
           requestId,
         },

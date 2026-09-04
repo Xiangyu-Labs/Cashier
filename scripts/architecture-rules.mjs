@@ -49,6 +49,7 @@ const providerSdkPattern = /^(?:pg|openai|resend)$|^drizzle-orm(?:\/|$)|^@aws-sd
 const transportFrameworkPattern = /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/;
 const moduleServerActionsPattern = /^@\/modules\/[^/]+\/server-actions(?:\/|$)/;
 const moduleActionsBarrelPattern = /^@\/modules\/[^/]+\/actions$/;
+const relativeModuleActionsBarrelPattern = /^(?:\.\.\/)+actions$/;
 const appPattern = /^@\/app(?:\/|$)/;
 const anyModulePattern = /^@\/modules(?:\/|$)/;
 const workspaceModulePattern = /^@\/modules\/workspace(?:\/|$)/;
@@ -92,6 +93,33 @@ const forbiddenServerCompositionWriteProperties = [
   "sourceDocumentSubmissions",
   "sourceDocumentRevisions",
 ];
+const forbiddenLogIdentifierProperties = [
+  "userId",
+  "ledgerId",
+  "documentId",
+  "sourceDocumentId",
+  "matchedSourceDocumentId",
+  "revisionId",
+  "fileId",
+  "storedFileId",
+  "intentId",
+  "processingIntentId",
+  "uploadSessionId",
+];
+
+function collectRawLogIdentifierProperties(source) {
+  const properties = new Set();
+  const callPattern =
+    /\b(?:logger\.(?:debug|info|warn|error|fatal)|console\.(?:debug|info|warn|error))\s*\(([\s\S]*?)\);/g;
+  for (const call of source.matchAll(callPattern)) {
+    const argumentsSource = call[1] ?? "";
+    for (const property of forbiddenLogIdentifierProperties) {
+      const propertyPattern = new RegExp(`(?:^|[,{\\s])${property}\\s*(?=[:,}])`);
+      if (propertyPattern.test(argumentsSource)) properties.add(property);
+    }
+  }
+  return [...properties];
+}
 
 function collectSpecifiers(source) {
   const specifiers = [];
@@ -125,6 +153,12 @@ export function findBoundaryViolations(relativePath, source) {
   const isPersistence = /^src\/persistence\//.test(relativePath);
   const isApiRoute = /^src\/app\/api\//.test(relativePath);
   const isClientComponent = hasClientDirective(source);
+
+  for (const property of collectRawLogIdentifierProperties(source)) {
+    violations.push(
+      `${relativePath}: logger/console must hash or omit raw identifier property ${property}`
+    );
+  }
 
   if (
     sourceDocumentWriterPattern.test(source) &&
@@ -237,6 +271,15 @@ export function findBoundaryViolations(relativePath, source) {
     ) {
       violations.push(
         `${relativePath}: client components must not import server-only infrastructure`
+      );
+    }
+    if (
+      isClientComponent &&
+      (moduleActionsBarrelPattern.test(specifier) ||
+        relativeModuleActionsBarrelPattern.test(specifier))
+    ) {
+      violations.push(
+        `${relativePath}: client components must import concrete server actions, not module actions barrels`
       );
     }
     if (

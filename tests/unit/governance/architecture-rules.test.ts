@@ -146,6 +146,42 @@ describe("findBoundaryViolations", () => {
     ).toEqual([]);
   });
 
+  it.each(["@/modules/ledger/actions", "../actions"])(
+    "rejects client imports from module actions barrel %s",
+    (specifier) => {
+      expect(
+        findBoundaryViolations(
+          "src/modules/ledger/hooks/useLedger.ts",
+          `"use client";\nimport { getLedgerAction } from "${specifier}";`
+        )
+      ).toEqual([
+        "src/modules/ledger/hooks/useLedger.ts: client components must import concrete server actions, not module actions barrels",
+      ]);
+    }
+  );
+
+  it("rejects raw business identifiers in logger and console object arguments", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/source-document/server-actions/process.ts",
+        'logger.error({ error, ledgerId, sourceDocumentId }, "failed");\nconsole.error("failed", { revisionId });'
+      )
+    ).toEqual([
+      "src/modules/source-document/server-actions/process.ts: logger/console must hash or omit raw identifier property ledgerId",
+      "src/modules/source-document/server-actions/process.ts: logger/console must hash or omit raw identifier property sourceDocumentId",
+      "src/modules/source-document/server-actions/process.ts: logger/console must hash or omit raw identifier property revisionId",
+    ]);
+  });
+
+  it("allows hashed subjects and correlation identifiers in logs", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/source-document/server-actions/process.ts",
+        'logger.error({ ledgerSubject, sourceDocumentSubject, requestId, correlationId }, "failed");'
+      )
+    ).toEqual([]);
+  });
+
   it("catches dynamic imports and re-exports", () => {
     expect(
       findBoundaryViolations(

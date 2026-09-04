@@ -1,6 +1,9 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import {
+  updateLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";

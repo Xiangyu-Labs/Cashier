@@ -3,6 +3,7 @@ import type {
   ProcessingRecoveryConfig,
 } from "@/application/contracts";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import type { ProcessingRecoveryPort } from "../ports";
 
 /**
@@ -52,7 +53,7 @@ export async function selectRecoverableProcessingIntents(
 
   logger.debug(
     {
-      ledgerId,
+      ledgerSubject: logIdentifier("ledger", ledgerId),
       candidates: candidates.length,
       scheduled: scheduled.length,
     },

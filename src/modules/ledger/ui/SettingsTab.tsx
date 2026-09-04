@@ -29,7 +29,7 @@ import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { SettingsSectionActions } from "./settings/SettingsSectionActions";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import { queryKeys } from "@/lib/query-keys";
-import { getEntryCategoriesAction } from "@/modules/ledger/actions";
+import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/categories";
 
 interface SettingsTabProps {
   ledger: Ledger;

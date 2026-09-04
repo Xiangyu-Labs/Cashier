@@ -1,6 +1,6 @@
 "use client";
 import { toast } from "sonner";
-import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
 import { useTranslations } from "next-intl";
 import { SourceDocumentStaleCommandError } from "@/modules/source-document/command-results";
 import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";

@@ -11,7 +11,7 @@ import {
   discardDuplicateSourceDocumentAction,
   getSourceDocumentDuplicateReviewAction,
   keepDuplicateSourceDocumentAction,
-} from "@/modules/source-document/actions";
+} from "@/modules/source-document/server-actions/duplicate-reviews";
 import { queryKeys } from "@/lib/query-keys";
 import { useSourceDocumentRevisionDecisionMutation } from "@/modules/source-document/hooks/useSourceDocumentRevisionDecisionMutation";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";

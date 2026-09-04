@@ -1,7 +1,18 @@
 import { createHmac } from "node:crypto";
 import { runtimeEnv } from "@/lib/env/runtime";
 
-export function logIdentifier(kind: "email" | "ip" | "user" | "ledger", value: string): string {
+export type LogIdentifierKind =
+  | "email"
+  | "ip"
+  | "user"
+  | "ledger"
+  | "source-document"
+  | "revision"
+  | "stored-file"
+  | "processing-intent"
+  | "upload-session";
+
+export function logIdentifier(kind: LogIdentifierKind, value: string): string {
   const digest = createHmac("sha256", runtimeEnv.apiKeyPepper)
     .update(value.trim().toLowerCase())
     .digest("hex")

@@ -3,10 +3,8 @@
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import {
-  createSourceDocumentAction,
-  editRetrySourceDocumentAction,
-} from "@/modules/source-document/actions";
+import { createSourceDocumentAction } from "@/modules/source-document/server-actions/create";
+import { editRetrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import type {
   CreatedRecordResult,
   RetrySourceDocumentResponseDto,

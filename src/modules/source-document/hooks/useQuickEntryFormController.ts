@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import { createQuickEntryAction } from "@/modules/source-document/actions";
+import { createQuickEntryAction } from "@/modules/source-document/server-actions/quick-entry";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
 

@@ -10,7 +10,7 @@ import type { SourceDocumentSubmitPayload } from "./source-document-input-contro
 import {
   createSourceDocumentUploadPlanAction,
   finalizeSourceDocumentUploadAction,
-} from "../actions";
+} from "@/modules/source-document/server-actions/uploads";
 
 export interface SourceDocumentSubmissionProgress {
   phase:

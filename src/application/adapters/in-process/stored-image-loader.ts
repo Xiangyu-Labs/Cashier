@@ -1,5 +1,6 @@
 import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { storedFileAdapter } from "@/application/adapters/storage";
 import { validateStoredImageBytes } from "@/lib/storage/image-processing";
 
@@ -10,7 +11,14 @@ async function loadStoredFileForAI(ledgerId: string, storedFileId: string): Prom
     await validateStoredImageBytes(Buffer.from(read.body), read.file.metadata.contentType);
     return `data:${read.file.metadata.contentType};base64,${Buffer.from(read.body).toString("base64")}`;
   } catch (error) {
-    logger.error({ error, ledgerId, storedFileId }, "Failed to load stored image evidence for AI");
+    logger.error(
+      {
+        error,
+        ledgerSubject: logIdentifier("ledger", ledgerId),
+        storedFileSubject: logIdentifier("stored-file", storedFileId),
+      },
+      "Failed to load stored image evidence for AI"
+    );
     throw new AppError("Failed to load stored image evidence", "IMAGE_LOAD_FAILED");
   }
 }

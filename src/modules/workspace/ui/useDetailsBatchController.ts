@@ -12,7 +12,7 @@ import {
   batchUpdateLedgerEntriesAction,
   batchUpdateLedgerEntryDatesAction,
   previewBatchLedgerEntryDateAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { VersionedTarget } from "@/modules/source-document/contracts";
 import { unwrapAtomicBatchCommandResult } from "@/modules/source-document/command-results";

@@ -4,6 +4,7 @@ import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { processingOutbox } from "@/persistence";
 import {
   postgresRevisionAdapter,
@@ -88,7 +89,7 @@ export async function executeSingleProcessingIntent(
       const renewedUntil = await adapter.renew(claim.intent.id, claim.claimToken);
       if (renewedUntil == null) {
         logger.warn(
-          { processingIntentId: claim.intent.id },
+          { processingIntentSubject: logIdentifier("processing-intent", claim.intent.id) },
           "Processing lease was lost or cancelled; aborting worker"
         );
         controller.abort();
@@ -97,7 +98,7 @@ export async function executeSingleProcessingIntent(
     } catch (error) {
       logger.warn(
         {
-          processingIntentId: claim.intent.id,
+          processingIntentSubject: logIdentifier("processing-intent", claim.intent.id),
           errorCode: error instanceof AppError ? error.code : "UNKNOWN",
         },
         "Processing lease renewal failed; aborting worker"

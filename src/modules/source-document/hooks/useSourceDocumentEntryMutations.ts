@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import {
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { PartialBatchCommandResult } from "@/modules/source-document/contracts";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";

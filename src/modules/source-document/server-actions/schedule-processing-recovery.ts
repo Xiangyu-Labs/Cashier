@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
 import { scheduleProcessingAfter } from "./schedule-processing";
 import { serverComposition } from "@/application/server-composition-root";
@@ -31,7 +32,10 @@ async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
 
   if (recoverable.length === 0) return;
 
-  logger.debug({ ledgerId, count: recoverable.length }, "Scheduling processing recovery intents");
+  logger.debug(
+    { ledgerSubject: logIdentifier("ledger", ledgerId), count: recoverable.length },
+    "Scheduling processing recovery intents"
+  );
 
   for (const intent of recoverable) {
     scheduleProcessingAfter(intent);
@@ -47,7 +51,10 @@ export function scheduleProcessingRecoveryAfter(ledgerId: string, requestId?: st
     try {
       await scheduleProcessingRecovery(ledgerId);
     } catch (error) {
-      logger.error({ error, ledgerId, requestId }, "after() processing recovery failed");
+      logger.error(
+        { error, ledgerSubject: logIdentifier("ledger", ledgerId), requestId },
+        "after() processing recovery failed"
+      );
     }
   });
 }
