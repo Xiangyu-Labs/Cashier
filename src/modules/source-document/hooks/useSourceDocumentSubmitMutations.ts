@@ -137,6 +137,7 @@ export function useSourceDocumentSubmitMutations({
     Awaited<ReturnType<typeof createSourceDocumentAction>>,
     CreateVariables
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (variables: CreateVariables) => {
       const currentIdentity = createSubmissionIdentityRef.current;
       let uploadedPayload =
@@ -197,6 +198,7 @@ export function useSourceDocumentSubmitMutations({
   const retryMutation = useLedgerMutation<RetrySourceDocumentResponseDto, RetryVariables>(
     ledgerId,
     {
+      invalidates: ["documents", "stats"],
       mutationFn: async (variables: RetryVariables) => {
         if (sourceDocumentId == null) throw new Error("No source document ID for retry");
         // Fail before uploading anything: a missing version must not upload

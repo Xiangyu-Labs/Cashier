@@ -12,8 +12,10 @@ const { actions, awaitInvalidation, mutationObservers } = vi.hoisted(() => ({
 }));
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/retry", () => ({
   retrySourceDocumentAction: actions.retry,
+}));
+vi.mock("@/modules/source-document/server-actions/candidates", () => ({
   cancelSourceDocumentProcessingAction: actions.cancel,
   abandonSourceDocumentCandidateAction: actions.abandon,
 }));

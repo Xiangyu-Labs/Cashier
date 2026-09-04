@@ -42,6 +42,7 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
   );
 
   const retryMutation = useLedgerMutation<unknown, StreamRecoveryVariables>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ sourceDocumentId, expectedVersion }) =>
       unwrapVersionedCommandResult(
         await retrySourceDocumentAction(ledgerId, sourceDocumentId, expectedVersion)
@@ -51,6 +52,7 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
   const cancelMutation = useLedgerMutation<unknown, StreamRecoveryVariables>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ sourceDocumentId, expectedVersion }) =>
       unwrapVersionedCommandResult(
         await cancelSourceDocumentProcessingAction(ledgerId, sourceDocumentId, expectedVersion)
@@ -60,6 +62,7 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
   const abandonMutation = useLedgerMutation<unknown, StreamRecoveryVariables>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ sourceDocumentId, expectedVersion }) =>
       unwrapVersionedCommandResult(
         await abandonSourceDocumentCandidateAction(ledgerId, sourceDocumentId, expectedVersion)

@@ -17,11 +17,11 @@ const {
   uploadSubmissionImagesMock: vi.fn(),
 }));
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/create", () => ({
   createSourceDocumentAction: createSourceDocumentActionMock,
-  retrySourceDocumentAction: retrySourceDocumentActionMock,
-  createSourceDocumentUploadPlanAction: vi.fn(),
-  finalizeSourceDocumentUploadAction: vi.fn(),
+}));
+vi.mock("@/modules/source-document/server-actions/retry", () => ({
+  editRetrySourceDocumentAction: retrySourceDocumentActionMock,
 }));
 
 vi.mock("sonner", () => ({

@@ -13,6 +13,7 @@ export function useCredentialMutations(ledgerId: string) {
   const tCredentials = useTranslations("ServiceCredentials");
   const tCommon = useTranslations("Common");
   const createCredential = useLedgerMutation<CreatedServiceCredential, string>(ledgerId, {
+    invalidates: ["credentials"],
     mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
     successMessage: t("credentialCreated"),
     errorMessage: null,
@@ -24,6 +25,7 @@ export function useCredentialMutations(ledgerId: string) {
   });
 
   const deleteCredential = useLedgerMutation<void, string>(ledgerId, {
+    invalidates: ["credentials"],
     mutationFn: (id) => deleteServiceCredentialAction(ledgerId, id),
     successMessage: t("credentialDeleted"),
     errorMessage: t("deleteFailed"),

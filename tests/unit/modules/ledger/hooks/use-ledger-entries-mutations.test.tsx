@@ -71,7 +71,7 @@ describe("useLedgerEntriesMutations", () => {
       });
     });
 
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledOnce());
+    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled());
     expect(result.current.updateEntry.isPending).toBe(true);
 
     await act(async () => {

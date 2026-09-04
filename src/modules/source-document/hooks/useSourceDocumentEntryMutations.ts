@@ -29,6 +29,7 @@ export function useSourceDocumentEntryMutations({
     { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
       const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
@@ -49,6 +50,7 @@ export function useSourceDocumentEntryMutations({
   });
 
   const batchDeleteMutation = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (entryIds) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);

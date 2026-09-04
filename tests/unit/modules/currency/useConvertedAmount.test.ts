@@ -6,7 +6,7 @@ import { useConvertedAmount } from "@/modules/currency/hooks/useConvertedAmount"
 
 const mockConvertCurrencyAction = vi.hoisted(() => vi.fn(async () => ({ converted: "42" })));
 
-vi.mock("@/modules/currency/actions", () => ({
+vi.mock("@/modules/currency/server-actions/convert-currency", () => ({
   convertCurrencyAction: mockConvertCurrencyAction,
 }));
 

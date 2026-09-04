@@ -6,7 +6,7 @@ const { getSourceDocumentFullActionMock } = vi.hoisted(() => ({
   getSourceDocumentFullActionMock: vi.fn(),
 }));
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/queries", () => ({
   getSourceDocumentFullAction: getSourceDocumentFullActionMock,
 }));
 vi.mock("@/modules/source-document/ui/SourceDocumentInput", () => ({

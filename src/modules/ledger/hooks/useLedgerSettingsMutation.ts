@@ -52,6 +52,8 @@ export function useLedgerSettingsMutation({
   };
 
   return useLedgerMutation<Ledger, UpdateLedgerData>(ledgerId, {
+    invalidates: (_ledger, data) =>
+      data.mainCurrency === undefined ? ["settings"] : ["settings", "documents", "stats"],
     mutationFn: async (data) => {
       const {
         currencies,

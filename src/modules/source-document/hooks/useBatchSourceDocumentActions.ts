@@ -43,6 +43,7 @@ export function useBatchSourceDocumentActions(
   const versionFor = (sourceDocumentId: string) =>
     requireSourceDocumentVersion(versions.get(sourceDocumentId), sourceDocumentId);
   const deleteSourceDocument = useLedgerMutation<void, string>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (id: string) => {
       const result = await deleteSourceDocumentAction(ledgerId, id, versionFor(id));
       unwrapVersionedCommandResult(result);
@@ -59,6 +60,7 @@ export function useBatchSourceDocumentActions(
     BatchUpdateSourceDocumentsResultDto,
     { ids: string[]; entryDate: string }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ ids, entryDate }) => {
       const result = await batchUpdateSourceDocumentsAction(ledgerId, {
         targets: ids.map((sourceDocumentId) => ({
@@ -111,6 +113,7 @@ export function useBatchSourceDocumentActions(
     }));
 
   const batchDelete = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, targetsFor(ids)),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
@@ -119,6 +122,7 @@ export function useBatchSourceDocumentActions(
   });
 
   const batchRetry = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, targetsFor(ids)),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
@@ -129,6 +133,7 @@ export function useBatchSourceDocumentActions(
   const batchKeepDuplicates = useLedgerMutation<PartialBatchCommandResult, DuplicateBatchVariables>(
     ledgerId,
     {
+      invalidates: ["documents", "stats"],
       mutationFn: (variables) =>
         batchResolveDuplicateReviewsAction(
           ledgerId,
@@ -150,6 +155,7 @@ export function useBatchSourceDocumentActions(
     PartialBatchCommandResult,
     DuplicateBatchVariables
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (variables) =>
       batchResolveDuplicateReviewsAction(
         ledgerId,

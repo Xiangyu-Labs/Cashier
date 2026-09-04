@@ -8,7 +8,7 @@ const listStreamPageActionMock = vi.hoisted(() => vi.fn());
 const refreshRefetchMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data: undefined }));
 const useLedgerRefreshPollingMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/queries", () => ({
   listStreamPageAction: listStreamPageActionMock,
 }));
 

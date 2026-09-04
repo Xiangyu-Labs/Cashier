@@ -52,6 +52,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
     Awaited<ReturnType<typeof generateEntryCategoryMetadataAction>>,
     { categoryId: string; requestId: number }
   >(ledgerId, {
+    invalidates: ["categories"],
     mutationFn: ({ categoryId }: { categoryId: string; requestId: number }) =>
       generateEntryCategoryMetadataAction(ledgerId, categoryId),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
@@ -85,6 +86,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
   );
 
   const createCategory = useLedgerMutation<EntryCategory, { name: string }>(ledgerId, {
+    invalidates: ["categories"],
     mutationFn: async (data) => {
       const result = await createEntryCategoryAction(ledgerId, data);
       return result;
@@ -101,6 +103,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
     EntryCategory,
     { id: string; data: Partial<EntryCategory> }
   >(ledgerId, {
+    invalidates: ["categories"],
     mutationFn: ({ id, data }) =>
       updateEntryCategoryAction(ledgerId, id, {
         ...data,
@@ -113,6 +116,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
   });
 
   const deleteCategory = useLedgerMutation<DeleteEntryCategoryResultDto, string>(ledgerId, {
+    invalidates: ["categories", "stats"],
     mutationFn: (id) => deleteEntryCategoryAction(ledgerId, id),
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
@@ -120,6 +124,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
   });
 
   const reorderCategories = useLedgerMutation<ReorderEntryCategoriesResultDto, string[]>(ledgerId, {
+    invalidates: ["categories"],
     mutationFn: (categoryIds) => reorderEntryCategoriesAction(ledgerId, categoryIds),
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
@@ -127,6 +132,7 @@ export function useCategoryMutations(ledgerId: string, options: UseCategoryMutat
   });
 
   const saveCategories = useLedgerMutation<EntryCategory[], SaveEntryCategoriesInput>(ledgerId, {
+    invalidates: ["categories"],
     mutationFn: (input) => saveEntryCategoriesAction(ledgerId, input),
     successMessage: t("categoriesSaved"),
     errorMessage: t("saveCategoriesFailed"),

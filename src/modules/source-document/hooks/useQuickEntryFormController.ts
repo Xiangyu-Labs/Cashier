@@ -60,6 +60,7 @@ export function useQuickEntryFormController({
     Awaited<ReturnType<typeof createQuickEntryAction>>,
     CreateQuickEntryPayload
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (data: CreateQuickEntryPayload) => createQuickEntryAction(ledgerId, data),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: null,

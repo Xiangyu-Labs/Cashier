@@ -18,7 +18,7 @@ vi.mock("@/i18n/routing", () => ({
   usePathname: () => "/ledgers/ledger-1",
 }));
 
-vi.mock("@/modules/stats/actions", () => ({
+vi.mock("@/modules/stats/server-actions/get-enhanced-stats", () => ({
   getEnhancedStats: vi.fn(),
 }));
 

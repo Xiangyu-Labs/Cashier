@@ -15,6 +15,7 @@ type UpdateVariables = {
 export function useLedgerEntriesMutations(ledgerId: string) {
   const tCommon = useTranslations("Common");
   const updateEntry = useLedgerMutation<{ ledgerEntryId: string }, UpdateVariables>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ entry, data }) => {
       if (entry.sourceDocument == null) throw new Error("Entry has no source document");
       const { amount, ...rest } = data;
@@ -36,6 +37,7 @@ export function useLedgerEntriesMutations(ledgerId: string) {
   const deleteEntry = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, LedgerEntryDto>(
     ledgerId,
     {
+      invalidates: ["documents", "stats"],
       mutationFn: async (entry) => {
         if (entry.sourceDocument == null) throw new Error("Entry has no source document");
         const result = await deleteLedgerEntryAction(

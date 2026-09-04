@@ -36,6 +36,7 @@ export function useVersionedSourceDocumentMutation<TResult>({
 }: UseVersionedSourceDocumentMutationOptions<TResult>) {
   const tCommon = useTranslations("Common");
   return useLedgerMutation<TResult, void>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async () => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const version = requireSourceDocumentVersion(expectedVersion, sourceDocumentId);

@@ -10,7 +10,7 @@ const { updateLedgerSettingsAction, toastError } = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
-vi.mock("@/modules/ledger/actions", () => ({ updateLedgerSettingsAction }));
+vi.mock("@/modules/ledger/server-actions/update", () => ({ updateLedgerSettingsAction }));
 vi.mock("sonner", () => ({ toast: { error: toastError, success: vi.fn() } }));
 
 const ledger: Ledger = {
@@ -79,7 +79,7 @@ describe("useLedgerSettingsMutation", () => {
     });
   });
 
-  it("localizes action failures and invalidates queries", async () => {
+  it("localizes action failures without invalidating queries", async () => {
     updateLedgerSettingsAction.mockResolvedValueOnce({ ok: false, code: "rates_unavailable" });
     const { result, invalidate } = setup();
 
@@ -90,7 +90,7 @@ describe("useLedgerSettingsMutation", () => {
     });
 
     expect(toastError).toHaveBeenCalledWith("缺少部分交易日的历史汇率，主货币未更改");
-    expect(invalidate).toHaveBeenCalled();
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it("includes the specific missing dates when the server reports them", async () => {

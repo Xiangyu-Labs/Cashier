@@ -56,6 +56,7 @@ export function LedgerEntryDetailWrapper({
     { ledgerEntryId: string },
     Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (data) => {
       if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
       const { amount, ...rest } = data;
@@ -77,6 +78,7 @@ export function LedgerEntryDetailWrapper({
   const deleteMutation = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, void>(
     ledgerId,
     {
+      invalidates: ["documents", "stats"],
       mutationFn: async () => {
         if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
         const result = await deleteLedgerEntryAction(

@@ -12,14 +12,16 @@ const { saveMock, splitMock, createEntryMock, deleteEntryMock } = vi.hoisted(() 
 }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
-vi.mock("@/modules/ledger/actions", () => ({
+vi.mock("@/modules/ledger/server-actions/entries", () => ({
   createLedgerEntryAction: createEntryMock,
   deleteLedgerEntryAction: deleteEntryMock,
   batchUpdateLedgerEntriesAction: vi.fn(),
   batchDeleteLedgerEntriesAction: vi.fn(),
 }));
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/update", () => ({
   saveSourceDocumentChangesAction: saveMock,
+}));
+vi.mock("@/modules/source-document/server-actions/split", () => ({
   splitSourceDocumentAction: splitMock,
 }));
 vi.mock("@/modules/source-document/hooks/useSourceDocumentRecordMutations", () => ({

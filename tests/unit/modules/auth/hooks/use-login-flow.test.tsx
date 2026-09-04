@@ -30,7 +30,7 @@ vi.mock("@/i18n/routing", () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
 }));
 
-vi.mock("@/modules/auth/actions", () => ({
+vi.mock("@/modules/auth/server-actions/send-otp", () => ({
   sendOTPAction: sendOTPActionMock,
 }));
 

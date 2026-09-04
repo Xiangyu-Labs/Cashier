@@ -57,7 +57,7 @@ describe("useCategoryMutations", () => {
     metadataAction.mockResolvedValue({ categoryId: category.id });
   });
 
-  it("invalidates server state after a failed write", async () => {
+  it("does not invalidate server state after a failed write", async () => {
     const { queryClient, wrapper } = setup();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     createAction.mockRejectedValue(new Error("create failed"));
@@ -69,10 +69,10 @@ describe("useCategoryMutations", () => {
       );
     });
 
-    expect(invalidate).toHaveBeenCalled();
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it("keeps cached categories unchanged and broadly invalidates after update", async () => {
+  it("keeps cached categories unchanged and invalidates category-bearing queries", async () => {
     const { queryClient, wrapper } = setup();
     queryClient.setQueryData(queryKeys.entryCategories("ledger-1"), [
       { ...category, entryCount: 7 },
@@ -91,11 +91,15 @@ describe("useCategoryMutations", () => {
     expect(queryClient.getQueryData(queryKeys.entryCategories("ledger-1"))).toEqual([
       { ...category, entryCount: 7 },
     ]);
-    expect(invalidate).toHaveBeenCalledOnce();
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: queryKeys.ledger("ledger-1"),
-      refetchType: "active",
-    });
+    expect(invalidate.mock.calls.map(([filters]) => filters!.queryKey)).toEqual([
+      queryKeys.entryCategories("ledger-1"),
+      queryKeys.sourceDocumentStreamPrefix("ledger-1"),
+      queryKeys.ledgerEntriesPrefix("ledger-1"),
+      queryKeys.ledgerEntryPrefix("ledger-1"),
+      queryKeys.sourceDocumentDetailPrefix("ledger-1"),
+      queryKeys.summaryPrefix("ledger-1"),
+      queryKeys.enhancedStatsPrefix("ledger-1"),
+    ]);
   });
 
   it("keeps a save pending until broad invalidation settles", async () => {
