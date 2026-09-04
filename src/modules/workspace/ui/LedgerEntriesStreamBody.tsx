@@ -8,6 +8,7 @@ import type { UnifiedStreamGroup } from "@/modules/source-document/stream-groupi
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesUnifiedGroups } from "./UnifiedStreamGroups";
+import type { useStreamSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useStreamSourceDocumentRecoveryMutations";
 
 interface LedgerEntriesStreamBodyProps {
   isLoading: boolean;
@@ -19,7 +20,9 @@ interface LedgerEntriesStreamBodyProps {
     sourceDocument: SourceDocument;
     ledgerEntries: LedgerEntry[];
   }) => void;
+  onViewSourceDetailIntent?: (doc: SourceDocument) => void;
   onEditRetry: (doc: SourceDocument) => void;
+  onEditRetryIntent?: () => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;
   selectedIds: string[];
@@ -32,6 +35,7 @@ interface LedgerEntriesStreamBodyProps {
   isFetchNextPageError: boolean;
   fetchNextPage: () => void;
   sentinelRef: (node: HTMLDivElement | null) => void;
+  recovery: ReturnType<typeof useStreamSourceDocumentRecoveryMutations>;
 }
 
 const EMPTY_ITEM_PROPS = Object.freeze({});
@@ -48,7 +52,9 @@ export function LedgerEntriesStreamBody({
   filters,
   onViewLedgerEntry,
   onViewSourceDetail,
+  onViewSourceDetailIntent,
   onEditRetry,
+  onEditRetryIntent,
   onDeleteSourceConfirm,
   isSelectionMode,
   selectedIds,
@@ -61,6 +67,7 @@ export function LedgerEntriesStreamBody({
   isFetchNextPageError,
   fetchNextPage,
   sentinelRef,
+  recovery,
 }: LedgerEntriesStreamBodyProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -79,7 +86,9 @@ export function LedgerEntriesStreamBody({
               mainCurrency={mainCurrency}
               onViewLedgerEntry={onViewLedgerEntry}
               onViewSourceDetail={onViewSourceDetail}
+              {...(onViewSourceDetailIntent != null ? { onViewSourceDetailIntent } : {})}
               onEditRetry={onEditRetry}
+              {...(onEditRetryIntent != null ? { onEditRetryIntent } : {})}
               onDeleteSourceConfirm={onDeleteSourceConfirm}
               isSelectionMode={isSelectionMode}
               selectedIds={selectedIds}
@@ -89,6 +98,7 @@ export function LedgerEntriesStreamBody({
               getItemProps={getEmptyItemProps}
               {...(timeZone != null ? { timeZone } : {})}
               collapseEntriesDefault={collapseEntriesDefault}
+              recovery={recovery}
             />
           )}
 

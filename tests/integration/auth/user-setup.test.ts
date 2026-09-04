@@ -31,7 +31,7 @@ describe("ensureUserLedger", () => {
     expect(result.created).toBe(true);
 
     const ledger = await db.query.ledgers.findFirst({
-      where: eq(ledgers.id, result.ledgerId),
+      where: eq(ledgers.id, result.ledger.id),
     });
 
     expect(ledger).toBeDefined();
@@ -62,7 +62,7 @@ describe("ensureUserLedger", () => {
       locale: "en",
     });
 
-    expect(first.ledgerId).toBe(second.ledgerId);
+    expect(first.ledger.id).toBe(second.ledger.id);
     expect(second.created).toBe(false);
 
     const activeLedgers = await db.query.ledgers.findMany({

@@ -12,7 +12,6 @@ import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/
 import { EntryCardShell } from "@/components/entry-card-shell";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
-import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
 import { sortSourceDocumentEntries } from "./source-document-card.utils";
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 
@@ -23,10 +22,12 @@ interface SourceDocumentCardProps {
   onDelete?: () => void;
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   onViewDetails?: () => void;
+  onViewDetailsIntent?: () => void;
   defaultExpanded?: boolean;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   onEditRetry?: () => void | Promise<void>;
+  onEditRetryIntent?: () => void;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
@@ -36,42 +37,17 @@ interface SourceDocumentCardProps {
   selectionDisabled?: boolean;
   onToggleSelect?: () => void;
   readOnly?: boolean;
+  isRetrying?: boolean;
+  isCancelling?: boolean;
+  isAbandoning?: boolean;
+  onRetry?: () => void | Promise<void>;
+  onCancelProcessing?: () => void | Promise<void>;
+  onAbandonCandidate?: () => void | Promise<void>;
 }
-
-interface RecoveryControls {
-  isRetrying: boolean;
-  isCancelling: boolean;
-  isAbandoning: boolean;
-  retry: () => Promise<unknown>;
-  cancelProcessing: () => void;
-  abandonCandidate: () => void;
-}
-
-const READ_ONLY_RECOVERY: RecoveryControls = {
-  isRetrying: false,
-  isCancelling: false,
-  isAbandoning: false,
-  retry: async () => undefined,
-  cancelProcessing: () => {},
-  abandonCandidate: () => {},
-};
 
 export const SourceDocumentCard = memo(function SourceDocumentCard(props: SourceDocumentCardProps) {
-  return props.readOnly === true ? (
-    <SourceDocumentCardBody {...props} recovery={READ_ONLY_RECOVERY} />
-  ) : (
-    <InteractiveSourceDocumentCard {...props} />
-  );
+  return <SourceDocumentCardBody {...props} />;
 });
-
-function InteractiveSourceDocumentCard(props: SourceDocumentCardProps) {
-  const recovery = useSourceDocumentRecoveryMutations({
-    ledgerId: props.sourceDocument.ledgerId,
-    sourceDocumentId: props.sourceDocument.id,
-    version: props.sourceDocument.version,
-  });
-  return <SourceDocumentCardBody {...props} recovery={recovery} />;
-}
 
 function SourceDocumentCardBody({
   sourceDocument,
@@ -80,10 +56,12 @@ function SourceDocumentCardBody({
   onDelete,
   onViewLedgerEntry,
   onViewDetails,
+  onViewDetailsIntent,
   defaultExpanded = true,
   expanded,
   onExpandedChange,
   onEditRetry,
+  onEditRetryIntent,
   status,
   anomalyReason,
   errorCode,
@@ -93,8 +71,13 @@ function SourceDocumentCardBody({
   selectionDisabled = false,
   onToggleSelect,
   readOnly = false,
-  recovery,
-}: SourceDocumentCardProps & { recovery: RecoveryControls }) {
+  isRetrying = false,
+  isCancelling = false,
+  isAbandoning = false,
+  onRetry,
+  onCancelProcessing,
+  onAbandonCandidate,
+}: SourceDocumentCardProps) {
   const tCommon = useTranslations("Common");
   const tCard = useTranslations("SourceDocumentCard");
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
@@ -111,10 +94,6 @@ function SourceDocumentCardBody({
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
     ? []
     : sourceDocument.supportedActions;
-
-  async function handleDirectRetry() {
-    await recovery.retry();
-  }
 
   return (
     <SelectableCardSurface
@@ -149,9 +128,9 @@ function SourceDocumentCardBody({
           errorCode={errorCode}
           ledgerEntries={ledgerEntries}
           mainCurrency={mainCurrency}
-          isRetrying={recovery.isRetrying}
-          isCancelling={recovery.isCancelling}
-          isAbandoning={recovery.isAbandoning}
+          isRetrying={isRetrying}
+          isCancelling={isCancelling}
+          isAbandoning={isAbandoning}
           selectionMode={selectionMode}
           supportedActions={supportedActions}
           showActions={!readOnly}
@@ -160,10 +139,12 @@ function SourceDocumentCardBody({
           contentId={contentId}
           onToggleExpanded={toggleExpanded}
           onViewDetails={onViewDetails}
-          onDirectRetry={handleDirectRetry}
-          onCancelProcessing={recovery.cancelProcessing}
-          onAbandonCandidate={recovery.abandonCandidate}
+          onViewDetailsIntent={onViewDetailsIntent}
+          onDirectRetry={onRetry}
+          onCancelProcessing={onCancelProcessing}
+          onAbandonCandidate={onAbandonCandidate}
           onEditRetry={onEditRetry}
+          onEditRetryIntent={onEditRetryIntent}
           onDelete={onDelete}
         />
         {isExpanded && hasExpandableContent ? (

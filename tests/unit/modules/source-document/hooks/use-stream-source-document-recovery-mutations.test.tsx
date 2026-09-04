@@ -1,0 +1,83 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { actions, awaitInvalidation, mutationObservers } = vi.hoisted(() => ({
+  actions: {
+    retry: vi.fn(),
+    cancel: vi.fn(),
+    abandon: vi.fn(),
+  },
+  awaitInvalidation: vi.fn<() => Promise<void>>(),
+  mutationObservers: vi.fn(),
+}));
+
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("@/modules/source-document/actions", () => ({
+  retrySourceDocumentAction: actions.retry,
+  cancelSourceDocumentProcessingAction: actions.cancel,
+  abandonSourceDocumentCandidateAction: actions.abandon,
+}));
+vi.mock("@/lib/mutations/use-ledger-mutation", () => ({
+  useLedgerMutation: (_ledgerId: string, options: Record<string, unknown>) => {
+    mutationObservers();
+    return {
+      mutateAsync: async (variables: unknown) => {
+        const data = await (options.mutationFn as (value: unknown) => Promise<unknown>)(variables);
+        await awaitInvalidation();
+        return data;
+      },
+    };
+  },
+}));
+
+import { useStreamSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useStreamSourceDocumentRecoveryMutations";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+describe("useStreamSourceDocumentRecoveryMutations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    awaitInvalidation.mockResolvedValue();
+  });
+
+  it.each([
+    ["retry", "retryingIds", actions.retry],
+    ["cancelProcessing", "cancellingIds", actions.cancel],
+    ["abandonCandidate", "abandoningIds", actions.abandon],
+  ] as const)(
+    "keeps %s locked until cache invalidation completes",
+    async (method, pendingKey, action) => {
+      const command = deferred<unknown>();
+      const invalidation = deferred<void>();
+      action.mockReturnValue(command.promise);
+      awaitInvalidation.mockReturnValue(invalidation.promise);
+      const { result } = renderHook(() => useStreamSourceDocumentRecoveryMutations("ledger-1"));
+
+      expect(mutationObservers).toHaveBeenCalledTimes(3);
+      act(() => {
+        void result.current[method]({ sourceDocumentId: "doc-1", expectedVersion: 3 });
+        void result.current[method]({ sourceDocumentId: "doc-1", expectedVersion: 3 });
+      });
+      expect(action).toHaveBeenCalledTimes(1);
+      expect(result.current[pendingKey].has("doc-1")).toBe(true);
+
+      command.resolve({ ok: true, data: {} });
+      await waitFor(() => expect(awaitInvalidation).toHaveBeenCalledTimes(1));
+      expect(result.current[pendingKey].has("doc-1")).toBe(true);
+
+      act(() => {
+        void result.current[method]({ sourceDocumentId: "doc-1", expectedVersion: 3 });
+      });
+      expect(action).toHaveBeenCalledTimes(1);
+
+      invalidation.resolve();
+      await waitFor(() => expect(result.current[pendingKey].has("doc-1")).toBe(false));
+    }
+  );
+});

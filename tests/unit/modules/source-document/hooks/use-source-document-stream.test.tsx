@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { queryKeys } from "@/lib/query-keys";
 
 const listStreamPageActionMock = vi.hoisted(() => vi.fn());
 const refreshRefetchMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data: undefined }));
@@ -88,6 +89,64 @@ describe("useSourceDocumentStream", () => {
 
     await waitFor(() => {
       expect(useLedgerRefreshPollingMock).toHaveBeenCalledWith("ledger-1", true);
+    });
+  });
+
+  it("keeps refresh polling disabled until the first page is available", async () => {
+    let resolvePage!: (value: {
+      items: ReturnType<typeof makeItem>[];
+      nextCursor: null;
+      generation: string;
+      hasTransitionalWork: boolean;
+    }) => void;
+    listStreamPageActionMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePage = resolve;
+      })
+    );
+
+    renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
+    expect(useLedgerRefreshPollingMock).toHaveBeenLastCalledWith("ledger-1", false);
+
+    resolvePage({
+      items: [makeItem("doc-1")],
+      nextCursor: null,
+      generation: "4",
+      hasTransitionalWork: true,
+    });
+    await waitFor(() => {
+      expect(useLedgerRefreshPollingMock).toHaveBeenLastCalledWith("ledger-1", true);
+    });
+  });
+
+  it("does not overwrite a newer refresh baseline with an older stream page", async () => {
+    listStreamPageActionMock.mockResolvedValueOnce({
+      items: [makeItem("doc-1")],
+      nextCursor: null,
+      generation: "8",
+      hasTransitionalWork: true,
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    const refreshKey = queryKeys.sourceDocumentRefresh("ledger-1");
+    queryClient.setQueryData(refreshKey, {
+      version: "9",
+      changed: false,
+      hasTransitionalWork: false,
+      invalidations: { categories: false, settings: false, stats: false },
+    });
+
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(queryClient.getQueryData(refreshKey)).toMatchObject({
+      version: "9",
+      hasTransitionalWork: false,
     });
   });
 

@@ -5,17 +5,6 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
 
-vi.mock("@/modules/source-document/hooks/useSourceDocumentRecoveryMutations", () => ({
-  useSourceDocumentRecoveryMutations: () => ({
-    retry: vi.fn(),
-    cancelProcessing: vi.fn(),
-    abandonCandidate: vi.fn(),
-    isRetrying: false,
-    isCancelling: false,
-    isAbandoning: false,
-  }),
-}));
-
 vi.mock("@/modules/currency/ui/AmountDisplay", () => ({
   AmountDisplay: () => <span>CNY 12.00</span>,
 }));
@@ -133,6 +122,25 @@ describe("SourceDocumentCard interactions", () => {
     await user.click(screen.getByRole("button", { name: /更多操作|more actions/i }));
     expect(await screen.findByRole("menu")).toBeInTheDocument();
     expect(onViewDetails).not.toHaveBeenCalled();
+  });
+
+  it("uses controlled recovery callbacks and pending state", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    render(
+      <SourceDocumentCard
+        sourceDocument={{ ...sourceDocument, status: "failed" }}
+        ledgerEntries={[]}
+        status="failed"
+        onRetry={onRetry}
+        isRetrying
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /更多操作|more actions/i }));
+    const retry = await screen.findByRole("menuitem", { name: /重新处理|重试|retry/i });
+    expect(retry).toHaveAttribute("data-disabled");
+    expect(onRetry).not.toHaveBeenCalled();
   });
 
   it("does not open the actions menu when dragging the trigger outside the card", () => {

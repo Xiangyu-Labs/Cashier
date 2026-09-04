@@ -83,7 +83,8 @@ export async function listStreamPage(
   ports: {
     documents: Pick<SourceDocumentReadPort, "list">;
     ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-    changes?: Pick<LedgerChangeReadPort, "getVersion">;
+    changes?: Pick<LedgerChangeReadPort, "getVersion"> &
+      Partial<Pick<LedgerChangeReadPort, "getRefreshBaseline">>;
   }
 ): Promise<StreamPage> {
   // Enforce page size cap (defense in depth beyond the action schema)
@@ -101,7 +102,17 @@ export async function listStreamPage(
     innerCursor = validateCursor(input.cursor, ledgerId, generation, filterHash);
   } catch (error) {
     if (error instanceof ValidationError) {
-      return { items: [], nextCursor: null, generation, restartRequired: true };
+      const baseline = (await ports.changes?.getRefreshBaseline?.(ledgerId)) ?? {
+        version: beforeVersion,
+        hasTransitionalWork: false,
+      };
+      return {
+        items: [],
+        nextCursor: null,
+        generation: baseline.version.toString(),
+        hasTransitionalWork: baseline.hasTransitionalWork,
+        restartRequired: true,
+      };
     }
     throw error;
   }
@@ -138,12 +149,16 @@ export async function listStreamPage(
       ...(search != null ? { search } : {}),
     }),
   }));
-  const afterVersion = (await ports.changes?.getVersion(ledgerId)) ?? beforeVersion;
-  if (afterVersion !== beforeVersion) {
+  const baseline = (await ports.changes?.getRefreshBaseline?.(ledgerId)) ?? {
+    version: beforeVersion,
+    hasTransitionalWork: false,
+  };
+  if (baseline.version !== beforeVersion) {
     return {
       items: [],
       nextCursor: null,
-      generation: afterVersion.toString(),
+      generation: baseline.version.toString(),
+      hasTransitionalWork: baseline.hasTransitionalWork,
       restartRequired: true,
     };
   }
@@ -152,5 +167,6 @@ export async function listStreamPage(
     items: items as SourceDocumentListItemDto[],
     nextCursor: encodeSourceDocumentStreamCursor(ledgerId, generation, filterHash, page.nextCursor),
     generation,
+    hasTransitionalWork: baseline.hasTransitionalWork,
   };
 }

@@ -21,6 +21,7 @@ vi.mock("@/modules/source-document/hooks/stream-refresh-cache", () => ({
 }));
 
 import { useLedgerRefreshPolling } from "@/modules/source-document/hooks/useLedgerRefreshPolling";
+import { queryKeys } from "@/lib/query-keys";
 
 const unchanged = {
   version: "1",
@@ -88,6 +89,32 @@ describe("useLedgerRefreshPolling", () => {
       await vi.advanceTimersByTimeAsync(3_000);
     });
     expect(getStreamRefreshActionMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses a hydrated baseline without refreshing during the three-second stale window", async () => {
+    getStreamRefreshActionMock.mockResolvedValue(unchanged);
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(queryKeys.sourceDocumentRefresh("ledger-1"), {
+      ...unchanged,
+      version: "7",
+      hasTransitionalWork: true,
+    });
+
+    renderHook(() => useLedgerRefreshPolling("ledger-1"), { wrapper });
+    await flush();
+    expect(getStreamRefreshActionMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_999);
+    });
+    expect(getStreamRefreshActionMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(getStreamRefreshActionMock).toHaveBeenCalledWith("ledger-1", {
+      afterVersion: "7",
+    });
   });
 
   it("retries after three seconds when the initial refresh fails", async () => {

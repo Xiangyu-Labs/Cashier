@@ -1,9 +1,41 @@
+"use client";
+
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SourceDocumentCandidateReviewDialog } from "@/modules/source-document/ui/SourceDocumentCandidateReviewDialog";
-import { SourceDocumentDuplicateReviewDialog } from "@/modules/source-document/ui/SourceDocumentDuplicateReviewDialog";
-import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui/SourceDocumentEditRetryDialog";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { LedgerEntriesDeleteConfirmState } from "./useLedgerEntriesTabState";
+import dynamic from "next/dynamic";
+
+const loadEditRetryDialog = () =>
+  import("@/modules/source-document/ui/SourceDocumentEditRetryDialog");
+const loadCandidateReviewDialog = () =>
+  import("@/modules/source-document/ui/SourceDocumentCandidateReviewDialog");
+const loadDuplicateReviewDialog = () =>
+  import("@/modules/source-document/ui/SourceDocumentDuplicateReviewDialog");
+
+const SourceDocumentEditRetryDialog = dynamic(
+  () => loadEditRetryDialog().then((module) => module.SourceDocumentEditRetryDialog),
+  { ssr: false }
+);
+const SourceDocumentCandidateReviewDialog = dynamic(
+  () => loadCandidateReviewDialog().then((module) => module.SourceDocumentCandidateReviewDialog),
+  { ssr: false }
+);
+const SourceDocumentDuplicateReviewDialog = dynamic(
+  () => loadDuplicateReviewDialog().then((module) => module.SourceDocumentDuplicateReviewDialog),
+  { ssr: false }
+);
+
+export function preloadEditRetryDialog() {
+  void loadEditRetryDialog();
+}
+
+export function preloadCandidateReviewDialog() {
+  void loadCandidateReviewDialog();
+}
+
+export function preloadDuplicateReviewDialog() {
+  void loadDuplicateReviewDialog();
+}
 
 interface LedgerEntriesOverlaysProps {
   deleteConfirm: LedgerEntriesDeleteConfirmState;

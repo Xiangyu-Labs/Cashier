@@ -4,7 +4,7 @@ import zlib from "node:zlib";
 
 const manifestPath = ".next/server/app/[locale]/(protected)/page_client-reference-manifest.js";
 const routeKey = "/[locale]/(protected)/page";
-const maximumGzipBytes = 258_788;
+const maximumGzipBytes = 220_000;
 
 if (!fs.existsSync(manifestPath)) {
   throw new Error(`Protected-route client manifest is missing: ${manifestPath}`);

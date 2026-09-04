@@ -24,11 +24,14 @@ export interface StreamListMotionApi extends StreamListMotionDiff {
  * baseline rects for the interactive stream list. Reduced-motion users get
  * the final layout immediately with no timers or transforms.
  */
-export function useStreamListMotion(items: readonly StreamListMotionItem[]): StreamListMotionApi {
+export function useStreamListMotion(
+  items: readonly StreamListMotionItem[],
+  layoutKey = ""
+): StreamListMotionApi {
   const reducedMotion = useReducedMotion();
   const itemsKey = streamListMotionKey(items);
 
-  const [prevItems, setPrevItems] = useState<readonly StreamListMotionItem[]>(items);
+  const [itemSnapshot, setItemSnapshot] = useState(() => ({ key: itemsKey, items }));
   const [diff, setDiff] = useState<StreamListMotionDiff>(EMPTY_STREAM_LIST_MOTION_DIFF);
   const [prevReducedMotion, setPrevReducedMotion] = useState(reducedMotion);
 
@@ -40,6 +43,9 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
   const exitTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const updateTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const reducedMotionRef = useRef(reducedMotion);
+  const measuredItemsRef = useRef(items);
+  const measuredLayoutKeyRef = useRef(layoutKey);
+  const measuredExitsRef = useRef(diff.exiting);
 
   // Keep a ref mirror for callbacks scheduled before a reduced-motion switch.
   useEffect(() => {
@@ -64,11 +70,11 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
   // commit as the changed list so removed cards get exit copies in the same
   // frame. setState during render is the sanctioned way to derive state from
   // a prop change without a post-commit flash.
-  if (prevItems !== items) {
+  if (itemSnapshot.key !== itemsKey) {
     const nextDiff = reducedMotion
       ? EMPTY_STREAM_LIST_MOTION_DIFF
-      : computeStreamListMotionDiff(prevItems, items);
-    setPrevItems(items);
+      : computeStreamListMotionDiff(itemSnapshot.items, items);
+    setItemSnapshot({ key: itemsKey, items });
     setDiff(nextDiff);
   }
   if (prevReducedMotion !== reducedMotion) {
@@ -138,14 +144,60 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
       }
       return;
     }
-    for (const [id, node] of nodeRefs.current) {
+    const currentItems = itemSnapshot.items;
+    const previousItems = measuredItemsRef.current;
+    const previousLayoutKey = measuredLayoutKeyRef.current;
+    const previousExits = measuredExitsRef.current;
+    const previousIndex = new Map(previousItems.map((item, index) => [item.id, index]));
+    const currentIndex = new Map(currentItems.map((item, index) => [item.id, index]));
+    let firstAffectedIndex = Number.POSITIVE_INFINITY;
+    const maxLength = Math.max(previousItems.length, currentItems.length);
+    for (let index = 0; index < maxLength; index += 1) {
+      if (previousItems[index]?.id !== currentItems[index]?.id) {
+        firstAffectedIndex = index;
+        break;
+      }
+    }
+    if (previousLayoutKey !== layoutKey) {
+      const previousExpanded = new Set(
+        previousLayoutKey === "" ? [] : previousLayoutKey.split(",")
+      );
+      const currentExpanded = new Set(layoutKey === "" ? [] : layoutKey.split(","));
+      for (const [id, index] of currentIndex) {
+        if (previousExpanded.has(id) !== currentExpanded.has(id)) {
+          firstAffectedIndex = Math.min(firstAffectedIndex, index);
+        }
+      }
+    }
+    for (const exit of [...previousExits, ...diff.exiting]) {
+      firstAffectedIndex = Math.min(firstAffectedIndex, exit.index);
+    }
+    const affectedIds = new Set<string>([...diff.moving, ...diff.updated, ...diff.entering]);
+    for (const id of diff.updated) {
+      const index = currentIndex.get(id);
+      if (index != null) firstAffectedIndex = Math.min(firstAffectedIndex, index);
+    }
+    if (Number.isFinite(firstAffectedIndex)) {
+      for (let index = firstAffectedIndex; index < currentItems.length; index += 1) {
+        const id = currentItems[index]?.id;
+        if (id != null) affectedIds.add(id);
+      }
+    }
+    for (const id of affectedIds) {
+      const node = nodeRefs.current.get(id);
       if (node == null) continue;
       const prevRect = baselineRects.current.get(id);
-      if (prevRect == null) continue;
       const rect = node.getBoundingClientRect();
+      if (prevRect == null) {
+        baselineRects.current.set(id, rect);
+        continue;
+      }
       const dx = prevRect.left - rect.left;
       const dy = prevRect.top - rect.top;
-      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        baselineRects.current.set(id, rect);
+        continue;
+      }
 
       node.style.transition = "none";
       node.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -163,18 +215,22 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
         timers.current.add(settleTimer);
       });
     }
-  }, [flipKey, reducedMotion]);
-
-  // Capture baseline rects after every commit so the next FLIP pass has a
-  // "before" position. Nodes mid-FLIP are skipped until their settle timer
-  // records the final rect.
-  useLayoutEffect(() => {
-    for (const [id, node] of nodeRefs.current) {
-      if (node == null) continue;
-      if (flipApplied.current.has(id)) continue;
-      baselineRects.current.set(id, node.getBoundingClientRect());
+    measuredItemsRef.current = currentItems;
+    measuredLayoutKeyRef.current = layoutKey;
+    measuredExitsRef.current = diff.exiting;
+    for (const id of previousIndex.keys()) {
+      if (!currentIndex.has(id)) baselineRects.current.delete(id);
     }
-  });
+  }, [
+    diff.entering,
+    diff.exiting,
+    diff.moving,
+    diff.updated,
+    flipKey,
+    itemSnapshot.items,
+    layoutKey,
+    reducedMotion,
+  ]);
 
   // Unmount cleanup: clear every timer and measurement so the list never
   // accumulates per-card bookkeeping.
@@ -208,6 +264,7 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
       return;
     }
     nodeRefs.current.set(id, node);
+    baselineRects.current.set(id, node.getBoundingClientRect());
   }, []);
 
   return { ...diff, reducedMotion, registerNode };

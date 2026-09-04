@@ -10,13 +10,19 @@ import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesStreamBody } from "./LedgerEntriesStreamBody";
-import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
+import {
+  LedgerEntriesOverlays,
+  preloadCandidateReviewDialog,
+  preloadDuplicateReviewDialog,
+  preloadEditRetryDialog,
+} from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { useLedgerEntriesStreamData } from "@/modules/workspace/hooks/useLedgerEntriesStreamData";
 import { useLedgerEntriesSelection } from "@/modules/workspace/hooks/useLedgerEntriesSelection";
 import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { previewSourceDocumentDateImpactAction } from "@/modules/workspace/server-actions/date-impact";
+import { useStreamSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useStreamSourceDocumentRecoveryMutations";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -65,6 +71,7 @@ export function LedgerEntriesTab({
   } = useLedgerEntriesTabState();
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId);
+  const recovery = useStreamSourceDocumentRecoveryMutations(ledgerId);
 
   const streamData = useLedgerEntriesStreamData({
     ledgerId,
@@ -208,7 +215,12 @@ export function LedgerEntriesTab({
         filters={filters}
         onViewLedgerEntry={handleViewLedgerEntry}
         onViewSourceDetail={handleViewSourceDetail}
+        onViewSourceDetailIntent={(document) => {
+          if (document.status === "candidate_pending") preloadCandidateReviewDialog();
+          if (document.status === "duplicate_pending") preloadDuplicateReviewDialog();
+        }}
         onEditRetry={setRetrySourceDocument}
+        onEditRetryIntent={preloadEditRetryDialog}
         onDeleteSourceConfirm={handleDeleteSourceConfirm}
         isSelectionMode={selection.isSelectionMode}
         selectedIds={selection.selectedIds}
@@ -216,6 +228,7 @@ export function LedgerEntriesTab({
         onToggleSelection={selection.handleToggleSelection}
         timeZone={timeZone}
         collapseEntriesDefault={collapseEntriesDefault}
+        recovery={recovery}
         hasNextPage={streamData.hasNextPage}
         isFetchingNextPage={streamData.isFetchingNextPage}
         isFetchNextPageError={streamData.isFetchNextPageError}

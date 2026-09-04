@@ -269,6 +269,7 @@ export interface CredentialSourceDocumentReadPort {
 
 export interface LedgerChangeReadPort {
   getVersion(ledgerId: string): Promise<bigint>;
+  getRefreshBaseline(ledgerId: string): Promise<{ version: bigint; hasTransitionalWork: boolean }>;
   summarizeChanges(input: { ledgerId: string; afterVersion: bigint }): Promise<{
     currentVersion: bigint;
     firstRetainedVersion: bigint | null;

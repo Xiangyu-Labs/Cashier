@@ -1,4 +1,9 @@
-import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
+import {
+  QueryClient,
+  dehydrate,
+  type DehydratedState,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
@@ -59,7 +64,8 @@ export async function getLedgerPageBootstrap(
     sourceDocuments: {
       documents: Pick<SourceDocumentReadPort, "list" | "calculateCompletedTotal">;
       ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-      changes?: Pick<LedgerChangeReadPort, "getVersion">;
+      changes?: Pick<LedgerChangeReadPort, "getVersion"> &
+        Partial<Pick<LedgerChangeReadPort, "getRefreshBaseline">>;
     };
     credentials: Pick<ServiceCredentialPort, "list">;
   }
@@ -194,6 +200,18 @@ export async function getLedgerPageBootstrap(
       : []),
     categoriesPromise,
   ]);
+  if (input.initialTab === "stream") {
+    const stream = queryClient.getQueryData<InfiniteData<StreamPage>>(streamDescriptor.queryKey);
+    const firstPage = stream?.pages[0];
+    if (firstPage != null) {
+      queryClient.setQueryData(queryKeys.sourceDocumentRefresh(input.ledgerId), {
+        version: firstPage.generation,
+        changed: false,
+        hasTransitionalWork: firstPage.hasTransitionalWork,
+        invalidations: { categories: false, settings: false, stats: false },
+      });
+    }
+  }
   const initialCategories = await categoriesPromise;
 
   return {

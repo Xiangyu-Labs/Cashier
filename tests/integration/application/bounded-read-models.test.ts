@@ -18,6 +18,7 @@ const listLedgerEntries = (
 const queryPorts = {
   documents: serverComposition.sourceDocumentReads,
   ledgerReads: serverComposition.ledgerReads,
+  changes: serverComposition.ledgerChanges,
 };
 const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
   listStreamPageUseCase(ledgerId, input, queryPorts);
@@ -47,14 +48,15 @@ function normalizeSql(statement: string): string {
   return statement.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-async function captureSqlStatements<T>(fn: () => Promise<T>) {
+async function captureSqlStatements<T>(fn: (getStatements: () => string[]) => Promise<T>) {
+  interface CapturedConnection {
+    query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
+    release: (...args: unknown[]) => void;
+  }
   const dbWithClient = getTestDb() as unknown as {
     $client?: {
       query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
-      connect: (...args: unknown[]) => Promise<{
-        query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
-        release: (...args: unknown[]) => void;
-      }>;
+      connect: (...args: unknown[]) => unknown;
     };
   };
   const client = dbWithClient.$client;
@@ -69,8 +71,7 @@ async function captureSqlStatements<T>(fn: () => Promise<T>) {
     record(query);
     return originalQuery(query, ...args);
   }) as typeof client.query;
-  client.connect = (async (...args: unknown[]) => {
-    const connection = await originalConnect(...args);
+  const instrumentConnection = (connection: CapturedConnection) => {
     const connectionQuery = connection.query.bind(connection);
     const connectionRelease = connection.release.bind(connection);
     connection.query = ((query: string | { text?: string }, ...queryArgs: unknown[]) => {
@@ -83,9 +84,21 @@ async function captureSqlStatements<T>(fn: () => Promise<T>) {
       connectionRelease(...releaseArgs);
     }) as typeof connection.release;
     return connection;
+  };
+  client.connect = ((...args: unknown[]) => {
+    const callback = args[0];
+    if (typeof callback === "function") {
+      return originalConnect(
+        (error: Error | undefined, connection: CapturedConnection | undefined, done: () => void) =>
+          callback(error, connection == null ? connection : instrumentConnection(connection), done)
+      );
+    }
+    return Promise.resolve(originalConnect(...args)).then((connection) =>
+      instrumentConnection(connection as CapturedConnection)
+    );
   }) as typeof client.connect;
   try {
-    const result = await fn();
+    const result = await fn(() => [...statements]);
     return { result, statements };
   } finally {
     client.query = originalQuery;
@@ -149,20 +162,33 @@ describe("bounded target read models", () => {
       imageUrls: ["/api/uploads/bounded.jpg"],
     });
 
-    const listCapture = await captureSqlStatements(() =>
-      serverComposition.sourceDocumentReads.list({ ledgerId, limit: 20 })
-    );
-    const detailCapture = await captureSqlStatements(() =>
-      serverComposition.sourceDocumentReads.get(ledgerId, document!.id)
-    );
     const readStatements = (statements: string[]) =>
-      statements.map(normalizeSql).filter((statement) => /^(select|with)\b/.test(statement));
+      statements
+        .map(normalizeSql)
+        .filter((statement) => /^(select|with)\b/.test(statement))
+        .filter((statement, index, normalized) => statement !== normalized[index - 1]);
+    const capture = await captureSqlStatements(async (getStatements) => {
+      const list = await serverComposition.sourceDocumentReads.list({ ledgerId, limit: 20 });
+      const afterList = readStatements(getStatements()).length;
+      const detail = await serverComposition.sourceDocumentReads.get(ledgerId, document!.id);
+      const afterDetail = readStatements(getStatements()).length;
+      await listStreamPage(ledgerId, { limit: 20 });
+      const afterStream = readStatements(getStatements()).length;
+      return {
+        list,
+        detail,
+        listReadCount: afterList,
+        detailReadCount: afterDetail - afterList,
+        streamReadCount: afterStream - afterDetail,
+      };
+    });
 
-    expect(listCapture.result.items).toHaveLength(1);
-    expect(detailCapture.result?.files).toHaveLength(1);
-    expect(detailCapture.result?.ledgerEntries).toEqual([]);
-    expect(readStatements(listCapture.statements).length).toBeLessThanOrEqual(4);
-    expect(readStatements(detailCapture.statements).length).toBeLessThanOrEqual(5);
+    expect(capture.result.list.items).toHaveLength(1);
+    expect(capture.result.detail?.files).toHaveLength(1);
+    expect(capture.result.detail?.ledgerEntries).toEqual([]);
+    expect(capture.result.listReadCount).toBeLessThanOrEqual(4);
+    expect(capture.result.detailReadCount).toBeLessThanOrEqual(5);
+    expect(capture.result.streamReadCount).toBe(4);
   });
 
   it("paginates a large source-document history with a bounded list DTO", async () => {

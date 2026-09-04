@@ -19,6 +19,7 @@ import {
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import { useStreamListMotion, type StreamListMotionApi } from "./use-stream-list-motion";
+import type { useStreamSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useStreamSourceDocumentRecoveryMutations";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -32,7 +33,9 @@ export interface UnifiedStreamGroupProps {
     sourceDocument: SourceDocument;
     ledgerEntries: LedgerEntry[];
   }) => void;
+  onViewSourceDetailIntent?: (doc: SourceDocument) => void;
   onEditRetry?: (doc: SourceDocument) => void;
+  onEditRetryIntent?: () => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;
   selectedIds: string[];
@@ -43,6 +46,7 @@ export interface UnifiedStreamGroupProps {
   timeZone?: string;
   readOnly?: boolean;
   collapseEntriesDefault?: boolean;
+  recovery?: ReturnType<typeof useStreamSourceDocumentRecoveryMutations>;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -50,7 +54,9 @@ export function LedgerEntriesUnifiedGroups({
   mainCurrency,
   onViewLedgerEntry,
   onViewSourceDetail,
+  onViewSourceDetailIntent,
   onEditRetry,
+  onEditRetryIntent,
   onDeleteSourceConfirm,
   isSelectionMode,
   selectedIds,
@@ -61,6 +67,7 @@ export function LedgerEntriesUnifiedGroups({
   timeZone,
   readOnly = false,
   collapseEntriesDefault = false,
+  recovery,
 }: UnifiedStreamGroupProps) {
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   if (streamGroups.length === 0) {
@@ -79,6 +86,8 @@ export function LedgerEntriesUnifiedGroups({
     ...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {}),
     onViewSourceDetail,
     ...(onEditRetry != null ? { onEditRetry } : {}),
+    ...(onViewSourceDetailIntent != null ? { onViewSourceDetailIntent } : {}),
+    ...(onEditRetryIntent != null ? { onEditRetryIntent } : {}),
     onDeleteSourceConfirm,
     isSelectionMode,
     selectedIds,
@@ -89,6 +98,7 @@ export function LedgerEntriesUnifiedGroups({
     getItemProps,
     ...(timeZone != null ? { timeZone } : {}),
     collapseEntriesDefault,
+    ...(recovery != null ? { recovery } : {}),
   } satisfies Omit<UnifiedStreamGroupProps, "readOnly"> & {
     selectedIdSet: ReadonlySet<string>;
   };
@@ -125,7 +135,13 @@ function StaticUnifiedGroups(props: UnifiedStreamGroupProps) {
                   ? { onViewLedgerEntry: props.onViewLedgerEntry }
                   : {})}
                 onViewSourceDetail={props.onViewSourceDetail}
+                {...(props.onViewSourceDetailIntent != null
+                  ? { onViewSourceDetailIntent: props.onViewSourceDetailIntent }
+                  : {})}
                 {...(props.onEditRetry != null ? { onEditRetry: props.onEditRetry } : {})}
+                {...(props.onEditRetryIntent != null
+                  ? { onEditRetryIntent: props.onEditRetryIntent }
+                  : {})}
                 onDeleteSourceConfirm={props.onDeleteSourceConfirm}
                 selectionMode={props.isSelectionMode}
                 selected={selectedIdSet.has(item.sourceDocument.id)}
@@ -136,6 +152,7 @@ function StaticUnifiedGroups(props: UnifiedStreamGroupProps) {
                 getItemProps={props.getItemProps}
                 readOnly={props.readOnly === true}
                 defaultExpanded={!props.collapseEntriesDefault}
+                {...(props.recovery != null ? { recovery: props.recovery } : {})}
               />
             ))}
           </div>
@@ -198,7 +215,11 @@ function AnimatedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
       ),
     [props.streamGroups]
   );
-  const motion = useStreamListMotion(motionItems);
+  const expansionLayoutKey = motionItems
+    .filter((item) => props.getExpanded(item.id))
+    .map((item) => item.id)
+    .join(",");
+  const motion = useStreamListMotion(motionItems, expansionLayoutKey);
   const children: ReactNode[] = [];
   const pendingExits = [...motion.exiting].sort((a, b) => a.index - b.index);
   // Immutable cursor over the sorted exit list. `renderedSlotCount` counts
@@ -241,7 +262,13 @@ function AnimatedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
               ? { onViewLedgerEntry: props.onViewLedgerEntry }
               : {})}
             onViewSourceDetail={props.onViewSourceDetail}
+            {...(props.onViewSourceDetailIntent != null
+              ? { onViewSourceDetailIntent: props.onViewSourceDetailIntent }
+              : {})}
             {...(props.onEditRetry != null ? { onEditRetry: props.onEditRetry } : {})}
+            {...(props.onEditRetryIntent != null
+              ? { onEditRetryIntent: props.onEditRetryIntent }
+              : {})}
             onDeleteSourceConfirm={props.onDeleteSourceConfirm}
             selectionMode={props.isSelectionMode}
             selected={props.selectedIdSet.has(item.sourceDocument.id)}
@@ -254,6 +281,7 @@ function AnimatedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
             defaultExpanded={!props.collapseEntriesDefault}
             expanded={props.getExpanded(item.sourceDocument.id)}
             onExpandedChange={props.onExpandedChange}
+            {...(props.recovery != null ? { recovery: props.recovery } : {})}
           />
         </StreamCardMotion>
       );
@@ -371,7 +399,13 @@ function VirtualizedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
                     ? { onViewLedgerEntry: props.onViewLedgerEntry }
                     : {})}
                   onViewSourceDetail={props.onViewSourceDetail}
+                  {...(props.onViewSourceDetailIntent != null
+                    ? { onViewSourceDetailIntent: props.onViewSourceDetailIntent }
+                    : {})}
                   {...(props.onEditRetry != null ? { onEditRetry: props.onEditRetry } : {})}
+                  {...(props.onEditRetryIntent != null
+                    ? { onEditRetryIntent: props.onEditRetryIntent }
+                    : {})}
                   onDeleteSourceConfirm={props.onDeleteSourceConfirm}
                   selectionMode={props.isSelectionMode}
                   selected={props.selectedIdSet.has(row.item.sourceDocument.id)}
@@ -385,6 +419,7 @@ function VirtualizedInteractiveGroups(props: ControlledInteractiveGroupsProps) {
                   defaultExpanded={!props.collapseEntriesDefault}
                   expanded={props.getExpanded(row.item.sourceDocument.id)}
                   onExpandedChange={props.onExpandedChange}
+                  {...(props.recovery != null ? { recovery: props.recovery } : {})}
                 />
               </div>
             )}
@@ -440,7 +475,9 @@ interface UnifiedStreamItemRowProps {
   mainCurrency: string;
   onViewLedgerEntry?: (entry: LedgerEntry) => void;
   onViewSourceDetail: UnifiedStreamGroupProps["onViewSourceDetail"];
+  onViewSourceDetailIntent?: (doc: SourceDocument) => void;
   onEditRetry?: (doc: SourceDocument) => void;
+  onEditRetryIntent?: () => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   selectionMode: boolean;
   selected: boolean;
@@ -451,6 +488,7 @@ interface UnifiedStreamItemRowProps {
   defaultExpanded: boolean;
   expanded?: boolean;
   onExpandedChange?: (sourceDocumentId: string, expanded: boolean) => void;
+  recovery?: ReturnType<typeof useStreamSourceDocumentRecoveryMutations>;
 }
 
 const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
@@ -458,7 +496,9 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   mainCurrency,
   onViewLedgerEntry,
   onViewSourceDetail,
+  onViewSourceDetailIntent,
   onEditRetry,
+  onEditRetryIntent,
   onDeleteSourceConfirm,
   selectionMode,
   selected,
@@ -469,6 +509,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   defaultExpanded,
   expanded,
   onExpandedChange,
+  recovery,
 }: UnifiedStreamItemRowProps) {
   const sourceDocument = item.sourceDocument as SourceDocument;
   const ledgerEntries = item.ledgerEntries as LedgerEntry[];
@@ -476,6 +517,10 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
     (nextExpanded: boolean) => onExpandedChange?.(sourceDocument.id, nextExpanded),
     [onExpandedChange, sourceDocument.id]
   );
+  const recoveryVariables = {
+    sourceDocumentId: sourceDocument.id,
+    expectedVersion: sourceDocument.version,
+  };
 
   return (
     <div {...getItemProps()}>
@@ -485,7 +530,11 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         mainCurrency={mainCurrency}
         {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
         onViewDetails={() => onViewSourceDetail({ sourceDocument, ledgerEntries })}
+        {...(onViewSourceDetailIntent != null
+          ? { onViewDetailsIntent: () => onViewSourceDetailIntent(sourceDocument) }
+          : {})}
         {...(onEditRetry != null ? { onEditRetry: () => onEditRetry(sourceDocument) } : {})}
+        {...(onEditRetryIntent != null ? { onEditRetryIntent } : {})}
         onDelete={() => onDeleteSourceConfirm(sourceDocument)}
         status={item.sourceDocument.status as SourceDocumentStatusType}
         anomalyReason={item.sourceDocument.anomalyReason}
@@ -498,6 +547,16 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         defaultExpanded={defaultExpanded}
         {...(expanded === undefined ? {} : { expanded })}
         {...(onExpandedChange === undefined ? {} : { onExpandedChange: handleExpandedChange })}
+        isRetrying={recovery?.retryingIds.has(sourceDocument.id) ?? false}
+        isCancelling={recovery?.cancellingIds.has(sourceDocument.id) ?? false}
+        isAbandoning={recovery?.abandoningIds.has(sourceDocument.id) ?? false}
+        {...(recovery == null
+          ? {}
+          : {
+              onRetry: () => recovery.retry(recoveryVariables),
+              onCancelProcessing: () => recovery.cancelProcessing(recoveryVariables),
+              onAbandonCandidate: () => recovery.abandonCandidate(recoveryVariables),
+            })}
       />
     </div>
   );

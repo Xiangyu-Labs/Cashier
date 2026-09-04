@@ -1,4 +1,15 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import type {
   SourceDocumentDto,
@@ -424,28 +435,6 @@ export async function getSourceDocumentDuplicateReview(
   );
 }
 
-async function fetchRows(
-  executor: QueryExecutor,
-  input: TargetSourceDocumentListInput,
-  includeCursor: boolean
-) {
-  const conditions = baseConditions(input);
-  if (includeCursor) {
-    const cursor = cursorCondition(input.cursor);
-    if (cursor != null) conditions.push(cursor);
-  }
-  return executor
-    .select()
-    .from(sourceDocuments)
-    .where(and(...conditions))
-    .orderBy(
-      desc(sourceDocuments.effectiveDate),
-      desc(sourceDocuments.createdAt),
-      desc(sourceDocuments.id)
-    )
-    .limit(input.limit + 1);
-}
-
 function duplicateReviewColumns() {
   return {
     duplicateSourceDocumentId: duplicateReviews.sourceDocumentId,
@@ -685,23 +674,91 @@ async function hydrateSourceDocumentRows(
 export async function listTargetSourceDocuments(input: TargetSourceDocumentListInput) {
   return db.transaction(
     async (tx) => {
-      const rows = await fetchRows(tx, input, true);
+      const conditions = baseConditions(input);
+      const cursor = cursorCondition(input.cursor);
+      if (cursor != null) conditions.push(cursor);
+      const rows = await tx
+        .select({
+          ...getTableColumns(sourceDocuments),
+          documentId: sourceDocuments.id,
+          selectedRevisionId: sourceDocumentRevisions.id,
+          selectedActiveRevisionId: sourceDocuments.activeRevisionId,
+          revisionTitle: sourceDocumentRevisions.title,
+          submittedText: sourceDocumentRevisions.submittedText,
+          revisionOutcome: sourceDocumentRevisions.outcome,
+          anomalyReason: sourceDocumentRevisions.anomalyReason,
+          failureCode: sourceDocumentRevisions.failureCode,
+          hasImages: sql<boolean>`EXISTS (
+            SELECT 1
+            FROM ${revisionFiles} list_revision_file
+            INNER JOIN ${storedFiles} list_stored_file
+              ON list_stored_file.ledger_id = list_revision_file.ledger_id
+             AND list_stored_file.id = list_revision_file.stored_file_id
+             AND list_stored_file.deleted_at IS NULL
+            WHERE list_revision_file.ledger_id = ${input.ledgerId}
+              AND list_revision_file.revision_id = ${sourceDocumentRevisions.id}
+          )`,
+          ...duplicateReviewColumns(),
+        })
+        .from(sourceDocuments)
+        .leftJoin(
+          sourceDocumentRevisions,
+          and(
+            eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+            eq(sourceDocumentRevisions.sourceDocumentId, sourceDocuments.id),
+            or(
+              and(
+                isNotNull(sourceDocuments.pendingRevisionId),
+                eq(sourceDocumentRevisions.id, sourceDocuments.pendingRevisionId)
+              ),
+              and(
+                isNull(sourceDocuments.pendingRevisionId),
+                eq(sourceDocumentRevisions.id, sourceDocuments.activeRevisionId)
+              )
+            )
+          )
+        )
+        .leftJoin(
+          duplicateReviews,
+          and(
+            eq(duplicateReviews.ledgerId, input.ledgerId),
+            eq(duplicateReviews.sourceDocumentId, sourceDocuments.id),
+            eq(duplicateReviews.status, "pending")
+          )
+        )
+        .where(and(...conditions))
+        .orderBy(
+          desc(sourceDocuments.effectiveDate),
+          desc(sourceDocuments.createdAt),
+          desc(sourceDocuments.id)
+        )
+        .limit(input.limit + 1);
       const hasMore = rows.length > input.limit;
       const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
-      const hydrationRows = await hydrateSourceDocumentRows(
-        tx,
-        input.ledgerId,
-        pageRows.map((row) => row.id),
-        false
-      );
-      const hydrationByDocumentId = new Map(
-        hydrationRows.map((hydration) => [hydration.documentId, hydration])
-      );
       const last = pageRows.at(-1);
       return {
         items: pageRows.map((row) => {
-          const hydration = hydrationByDocumentId.get(row.id);
-          if (hydration == null) throw new ConflictError("Source document page hydration changed");
+          const hydration: SourceDocumentHydrationRow = {
+            documentId: row.documentId,
+            selectedRevisionId: row.selectedRevisionId,
+            activeRevisionId: row.selectedActiveRevisionId,
+            revisionTitle: row.revisionTitle,
+            submittedText: row.submittedText,
+            revisionOutcome: row.revisionOutcome,
+            anomalyReason: row.anomalyReason,
+            failureCode: row.failureCode,
+            hasImages: row.hasImages,
+            files: [],
+            ledgerEntries: [],
+            activeResultSummary: null,
+            duplicateSourceDocumentId: row.duplicateSourceDocumentId,
+            duplicateRevisionId: row.duplicateRevisionId,
+            duplicateMatchedSourceDocumentId: row.duplicateMatchedSourceDocumentId,
+            duplicateMatchedRevisionId: row.duplicateMatchedRevisionId,
+            duplicateStatus: row.duplicateStatus,
+            duplicateReason: row.duplicateReason,
+            duplicateConfidence: row.duplicateConfidence,
+          };
           return mapListItem(row as SourceDocumentRow, hydration);
         }),
         nextCursor: hasMore && last != null ? encodeCursor(last as SourceDocumentRow) : null,

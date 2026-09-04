@@ -114,23 +114,24 @@ export function StatsTab({
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });
-  const queryKeyFingerprint = JSON.stringify(queryDescriptor.queryKey);
   const [lastResolved, setLastResolved] = useState<{
     stats: NonNullable<typeof statsQuery.data>;
     descriptor: typeof queryDescriptor.state;
-    queryKeyFingerprint: string;
   } | null>(null);
-  if (
-    statsQuery.data !== undefined &&
-    (lastResolved?.stats !== statsQuery.data ||
-      lastResolved.queryKeyFingerprint !== queryKeyFingerprint)
-  ) {
-    setLastResolved({
-      stats: statsQuery.data,
-      descriptor: queryDescriptor.state,
-      queryKeyFingerprint,
+  useEffect(() => {
+    if (statsQuery.data === undefined) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setLastResolved({
+        stats: statsQuery.data!,
+        descriptor: queryDescriptor.state,
+      });
     });
-  }
+    return () => {
+      active = false;
+    };
+  }, [queryDescriptor.state, statsQuery.data]);
   const stats = statsQuery.data ?? lastResolved?.stats;
   const contentDescriptor =
     statsQuery.data === undefined && lastResolved != null

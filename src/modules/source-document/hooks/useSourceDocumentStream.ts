@@ -14,7 +14,10 @@ import {
   buildUnifiedStreamGroups,
   type UnifiedStreamGroup,
 } from "@/modules/source-document/stream-grouping";
-import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
+import type {
+  LedgerRefreshResult,
+  StreamRefreshResult,
+} from "@/modules/source-document/contract-refresh";
 import { useLedgerRefreshPolling } from "./useLedgerRefreshPolling";
 
 const STREAM_PAGE_LIMIT = 20;
@@ -81,6 +84,23 @@ function encodeFilterSignature(params: {
   return parts.join("|");
 }
 
+function seedRefreshBaseline(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ledgerId: string,
+  page: { generation: string; hasTransitionalWork: boolean }
+) {
+  const queryKey = queryKeys.sourceDocumentRefresh(ledgerId);
+  queryClient.setQueryData<LedgerRefreshResult>(queryKey, (current) => {
+    if (current != null && BigInt(current.version) > BigInt(page.generation)) return current;
+    return {
+      version: page.generation,
+      changed: false,
+      hasTransitionalWork: page.hasTransitionalWork,
+      invalidations: { categories: false, settings: false, stats: false },
+    };
+  });
+}
+
 export function useSourceDocumentStream(
   ledgerId: string,
   options: UseSourceDocumentStreamOptions = {}
@@ -144,8 +164,8 @@ export function useSourceDocumentStream(
 
   const streamQuery = useInfiniteQuery({
     queryKey: streamPageKey,
-    queryFn: ({ pageParam }) =>
-      listStreamPageAction(
+    queryFn: async ({ pageParam }) => {
+      const page = await listStreamPageAction(
         ledgerId,
         queryDescriptor?.getPageInput(pageParam as string | undefined) ?? {
           ...(startDate !== null ? { startDate } : {}),
@@ -159,7 +179,10 @@ export function useSourceDocumentStream(
           ...(pageParam != null ? { cursor: pageParam as string } : {}),
           limit: STREAM_PAGE_LIMIT,
         }
-      ),
+      );
+      seedRefreshBaseline(queryClient, ledgerId, page);
+      return page;
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     refetchOnWindowFocus: false,
@@ -204,7 +227,8 @@ export function useSourceDocumentStream(
     void queryClient.resetQueries({ queryKey: streamPageKey, exact: true });
   }, [data, queryClient, streamPageKey]);
 
-  const refreshQuery = useLedgerRefreshPolling(ledgerId, enableRefresh);
+  const firstPageAvailable = data?.pages[0] != null;
+  const refreshQuery = useLedgerRefreshPolling(ledgerId, enableRefresh && firstPageAvailable);
   const refetchRefresh = refreshQuery.refetch;
   const refresh = useCallback(async (): Promise<{
     changed: boolean;

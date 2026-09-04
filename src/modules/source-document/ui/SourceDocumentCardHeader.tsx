@@ -51,10 +51,12 @@ interface SourceDocumentCardHeaderProps {
   contentId: string;
   onToggleExpanded: () => void;
   onViewDetails?: (() => void) | undefined;
+  onViewDetailsIntent?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onCancelProcessing?: (() => void | Promise<void>) | undefined;
   onAbandonCandidate?: (() => void | Promise<void>) | undefined;
   onEditRetry?: (() => void | Promise<void>) | undefined;
+  onEditRetryIntent?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
@@ -94,10 +96,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   contentId,
   onToggleExpanded,
   onViewDetails,
+  onViewDetailsIntent,
   onDirectRetry,
   onCancelProcessing,
   onAbandonCandidate,
   onEditRetry,
+  onEditRetryIntent,
   onDelete,
 }: SourceDocumentCardHeaderProps) {
   const t = useTranslations("SourceDocumentCard");
@@ -161,6 +165,9 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       <button
         type="button"
         onClick={onViewDetails}
+        onPointerEnter={onViewDetailsIntent}
+        onPointerDown={onViewDetailsIntent}
+        onFocus={onViewDetailsIntent}
         disabled={onViewDetails == null}
         className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:min-h-9"
       >
@@ -227,7 +234,11 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                   </DropdownMenuItem>
                 )}
                 {hasAction("edit_retry") && onEditRetry != null && (
-                  <DropdownMenuItem onClick={onEditRetry}>
+                  <DropdownMenuItem
+                    onClick={onEditRetry}
+                    onPointerEnter={onEditRetryIntent}
+                    onFocus={onEditRetryIntent}
+                  >
                     <Pencil className="mr-2 h-4 w-4" />
                     {tActions("editRetry")}
                   </DropdownMenuItem>

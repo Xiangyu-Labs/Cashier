@@ -71,15 +71,15 @@ export function useLedgerPageEnvironment({
   }, [dirtyChangeCount]);
 
   // Wire the real new-record handler into the shell once this component mounts.
-  const { setInputIntent, setOpenInput } = useShellController();
+  const { registerInputIntent, registerOpenInput } = useShellController();
 
   useEffect(() => {
-    setOpenInput(() => () => setIsInputOpen(true));
-  }, [setOpenInput, setIsInputOpen]);
+    return registerOpenInput(() => setIsInputOpen(true));
+  }, [registerOpenInput, setIsInputOpen]);
 
   useEffect(() => {
-    setInputIntent(() => preloadNewRecordModules);
-  }, [setInputIntent]);
+    return registerInputIntent(preloadNewRecordModules);
+  }, [registerInputIntent]);
 
   return {
     ledger,

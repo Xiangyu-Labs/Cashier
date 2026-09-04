@@ -186,18 +186,7 @@ export function StatsContentView({
       </div>
 
       <StatsRanking
-        data={(stats?.categories ?? []).map((category) => ({
-          id: category.id,
-          name: category.name,
-          icon: category.icon,
-          totalConverted: category.totalConverted,
-          percent: category.percent,
-          count: category.count,
-          trend: {
-            percent: category.trend.percent,
-            amount: category.trend.amount,
-          },
-        }))}
+        data={stats?.categories ?? []}
         isLoading={isLoading && stats == null}
         currencySymbol={currencySymbol}
         {...(onCategoryDrilldown !== undefined

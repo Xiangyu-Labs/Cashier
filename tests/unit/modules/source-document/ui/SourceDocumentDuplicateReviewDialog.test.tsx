@@ -102,6 +102,7 @@ function createQueryClient() {
         items: [listItem("doc-1", "Original bill"), listItem(DUPLICATE_ID, "Duplicate bill")],
         nextCursor: null,
         generation: "1",
+        hasTransitionalWork: false,
       },
     ],
     pageParams: [null],

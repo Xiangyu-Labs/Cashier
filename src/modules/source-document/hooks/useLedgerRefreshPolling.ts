@@ -8,6 +8,7 @@ import { withQueryTimeout } from "@/lib/query-timeout";
 import { applyStreamRefreshToCache } from "./stream-refresh-cache";
 
 const REFRESH_INTERVAL_MS = 3_000;
+const REFRESH_STALE_TIME_MS = 3_000;
 const REFRESH_TIMEOUT_MS = 15_000;
 const MAX_ERROR_INTERVAL_MS = 30_000;
 const consecutiveFailures = new WeakMap<object, Map<string, number>>();
@@ -43,6 +44,7 @@ export function useLedgerRefreshPolling(ledgerId: string, enabled = true) {
       }
     },
     enabled,
+    staleTime: REFRESH_STALE_TIME_MS,
     retry: false,
     refetchInterval: (query) => {
       if (query.state.status === "error") {
@@ -58,7 +60,7 @@ export function useLedgerRefreshPolling(ledgerId: string, enabled = true) {
       return query.state.data?.hasTransitionalWork === true ? REFRESH_INTERVAL_MS : false;
     },
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 }

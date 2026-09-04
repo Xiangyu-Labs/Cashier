@@ -116,7 +116,7 @@ export interface LedgerSettingsContract {
   timeZone?: string | null;
 }
 
-interface LedgerContract {
+export interface LedgerContract {
   id: LedgerId;
   userId: string;
   settings: LedgerSettingsContract;

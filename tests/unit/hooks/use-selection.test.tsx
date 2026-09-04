@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useSelection } from "@/hooks/use-selection";
 
@@ -101,5 +101,32 @@ describe("useSelection", () => {
     rerender({ allIds: ["two", "three", "four"] });
 
     expect(result.current.selectedIds).toEqual(["three"]);
+  });
+
+  it("persists visible IDs so removed selections can be replaced without returning", async () => {
+    const initialIds = Array.from({ length: 110 }, (_, index) => `entry-${index + 1}`);
+    const replacementIds = initialIds.slice(10);
+    const { result, rerender } = renderHook(
+      ({ allIds }) => useSelection({ allIds, queryFingerprint: "same-query" }),
+      { initialProps: { allIds: initialIds } }
+    );
+
+    act(() => result.current.selectAll());
+    expect(result.current.selectedIds).toHaveLength(100);
+
+    rerender({ allIds: replacementIds });
+    expect(result.current.selectedIds).toHaveLength(90);
+
+    act(() => {
+      for (const id of replacementIds.slice(90)) result.current.handleSelect(id, true);
+    });
+    expect(result.current.selectedIds).toHaveLength(100);
+    expect(result.current.selectedIds).toContain("entry-110");
+
+    await waitFor(() => expect(result.current.selectedIds).toHaveLength(100));
+    rerender({ allIds: initialIds });
+
+    expect(result.current.selectedIds).not.toContain("entry-1");
+    expect(result.current.selectedIds).toContain("entry-110");
   });
 });
