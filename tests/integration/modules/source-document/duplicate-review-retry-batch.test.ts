@@ -94,6 +94,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Coffee Shop",
       [entry],
       reviewSnapshot(matched)
@@ -142,6 +143,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Coffee Shop",
       [entry],
       reviewSnapshot(matched, {
@@ -237,6 +239,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       first.sourceDocumentId,
       first.revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(original, {
@@ -248,6 +251,7 @@ describe("duplicate review lifecycle", () => {
       otherLedgerId,
       other.sourceDocumentId,
       other.revisionId,
+      "CNY",
       "Other ledger",
       [entry],
       reviewSnapshot(otherOriginal, {

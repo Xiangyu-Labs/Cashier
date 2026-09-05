@@ -692,4 +692,26 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       }))
     );
   });
+
+  it("uses the shared zero-decimal precision for ISK recalculation", async () => {
+    const db = getTestDb();
+    const ledgerId = await seedLedgerWithEntry({
+      mainCurrency: "ISK",
+      entryDate: "2026-09-04",
+    });
+    await db.insert(currencyRates).values({
+      date: "2026-09-04",
+      base: "EUR",
+      rates: { USD: 1, ISK: 1.405 },
+    });
+
+    await expect(
+      postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "2026-09-04")
+    ).resolves.toBe(1);
+
+    const entry = await db.query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.ledgerId, ledgerId),
+    });
+    expect(entry?.convertedAmount).toBe("141.000");
+  });
 });

@@ -119,12 +119,25 @@ export async function getLedgerPageBootstrap(
           // First stream page (all-statuses, filtered by period+amount, paginated)
           queryClient.prefetchInfiniteQuery({
             queryKey: streamDescriptor.queryKey,
-            queryFn: ({ pageParam }) =>
-              listStreamPage(
+            queryFn: async ({ pageParam }) => {
+              const pageInput = streamDescriptor.getPageInput(pageParam as string | undefined);
+              let page = await listStreamPage(
                 input.ledgerId,
-                streamDescriptor.getPageInput(pageParam as string | undefined),
+                pageInput,
                 dependencies.sourceDocuments
-              ),
+              );
+              if (pageParam == null && page.restartRequired) {
+                page = await listStreamPage(
+                  input.ledgerId,
+                  pageInput,
+                  dependencies.sourceDocuments
+                );
+                if (page.restartRequired) {
+                  throw new Error("Stream restart did not produce a valid first page");
+                }
+              }
+              return page;
+            },
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: StreamPage) => lastPage.nextCursor,
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
@@ -203,7 +216,7 @@ export async function getLedgerPageBootstrap(
   if (input.initialTab === "stream") {
     const stream = queryClient.getQueryData<InfiniteData<StreamPage>>(streamDescriptor.queryKey);
     const firstPage = stream?.pages[0];
-    if (firstPage != null) {
+    if (firstPage != null && !firstPage.restartRequired) {
       queryClient.setQueryData(queryKeys.sourceDocumentRefresh(input.ledgerId), {
         version: firstPage.generation,
         changed: false,

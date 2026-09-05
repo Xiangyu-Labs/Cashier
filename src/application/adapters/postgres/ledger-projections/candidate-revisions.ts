@@ -3,6 +3,7 @@ import type {
   LedgerProjectionEntryContract,
   ProcessingLeaseContract,
 } from "@/application/contracts";
+import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError } from "@/lib/errors";
 import {
@@ -40,6 +41,7 @@ export async function storeCandidateRevision(
   ledgerId: string,
   sourceDocumentId: string,
   revisionId: string,
+  expectedMainCurrency: string,
   title: string | null | undefined,
   entries: readonly LedgerProjectionEntryContract[],
   lease?: ProcessingLeaseContract,
@@ -54,7 +56,10 @@ export async function storeCandidateRevision(
   }
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    await lockLedgerForUpdate(tx, ledgerId);
+    const ledger = await lockLedgerForUpdate(tx, ledgerId);
+    if (ledger.mainCurrency !== expectedMainCurrency) {
+      throw new LedgerMainCurrencyChangedError();
+    }
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
     if (document.pendingRevisionId !== revisionId) return false;
 

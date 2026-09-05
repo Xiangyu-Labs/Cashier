@@ -6,12 +6,7 @@
  * re-exports, and dynamic `import()` specifiers so there is no easy bypass.
  */
 
-const importPatterns = [
-  /^\s*import\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["'];?/gm,
-  /^\s*export\s+(?:type\s+)?(?:\*|\{[\s\S]*?\})\s+from\s+["']([^"']+)["'];?/gm,
-  /^\s*export\s+(?:type\s+)?\*\s+as\s+[A-Za-z_$][\w$]*\s+from\s+["']([^"']+)["'];?/gm,
-  /\bimport\(\s*["']([^"']+)["']\s*\)/g,
-];
+import { collectImportSpecifiers, normalizeImportSpecifier } from "./architecture-imports.mjs";
 
 /**
  * Whether the source starts with a `"use client"` directive after any leading
@@ -123,16 +118,6 @@ function collectRawLogIdentifierProperties(source) {
   return [...properties];
 }
 
-function collectSpecifiers(source) {
-  const specifiers = [];
-  for (const pattern of importPatterns) {
-    for (const match of source.matchAll(pattern)) {
-      if (match[1] != null) specifiers.push(match[1]);
-    }
-  }
-  return specifiers;
-}
-
 /**
  * Return boundary violations for one source file.
  *
@@ -142,7 +127,10 @@ function collectSpecifiers(source) {
  */
 export function findBoundaryViolations(relativePath, source) {
   const violations = [];
-  const specifiers = collectSpecifiers(source);
+  const rawSpecifiers = collectImportSpecifiers(source, relativePath);
+  const specifiers = rawSpecifiers.map((specifier) =>
+    normalizeImportSpecifier(relativePath, specifier)
+  );
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relativePath);
   const moduleMatch = /^src\/modules\/([^/]+)\//.exec(relativePath);
   const isModule = moduleMatch != null;
@@ -197,7 +185,8 @@ export function findBoundaryViolations(relativePath, source) {
     }
   }
 
-  for (const specifier of specifiers) {
+  for (const [index, specifier] of specifiers.entries()) {
+    const rawSpecifier = rawSpecifiers[index];
     if (forbiddenLegacyLedgerMutationPaths.some((pattern) => pattern.test(specifier))) {
       violations.push(
         `${relativePath}: legacy ledger mutation path is forbidden; use the versioned source-document aggregate`
@@ -264,11 +253,12 @@ export function findBoundaryViolations(relativePath, source) {
         `${relativePath}: application contracts must not import persistence, database, provider SDKs, or application adapters`
       );
     }
+    const isInProcessInternalImport = specifier.startsWith("@/application/adapters/in-process/");
     if (
       isInProcessAdapter &&
       (persistencePattern.test(specifier) ||
         libDbPattern.test(specifier) ||
-        applicationAdaptersPattern.test(specifier))
+        (applicationAdaptersPattern.test(specifier) && !isInProcessInternalImport))
     ) {
       violations.push(
         `${relativePath}: in-process adapters must receive persistence and concrete adapters explicitly`
@@ -289,7 +279,7 @@ export function findBoundaryViolations(relativePath, source) {
     if (
       isClientComponent &&
       (moduleActionsBarrelPattern.test(specifier) ||
-        relativeModuleActionsBarrelPattern.test(specifier))
+        (rawSpecifier != null && relativeModuleActionsBarrelPattern.test(rawSpecifier)))
     ) {
       violations.push(
         `${relativePath}: client components must import concrete server actions, not module actions barrels`

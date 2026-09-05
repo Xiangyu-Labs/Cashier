@@ -410,6 +410,7 @@ describe("target upper workflows", () => {
     });
     await postgresLedgerProjectionAdapter.activateRevision({
       ledgerId,
+      expectedMainCurrency: "CNY",
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
       entries: [entry],

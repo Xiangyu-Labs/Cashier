@@ -8,6 +8,7 @@ import type {
   SettingsPort,
   SourceDocumentPort,
 } from "@/application/contracts";
+import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { NotFoundError } from "@/lib/errors";
 import type { AIContext } from "@/lib/tasks/types";
 import { compare } from "@/lib/money/decimal";
@@ -66,6 +67,7 @@ export interface CurrentRevisionProcessorOptions {
     ledgerId: string,
     sourceDocumentId: string,
     revisionId: string,
+    expectedMainCurrency: string,
     title: string | null | undefined,
     entries: readonly LedgerProjectionEntryContract[],
     lease?: RevisionProcessingRequestContract["lease"],
@@ -75,6 +77,7 @@ export interface CurrentRevisionProcessorOptions {
     ledgerId: string,
     sourceDocumentId: string,
     revisionId: string,
+    expectedMainCurrency: string,
     title: string | null | undefined,
     entries: readonly LedgerProjectionEntryContract[],
     review: DuplicateReviewSnapshot,
@@ -174,169 +177,189 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       }
       return { outcome: "anomaly", anomalyReason };
     }
-    const mainCurrency = ledgerSettings?.mainCurrency ?? "CNY";
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
-    const ratesByDate = new Map<string, Awaited<ReturnType<FxRateBook["getRates"]>>>();
-    const entries = await buildEntriesForInsert({
-      validEntries: output.ledgerEntries.filter(
-        (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true
-      ),
-      categories,
-      sourceDocumentId: request.sourceDocumentId,
-      ledgerId: request.ledgerId,
-      mainCurrency,
-      fallbackDate,
-      convertAmount: async ({ amount, fromCurrency, toCurrency, date }) => {
-        const rateDate = date ?? "latest";
-        let rates = ratesByDate.get(rateDate);
-        if (rates == null) {
-          rates = await this.options.getRates(date);
-          ratesByDate.set(rateDate, rates);
-        }
-        return convertWithRates(amount, rates, fromCurrency, toCurrency);
-      },
-    });
-    throwIfProcessingCancelled(signal);
-    const entryInputs = entries.map((entry) => ({
-      categoryId: entry.categoryId,
-      amount: entry.amount,
-      currency: entry.currency,
-      itemName: entry.itemName,
-      description: entry.description,
-      convertedAmount: entry.convertedAmount,
-      exchangeRate: entry.exchangeRate,
-      createdAt: entry.entryDate,
-    }));
+    const validEntries = output.ledgerEntries.filter(
+      (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true
+    );
+    const ratesByDate = new Map<string, ReturnType<FxRateBook["getRates"]>>();
+    let currentSettings = ledgerSettings;
 
-    // Every AI-parsed revision (first upload or retry) is re-checked against
-    // confirmed-completed bills of the same day. First uploads that match
-    // become an active `duplicate_pending` projection with a pending review;
-    // retries that match keep the revision pending as a candidate and store a
-    // `staged` review that is only promoted after the user accepts the retry.
-    if (
-      document.type === "ai_parsed" &&
-      ledgerSettings?.duplicateDetectionEnabled !== false &&
-      document.entryDate != null
-    ) {
-      const candidates = await this.options.listDuplicateCandidates(
-        request.ledgerId,
-        document.entryDate,
-        request.sourceDocumentId
-      );
-      const detection = await detectDuplicateBill({
-        ledgerId: request.ledgerId,
-        mainCurrency,
-        ...(ledgerSettings?.aiLanguage === undefined
-          ? {}
-          : { aiLanguage: ledgerSettings.aiLanguage }),
-        ...(ledgerSettings?.aiCustomPrompt === undefined
-          ? {}
-          : { aiCustomPrompt: ledgerSettings.aiCustomPrompt }),
-        sourceDocumentId: request.sourceDocumentId,
-        currentCreatedAt: document.createdAt.toISOString(),
-        currentEntryDate: document.entryDate,
-        currentTitle: output.title ?? null,
-        currentEntries: entryInputs,
-        currentStoredFileIds: storedFileIds,
-        candidates,
-        loadImages: async (storedFileIds) => {
-          const loaded = await this.options.loadStoredFiles(request.ledgerId, [...storedFileIds]);
-          return loaded
-            .filter(isSuccessfulLoadImageResult)
-            .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
-        },
-        ai,
-        signal,
-      });
+    for (let attempt = 0; attempt < 3; attempt++) {
       throwIfProcessingCancelled(signal);
-      if (
-        detection?.duplicate === true &&
-        detection.matchedSourceDocumentId != null &&
-        detection.matchedRevisionId != null
-      ) {
-        const matchedCandidate = candidates.find(
-          (candidate) => candidate.sourceDocumentId === detection.matchedSourceDocumentId
-        );
-        if (matchedCandidate != null) {
-          const reviewSnapshot = {
-            matchedSourceDocumentId: detection.matchedSourceDocumentId,
-            matchedRevisionId: detection.matchedRevisionId,
-            matchedTitle: matchedCandidate.title,
-            matchedEntryDate: matchedCandidate.entryDate,
-            matchedCreatedAt: matchedCandidate.createdAt,
-            reason: detection.reason,
-            confidence: detection.confidence,
-          };
-          if (document.activeRevisionId == null) {
-            // First parse: activate the projection with a pending review.
-            throwIfProcessingCancelled(signal);
-            const stored = await this.options.storeDuplicatePendingRevision(
-              request.ledgerId,
-              request.sourceDocumentId,
-              request.revisionId,
-              output.title,
-              entryInputs,
-              reviewSnapshot,
-              request.lease
-            );
-            if (!stored) {
-              if (request.lease != null) throw new ProcessingCancelledError();
-              throw new Error("Failed to store duplicate pending revision");
+      if (attempt > 0) {
+        currentSettings = await this.options.getSettings(request.ledgerId);
+        throwIfProcessingCancelled(signal);
+      }
+      const mainCurrency = currentSettings?.mainCurrency ?? "CNY";
+
+      try {
+        const entries = await buildEntriesForInsert({
+          validEntries,
+          categories,
+          sourceDocumentId: request.sourceDocumentId,
+          ledgerId: request.ledgerId,
+          mainCurrency,
+          fallbackDate,
+          convertAmount: async ({ amount, fromCurrency, toCurrency, date }) => {
+            const rateDate = date ?? "latest";
+            let ratesPromise = ratesByDate.get(rateDate);
+            if (ratesPromise == null) {
+              ratesPromise = this.options.getRates(date);
+              ratesByDate.set(rateDate, ratesPromise);
             }
-            return { outcome: "completed" };
+            return convertWithRates(amount, await ratesPromise, fromCurrency, toCurrency);
+          },
+        });
+        throwIfProcessingCancelled(signal);
+        const entryInputs = entries.map((entry) => ({
+          categoryId: entry.categoryId,
+          amount: entry.amount,
+          currency: entry.currency,
+          itemName: entry.itemName,
+          description: entry.description,
+          convertedAmount: entry.convertedAmount,
+          exchangeRate: entry.exchangeRate,
+          createdAt: entry.entryDate,
+        }));
+
+        if (
+          document.type === "ai_parsed" &&
+          currentSettings?.duplicateDetectionEnabled !== false &&
+          document.entryDate != null
+        ) {
+          const candidates = await this.options.listDuplicateCandidates(
+            request.ledgerId,
+            document.entryDate,
+            request.sourceDocumentId
+          );
+          const detection = await detectDuplicateBill({
+            ledgerId: request.ledgerId,
+            mainCurrency,
+            ...(currentSettings?.aiLanguage === undefined
+              ? {}
+              : { aiLanguage: currentSettings.aiLanguage }),
+            ...(currentSettings?.aiCustomPrompt === undefined
+              ? {}
+              : { aiCustomPrompt: currentSettings.aiCustomPrompt }),
+            sourceDocumentId: request.sourceDocumentId,
+            currentCreatedAt: document.createdAt.toISOString(),
+            currentEntryDate: document.entryDate,
+            currentTitle: output.title ?? null,
+            currentEntries: entryInputs,
+            currentStoredFileIds: storedFileIds,
+            candidates,
+            loadImages: async (candidateFileIds) => {
+              const loaded = await this.options.loadStoredFiles(request.ledgerId, [
+                ...candidateFileIds,
+              ]);
+              return loaded
+                .filter(isSuccessfulLoadImageResult)
+                .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
+            },
+            ai,
+            signal,
+          });
+          throwIfProcessingCancelled(signal);
+          if (
+            detection?.duplicate === true &&
+            detection.matchedSourceDocumentId != null &&
+            detection.matchedRevisionId != null
+          ) {
+            const matchedCandidate = candidates.find(
+              (candidate) => candidate.sourceDocumentId === detection.matchedSourceDocumentId
+            );
+            if (matchedCandidate != null) {
+              const reviewSnapshot = {
+                matchedSourceDocumentId: detection.matchedSourceDocumentId,
+                matchedRevisionId: detection.matchedRevisionId,
+                matchedTitle: matchedCandidate.title,
+                matchedEntryDate: matchedCandidate.entryDate,
+                matchedCreatedAt: matchedCandidate.createdAt,
+                reason: detection.reason,
+                confidence: detection.confidence,
+              };
+              if (document.activeRevisionId == null) {
+                throwIfProcessingCancelled(signal);
+                const stored = await this.options.storeDuplicatePendingRevision(
+                  request.ledgerId,
+                  request.sourceDocumentId,
+                  request.revisionId,
+                  mainCurrency,
+                  output.title,
+                  entryInputs,
+                  reviewSnapshot,
+                  request.lease
+                );
+                if (!stored) {
+                  if (request.lease != null) throw new ProcessingCancelledError();
+                  throw new Error("Failed to store duplicate pending revision");
+                }
+                return { outcome: "completed" };
+              }
+              throwIfProcessingCancelled(signal);
+              const stored = await this.options.storeCandidateRevision(
+                request.ledgerId,
+                request.sourceDocumentId,
+                request.revisionId,
+                mainCurrency,
+                output.title,
+                entryInputs,
+                request.lease,
+                reviewSnapshot
+              );
+              if (!stored) {
+                if (request.lease != null) throw new ProcessingCancelledError();
+                throw new Error("Failed to store candidate revision");
+              }
+              return { outcome: "completed" };
+            }
           }
-          // Retry: keep the revision as a candidate and stage the review.
+        }
+
+        if (document.activeRevisionId == null) {
+          throwIfProcessingCancelled(signal);
+          const activated = await this.options.activateRevision({
+            ...request,
+            expectedMainCurrency: mainCurrency,
+            ...(request.lease == null ? {} : { lease: request.lease }),
+            ...(output.title == null ? {} : { title: output.title }),
+            entries: entryInputs,
+          });
+          if (!activated) {
+            if (request.lease != null) throw new ProcessingCancelledError();
+            const current = await this.options.getRevision(
+              request.ledgerId,
+              request.sourceDocumentId
+            );
+            if (current?.activeRevisionId !== request.revisionId) {
+              throw new Error("Revision completion is stale");
+            }
+          }
+        } else {
           throwIfProcessingCancelled(signal);
           const stored = await this.options.storeCandidateRevision(
             request.ledgerId,
             request.sourceDocumentId,
             request.revisionId,
+            mainCurrency,
             output.title,
             entryInputs,
-            request.lease,
-            reviewSnapshot
+            request.lease
           );
           if (!stored) {
             if (request.lease != null) throw new ProcessingCancelledError();
             throw new Error("Failed to store candidate revision");
           }
-          return { outcome: "completed" };
         }
+        return { outcome: "completed" };
+      } catch (error) {
+        if (!(error instanceof LedgerMainCurrencyChangedError)) throw error;
       }
     }
 
-    if (document.activeRevisionId == null) {
-      // First parse: activate revision (replace projection, update pointers)
-      throwIfProcessingCancelled(signal);
-      const activated = await this.options.activateRevision({
-        ...request,
-        ...(request.lease == null ? {} : { lease: request.lease }),
-        ...(output.title == null ? {} : { title: output.title }),
-        entries: entryInputs,
-      });
-      if (!activated) {
-        if (request.lease != null) throw new ProcessingCancelledError();
-        const current = await this.options.getRevision(request.ledgerId, request.sourceDocumentId);
-        if (current?.activeRevisionId !== request.revisionId) {
-          throw new Error("Revision completion is stale");
-        }
-      }
-    } else {
-      // Document already has an active projection -> store as candidate revision
-      throwIfProcessingCancelled(signal);
-      const stored = await this.options.storeCandidateRevision(
-        request.ledgerId,
-        request.sourceDocumentId,
-        request.revisionId,
-        output.title,
-        entryInputs,
-        request.lease
-      );
-      if (!stored) {
-        if (request.lease != null) throw new ProcessingCancelledError();
-        throw new Error("Failed to store candidate revision");
-      }
-    }
-    return { outcome: "completed" };
+    throw new ProcessingFailure(
+      "exchange_rate_failure",
+      "Ledger currency kept changing while the revision was being committed"
+    );
   }
 }

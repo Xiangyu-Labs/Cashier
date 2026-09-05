@@ -3,6 +3,7 @@ import type {
   LedgerProjectionEntryContract,
   ProcessingLeaseContract,
 } from "@/application/contracts";
+import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
@@ -30,6 +31,7 @@ export async function storeDuplicatePendingRevision(
   ledgerId: string,
   sourceDocumentId: string,
   revisionId: string,
+  expectedMainCurrency: string,
   title: string | null | undefined,
   entries: readonly LedgerProjectionEntryContract[],
   review: {
@@ -44,7 +46,10 @@ export async function storeDuplicatePendingRevision(
   lease?: ProcessingLeaseContract
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    await lockLedgerForUpdate(tx, ledgerId);
+    const ledger = await lockLedgerForUpdate(tx, ledgerId);
+    if (ledger.mainCurrency !== expectedMainCurrency) {
+      throw new LedgerMainCurrencyChangedError();
+    }
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
     if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
       return false;

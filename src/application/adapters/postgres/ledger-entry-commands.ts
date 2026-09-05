@@ -239,24 +239,29 @@ async function prepareBatchConversions(input: {
   if (rows.length !== requestedIds.length) {
     throw new NotFoundError("Active ledger entry projection");
   }
-  const conversions = await Promise.all(
-    rows.map(async (entry) => {
-      const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
-      const effectiveCurrency = nextCurrency ?? entry.mainCurrency;
-      const nextAmount = input.amount ?? entry.amount;
-      const conversion = await convertEntryAmount(
-        {
-          amount: nextAmount,
-          fromCurrency: effectiveCurrency,
-          toCurrency: entry.mainCurrency,
-          ...(entry.entryDate == null ? {} : { date: entry.entryDate }),
-        },
-        postgresFxRateBook
-      );
-      return [entry.id, { ...entry, effectiveCurrency, nextAmount, conversion }] as const;
-    })
+  const preparedRows = rows.map((entry) => {
+    const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
+    const effectiveCurrency = nextCurrency ?? entry.mainCurrency;
+    return {
+      entry,
+      effectiveCurrency,
+      nextAmount: input.amount ?? entry.amount,
+    };
+  });
+  const conversions = await postgresFxRateBook.convertBatch(
+    preparedRows.map(({ entry, effectiveCurrency, nextAmount }) => ({
+      amount: nextAmount,
+      from: effectiveCurrency,
+      ...(entry.entryDate == null ? {} : { date: entry.entryDate }),
+    })),
+    rows[0]!.mainCurrency
   );
-  return new Map(conversions);
+  return new Map(
+    preparedRows.map(({ entry, effectiveCurrency, nextAmount }, index) => [
+      entry.id,
+      { ...entry, effectiveCurrency, nextAmount, conversion: conversions[index]! },
+    ])
+  );
 }
 
 function targetMap(targets: readonly VersionedTarget[]) {

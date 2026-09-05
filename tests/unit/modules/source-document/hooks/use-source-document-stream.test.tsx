@@ -361,6 +361,59 @@ describe("useSourceDocumentStream", () => {
     expect(reset).toHaveBeenCalledTimes(1);
   });
 
+  it("retries an invalid first page once before exposing stream data", async () => {
+    listStreamPageActionMock
+      .mockResolvedValueOnce({
+        items: [],
+        nextCursor: null,
+        generation: "1",
+        restartRequired: true,
+        hasTransitionalWork: false,
+      })
+      .mockResolvedValueOnce({
+        items: [makeItem("doc-fresh")],
+        nextCursor: null,
+        generation: "2",
+        hasTransitionalWork: true,
+      });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.queryStatus).toBe("success"));
+
+    expect(listStreamPageActionMock).toHaveBeenCalledTimes(2);
+    expect(result.current.streamGroups[0]?.items[0]?.sourceDocument.id).toBe("doc-fresh");
+    expect(queryClient.getQueryData(queryKeys.sourceDocumentRefresh("ledger-1"))).toMatchObject({
+      version: "2",
+      hasTransitionalWork: true,
+    });
+  });
+
+  it("fails a first-page fetch that requests two consecutive restarts", async () => {
+    listStreamPageActionMock.mockResolvedValue({
+      items: [],
+      nextCursor: null,
+      generation: "1",
+      restartRequired: true,
+      hasTransitionalWork: false,
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.queryStatus).toBe("error"));
+
+    expect(listStreamPageActionMock).toHaveBeenCalledTimes(2);
+    expect(queryClient.getQueryData(queryKeys.sourceDocumentRefresh("ledger-1"))).toBeUndefined();
+  });
+
   it("renders the filtered page projection directly from the server page", async () => {
     const entryLatte = {
       id: "entry-latte",

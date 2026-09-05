@@ -515,4 +515,33 @@ describe("getLedgerPageBootstrap", () => {
       pageParams: [undefined],
     });
   });
+
+  it("does not dehydrate a first stream page that remains restart-required", async () => {
+    listStreamPageMock.mockResolvedValue({
+      items: [],
+      nextCursor: null,
+      generation: "1",
+      restartRequired: true,
+      hasTransitionalWork: false,
+    });
+
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
+    });
+
+    expect(listStreamPageMock).toHaveBeenCalledTimes(2);
+    expect(
+      result?.dehydratedState.queries.some(
+        (query) => query.queryKey[2] === "source-documents" && query.queryKey[3] === "stream"
+      )
+    ).toBe(false);
+    expect(
+      result?.dehydratedState.queries.some(
+        (query) => query.queryKey[2] === "source-documents" && query.queryKey[3] === "refresh"
+      )
+    ).toBe(false);
+  });
 });

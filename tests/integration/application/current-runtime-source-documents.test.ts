@@ -75,6 +75,7 @@ describe("current-runtime target adapters", () => {
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
+        expectedMainCurrency: "CNY",
         sourceDocumentId: first.document.id,
         revisionId: retry.revision.id,
         entries: [projectionEntry],
@@ -132,6 +133,7 @@ describe("current-runtime target adapters", () => {
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
+        expectedMainCurrency: "CNY",
         sourceDocumentId: pending.document.id,
         revisionId: pending.revision.id,
         entries: [{ ...projectionEntry, categoryId: otherCategory!.id }],
@@ -219,6 +221,7 @@ describe("current-runtime target adapters", () => {
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
+        expectedMainCurrency: "CNY",
         sourceDocumentId: active.sourceDocumentId,
         revisionId: pending.revision.id,
         entries: [{ ...projectionEntry, amount: "99.00" }],

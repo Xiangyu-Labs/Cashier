@@ -11,10 +11,17 @@ import {
   storeCandidateRevision,
   storeDuplicatePendingRevision,
 } from "@/application/adapters/postgres";
+import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import { listDuplicateDetectionCandidates } from "@/application/adapters/postgres/duplicate-candidates";
 import { getSourceDocumentDuplicateReview } from "@/application/adapters/postgres/source-document-reads";
-import { duplicateReviews, ledgers, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
+import {
+  duplicateReviews,
+  ledgerEntries,
+  ledgers,
+  sourceDocumentRevisions,
+  sourceDocuments,
+} from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
@@ -117,6 +124,7 @@ async function storeDuplicate(
     ledgerId,
     document.sourceDocumentId,
     document.revisionId,
+    "CNY",
     title,
     [entry],
     snapshot
@@ -163,6 +171,79 @@ async function findReview(
 }
 
 describe("duplicate review edge cases", () => {
+  it("rolls back candidate completion when the main currency changed", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "edge-stale-candidate-currency");
+    const active = await createCompletedAiDocument(db, ledgerId);
+    const retry = await createRetry(db, ledgerId, active.sourceDocumentId);
+    await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
+
+    await expect(
+      storeCandidateRevision(
+        ledgerId,
+        active.sourceDocumentId,
+        retry.revisionId,
+        "CNY",
+        "Stale candidate",
+        [entry]
+      )
+    ).rejects.toBeInstanceOf(LedgerMainCurrencyChangedError);
+
+    const [document, revision, entries] = await Promise.all([
+      findDocument(db, active.sourceDocumentId),
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, retry.revisionId),
+      }),
+      db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.sourceDocumentRevisionId, retry.revisionId),
+      }),
+    ]);
+    expect(document?.pendingRevisionId).toBe(retry.revisionId);
+    expect(revision?.outcome).toBe("processing");
+    expect(entries).toHaveLength(0);
+  });
+
+  it("rolls back duplicate activation when the main currency changed", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "edge-stale-duplicate-currency");
+    const matched = await createCompletedAiDocument(db, ledgerId);
+    const pending = await createDocument(db, ledgerId);
+    await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
+
+    await expect(
+      storeDuplicatePendingRevision(
+        ledgerId,
+        pending.sourceDocumentId,
+        pending.revisionId,
+        "CNY",
+        "Stale duplicate",
+        [entry],
+        reviewSnapshot(matched)
+      )
+    ).rejects.toBeInstanceOf(LedgerMainCurrencyChangedError);
+
+    const [document, revision, entries, reviews] = await Promise.all([
+      findDocument(db, pending.sourceDocumentId),
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, pending.revisionId),
+      }),
+      db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.sourceDocumentRevisionId, pending.revisionId),
+      }),
+      db.query.duplicateReviews.findMany({
+        where: eq(duplicateReviews.sourceDocumentId, pending.sourceDocumentId),
+      }),
+    ]);
+    expect(document).toMatchObject({
+      activeRevisionId: null,
+      pendingRevisionId: pending.revisionId,
+      currentStatus: "processing",
+    });
+    expect(revision?.outcome).toBe("processing");
+    expect(entries).toHaveLength(0);
+    expect(reviews).toHaveLength(0);
+  });
+
   it("keeps B duplicate_pending with a readable snapshot after A is deleted", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "edge-delete-matched");
@@ -231,9 +312,14 @@ describe("duplicate review edge cases", () => {
 
     // Modify A via an accepted retry: the old active revision is replaced.
     const aRetry = await createRetry(db, ledgerId, a.sourceDocumentId);
-    await storeCandidateRevision(ledgerId, a.sourceDocumentId, aRetry.revisionId, "Updated A", [
-      entry,
-    ]);
+    await storeCandidateRevision(
+      ledgerId,
+      a.sourceDocumentId,
+      aRetry.revisionId,
+      "CNY",
+      "Updated A",
+      [entry]
+    );
     const aVersion = await currentVersion(db, a.sourceDocumentId);
     expect(await acceptCandidateRevision(ledgerId, a.sourceDocumentId, aVersion)).toMatchObject({
       status: "completed",
@@ -328,6 +414,7 @@ describe("duplicate review edge cases", () => {
       ledgerId,
       b.sourceDocumentId,
       retry.revisionId,
+      "CNY",
       "Retry title",
       [entry],
       undefined,
@@ -372,9 +459,14 @@ describe("duplicate review edge cases", () => {
     );
 
     const retry = await createRetry(db, ledgerId, b.sourceDocumentId);
-    await storeCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId, "Fixed parse", [
-      entry,
-    ]);
+    await storeCandidateRevision(
+      ledgerId,
+      b.sourceDocumentId,
+      retry.revisionId,
+      "CNY",
+      "Fixed parse",
+      [entry]
+    );
     expect(
       await acceptCandidateRevision(
         ledgerId,
@@ -411,6 +503,7 @@ describe("duplicate review edge cases", () => {
       ledgerId,
       b.sourceDocumentId,
       retry.revisionId,
+      "CNY",
       "Retry title",
       [entry],
       undefined,
@@ -522,6 +615,7 @@ describe("duplicate review edge cases", () => {
       ledgerId,
       b.sourceDocumentId,
       retry.revisionId,
+      "CNY",
       "Retry title",
       [entry],
       undefined,
@@ -576,9 +670,14 @@ describe("duplicate review edge cases", () => {
 
     // No staged review is created because duplicate detection is disabled.
     const retry = await createRetry(db, ledgerId, b.sourceDocumentId);
-    await storeCandidateRevision(ledgerId, b.sourceDocumentId, retry.revisionId, "Retry title", [
-      entry,
-    ]);
+    await storeCandidateRevision(
+      ledgerId,
+      b.sourceDocumentId,
+      retry.revisionId,
+      "CNY",
+      "Retry title",
+      [entry]
+    );
     expect(
       await acceptCandidateRevision(
         ledgerId,

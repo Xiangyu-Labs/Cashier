@@ -74,7 +74,7 @@ export async function invalidateLedgerQueries(
 ): Promise<void> {
   await Promise.all(
     getLedgerQueryInvalidations(ledgerId, groups).map((filters) =>
-      queryClient.invalidateQueries({ ...filters, refetchType: "active" })
+      queryClient.invalidateQueries({ ...filters, refetchType: "active" }, { throwOnError: true })
     )
   );
 }

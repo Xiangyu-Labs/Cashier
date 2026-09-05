@@ -106,6 +106,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Coffee Shop",
       [entry],
       reviewSnapshot(matched, {
@@ -168,6 +169,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, { confidence: 0.8 })
@@ -283,6 +285,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, {
@@ -363,6 +366,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, { reason: "Same bill" })
@@ -404,6 +408,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, { reason: "Same bill" })

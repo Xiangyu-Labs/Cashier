@@ -165,9 +165,9 @@ export function useSourceDocumentStream(
   const streamQuery = useInfiniteQuery({
     queryKey: streamPageKey,
     queryFn: async ({ pageParam }) => {
-      const page = await listStreamPageAction(
-        ledgerId,
-        queryDescriptor?.getPageInput(pageParam as string | undefined) ?? {
+      const pageInput =
+        queryDescriptor?.getPageInput(pageParam as string | undefined) ??
+        ({
           ...(startDate !== null ? { startDate } : {}),
           ...(endDate !== null ? { endDate } : {}),
           ...(minAmount != null ? { minAmount } : {}),
@@ -178,8 +178,14 @@ export function useSourceDocumentStream(
           ...(search != null && search !== "" ? { search } : {}),
           ...(pageParam != null ? { cursor: pageParam as string } : {}),
           limit: STREAM_PAGE_LIMIT,
+        } satisfies ListStreamPageInput);
+      let page = await listStreamPageAction(ledgerId, pageInput);
+      if (pageParam == null && page.restartRequired) {
+        page = await listStreamPageAction(ledgerId, pageInput);
+        if (page.restartRequired) {
+          throw new Error("Stream restart did not produce a valid first page");
         }
-      );
+      }
       seedRefreshBaseline(queryClient, ledgerId, page);
       return page;
     },

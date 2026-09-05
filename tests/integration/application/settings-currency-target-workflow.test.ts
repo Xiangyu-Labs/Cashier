@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
+import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { updateLedger as updateLedgerUseCase } from "@/modules/ledger/application/use-cases/update-ledger";
 import { serverComposition } from "@/application/server-composition-root";
 import { hasActiveEntries } from "@/modules/ledger/application/queries/has-active-entries";
@@ -373,6 +374,63 @@ describe("target Settings currency workflow", () => {
 });
 
 describe("settings concurrency invariants", () => {
+  it("rejects first activation when conversion used a stale main currency", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "settings-stale-activation");
+    const sourceDocumentId = crypto.randomUUID();
+    const revisionId = crypto.randomUUID();
+    await db.insert(sourceDocuments).values({ id: sourceDocumentId, ledgerId, type: "ai_parsed" });
+    await db.insert(sourceDocumentRevisions).values({
+      id: revisionId,
+      ledgerId,
+      sourceDocumentId,
+      revisionNumber: 1,
+      outcome: "processing",
+    });
+    await db
+      .update(sourceDocuments)
+      .set({ pendingRevisionId: revisionId, currentStatus: "processing" })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+    await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
+
+    await expect(
+      postgresLedgerProjectionAdapter.activateRevision({
+        ledgerId,
+        expectedMainCurrency: "CNY",
+        sourceDocumentId,
+        revisionId,
+        entries: [
+          {
+            categoryId: null,
+            amount: "80.00",
+            currency: "CNY",
+            itemName: "Stale conversion",
+            description: null,
+            convertedAmount: "80.00",
+            exchangeRate: "1",
+          },
+        ],
+      })
+    ).rejects.toBeInstanceOf(LedgerMainCurrencyChangedError);
+
+    const [document, revision, entries] = await Promise.all([
+      db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, sourceDocumentId) }),
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, revisionId),
+      }),
+      db.query.ledgerEntries.findMany({
+        where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+      }),
+    ]);
+    expect(document).toMatchObject({
+      activeRevisionId: null,
+      pendingRevisionId: revisionId,
+      currentStatus: "processing",
+    });
+    expect(revision?.outcome).toBe("processing");
+    expect(entries).toHaveLength(0);
+  });
+
   it("concurrent main-currency change and first createManual are serialised by the ledger lock", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "settings-race-create-manual");
@@ -488,6 +546,7 @@ describe("settings concurrency invariants", () => {
         updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } }),
         postgresLedgerProjectionAdapter.activateRevision({
           ledgerId,
+          expectedMainCurrency: "CNY",
           sourceDocumentId,
           revisionId: revision.id,
           entries: [

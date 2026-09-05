@@ -39,7 +39,10 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       // Lock the ledger row to serialise with concurrent main-currency changes.
       // This is the first-active-projection path; the lock prevents a settings
       // main-currency change from interleaving with entry creation.
-      await lockLedgerForUpdate(tx, input.ledgerId);
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      if (ledger.mainCurrency !== input.expectedMainCurrency) {
+        throw new LedgerMainCurrencyChangedError();
+      }
 
       // Also lock the source document row to serialise with concurrent soft-delete.
       // Lock order: ledger → source document (prevents deadlocks).

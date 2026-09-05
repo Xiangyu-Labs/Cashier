@@ -281,6 +281,7 @@ describe("target source-document submissions", () => {
     expect(
       await postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
+        expectedMainCurrency: "CNY",
         sourceDocumentId: active.sourceDocumentId,
         revisionId: failed.revision.id,
         entries: [{ ...entry, amount: "99.00" }],

@@ -8,6 +8,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { queryKeys } from "@/lib/query-keys";
 
 const { toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
   toastSuccessMock: vi.fn(),
@@ -147,6 +148,47 @@ describe("useLedgerMutation", () => {
         await vi.advanceTimersByTimeAsync(1_000);
       });
       expect(invalidate).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("surfaces a real active-query refetch failure without replaying the write", async () => {
+    vi.useFakeTimers();
+    try {
+      const { wrapper } = setup();
+      let failRefresh = false;
+      const queryFn = vi.fn(async () => {
+        if (failRefresh) throw new Error("offline");
+        return { value: "cached" };
+      });
+      const mutationFn = vi.fn(async () => "saved");
+      const { result } = renderHook(
+        () => ({
+          query: useQuery({ queryKey: queryKeys.ledgerSettings("ledger-1"), queryFn }),
+          mutation: useLedgerMutation("ledger-1", {
+            invalidates: ["credentials"],
+            mutationFn,
+            successMessage: null,
+          }),
+        }),
+        { wrapper }
+      );
+      await vi.waitFor(() => expect(result.current.query.isSuccess).toBe(true));
+      failRefresh = true;
+
+      await act(async () => {
+        await expect(result.current.mutation.mutateAsync()).resolves.toBe("saved");
+      });
+
+      expect(mutationFn).toHaveBeenCalledTimes(1);
+      expect(queryFn).toHaveBeenCalledTimes(2);
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        "Saved, but the latest data could not be refreshed. Retry."
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      expect(mutationFn).toHaveBeenCalledTimes(1);
+      expect(queryFn).toHaveBeenCalledTimes(3);
     } finally {
       vi.useRealTimers();
     }

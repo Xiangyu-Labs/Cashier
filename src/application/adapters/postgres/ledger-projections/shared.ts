@@ -3,16 +3,11 @@ import type {
   LedgerProjectionEntryContract,
   LedgerProjectionEntryFingerprint,
 } from "@/application/contracts";
-import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+export { LedgerMainCurrencyChangedError } from "@/application/contracts";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { isValidDecimal } from "@/lib/money/decimal";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import type { PostgresTransaction } from "../transaction-locks";
-
-export class LedgerMainCurrencyChangedError extends ConflictError {
-  constructor() {
-    super("Ledger currency changed before the entry edit");
-  }
-}
 
 export function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
   return and(

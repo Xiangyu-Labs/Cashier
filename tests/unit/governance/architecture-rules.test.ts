@@ -221,6 +221,24 @@ describe("findBoundaryViolations", () => {
     ]);
   });
 
+  it("normalizes relative imports before applying boundaries", () => {
+    expect(
+      findBoundaryViolations(
+        "src/lib/lazy.ts",
+        'export const load = () => import("../modules/ledger/contracts");'
+      )
+    ).toEqual(["src/lib/lazy.ts: src/lib must not import modules, app, or application adapters"]);
+  });
+
+  it("allows in-process adapters to import sibling helpers", () => {
+    expect(
+      findBoundaryViolations(
+        "src/application/adapters/in-process/processor.ts",
+        'import { load } from "./stored-image-loader";'
+      )
+    ).toEqual([]);
+  });
+
   it("catches namespace re-exports from banned paths", () => {
     expect(
       findBoundaryViolations(

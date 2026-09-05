@@ -94,4 +94,23 @@ describe("saveSourceDocumentChangesAction", () => {
       })
     ).resolves.toMatchObject({ ok: true, version: 1 });
   });
+
+  it.each(["10", "10.00", "10.000"])(
+    "treats numerically equivalent amount %s as a no-op",
+    async (amount) => {
+      const fixture = await seed();
+      await expect(
+        saveSourceDocumentChangesAction(fixture.ledger.id, {
+          sourceDocumentId: fixture.document.id,
+          expectedVersion: 1,
+          entries: [{ ledgerEntryId: fixture.entryId, data: { amount } }],
+        })
+      ).resolves.toMatchObject({ ok: true, version: 1 });
+
+      const document = await fixture.db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, fixture.document.id),
+      });
+      expect(document?.stateVersion).toBe(1);
+    }
+  );
 });

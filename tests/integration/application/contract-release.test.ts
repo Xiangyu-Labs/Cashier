@@ -42,6 +42,7 @@ describe("local contract release", () => {
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
+        expectedMainCurrency: "CNY",
         sourceDocumentId: pending.document.id,
         revisionId: pending.revision.id,
         title: "Target title",

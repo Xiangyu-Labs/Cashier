@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { findBoundaryViolations } from "./architecture-rules.mjs";
+import { collectImportSpecifiers } from "./architecture-imports.mjs";
 
 const root = process.cwd();
 const sourceRoot = path.join(root, "src");
@@ -36,18 +37,11 @@ function resolveImport(from, specifier) {
 
 const files = collect(sourceRoot);
 const graph = new Map(files.map((file) => [file, []]));
-const importPatterns = [
-  /^\s*import\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["'];?/gm,
-  /^\s*export\s+(?:type\s+)?(?:\*|\{[\s\S]*?\})\s+from\s+["']([^"']+)["'];?/gm,
-];
-
 for (const file of files) {
   const source = readFileSync(file, "utf8");
-  for (const importPattern of importPatterns) {
-    for (const match of source.matchAll(importPattern)) {
-      const target = resolveImport(file, match[1]);
-      if (target != null) graph.get(file).push(target);
-    }
+  for (const specifier of collectImportSpecifiers(source, file)) {
+    const target = resolveImport(file, specifier);
+    if (target != null) graph.get(file).push(target);
   }
 }
 
@@ -80,22 +74,20 @@ for (const file of files) {
   violations.push(...findBoundaryViolations(relative, source));
   const moduleName = relative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
-  for (const importPattern of importPatterns) {
-    for (const match of source.matchAll(importPattern)) {
-      const target = resolveImport(file, match[1]);
-      if (isModuleApplication && target != null) {
-        const targetRelative = path.relative(root, target).split(path.sep).join("/");
-        const targetModule = targetRelative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
-        if (
-          moduleName != null &&
-          targetModule != null &&
-          targetModule !== moduleName &&
-          /^src\/modules\/[^/]+\/application\/use-cases\//.test(targetRelative)
-        ) {
-          violations.push(
-            `${relative}: application use cases must not call another domain's use case (${targetRelative})`
-          );
-        }
+  for (const specifier of collectImportSpecifiers(source, file)) {
+    const target = resolveImport(file, specifier);
+    if (isModuleApplication && target != null) {
+      const targetRelative = path.relative(root, target).split(path.sep).join("/");
+      const targetModule = targetRelative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
+      if (
+        moduleName != null &&
+        targetModule != null &&
+        targetModule !== moduleName &&
+        /^src\/modules\/[^/]+\/application\/use-cases\//.test(targetRelative)
+      ) {
+        violations.push(
+          `${relative}: application use cases must not call another domain's use case (${targetRelative})`
+        );
       }
     }
   }

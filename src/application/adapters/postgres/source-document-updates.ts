@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
-import { round } from "@/lib/money/decimal";
+import { compare, round } from "@/lib/money/decimal";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
@@ -209,7 +209,7 @@ export async function saveSourceDocumentChangesAtomically(
     return (
       (data.categoryId !== undefined && data.categoryId !== entry.categoryId) ||
       (data.amount !== undefined &&
-        roundToCurrency(String(data.amount), effectiveCurrency) !== entry.amount) ||
+        compare(roundToCurrency(String(data.amount), effectiveCurrency), entry.amount) !== 0) ||
       (data.currency !== undefined && data.currency !== entry.currency) ||
       (data.itemName !== undefined && data.itemName !== entry.itemName) ||
       (data.description !== undefined && data.description !== entry.description)

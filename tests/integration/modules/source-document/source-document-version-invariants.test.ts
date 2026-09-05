@@ -153,6 +153,7 @@ async function createCandidatePendingDocument(ledgerId: string) {
     ledgerId,
     active.sourceDocumentId,
     pending.revision.id,
+    "CNY",
     "Candidate",
     [{ ...entry, itemName: "Candidate item" }]
   );
@@ -174,6 +175,7 @@ async function createDuplicatePendingDocument(ledgerId: string) {
       where: eq(sourceDocuments.id, pending.sourceDocumentId),
       columns: { pendingRevisionId: true },
     }))!.pendingRevisionId!,
+    "CNY",
     "Duplicate candidate",
     [entry],
     {

@@ -163,6 +163,7 @@ export interface LedgerProjectionEntryFingerprint {
 export interface LedgerProjectionPort {
   activateRevision(input: {
     ledgerId: LedgerId;
+    expectedMainCurrency: string;
     sourceDocumentId: SourceDocumentId;
     revisionId: RevisionId;
     title?: string | null;
