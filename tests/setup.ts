@@ -1,14 +1,14 @@
 import path from "node:path";
-import { afterAll, beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, inject, vi } from "vitest";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import * as schema from "@/persistence";
 import { flushAfterCallbacks } from "./setup.common";
 
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
-const TEST_RUN_ID = requireEnvironment("CASHIER_TEST_RUN_ID");
+const postgresContext = inject("cashierPostgres");
+const TEST_DATABASE_URL = postgresContext.databaseUrl;
+const TEST_RUN_ID = postgresContext.runId;
 // VITEST_POOL_ID identifies a reusable worker slot; VITEST_WORKER_ID identifies the
 // isolated worker instance, so both are part of the schema name.
 const VITEST_POOL_ID = requireEnvironment("VITEST_POOL_ID");

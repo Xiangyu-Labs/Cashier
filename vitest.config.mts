@@ -88,6 +88,7 @@ export default defineConfig({
             "tests/integration/client/source-document-dialog-flows.test.tsx",
           ],
           environment: "node",
+          globalSetup: ["./tests/setup.postgres-global.ts"],
           setupFiles: ["./tests/setup.ts"],
           pool: "forks",
           maxWorkers: "50%",
