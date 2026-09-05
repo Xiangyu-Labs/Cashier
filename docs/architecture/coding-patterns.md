@@ -10,6 +10,10 @@ entrypoints. Dependencies point inward:
 3. Server actions and API routes authenticate, validate with Zod, invoke one use case, and map results.
 4. The server composition root is the only place that assembles concrete adapters.
 
+An application layer is justified by business decisions, transaction orchestration, or contract
+mapping, not by a fixed number of calls. A server action may call an injected port directly when an
+intermediate function would only rename and forward the same arguments.
+
 Transport DTOs do not cross into persistence adapters. Database rows and provider response types do
 not cross into modules. New code must not add a service locator lookup inside domain logic; pass the
 required port through the use case boundary. Concrete runtime wiring belongs in the server composition root.
@@ -41,11 +45,18 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
   that changes nothing observable for the caller (a no-op replay, an unchanged field) must not
   increment `stateVersion` — every aggregate command that does produce a user-observable change
   increments the target document's `stateVersion` by exactly one.
+- Use the narrowest read port that satisfies the caller. Edit-retry evidence uses `getEvidence`; it
+  must not load ledger entries or category projections that the caller discards.
 
 ## Frontend
 
 - Use centralized query keys and `useLedgerMutation` for server state changes.
 - Load tab-specific components and translations only when that tab is active.
+- Deferred feature translations use the application QueryClient. Their key is
+  `["feature-messages", version, locale, feature]`; do not add a second module-level cache or request
+  listener system.
+- Keep browser image data as `File`/`Blob` through compression and upload. Object URLs are UI
+  resources and must be revoked when an image is replaced, removed, reset, or unmounted.
 - Treat Infinite Query pages and detail queries as independent server-state views. Ledger mutations
   invalidate ledger-scoped resource groups; do not patch unrelated filtered windows or maintain a
   canonical client entity store.

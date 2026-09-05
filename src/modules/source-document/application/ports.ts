@@ -4,7 +4,6 @@ import type {
   DirectStoredFilePort,
   LedgerProjectionPort,
   StoredFileContract,
-  SourceDocumentPort,
   SourceDocumentIdempotencyInput,
   SourceDocumentSubmissionInput,
   SourceDocumentSubmissionPort,
@@ -67,6 +66,10 @@ export interface SourceDocumentReadPort {
     ledgerId: string,
     sourceDocumentIds: readonly string[]
   ): Promise<PendingDuplicateReviewContract[]>;
+  getEvidence(
+    ledgerId: string,
+    sourceDocumentId: string
+  ): Promise<import("../contracts").SourceDocumentFullDto | null>;
   get(ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentDto | null>;
   getAccessContext(
     sourceDocumentId: string
@@ -182,8 +185,6 @@ export interface QuickEntryPorts {
     date?: string;
   }): Promise<{ convertedAmount: string; exchangeRate: string }>;
 }
-
-export type SourceDocumentRevisionPort = SourceDocumentPort;
 
 export interface SourceDocumentLifecyclePort {
   acceptCandidate(

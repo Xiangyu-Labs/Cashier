@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_STATS_RANGE_TYPE,
-  buildDetailsFilterKey,
-  getDetailsInitialQueryState,
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
+import { buildDetailsFilterKey, getDetailsInitialQueryState } from "@/modules/ledger/ledger-query";
 
 describe("initial ledger query state helpers", () => {
   it("builds a stable details filter key", () => {

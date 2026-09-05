@@ -13,7 +13,7 @@ import {
   keepDuplicateSourceDocumentAction,
 } from "@/modules/source-document/server-actions/duplicate-reviews";
 import { queryKeys } from "@/lib/query-keys";
-import { useSourceDocumentRevisionDecisionMutation } from "@/modules/source-document/hooks/useSourceDocumentRevisionDecisionMutation";
+import { useVersionedSourceDocumentMutation } from "@/modules/source-document/hooks/useVersionedSourceDocumentMutation";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { summarizeReviewEntries } from "./source-document-duplicate-review.utils";
@@ -73,7 +73,7 @@ export function SourceDocumentDuplicateReviewDialog({
     onOpenChange(false);
   }, [onOpenChange, removeResolvedDocumentQueries]);
 
-  const keepMutation = useSourceDocumentRevisionDecisionMutation({
+  const keepMutation = useVersionedSourceDocumentMutation({
     ledgerId,
     sourceDocumentId,
     expectedVersion: version,
@@ -82,7 +82,7 @@ export function SourceDocumentDuplicateReviewDialog({
     errorMessage: t("actionFailed"),
     onSuccess: closeResolvedReview,
   });
-  const discardMutation = useSourceDocumentRevisionDecisionMutation({
+  const discardMutation = useVersionedSourceDocumentMutation({
     ledgerId,
     sourceDocumentId,
     expectedVersion: version,

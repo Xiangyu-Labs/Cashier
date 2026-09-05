@@ -4,6 +4,7 @@ import { buildLedgerEntryFilters } from "../ledger-filter-state";
 import type { LedgerAdvancedFilters } from "../initial-query-state";
 import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 
+/** @testOnly Exported for strict stream query descriptor tests. */
 export function buildStreamTotalQuery(
   filters: ReturnType<typeof buildLedgerEntryFilters>,
   startDate: string | undefined,

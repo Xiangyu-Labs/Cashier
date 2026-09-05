@@ -158,10 +158,11 @@ describe("useSourceDocumentSubmitMutations", () => {
       .mockRejectedValueOnce(new Error("response lost"))
       .mockResolvedValueOnce({ sourceDocumentId: "source-1", version: 1, status: "processing" });
     const { result } = setup(vi.fn());
+    const imageFile = new File([new Uint8Array([1])], "receipt.png", { type: "image/png" });
     const payload = {
       entryDate: "2026-07-17",
       text: "Lunch",
-      images: [{ data: "data:image/png;base64,AQ==", mimeType: "image/png" }],
+      images: [{ file: imageFile, mimeType: "image/png" }],
     };
 
     act(() =>

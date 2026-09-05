@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
 import { getTestDb } from "tests/setup";
 import { ledgers, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "tests/helpers/schema-setup";

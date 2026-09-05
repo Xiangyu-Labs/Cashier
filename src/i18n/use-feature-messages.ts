@@ -1,9 +1,12 @@
 "use client";
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+
+import { useCallback, useMemo } from "react";
+import { useQuery, type QueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { FEATURE_MESSAGES, pickMessages } from "./client-feature-messages";
 import { FEATURE_MESSAGE_VERSION } from "./feature-message-version";
 
 type FeatureMessageStatus = "loading" | "success" | "error";
+type Feature = keyof typeof FEATURE_MESSAGES;
 
 export interface FeatureMessagesState {
   status: FeatureMessageStatus;
@@ -13,135 +16,43 @@ export interface FeatureMessagesState {
   retry: () => void;
 }
 
-interface CachedFeatureMessages {
-  status: FeatureMessageStatus;
-  messages: Record<string, unknown> | null;
-  error: Error | null;
-  promise?: Promise<Record<string, unknown>>;
-  requestId?: symbol;
+function normalizeLocale(locale: string): "en" | "zh" {
+  return locale === "zh" ? "zh" : "en";
 }
 
-const EMPTY_CACHE_STATE: CachedFeatureMessages = {
-  status: "loading",
-  messages: null,
-  error: null,
-};
-const featureMessageCache = new Map<string, CachedFeatureMessages>();
-const featureMessageListeners = new Map<string, Set<() => void>>();
-
-function notifyFeatureMessageListeners(cacheKey: string) {
-  featureMessageListeners.get(cacheKey)?.forEach((listener) => listener());
-}
-
-function subscribeToFeatureMessages(cacheKey: string, listener: () => void) {
-  let listeners = featureMessageListeners.get(cacheKey);
-  if (listeners == null) {
-    listeners = new Set();
-    featureMessageListeners.set(cacheKey, listeners);
-  }
-  listeners.add(listener);
-  return () => {
-    listeners?.delete(listener);
-    if (listeners?.size === 0) featureMessageListeners.delete(cacheKey);
-  };
-}
-
-function featureCacheKey(locale: string, feature: keyof typeof FEATURE_MESSAGES) {
-  const normalizedLocale = locale === "zh" ? "zh" : "en";
-  return `${normalizedLocale}:${feature}`;
-}
-
-function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
-
-function startFeatureMessageLoad(
-  locale: string,
-  feature: keyof typeof FEATURE_MESSAGES,
-  cacheKey: string
-): Promise<Record<string, unknown>> {
-  const requestId = Symbol(cacheKey);
-  const promise = fetch(
-    `/api/i18n/${locale === "zh" ? "zh" : "en"}/${feature}?v=${FEATURE_MESSAGE_VERSION}`,
-    {
-      credentials: "same-origin",
-      cache: "force-cache",
-    }
-  ).then(async (response) => {
-    if (!response.ok) throw new Error("Unable to load feature messages");
-    return (await response.json()) as Record<string, unknown>;
-  });
-
-  featureMessageCache.set(cacheKey, {
-    status: "loading",
-    messages: null,
-    error: null,
-    promise,
-    requestId,
-  });
-  notifyFeatureMessageListeners(cacheKey);
-
-  // Attach the cache update separately so callers can still observe the
-  // rejection, while an unobserved preload never becomes an unhandled
-  // rejection.
-  void promise.then(
-    (messages) => {
-      const current = featureMessageCache.get(cacheKey);
-      if (current?.requestId !== requestId) return;
-      featureMessageCache.set(cacheKey, {
-        status: "success",
-        messages,
-        error: null,
-      });
-      notifyFeatureMessageListeners(cacheKey);
+function featureMessagesQuery(locale: string, feature: Feature) {
+  const normalizedLocale = normalizeLocale(locale);
+  return {
+    queryKey: ["feature-messages", FEATURE_MESSAGE_VERSION, normalizedLocale, feature] as const,
+    queryFn: async (): Promise<Record<string, unknown>> => {
+      const response = await fetch(
+        `/api/i18n/${normalizedLocale}/${feature}?v=${FEATURE_MESSAGE_VERSION}`,
+        { credentials: "same-origin", cache: "force-cache" }
+      );
+      if (!response.ok) throw new Error("Unable to load feature messages");
+      return (await response.json()) as Record<string, unknown>;
     },
-    (error: unknown) => {
-      const current = featureMessageCache.get(cacheKey);
-      if (current?.requestId !== requestId) return;
-      featureMessageCache.set(cacheKey, {
-        status: "error",
-        messages: null,
-        error: toError(error),
-      });
-      notifyFeatureMessageListeners(cacheKey);
-    }
-  );
-
-  return promise;
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  } as const;
 }
 
 export function preloadFeatureMessages(
+  queryClient: QueryClient,
   locale: string,
-  feature: keyof typeof FEATURE_MESSAGES
+  feature: Feature
 ): Promise<Record<string, unknown>> {
-  const cacheKey = featureCacheKey(locale, feature);
-  const cached = featureMessageCache.get(cacheKey);
-  if (cached?.status === "success" && cached.messages != null) {
-    return Promise.resolve(cached.messages);
-  }
-  if (cached?.status === "error") {
-    return Promise.reject(cached.error ?? new Error("Unable to load feature messages"));
-  }
-  if (cached?.promise != null) return cached.promise;
-  return startFeatureMessageLoad(locale, feature, cacheKey);
+  return queryClient.ensureQueryData(featureMessagesQuery(locale, feature));
 }
 
-/**
- * Loads a subset of locale messages for a specific feature boundary.
- * Exposes the full loading/error/success state so a failed message request
- * cannot leave a feature mounted behind a permanent skeleton.
- *
- * @param locale - The current locale string (e.g. "en", "zh").
- * @param feature - The feature key whose namespaces to pick.
- * @param availableMessages - Messages already provided by an outer
- *   NextIntlClientProvider. This avoids refetching the initial tab's feature.
- */
 export function useFeatureMessages(
   locale: string,
-  feature: keyof typeof FEATURE_MESSAGES,
+  feature: Feature,
   availableMessages?: Record<string, unknown>
 ): FeatureMessagesState {
-  const cacheKey = featureCacheKey(locale, feature);
   const namespaces = FEATURE_MESSAGES[feature];
   const availableFeatureMessages = useMemo(
     () =>
@@ -150,46 +61,38 @@ export function useFeatureMessages(
         : null,
     [availableMessages, namespaces]
   );
-
-  const subscribe = useCallback(
-    (listener: () => void) => subscribeToFeatureMessages(cacheKey, listener),
-    [cacheKey]
-  );
-  const getSnapshot = useCallback(
-    () => featureMessageCache.get(cacheKey) ?? EMPTY_CACHE_STATE,
-    [cacheKey]
-  );
-  const cached = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-
-  useEffect(() => {
-    if (availableFeatureMessages != null) return;
-    void preloadFeatureMessages(locale, feature).catch(() => undefined);
-  }, [availableFeatureMessages, feature, locale]);
-
+  const query = useQuery({
+    ...featureMessagesQuery(locale, feature),
+    enabled: availableFeatureMessages == null,
+  });
+  const refetch = query.refetch;
   const retry = useCallback(() => {
-    if (availableFeatureMessages != null) return;
-    featureMessageCache.delete(cacheKey);
-    notifyFeatureMessageListeners(cacheKey);
-    void preloadFeatureMessages(locale, feature).catch(() => undefined);
-  }, [availableFeatureMessages, cacheKey, feature, locale]);
+    if (availableFeatureMessages == null) void refetch();
+  }, [availableFeatureMessages, refetch]);
 
-  return useMemo(
-    () =>
-      availableFeatureMessages != null
-        ? {
-            status: "success" as const,
-            data: availableFeatureMessages,
-            messages: availableFeatureMessages,
-            error: null,
-            retry,
-          }
-        : {
-            status: cached.status,
-            data: cached.messages,
-            messages: cached.messages,
-            error: cached.error,
-            retry,
-          },
-    [availableFeatureMessages, cached.error, cached.messages, cached.status, retry]
-  );
+  if (availableFeatureMessages != null) {
+    return {
+      status: "success",
+      data: availableFeatureMessages,
+      messages: availableFeatureMessages,
+      error: null,
+      retry,
+    };
+  }
+
+  return queryState(query, retry);
+}
+
+function queryState(
+  query: UseQueryResult<Record<string, unknown>, Error>,
+  retry: () => void
+): FeatureMessagesState {
+  const messages = query.data ?? null;
+  return {
+    status: query.status === "pending" ? "loading" : query.status,
+    data: messages,
+    messages,
+    error: query.error,
+    retry,
+  };
 }

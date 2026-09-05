@@ -7,12 +7,11 @@ import {
   createSourceDocumentData,
 } from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { getLedgerEntryDetail as getLedgerEntryDetailUseCase } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 import { serverComposition } from "@/application/server-composition-root";
 import { activateTestSourceDocumentProjection } from "tests/helpers/schema-setup";
 
 const getLedgerEntryDetail = (id: string, ledgerId: string) =>
-  getLedgerEntryDetailUseCase(id, ledgerId, serverComposition.ledgerReads);
+  serverComposition.ledgerReads.getEntry(id, ledgerId);
 
 describe("getLedgerEntryDetail", () => {
   beforeEach(() => {

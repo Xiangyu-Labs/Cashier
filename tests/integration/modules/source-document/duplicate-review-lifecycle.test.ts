@@ -18,7 +18,6 @@ import {
 import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
 import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
-import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 import { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
@@ -414,9 +413,9 @@ describe("duplicate review lifecycle", () => {
       reviewSnapshot(matched, { reason: "Same bill" })
     );
 
-    await expect(
-      deleteSourceDocument({ ledgerId, sourceDocumentId }, postgresRevisionAdapter)
-    ).resolves.toEqual({ sourceDocumentId, deleted: true });
+    await expect(postgresRevisionAdapter.softDelete(ledgerId, sourceDocumentId)).resolves.toBe(
+      true
+    );
 
     const review = await db.query.duplicateReviews.findFirst({
       where: eq(duplicateReviews.sourceDocumentId, sourceDocumentId),

@@ -1,6 +1,11 @@
 "use client";
 
-import type { EntryCategory, SaveEntryCategoriesInput, Settings } from "@/modules/ledger/contracts";
+import type {
+  EntryCategory,
+  Ledger,
+  SaveEntryCategoriesInput,
+  Settings,
+} from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { CurrencySection } from "../CurrencySection";
 import { CategorySection } from "../CategorySection";
@@ -23,7 +28,7 @@ interface BookkeepingSettingsProps {
   categories: EntryCategory[];
   uncategorizedCount: number;
   deviceTimeZone: string | null;
-  onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
+  onUpdateSettings: (data: Partial<Settings>) => Promise<Ledger>;
   onSaveCategories: (input: SaveEntryCategoriesInput) => Promise<EntryCategory[]>;
   onReloadCategories?: () => Promise<EntryCategory[]>;
   generatingCategoryIds: Set<string>;
@@ -98,9 +103,8 @@ export function BookkeepingSettings({
     setStatus("saving");
     setError(null);
     try {
-      const result = await onUpdateSettings(patch);
-      const savedSettings = extractSettings(result, patch);
-      const nextServer = normalizeBookkeepingSettings({ ...draft, ...savedSettings });
+      const savedLedger = await onUpdateSettings(patch);
+      const nextServer = normalizeBookkeepingSettings(savedLedger.settings);
       setServer(nextServer);
       setDraft(nextServer);
       setTouchedFields(new Set());
@@ -282,12 +286,4 @@ function rebaseBookkeepingDraft(
       : incoming.collapseEntriesDefault,
     timeZone: touchedFields.has("timeZone") ? draft.timeZone : incoming.timeZone,
   };
-}
-
-function extractSettings(result: unknown, fallback: Partial<Settings>): Partial<Settings> {
-  if (typeof result === "object" && result != null && "settings" in result) {
-    const settings = (result as { settings?: unknown }).settings;
-    if (typeof settings === "object" && settings != null) return settings as Partial<Settings>;
-  }
-  return fallback;
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "@/auth";
-import { splitSourceDocumentAction } from "@/modules/source-document/actions";
+import { splitSourceDocumentAction } from "@/modules/source-document/server-actions/split";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../setup";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";

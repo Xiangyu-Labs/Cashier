@@ -21,6 +21,7 @@ export { buildDetailsQueryDescriptor } from "@/modules/ledger/ledger-query-descr
 export interface StreamQueryDescriptor {
   queryKey: readonly unknown[];
   totalQueryKey: readonly unknown[];
+  filterSignature: string;
   getPageInput: (pageParam?: string) => ListStreamPageInput;
   totalInput: GetStreamTotalInput;
 }
@@ -59,6 +60,7 @@ export function buildStreamQueryDescriptor(input: {
   return {
     queryKey: queryKeys.sourceDocumentStream(input.ledgerId, keyFilters),
     totalQueryKey: queryKeys.sourceDocumentStreamTotal(input.ledgerId, keyFilters),
+    filterSignature: JSON.stringify(keyFilters),
     getPageInput: (pageParam) => ({
       ...baseInput,
       ...(pageParam != null ? { cursor: pageParam } : {}),

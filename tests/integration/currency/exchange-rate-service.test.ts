@@ -72,32 +72,6 @@ describe("ExchangeRateService", () => {
     expect(callCount).toBe(1);
   });
 
-  it("emits rates-stored event once for newly inserted date", async () => {
-    const onStored = vi.fn();
-    const unsubscribe = ExchangeRateService.registerRatesStoredHandler(onStored);
-
-    vi.spyOn(global, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        base: "EUR",
-        date: "2024-01-21",
-        rates: { USD: 1.15, CNY: 7.7 },
-      }),
-    } as Response);
-
-    await ExchangeRateService.getRates("2024-01-21");
-    await ExchangeRateService.getRates("2024-01-21");
-
-    expect(onStored).toHaveBeenCalledTimes(1);
-    expect(onStored).toHaveBeenCalledWith({
-      base: "EUR",
-      date: "2024-01-21",
-      rates: { USD: 1.15, CNY: 7.7 },
-    });
-
-    unsubscribe();
-  });
-
   it("filters valid provider currencies that are not enabled by the application", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
@@ -115,9 +89,7 @@ describe("ExchangeRateService", () => {
     ).toMatchObject({ rates: { USD: 1.15, CNY: 7.7 } });
   });
 
-  it("uses the requested date for weekend responses, cache hits, and stored events", async () => {
-    const onStored = vi.fn();
-    const unsubscribe = ExchangeRateService.registerRatesStoredHandler(onStored);
+  it("uses the requested date for weekend responses and cache hits", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -129,18 +101,11 @@ describe("ExchangeRateService", () => {
 
     const first = await ExchangeRateService.getRates("2024-01-20");
     const cached = await ExchangeRateService.getRates("2024-01-20");
-    await vi.waitFor(() => expect(onStored).toHaveBeenCalledTimes(1));
-
     expect(first.date).toBe("2024-01-20");
     expect(cached.date).toBe("2024-01-20");
-    expect(onStored).toHaveBeenCalledWith(expect.objectContaining({ date: "2024-01-20" }));
-    unsubscribe();
   });
 
   it("rejects an invalid provider payload without writing to the database", async () => {
-    const onStored = vi.fn();
-    const unsubscribe = ExchangeRateService.registerRatesStoredHandler(onStored);
-
     vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -158,9 +123,6 @@ describe("ExchangeRateService", () => {
       where: eq(currencyRates.date, "2024-01-22"),
     });
     expect(persisted).toBeUndefined();
-    expect(onStored).not.toHaveBeenCalled();
-
-    unsubscribe();
   });
 
   it("rejects a provider base currency that is not enabled", async () => {

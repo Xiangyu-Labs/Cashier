@@ -5,12 +5,12 @@
  * @param maxWidth The maximum width of the resulting image
  * @param maxHeight The maximum height of the resulting image
  * @param quality The quality of the JPEG compression (0.0 to 1.0)
- * @returns A promise that resolves to the compressed base64 string and mime type
+ * @returns A promise that resolves to the compressed file and mime type
  */
 import { fitImageDimensions } from "./image-dimensions";
 
 interface CompressionResult {
-  data: string;
+  file: File;
   mimeType: string;
 }
 
@@ -67,16 +67,6 @@ function createWorker(): Worker | null {
   }
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  const chunks: string[] = [];
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
-    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
-  }
-  return btoa(chunks.join(""));
-}
-
 export async function compressImage(
   file: File,
   maxWidth = 1080,
@@ -106,10 +96,9 @@ export async function compressImage(
         };
         const handleMessage = (e: MessageEvent) => {
           if (e.data.success === true) {
-            const base64 = arrayBufferToBase64(e.data.data);
             cleanup();
             resolve({
-              data: `data:image/jpeg;base64,${base64}`,
+              file: new File([e.data.data], file.name, { type: "image/jpeg" }),
               mimeType: "image/jpeg",
             });
           } else {
@@ -161,9 +150,20 @@ function compressImageSync(
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to base64 with jpeg format and quality
-        const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        resolve({ data: dataUrl, mimeType: "image/jpeg" });
+        canvas.toBlob(
+          (blob) => {
+            if (blob == null) {
+              reject(new Error("Failed to encode image"));
+              return;
+            }
+            resolve({
+              file: new File([blob], file.name, { type: "image/jpeg" }),
+              mimeType: "image/jpeg",
+            });
+          },
+          "image/jpeg",
+          quality
+        );
       };
       img.onerror = () => reject(new Error("Failed to load image"));
       img.src = e.target?.result as string;

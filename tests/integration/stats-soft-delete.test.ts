@@ -6,8 +6,8 @@ import {
   TEST_USER_ID,
 } from "../helpers/schema-setup";
 import { ledgerEntries, sourceDocuments, ledgers } from "@/persistence";
-import { getLedgerStatsAction } from "@/modules/ledger/actions";
-import { getEnhancedStats } from "@/modules/stats/actions";
+import { getLedgerStatsAction } from "@/modules/ledger/server-actions/stats";
+import { getEnhancedStats } from "@/modules/stats/server-actions/get-enhanced-stats";
 import { eq } from "drizzle-orm";
 
 describe("Stats Soft Delete Filtering Regression", () => {

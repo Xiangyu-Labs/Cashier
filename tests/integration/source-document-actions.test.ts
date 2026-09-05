@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
+import { getSourceDocumentLightAction } from "@/modules/source-document/server-actions/get-document-light";
 import { getTestDb } from "../setup";
 import {
   ledgers,

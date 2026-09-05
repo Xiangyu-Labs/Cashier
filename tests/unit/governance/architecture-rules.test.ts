@@ -49,7 +49,7 @@ describe("findBoundaryViolations", () => {
     ["use-cases", "@/modules/ledger/application/use-cases/list-entries"],
     ["hooks", "@/modules/ledger/hooks/useCategoryMutations"],
     ["ui", "@/modules/ledger/ui/LedgerEntryDetailModal"],
-    ["events", "@/modules/currency/events"],
+    ["server actions", "@/modules/currency/server-actions/convert-currency"],
   ])("rejects src/lib importing module %s", (_label, specifier) => {
     const violations = findBoundaryViolations(
       "src/lib/orchestration/worker.ts",
@@ -276,11 +276,11 @@ describe("findBoundaryViolations", () => {
   it("keeps the existing module application and server action rules", () => {
     expect(
       findBoundaryViolations(
-        "src/modules/ledger/application/use-cases/delete-ledger.ts",
+        "src/modules/ledger/application/use-cases/update-ledger.ts",
         'import { serverComposition } from "@/application/server-composition-root";'
       )
     ).toEqual([
-      "src/modules/ledger/application/use-cases/delete-ledger.ts: application code must receive ports explicitly",
+      "src/modules/ledger/application/use-cases/update-ledger.ts: application code must receive ports explicitly",
     ]);
     expect(
       findBoundaryViolations(

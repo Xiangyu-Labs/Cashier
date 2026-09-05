@@ -28,7 +28,10 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn().mockResolvedValue({ get: vi.fn(() => undefined) }),
 }));
 
-import { sendEmailChangeCodeAction, verifyEmailChangeCodeAction } from "@/modules/auth/actions";
+import {
+  sendEmailChangeCodeAction,
+  verifyEmailChangeCodeAction,
+} from "@/modules/auth/server-actions/change-email";
 
 describe("email change challenges", () => {
   beforeEach(() => vi.clearAllMocks());

@@ -15,6 +15,7 @@ import { dateStringSchema } from "@/lib/validation";
 import type { FxRateBook } from "@/modules/currency/application/ports";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
+import { drainDueExchangeRateRecalculations } from "@/application/orchestration/exchange-rate-ledger-recalculation";
 
 // Current exchange-rate cache and provider adapter.
 
@@ -24,14 +25,6 @@ export interface ExchangeRates {
   date: string;
   rates: Record<string, number>;
 }
-
-export interface ExchangeRatesStoredEvent {
-  date: string;
-  base: string;
-  rates: Record<string, number>;
-}
-
-export type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => void | Promise<void>;
 
 const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 
@@ -128,7 +121,6 @@ export class ExchangeRateService {
   private static readonly API_BASE_URL = "https://api.frankfurter.app";
 
   private static pendingRequests = new Map<string, Promise<ExchangeRates>>();
-  private static ratesStoredHandlers = new Set<ExchangeRatesStoredHandler>();
 
   /**
    * Get rates for a specific date (defaults to today).
@@ -166,17 +158,6 @@ export class ExchangeRateService {
 
     // All concurrent requests will wait on the same promise
     return fetchPromise;
-  }
-
-  /**
-   * Register handler for the "new daily rates stored" event.
-   * Returns an unsubscribe function.
-   */
-  static registerRatesStoredHandler(handler: ExchangeRatesStoredHandler): () => void {
-    this.ratesStoredHandlers.add(handler);
-    return () => {
-      this.ratesStoredHandlers.delete(handler);
-    };
   }
 
   /**
@@ -255,13 +236,9 @@ export class ExchangeRateService {
       });
 
       if (stored.inserted) {
-        // Fire-and-forget: the rates query must not wait for ledger
-        // recalculation work triggered by the stored event.
-        void this.notifyRatesStored({
-          date: targetDateStr,
-          base: data.base,
-          rates: data.rates,
-        });
+        // The transaction above is the sole enqueue point. Draining is
+        // best-effort and never delays the rate lookup response.
+        void drainDueExchangeRateRecalculations().catch(() => undefined);
       }
 
       return stored.rates;
@@ -286,18 +263,6 @@ export class ExchangeRateService {
 
     const ratesData = await this.getRates(date);
     return convertWithRates(amount, ratesData, fromCurrency, toCurrency).convertedAmount;
-  }
-
-  private static async notifyRatesStored(event: ExchangeRatesStoredEvent): Promise<void> {
-    if (this.ratesStoredHandlers.size === 0) {
-      return;
-    }
-
-    const pendingHandlers = [...this.ratesStoredHandlers].map(async (handler) => {
-      await handler(event);
-    });
-
-    await Promise.allSettled(pendingHandlers);
   }
 
   /**
@@ -352,5 +317,4 @@ export const postgresFxRateBook: FxRateBook = {
   convert: (amount, fromCurrency, toCurrency, date) =>
     ExchangeRateService.convert(amount, fromCurrency, toCurrency, date),
   convertBatch: (items, targetCurrency) => ExchangeRateService.convertBatch(items, targetCurrency),
-  registerRatesStoredHandler: (handler) => ExchangeRateService.registerRatesStoredHandler(handler),
 };

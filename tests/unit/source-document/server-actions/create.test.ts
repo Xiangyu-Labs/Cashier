@@ -16,7 +16,7 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
   createAndQueueSourceDocument: createAndQueueSourceDocumentMock,
 }));
 
-import { createSourceDocumentAction } from "@/modules/source-document/actions";
+import { createSourceDocumentAction } from "@/modules/source-document/server-actions/create";
 import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 const CLIENT_SUBMISSION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

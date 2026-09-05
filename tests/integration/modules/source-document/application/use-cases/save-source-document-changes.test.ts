@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { saveSourceDocumentChangesAction } from "@/modules/source-document/actions";
+import { saveSourceDocumentChangesAction } from "@/modules/source-document/server-actions/update";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../../../../setup";
 import { activateTestSourceDocumentProjection } from "../../../../../helpers/schema-setup";

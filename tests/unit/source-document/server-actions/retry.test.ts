@@ -34,7 +34,7 @@ vi.mock("@/modules/source-document/server-actions/schedule-processing-recovery",
 }));
 vi.mock("@/lib/storage/image-processing", () => ({ processImage: vi.fn() }));
 
-import { retrySourceDocumentAction } from "@/modules/source-document/actions";
+import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 
 const sourceDocumentId = "11111111-1111-4111-8111-111111111111";
 

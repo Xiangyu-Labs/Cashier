@@ -10,7 +10,6 @@ vi.mock("@/auth", () => ({
 }));
 
 import { auth } from "@/auth";
-import { getCurrentUser } from "@/modules/auth/access";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 
@@ -26,22 +25,6 @@ function mockSession(userId = TEST_USER_ID, email = "test@example.com") {
 function mockNoSession() {
   vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValue(null);
 }
-
-describe("getCurrentUser", () => {
-  it("returns user when session exists", async () => {
-    mockSession();
-    const user = await getCurrentUser();
-    expect(user).not.toBeNull();
-    expect(user?.id).toBe(TEST_USER_ID);
-    expect(user?.email).toBe("test@example.com");
-  });
-
-  it("returns null when no session", async () => {
-    mockNoSession();
-    const user = await getCurrentUser();
-    expect(user).toBeNull();
-  });
-});
 
 describe("requireLedgerAccess", () => {
   let ledgerId: string;

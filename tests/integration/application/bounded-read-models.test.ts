@@ -182,6 +182,11 @@ describe("bounded target read models", () => {
       const afterList = readStatements(getStatements()).length;
       const detail = await serverComposition.sourceDocumentReads.get(ledgerId, document!.id);
       const afterDetail = readStatements(getStatements()).length;
+      const evidence = await serverComposition.sourceDocumentReads.getEvidence(
+        ledgerId,
+        document!.id
+      );
+      const afterEvidence = readStatements(getStatements()).length;
       await listStreamPage(ledgerId, { limit: 20 });
       const afterStream = readStatements(getStatements()).length;
       const ledgerPage = await listLedgerEntries(ledgerId, { limit: 20 });
@@ -189,10 +194,13 @@ describe("bounded target read models", () => {
       return {
         list,
         detail,
+        evidence,
         ledgerPage,
         listReadCount: afterList,
         detailReadCount: afterDetail - afterList,
-        streamReadCount: afterStream - afterDetail,
+        evidenceReadCount: afterEvidence - afterDetail,
+        evidenceStatements: readStatements(getStatements()).slice(afterDetail, afterEvidence),
+        streamReadCount: afterStream - afterEvidence,
         ledgerPageReadCount: afterLedgerPage - afterStream,
       };
     });
@@ -200,9 +208,13 @@ describe("bounded target read models", () => {
     expect(capture.result.list.items).toHaveLength(1);
     expect(capture.result.detail?.files).toHaveLength(1);
     expect(capture.result.detail?.ledgerEntries).toHaveLength(1);
+    expect(capture.result.evidence?.files).toHaveLength(1);
+    expect(capture.result.evidence).not.toHaveProperty("ledgerEntries");
     expect(capture.result.ledgerPage.items).toHaveLength(1);
     expect(capture.result.listReadCount).toBeLessThanOrEqual(4);
     expect(capture.result.detailReadCount).toBeLessThanOrEqual(3);
+    expect(capture.result.evidenceReadCount).toBe(2);
+    expect(capture.result.evidenceStatements.join(" ")).not.toContain("ledger_entries");
     expect(capture.result.streamReadCount).toBe(4);
     expect(capture.result.ledgerPageReadCount).toBeLessThanOrEqual(2);
   });

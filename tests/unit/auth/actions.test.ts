@@ -16,7 +16,7 @@ vi.mock("@/modules/auth/application/use-cases/send-otp", () => ({
   sendOTP: sendOTPMock,
 }));
 
-import { sendOTPAction } from "@/modules/auth/actions";
+import { sendOTPAction } from "@/modules/auth/server-actions/send-otp";
 
 describe("sendOTPAction", () => {
   beforeEach(() => {

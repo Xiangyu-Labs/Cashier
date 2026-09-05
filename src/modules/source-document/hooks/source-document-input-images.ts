@@ -1,5 +1,5 @@
 import { compressImage } from "@/lib/image-utils";
-import { toEditableImage } from "./source-document-input-controller.core";
+import { toEditableFileImage } from "./source-document-input-controller.core";
 import type { SourceDocumentInputImageLoadResult } from "./source-document-input-controller.types";
 
 export async function loadSourceDocumentInputFiles(
@@ -10,7 +10,10 @@ export async function loadSourceDocumentInputFiles(
     files.map(async (file): Promise<SourceDocumentInputImageLoadResult> => {
       try {
         const compressed = await compressImage(file, 1080, 1080, 0.8, signal);
-        return { kind: "ready", image: toEditableImage(compressed) };
+        return {
+          kind: "ready",
+          image: toEditableFileImage(compressed.file, compressed.mimeType),
+        };
       } catch (error) {
         console.error("Failed to compress image:", error);
         return { kind: "unsupported", fileName: file.name };

@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { queryKeys } from "@/lib/query-keys";
+import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
+import type { UseSourceDocumentStreamOptions } from "@/modules/source-document/hooks/useSourceDocumentStream";
 
 const listStreamPageActionMock = vi.hoisted(() => vi.fn());
 const refreshRefetchMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data: undefined }));
@@ -33,6 +35,31 @@ function createWrapper(
 
 const { useSourceDocumentStream } =
   await import("@/modules/source-document/hooks/useSourceDocumentStream");
+
+function useTestSourceDocumentStream(
+  ledgerId: string,
+  options: Omit<UseSourceDocumentStreamOptions, "queryDescriptor"> & {
+    dateRange?: { start?: string; end?: string };
+    minAmount?: string;
+    maxAmount?: string;
+    statuses?: Array<"processing" | "failed">;
+    search?: string;
+  } = {}
+) {
+  const { dateRange, minAmount, maxAmount, statuses, search, ...streamOptions } = options;
+  return useSourceDocumentStream(ledgerId, {
+    ...streamOptions,
+    queryDescriptor: buildStreamQueryDescriptor({
+      ledgerId,
+      startDate: dateRange?.start,
+      endDate: dateRange?.end,
+      minAmount,
+      maxAmount,
+      statuses,
+      search,
+    }),
+  });
+}
 
 function makeItem(id: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -83,7 +110,7 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("enables the shared refresh scope by default", async () => {
-    renderHook(() => useSourceDocumentStream("ledger-1"), {
+    renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
 
@@ -105,7 +132,7 @@ describe("useSourceDocumentStream", () => {
       })
     );
 
-    renderHook(() => useSourceDocumentStream("ledger-1"), {
+    renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
     expect(useLedgerRefreshPollingMock).toHaveBeenLastCalledWith("ledger-1", false);
@@ -139,7 +166,7 @@ describe("useSourceDocumentStream", () => {
       invalidations: { categories: false, settings: false, stats: false },
     });
 
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(queryClient),
     });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -151,7 +178,7 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("disables the refresh scope when enableRefresh is false", async () => {
-    renderHook(() => useSourceDocumentStream("ledger-1", { enableRefresh: false }), {
+    renderHook(() => useTestSourceDocumentStream("ledger-1", { enableRefresh: false }), {
       wrapper: createWrapper(),
     });
 
@@ -161,7 +188,7 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("fetches the first page on mount and returns stream groups", async () => {
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
 
@@ -178,7 +205,7 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("fetches next page using the prior nextCursor", async () => {
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
 
@@ -217,7 +244,7 @@ describe("useSourceDocumentStream", () => {
         generation: "1",
       });
 
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
 
@@ -248,7 +275,7 @@ describe("useSourceDocumentStream", () => {
       generation: "1",
     });
 
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(),
     });
 
@@ -265,7 +292,7 @@ describe("useSourceDocumentStream", () => {
 
     renderHook(
       () =>
-        useSourceDocumentStream("ledger-1", {
+        useTestSourceDocumentStream("ledger-1", {
           dateRange: { start: startDate, end: endDate },
         }),
       { wrapper: createWrapper() }
@@ -284,7 +311,7 @@ describe("useSourceDocumentStream", () => {
   it("passes amount filter options to the server action", async () => {
     renderHook(
       () =>
-        useSourceDocumentStream("ledger-1", {
+        useTestSourceDocumentStream("ledger-1", {
           minAmount: "10",
           maxAmount: "100",
         }),
@@ -304,7 +331,7 @@ describe("useSourceDocumentStream", () => {
   it("passes status filter options to the server action", async () => {
     renderHook(
       () =>
-        useSourceDocumentStream("ledger-1", {
+        useTestSourceDocumentStream("ledger-1", {
           statuses: ["processing", "failed"],
         }),
       { wrapper: createWrapper() }
@@ -340,7 +367,7 @@ describe("useSourceDocumentStream", () => {
     });
     const reset = vi.spyOn(queryClient, "resetQueries").mockResolvedValue();
 
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(queryClient),
     });
 
@@ -379,7 +406,7 @@ describe("useSourceDocumentStream", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     });
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(queryClient),
     });
 
@@ -404,7 +431,7 @@ describe("useSourceDocumentStream", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     });
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(queryClient),
     });
 
@@ -443,9 +470,12 @@ describe("useSourceDocumentStream", () => {
       generation: "1",
     });
 
-    const { result } = renderHook(() => useSourceDocumentStream("ledger-1", { search: "latte" }), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () => useTestSourceDocumentStream("ledger-1", { search: "latte" }),
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

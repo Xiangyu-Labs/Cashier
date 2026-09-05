@@ -7,7 +7,7 @@ import type {
   ProcessingIntentContract,
   UploadPlanContract,
 } from "@/application/contracts";
-import { StoredFileAdapter } from "@/application/adapters/storage";
+import { createStoredFileAdapter } from "@/application/adapters/storage";
 import {
   PostgresProcessingIntentAdapter,
   postgresRevisionAdapter,
@@ -35,7 +35,7 @@ class ContractFileStore {
 
 applicationContractSuite("real Postgres/object-storage/in-process adapter composition", () => {
   const db = getTestDb();
-  const files = new StoredFileAdapter(new ContractFileStore());
+  const files = createStoredFileAdapter({ storage: new ContractFileStore() });
   const processing = new PostgresProcessingIntentAdapter();
   const actualIntents = new Map<string, ProcessingIntentContract>();
   const completions: ProcessingCompletionContract[] = [];

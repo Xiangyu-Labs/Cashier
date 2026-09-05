@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { postgresRevisionAdapter } from "@/application/adapters/postgres";
-import { createUploadPlanForSubmission, StoredFileAdapter } from "@/application/adapters/storage";
+import { createStoredFileAdapter } from "@/application/adapters/storage";
 import {
   DIRECT_UPLOAD_FINALIZE_BUFFER_MS,
   MAX_FILES,
@@ -98,7 +98,7 @@ describe("current-runtime target adapters", () => {
     );
     const storage = new MemoryObjectStore();
     let now = new Date("2026-07-15T00:00:00.000Z");
-    const adapter = new StoredFileAdapter(storage, () => now);
+    const adapter = createStoredFileAdapter({ storage, now: () => now });
     const bytes = Buffer.from("image-bytes");
     const plan = await adapter.createUploadPlan(ledgerId, [
       {
@@ -177,7 +177,6 @@ describe("current-runtime target adapters", () => {
       .where(eq(storedFiles.id, uploaded.id));
     expect(pending.document.pendingRevisionId).toBe(pending.revision.id);
 
-    await expect(createUploadPlanForSubmission(ledgerId, [])).resolves.toBeNull();
     await expect(
       adapter.createUploadPlan(
         ledgerId,
@@ -225,7 +224,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new CoordinatedObjectStore();
-    const adapter = new StoredFileAdapter(storage);
+    const adapter = createStoredFileAdapter({ storage });
     const bytes = Buffer.from("same-target");
     const plan = await adapter.createUploadPlan(ledgerId, [
       { contentType: "image/jpeg", byteSize: bytes.length, originalFilename: "receipt.jpg" },
@@ -251,7 +250,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new DirectMemoryObjectStore();
-    const adapter = new StoredFileAdapter(storage);
+    const adapter = createStoredFileAdapter({ storage });
     const bytes = await sharp({
       create: { width: 1, height: 1, channels: 3, background: "white" },
     })
@@ -305,7 +304,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new DirectMemoryObjectStore();
-    const adapter = new StoredFileAdapter(storage);
+    const adapter = createStoredFileAdapter({ storage });
     const checksum = "a".repeat(64);
     await expect(
       adapter.createDirectUploadPlan(
@@ -364,7 +363,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new DirectMemoryObjectStore();
-    const adapter = new StoredFileAdapter(storage);
+    const adapter = createStoredFileAdapter({ storage });
     const expectedBytes = Buffer.from("expected");
     const actualBytes = Buffer.from("tampered");
     const checksum = createHash("sha256").update(expectedBytes).digest("hex");
@@ -400,7 +399,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new DirectMemoryObjectStore();
-    const adapter = new StoredFileAdapter(storage);
+    const adapter = createStoredFileAdapter({ storage });
     const width = 1600;
     const height = 1600;
     const pixels = Buffer.allocUnsafe(width * height * 3);

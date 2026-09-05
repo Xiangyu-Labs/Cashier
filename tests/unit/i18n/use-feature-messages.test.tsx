@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useFeatureMessages } from "@/i18n/use-feature-messages";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { preloadFeatureMessages, useFeatureMessages } from "@/i18n/use-feature-messages";
 
 describe("useFeatureMessages", () => {
   beforeEach(() => {
@@ -15,7 +16,11 @@ describe("useFeatureMessages", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValueOnce({ ok: false } as Response);
 
-    const { result } = renderHook(() => useFeatureMessages("en", "stats"));
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useFeatureMessages("en", "stats"), { wrapper });
 
     await waitFor(() => {
       expect(result.current.status).toBe("error");
@@ -39,5 +44,51 @@ describe("useFeatureMessages", () => {
       cache: "force-cache",
       credentials: "same-origin",
     });
+  });
+
+  it("deduplicates a preload and a mounted consumer through QueryClient", async () => {
+    let resolveResponse!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        resolveResponse = resolve;
+      })
+    );
+    const queryClient = new QueryClient();
+    const preload = preloadFeatureMessages(queryClient, "en", "details");
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useFeatureMessages("en", "details"), { wrapper });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    resolveResponse({
+      ok: true,
+      json: async () => ({ DetailsTab: { title: "Details" } }),
+    } as Response);
+
+    await expect(preload).resolves.toEqual({ DetailsTab: { title: "Details" } });
+    await waitFor(() => expect(result.current.status).toBe("success"));
+    expect(result.current.data).toEqual({ DetailsTab: { title: "Details" } });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses complete parent messages without starting a request", () => {
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const available = {
+      Calendar: { today: "Today" },
+      DateRangeFilter: { apply: "Apply" },
+      StatsChart: { total: "Total" },
+      StatsTab: { month: "Month" },
+    };
+    const { result } = renderHook(() => useFeatureMessages("en", "stats", available), {
+      wrapper,
+    });
+
+    expect(result.current.status).toBe("success");
+    expect(result.current.data).toEqual(available);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

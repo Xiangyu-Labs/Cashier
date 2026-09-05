@@ -4,7 +4,6 @@ import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres
 import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { updateLedger as updateLedgerUseCase } from "@/modules/ledger/application/use-cases/update-ledger";
 import { serverComposition } from "@/application/server-composition-root";
-import { hasActiveEntries } from "@/modules/ledger/application/queries/has-active-entries";
 import {
   currencyRates,
   ledgerEntries,
@@ -183,17 +182,17 @@ describe("target Settings currency workflow", () => {
   });
 
   it("hasActiveEntries returns false for empty ledger", async () => {
-    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(false);
+    expect(await serverComposition.ledgerReads.hasActiveEntries(ledgerId)).toBe(false);
   });
 
   it("hasActiveEntries returns true after entry creation", async () => {
     await createEntry();
-    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(true);
+    expect(await serverComposition.ledgerReads.hasActiveEntries(ledgerId)).toBe(true);
   });
 
   it("hasActiveEntries returns false after source document is soft-deleted", async () => {
     await createEntry();
-    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(true);
+    expect(await serverComposition.ledgerReads.hasActiveEntries(ledgerId)).toBe(true);
 
     // Soft-delete the source document so its entries are no longer active
     const db = getTestDb();
@@ -202,7 +201,7 @@ describe("target Settings currency workflow", () => {
       .set({ deletedAt: new Date() })
       .where(eq(sourceDocuments.id, sourceDocumentId));
 
-    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(false);
+    expect(await serverComposition.ledgerReads.hasActiveEntries(ledgerId)).toBe(false);
   });
 
   it("allows main currency change after source document is soft-deleted", async () => {

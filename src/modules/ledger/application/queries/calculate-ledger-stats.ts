@@ -1,4 +1,3 @@
-import { calculateLedgerEntryStats } from "@/modules/ledger/application/queries/calculate-ledger-entry-stats";
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/contract-schemas";
 import type { LedgerSummaryDto } from "@/modules/ledger/contracts";
 import type { LedgerReadPort } from "../ports";
@@ -9,7 +8,7 @@ export async function calculateLedgerStats(
   query: LedgerStatsQueryInput,
   reads: Pick<LedgerReadPort, "calculateStats">
 ): Promise<LedgerSummaryDto> {
-  const payload: Parameters<typeof calculateLedgerEntryStats>[0] = {
+  const payload: Parameters<LedgerReadPort["calculateStats"]>[0] = {
     ledgerId,
     filters: {},
   };
@@ -28,5 +27,5 @@ export async function calculateLedgerStats(
   if (query.minAmount !== undefined) payload.filters.minAmount = query.minAmount;
   if (query.maxAmount !== undefined) payload.filters.maxAmount = query.maxAmount;
   if (query.search !== undefined) payload.filters.search = query.search;
-  return calculateLedgerEntryStats(payload, reads);
+  return reads.calculateStats(payload);
 }

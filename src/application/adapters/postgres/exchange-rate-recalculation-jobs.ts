@@ -19,42 +19,6 @@ const MAX_EXCHANGE_RATE_RECALCULATION_ATTEMPTS = 8;
 const DEFAULT_EXCHANGE_RATE_CLAIM_LIMIT = 25;
 const DEFAULT_EXCHANGE_RATE_CLAIM_LEASE_MS = 300_000;
 
-/**
- * Insert one pending job per active ledger that has active or pending entries
- * dated on the rate date (undated entries are recalculated with the latest
- * stored rate). Uses a single INSERT ... SELECT so the event handler never
- * loads the ledger set into the application process.
- */
-export async function enqueueExchangeRateRecalculations(rateDate: string): Promise<number> {
-  const result = await db.execute<{ inserted: number }>(sql`
-    WITH inserted AS (
-      INSERT INTO ${exchangeRateRecalculationJobs} (rate_date, ledger_id)
-      SELECT ${rateDate}, ${ledgers.id}
-      FROM ${ledgers}
-      INNER JOIN ${sourceDocuments}
-        ON ${sourceDocuments.ledgerId} = ${ledgers.id}
-        AND (
-          ${sourceDocuments.entryDate} = ${rateDate}
-          OR ${sourceDocuments.entryDate} IS NULL
-        )
-        AND ${sourceDocuments.deletedAt} IS NULL
-      INNER JOIN ${ledgerEntries}
-        ON ${ledgerEntries.ledgerId} = ${ledgers.id}
-        AND ${ledgerEntries.sourceDocumentId} = ${sourceDocuments.id}
-        AND ${ledgerEntries.deletedAt} IS NULL
-        AND (
-          ${sourceDocuments.activeRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
-          OR ${sourceDocuments.pendingRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
-        )
-      WHERE ${ledgers.deletedAt} IS NULL
-      ON CONFLICT (rate_date, ledger_id) DO NOTHING
-      RETURNING 1
-    )
-    SELECT count(*)::int AS inserted FROM inserted
-  `);
-  return result.rows[0]?.inserted ?? 0;
-}
-
 /** Repair jobs missed by deployments predating the atomic rate/job insert. */
 export async function enqueueMissingExchangeRateRecalculations(limit = 1000): Promise<number> {
   const result = await db.execute<{ inserted: number }>(sql`
@@ -90,31 +54,6 @@ export async function enqueueMissingExchangeRateRecalculations(limit = 1000): Pr
     SELECT count(*)::int AS inserted FROM inserted
   `);
   return result.rows[0]?.inserted ?? 0;
-}
-
-/**
- * A newly stored snapshot supersedes a permanently failed attempt for the
- * same date. Reset only jobs whose previous failure predates the snapshot so
- * a retry cannot resurrect a newer failure.
- */
-export async function resetFailedExchangeRateRecalculations(rateDate: string): Promise<number> {
-  const result = await db.execute<{ ledger_id: string }>(sql`
-    UPDATE ${exchangeRateRecalculationJobs} AS jobs
-    SET status = 'pending'::exchange_rate_recalculation_status,
-        attempts = 0,
-        next_attempt_at = now(),
-        last_error = NULL,
-        claim_token = NULL,
-        claim_expires_at = NULL,
-        updated_at = now()
-    FROM ${currencyRates} AS rates
-    WHERE jobs.rate_date = ${rateDate}
-      AND jobs.status = 'failed'::exchange_rate_recalculation_status
-      AND rates.date = ${rateDate}
-      AND rates.updated_at > jobs.updated_at
-    RETURNING jobs.ledger_id
-  `);
-  return result.rows.length;
 }
 
 /**

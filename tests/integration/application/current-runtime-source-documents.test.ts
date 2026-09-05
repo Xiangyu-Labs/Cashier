@@ -14,7 +14,6 @@ import {
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
-import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 
 const projectionEntry = {
   categoryId: null,
@@ -207,17 +206,11 @@ describe("current-runtime target adapters", () => {
     const fileLinkCount = (await db.select().from(revisionFiles)).length;
 
     await expect(
-      deleteSourceDocument(
-        { ledgerId, sourceDocumentId: active.sourceDocumentId },
-        postgresRevisionAdapter
-      )
-    ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: true });
+      postgresRevisionAdapter.softDelete(ledgerId, active.sourceDocumentId)
+    ).resolves.toBe(true);
     await expect(
-      deleteSourceDocument(
-        { ledgerId, sourceDocumentId: active.sourceDocumentId },
-        postgresRevisionAdapter
-      )
-    ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: false });
+      postgresRevisionAdapter.softDelete(ledgerId, active.sourceDocumentId)
+    ).resolves.toBe(false);
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,

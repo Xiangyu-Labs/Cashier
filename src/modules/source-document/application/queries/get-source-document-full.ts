@@ -5,19 +5,13 @@ import type { SourceDocumentReadPort } from "../ports";
 export async function getSourceDocumentFullQuery(
   ledgerId: string,
   sourceDocumentId: string,
-  documents: Pick<SourceDocumentReadPort, "get">
+  documents: Pick<SourceDocumentReadPort, "getEvidence">
 ): Promise<SourceDocumentFullDto> {
-  const document = await documents.get(ledgerId, sourceDocumentId);
+  const document = await documents.getEvidence(ledgerId, sourceDocumentId);
 
   if (document == null) {
     throw new NotFoundError("Source document");
   }
 
-  return {
-    id: document.id,
-    text: document.text,
-    files: document.files,
-    status: document.status,
-    createdAt: document.createdAt,
-  };
+  return document;
 }

@@ -297,6 +297,7 @@ function formatToMimeType(format: string): string {
 /**
  * Check if a MIME type is a supported image format (Web upload policy).
  */
+/** @testOnly Exported for image-policy regression tests. */
 export function isSupportedImageFormat(mimeType: string): boolean {
   return SUPPORTED_MIME_SET.has(mimeType.toLowerCase());
 }
@@ -304,6 +305,7 @@ export function isSupportedImageFormat(mimeType: string): boolean {
 /**
  * Get image dimensions without loading the full image
  */
+/** @testOnly Exported for normalized-image regression tests. */
 export async function getImageDimensions(
   buffer: Buffer
 ): Promise<{ width: number; height: number } | null> {

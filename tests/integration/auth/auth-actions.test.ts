@@ -26,7 +26,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-import { sendOTPAction } from "@/modules/auth/actions";
+import { sendOTPAction } from "@/modules/auth/server-actions/send-otp";
 const TEST_EMAIL = "test@example.com";
 
 describe("Auth Actions - sendOTPAction", () => {

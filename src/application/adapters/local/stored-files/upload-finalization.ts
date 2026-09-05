@@ -13,16 +13,22 @@ import {
   durableKey,
   mapStoredFile,
   requireDirectStorage,
+  type ResolvedStoredFileAdapterDependencies,
   safeTokenMatches,
   temporaryKey,
 } from "./shared";
-import { StoredFileProxyUploadAdapter } from "./proxy-uploads";
+import { createProxyUploadOperations } from "./proxy-uploads";
 
-export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAdapter {
-  async finalizeDirectUpload(
+export function createUploadFinalizationOperations(
+  dependencies: ResolvedStoredFileAdapterDependencies
+) {
+  const { storage: objectStorage, now: clock } = dependencies;
+  const proxyUploads = createProxyUploadOperations(dependencies);
+
+  async function finalizeDirectUpload(
     input: UploadFinalizationContract
   ): Promise<readonly StoredFileContract[]> {
-    const storage = requireDirectStorage(this.storage);
+    const storage = requireDirectStorage(objectStorage);
     let session = await db.query.uploadSessions.findFirst({
       where: eq(uploadSessions.id, input.uploadSessionId),
     });
@@ -63,7 +69,7 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
       throw new ConflictError("Direct upload targets are incomplete");
     }
 
-    const now = this.now();
+    const now = clock();
     const activeSession = session;
     if (session.status === "open") {
       if (session.expiresAt.getTime() <= now.getTime()) {
@@ -91,7 +97,7 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
         })) ?? session;
     }
     if (session.status === "finalized") {
-      return this.finalizeUpload(input);
+      return finalizeUpload(input);
     }
     if (session.status !== "finalizing") {
       throw new ConflictError("Upload session cannot be finalized");
@@ -232,7 +238,7 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
       })
     );
 
-    const files = await this.finalizeUpload(input);
+    const files = await finalizeUpload(input);
     const cleanupResults = await Promise.all(
       targets.map((target) =>
         storage.delete(temporaryKey(session.ledgerId, session.id, target.targetId))
@@ -259,17 +265,19 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
     return files;
   }
 
-  async finalizeBrowserUpload(
+  async function finalizeBrowserUpload(
     input: UploadFinalizationContract
   ): Promise<readonly StoredFileContract[]> {
     const session = await db.query.uploadSessions.findFirst({
       where: eq(uploadSessions.id, input.uploadSessionId),
     });
-    if (session?.transport === "direct") return this.finalizeDirectUpload(input);
-    return this.finalizeUpload(input);
+    if (session?.transport === "direct") return finalizeDirectUpload(input);
+    return finalizeUpload(input);
   }
 
-  async finalizeUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]> {
+  async function finalizeUpload(
+    input: UploadFinalizationContract
+  ): Promise<readonly StoredFileContract[]> {
     const session = await db.query.uploadSessions.findFirst({
       where: eq(uploadSessions.id, input.uploadSessionId),
     });
@@ -302,7 +310,7 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
         throw new ValidationError("Upload targets must be complete and in planned order");
       }
     }
-    const now = this.now();
+    const now = clock();
     if (session.expiresAt.getTime() <= now.getTime() && session.status === "open") {
       await db
         .update(uploadSessions)
@@ -419,4 +427,11 @@ export class StoredFileUploadFinalizationAdapter extends StoredFileProxyUploadAd
       .sort((a, b) => (positionOrder.get(a.id) ?? 0) - (positionOrder.get(b.id) ?? 0))
       .map(mapStoredFile);
   }
+
+  return {
+    ...proxyUploads,
+    finalizeDirectUpload,
+    finalizeBrowserUpload,
+    finalizeUpload,
+  };
 }

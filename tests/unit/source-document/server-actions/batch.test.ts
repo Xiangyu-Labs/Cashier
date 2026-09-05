@@ -3,13 +3,11 @@ import { AppError } from "@/lib/errors";
 
 const {
   requireLedgerAccessMock,
-  deleteSourceDocumentMock,
   retrySourceDocumentMock,
   scheduleProcessingAfterMock,
   deleteDocumentsMock,
 } = vi.hoisted(() => ({
   requireLedgerAccessMock: vi.fn(),
-  deleteSourceDocumentMock: vi.fn(),
   retrySourceDocumentMock: vi.fn(),
   scheduleProcessingAfterMock: vi.fn(),
   deleteDocumentsMock: vi.fn(),
@@ -17,10 +15,6 @@ const {
 
 vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
-}));
-
-vi.mock("@/modules/source-document/application/use-cases/delete-source-document", () => ({
-  deleteSourceDocument: deleteSourceDocumentMock,
 }));
 
 vi.mock("@/modules/source-document/application/use-cases/retry-source-document", () => ({

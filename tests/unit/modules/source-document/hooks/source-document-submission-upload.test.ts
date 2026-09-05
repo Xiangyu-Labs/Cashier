@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { uploadSourceDocumentSubmissionImages } from "@/modules/source-document/hooks/source-document-submission-upload";
 
-const onePixel = "data:image/jpeg;base64,AQ==";
+function imageFile(byteSize = 1): File {
+  return new File([new Uint8Array(byteSize)], "receipt.jpg", { type: "image/jpeg" });
+}
 
-function imageDataUrl(byteSize: number): string {
-  return `data:image/jpeg;base64,${Buffer.alloc(byteSize, 1).toString("base64")}`;
+function uploadImage(byteSize = 1) {
+  return { file: imageFile(byteSize), mimeType: "image/jpeg" };
 }
 
 describe("source-document inline submission preparation", () => {
@@ -18,7 +20,7 @@ describe("source-document inline submission preparation", () => {
   });
 
   it("uploads compliant JPEG images without compressing them again", async () => {
-    const compress = vi.fn().mockResolvedValue({ data: onePixel, mimeType: "image/jpeg" });
+    const compress = vi.fn().mockResolvedValue(uploadImage());
     const createPlan = vi.fn().mockResolvedValue({
       id: "session-1",
       finalizationToken: "token",
@@ -30,7 +32,7 @@ describe("source-document inline submission preparation", () => {
       "ledger-1",
       {
         entryDate: "2026-07-15",
-        images: [{ data: onePixel, mimeType: "image/jpeg" }],
+        images: [uploadImage()],
       },
       { compress, createPlan, put, finalize }
     );
@@ -52,7 +54,7 @@ describe("source-document inline submission preparation", () => {
         "ledger-1",
         {
           entryDate: "2026-07-15",
-          images: [{ data: imageDataUrl(3 * 1024 * 1024 + 1), mimeType: "image/jpeg" }],
+          images: [uploadImage(3 * 1024 * 1024 + 1)],
         },
         { compress: vi.fn().mockRejectedValue(new Error("decode failed")) }
       )
@@ -66,7 +68,7 @@ describe("source-document inline submission preparation", () => {
         "ledger-1",
         {
           entryDate: "2026-07-15",
-          images: Array.from({ length: 4 }, () => ({ data: onePixel, mimeType: "image/jpeg" })),
+          images: Array.from({ length: 4 }, () => uploadImage()),
         },
         { compress }
       )
@@ -75,10 +77,10 @@ describe("source-document inline submission preparation", () => {
   });
 
   it("compresses every image in a batch concurrently before creating the plan", async () => {
-    const resolvers: Array<(value: { data: string; mimeType: string }) => void> = [];
+    const resolvers: Array<(value: ReturnType<typeof uploadImage>) => void> = [];
     const compress = vi.fn(
       () =>
-        new Promise<{ data: string; mimeType: string }>((resolve) => {
+        new Promise<ReturnType<typeof uploadImage>>((resolve) => {
           resolvers.push(resolve);
         })
     );
@@ -93,20 +95,18 @@ describe("source-document inline submission preparation", () => {
     });
     const put = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
     const finalize = vi.fn().mockResolvedValue(["file-1", "file-2", "file-3"]);
-    const data = imageDataUrl(1024 * 1024 + 1);
-
     const submission = uploadSourceDocumentSubmissionImages(
       "ledger-1",
       {
         entryDate: "2026-07-15",
-        images: Array.from({ length: 3 }, () => ({ data, mimeType: "image/jpeg" })),
+        images: Array.from({ length: 3 }, () => uploadImage(1024 * 1024 + 1)),
       },
       { compress, createPlan, put, finalize }
     );
 
     await vi.waitFor(() => expect(compress).toHaveBeenCalledTimes(3));
     expect(createPlan).not.toHaveBeenCalled();
-    resolvers.forEach((resolve) => resolve({ data: onePixel, mimeType: "image/jpeg" }));
+    resolvers.forEach((resolve) => resolve(uploadImage()));
 
     await expect(submission).resolves.toMatchObject({
       storedFileIds: ["file-1", "file-2", "file-3"],
@@ -116,7 +116,7 @@ describe("source-document inline submission preparation", () => {
 
   it("stops after a pending upload plan resolves when the batch was cancelled", async () => {
     const controller = new AbortController();
-    const compress = vi.fn().mockResolvedValue({ data: onePixel, mimeType: "image/jpeg" });
+    const compress = vi.fn().mockResolvedValue(uploadImage());
     let resolvePlan!: (plan: {
       id: string;
       expiresAt: string;
@@ -154,7 +154,7 @@ describe("source-document inline submission preparation", () => {
       "ledger-1",
       {
         entryDate: "2026-07-15",
-        images: [{ data: onePixel, mimeType: "image/jpeg" }],
+        images: [uploadImage()],
       },
       { compress, createPlan, put, finalize, signal: controller.signal }
     );
@@ -184,7 +184,7 @@ describe("source-document inline submission preparation", () => {
 
   it("aborts an in-flight direct upload without finalizing the batch", async () => {
     const controller = new AbortController();
-    const compress = vi.fn().mockResolvedValue({ data: onePixel, mimeType: "image/jpeg" });
+    const compress = vi.fn().mockResolvedValue(uploadImage());
     const createPlan = vi.fn().mockResolvedValue({
       id: "session-1",
       expiresAt: "2026-07-15T01:00:00.000Z",
@@ -215,7 +215,7 @@ describe("source-document inline submission preparation", () => {
       "ledger-1",
       {
         entryDate: "2026-07-15",
-        images: [{ data: onePixel, mimeType: "image/jpeg" }],
+        images: [uploadImage()],
       },
       { compress, createPlan, put, finalize, signal: controller.signal }
     );

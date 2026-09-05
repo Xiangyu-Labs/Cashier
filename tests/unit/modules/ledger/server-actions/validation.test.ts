@@ -4,13 +4,11 @@ import { ValidationError } from "@/lib/errors";
 const {
   createEntryCategoryMock,
   createLedgerEntryWithConversionMock,
-  createLedgerMock,
   createServiceCredentialMock,
   deleteServiceCredentialMock,
 } = vi.hoisted(() => ({
   createEntryCategoryMock: vi.fn(),
   createLedgerEntryWithConversionMock: vi.fn(),
-  createLedgerMock: vi.fn(),
   createServiceCredentialMock: vi.fn(),
   deleteServiceCredentialMock: vi.fn(),
 }));
@@ -48,9 +46,6 @@ vi.mock("@/application/adapters/postgres/ledger-entry-idempotency", () => ({
 vi.mock("@/modules/ledger/application/use-cases/create-entry-category", () => ({
   createEntryCategory: createEntryCategoryMock,
 }));
-vi.mock("@/modules/ledger/application/use-cases/create-ledger", () => ({
-  createLedger: createLedgerMock,
-}));
 vi.mock("@/modules/ledger/application/use-cases/create-service-credential", () => ({
   createServiceCredential: createServiceCredentialMock,
 }));
@@ -80,7 +75,6 @@ vi.mock("@/modules/ledger/application/queries/list-service-credentials", () => (
   listServiceCredentials: vi.fn(),
 }));
 
-import { createLedgerAction } from "@/modules/ledger/server-actions/create";
 import { createEntryCategoryAction } from "@/modules/ledger/server-actions/categories";
 import { createLedgerEntryAction } from "@/modules/ledger/server-actions/entries";
 import {
@@ -91,18 +85,10 @@ import {
 describe("ledger server-action validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    createLedgerMock.mockResolvedValue({ id: "ledger-1" });
     createEntryCategoryMock.mockResolvedValue({ id: "category-1" });
     createLedgerEntryWithConversionMock.mockResolvedValue({ id: "entry-1" });
     createServiceCredentialMock.mockResolvedValue({ id: "credential-1" });
     deleteServiceCredentialMock.mockResolvedValue(undefined);
-  });
-
-  it("createLedgerAction rejects invalid payload with ValidationError", async () => {
-    await expect(
-      createLedgerAction({ aiLanguage: "x".repeat(200) } as never)
-    ).rejects.toBeInstanceOf(ValidationError);
-    expect(createLedgerMock).not.toHaveBeenCalled();
   });
 
   it("createEntryCategoryAction rejects invalid payload with ValidationError", async () => {

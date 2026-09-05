@@ -5,13 +5,11 @@ const {
   updateLedgerEntryWithConversionMock,
   batchUpdateLedgerEntriesMock,
   calculateLedgerEntryStatsMock,
-  createLedgerMock,
 } = vi.hoisted(() => ({
   createLedgerEntryWithConversionMock: vi.fn(),
   updateLedgerEntryWithConversionMock: vi.fn(),
   batchUpdateLedgerEntriesMock: vi.fn(),
   calculateLedgerEntryStatsMock: vi.fn(),
-  createLedgerMock: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-actions", () => ({
@@ -48,23 +46,14 @@ vi.mock("@/application/server-composition-root", () => ({
     ledgerReads: {},
   },
 }));
-vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({
-  createDefaultLedger: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/use-cases/create-entry-category", () => ({
   createEntryCategory: vi.fn(),
-}));
-vi.mock("@/modules/ledger/application/use-cases/create-ledger", () => ({
-  createLedger: createLedgerMock,
 }));
 vi.mock("@/modules/ledger/application/use-cases/create-service-credential", () => ({
   createServiceCredential: vi.fn(),
 }));
 vi.mock("@/modules/ledger/application/use-cases/delete-entry-category", () => ({
   deleteEntryCategory: vi.fn(),
-}));
-vi.mock("@/modules/ledger/application/use-cases/delete-ledger", () => ({
-  deleteLedger: vi.fn(),
 }));
 vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
   deleteServiceCredential: vi.fn(),
@@ -82,21 +71,18 @@ vi.mock("@/modules/ledger/application/use-cases/update-ledger", () => ({
   updateLedger: vi.fn(),
 }));
 
-vi.mock("@/modules/ledger/application/queries/calculate-ledger-entry-stats", () => ({
-  calculateLedgerEntryStats: calculateLedgerEntryStatsMock,
-}));
-
 import {
   batchUpdateLedgerEntriesAction,
   createLedgerEntryAction,
-  createLedgerAction,
   updateLedgerEntryAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 
 const calculateLedgerStats = (ledgerId: string) =>
-  calculateLedgerStatsUseCase(ledgerId, {}, {} as LedgerReadPort);
+  calculateLedgerStatsUseCase(ledgerId, {}, {
+    calculateStats: calculateLedgerEntryStatsMock,
+  } as unknown as LedgerReadPort);
 
 describe("ledger server action omission semantics", () => {
   beforeEach(() => {
@@ -109,14 +95,6 @@ describe("ledger server action omission semantics", () => {
       totals: [],
       trend: [],
       byCategory: [],
-    });
-    createLedgerMock.mockResolvedValue({
-      id: "ledger-1",
-      userId: "user-1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deletedAt: null,
-      metadata: null,
     });
   });
 
@@ -212,19 +190,5 @@ describe("ledger server action omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(filters, "currency")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(filters, "minAmount")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(filters, "maxAmount")).toBe(false);
-  });
-
-  it("uses the request locale when creating a ledger", async () => {
-    await createLedgerAction({});
-
-    const firstCall = createLedgerMock.mock.calls[0];
-    expect(firstCall).toBeDefined();
-    if (firstCall == null) {
-      throw new Error("Expected createLedger to be called");
-    }
-    const payload = firstCall[0] as Record<string, unknown>;
-
-    expect(payload.userId).toBe("user-1");
-    expect(payload.locale).toBe("zh");
   });
 });

@@ -9,7 +9,7 @@
 
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { StoredFileAdapter } from "@/application/adapters/storage";
+import { createStoredFileAdapter, type StoredFileAdapter } from "@/application/adapters/storage";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import type { StoredFileContract } from "@/application/contracts";
 import { ValidationError } from "@/lib/errors";
@@ -77,7 +77,7 @@ describe("upload policy integration", () => {
   describe("invalid uploads produce no source document", () => {
     it("rejects upload plan with unsupported MIME type before any durable state", async () => {
       const { ledgerId } = await createTestUserWithLedger(getTestDb());
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       await expect(
         adapter.createUploadPlan(ledgerId, [
@@ -93,7 +93,7 @@ describe("upload policy integration", () => {
 
     it("rejects upload plan with oversized file before any durable state", async () => {
       const { ledgerId } = await createTestUserWithLedger(getTestDb());
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       await expect(
         adapter.createUploadPlan(ledgerId, [
@@ -112,7 +112,7 @@ describe("upload policy integration", () => {
 
     it("rejects upload plan with too many files before any durable state", async () => {
       const { ledgerId } = await createTestUserWithLedger(getTestDb());
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
       const files = Array.from({ length: MAX_FILES + 1 }, () => ({
         contentType: "image/jpeg" as const,
         byteSize: 1024,
@@ -130,7 +130,7 @@ describe("upload policy integration", () => {
   describe("checksum mismatch at finalization", () => {
     it("rejects upload target when actual bytes do not match expected checksum", async () => {
       const { ledgerId } = await createTestUserWithLedger(getTestDb());
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       const body = Buffer.from("receipt-image-data");
       // Provide a checksum that does NOT match the actual body
@@ -162,7 +162,7 @@ describe("upload policy integration", () => {
 
     it("accepts upload when checksum matches", async () => {
       const { ledgerId } = await createTestUserWithLedger(getTestDb());
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       const body = Buffer.from("valid-image-data");
       const plan = await adapter.createUploadPlan(ledgerId, [
@@ -189,7 +189,7 @@ describe("upload policy integration", () => {
     it("rejects revision attachment when total bytes exceed MAX_NORMALIZED_BYTES_PER_REVISION", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       // Create enough finalized stored files to overflow the revision aggregate limit.
       // Each file must be below MAX_ORIGINAL_BYTES_PER_FILE (4 MB), but their sum
@@ -226,7 +226,7 @@ describe("upload policy integration", () => {
     it("accepts revision attachment when total bytes are within limit", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       const body = Buffer.from("small-file");
       const file = await finalizedFile(adapter, ledgerId, body);
@@ -248,7 +248,7 @@ describe("upload policy integration", () => {
     it("rejects revision attachment when file count exceeds MAX_FILES", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       // Create MAX_FILES + 1 finalized stored files
       const body = Buffer.from("tiny");
@@ -274,7 +274,7 @@ describe("upload policy integration", () => {
     it("accepts revision attachment at exactly MAX_FILES", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       const body = Buffer.from("tiny");
       const files = await Promise.all(
@@ -296,7 +296,7 @@ describe("upload policy integration", () => {
     it("rejects revision with duplicate stored-file IDs", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       const file = await finalizedFile(adapter, ledgerId, Buffer.from("tiny"));
 
@@ -319,7 +319,7 @@ describe("upload policy integration", () => {
     it("does not return storageKey in stored file query results", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const adapter = new StoredFileAdapter(new MemoryFileStore());
+      const adapter = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
       const file = await finalizedFile(adapter, ledgerId, Buffer.from("no-keys"));
 

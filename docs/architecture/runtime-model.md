@@ -60,3 +60,18 @@ Authenticated reads stream through `/api/stored-files/{fileId}`.
 
 API v1 inline images use the server-side upload path. The public v1 response contract is independent
 of internal server-action reconciliation DTOs.
+
+The stored-file adapter is assembled with `createStoredFileAdapter(dependencies)`. Upload planning,
+proxy upload, finalization and compensation, and authorized reads are responsibility-focused
+functions sharing explicit storage, clock, authorization-query, and upload-session dependencies.
+
+## Exchange-rate recalculation
+
+The transaction that first persists a daily exchange-rate snapshot is the only normal enqueue point
+for ledger recalculation jobs. After commit, a best-effort bounded drain starts without delaying the
+rate response. There is no process-global event subscriber registry or instrumentation lifecycle
+token.
+
+Jobs remain durable and use claim leases, fencing tokens, bounded concurrency, exponential retry,
+and a permanent-failure state. Bounded maintenance repairs historical snapshots that predate atomic
+job enqueue and drains due jobs; this recovery path is not a second event-triggered enqueue mechanism.

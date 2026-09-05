@@ -4,8 +4,6 @@ import { add as decimalAdd, normalize as normalizeDecimal } from "@/lib/money/de
 import type { AiContextContract, AiMessageContentPart } from "./parse-source-document/contracts";
 import { normalizeDuplicateReason } from "../duplicate-reason";
 
-export { normalizeDuplicateReason } from "../duplicate-reason";
-
 /**
  * Best-effort duplicate detection for first-parsed AI source documents.
  *

@@ -1,15 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-const listLedgerEntryPageMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@/modules/ledger/application/queries/list-ledger-entry-page", () => ({
-  listLedgerEntryPage: listLedgerEntryPageMock,
-}));
-
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 
-const reads = {} as LedgerReadPort;
+const listEntries = vi.fn();
+const reads = { listEntries } as unknown as LedgerReadPort;
 const listLedgerEntries = (
   ledgerId: string,
   input: Parameters<typeof listLedgerEntriesUseCase>[1]
@@ -17,7 +12,7 @@ const listLedgerEntries = (
 
 describe("listLedgerEntries", () => {
   it("validates params, builds filters, and normalizes nextCursor to null", async () => {
-    listLedgerEntryPageMock.mockResolvedValueOnce({
+    listEntries.mockResolvedValueOnce({
       items: [{ id: "entry-1" }],
       nextCursor: undefined,
     });
@@ -33,22 +28,19 @@ describe("listLedgerEntries", () => {
       maxAmount: "50" as never,
     });
 
-    expect(listLedgerEntryPageMock).toHaveBeenCalledWith(
-      {
-        ledgerId: "ledger-1",
-        limit: 20,
-        cursor: null,
-        filters: {
-          startDate: "2026-03-01",
-          endDate: "2026-03-31",
-          categoryId: "11111111-1111-4111-8111-111111111111",
-          currency: "USD",
-          minAmount: "10",
-          maxAmount: "50",
-        },
+    expect(listEntries).toHaveBeenCalledWith({
+      ledgerId: "ledger-1",
+      limit: 20,
+      cursor: null,
+      filters: {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        categoryId: "11111111-1111-4111-8111-111111111111",
+        currency: "USD",
+        minAmount: "10",
+        maxAmount: "50",
       },
-      reads
-    );
+    });
     expect(result).toEqual({
       items: [{ id: "entry-1" }],
       nextCursor: null,
@@ -64,21 +56,18 @@ describe("listLedgerEntries", () => {
   });
 
   it("maps the uncategorized sentinel to the null-category filter", async () => {
-    listLedgerEntryPageMock.mockResolvedValueOnce({ items: [], nextCursor: null });
+    listEntries.mockResolvedValueOnce({ items: [], nextCursor: null });
 
     await listLedgerEntries("ledger-1", {
       categoryId: "__uncategorized__",
       limit: 20,
     });
 
-    expect(listLedgerEntryPageMock).toHaveBeenCalledWith(
-      {
-        ledgerId: "ledger-1",
-        limit: 20,
-        cursor: null,
-        filters: { uncategorizedOnly: true },
-      },
-      reads
-    );
+    expect(listEntries).toHaveBeenCalledWith({
+      ledgerId: "ledger-1",
+      limit: 20,
+      cursor: null,
+      filters: { uncategorizedOnly: true },
+    });
   });
 });

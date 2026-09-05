@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
+import { getSourceDocumentFullAction } from "@/modules/source-document/server-actions/queries";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 

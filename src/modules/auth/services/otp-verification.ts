@@ -77,6 +77,7 @@ export async function consumeOTPClaim(claim: ClaimedOTP, tokens: OtpTokenPort): 
   return tokens.consume(claim);
 }
 
+/** @testOnly Exported for lockout policy integration tests. */
 export async function isAccountLocked(
   email: string,
   tokens: OtpTokenPort

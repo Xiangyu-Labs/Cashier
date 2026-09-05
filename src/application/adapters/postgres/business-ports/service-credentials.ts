@@ -9,6 +9,7 @@ import { lockLedgerForUpdate } from "../transaction-locks";
 
 import { SERVICE_CREDENTIAL_LAST_USED_STALE_MS, toIso } from "./shared";
 
+/** @testOnly Injectable authentication adapter factory used by contract tests. */
 export function createPostgresAuthenticationAdapter(
   resolveAuthenticatedUserId: () => Promise<string | null>
 ): AuthenticationPort {

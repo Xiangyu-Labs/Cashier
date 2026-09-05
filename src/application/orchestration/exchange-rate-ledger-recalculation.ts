@@ -1,19 +1,16 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { AppError } from "@/lib/errors";
-import { serverComposition } from "@/application/server-composition-root";
 import {
   claimExchangeRateRecalculations,
   completeExchangeRateRecalculation,
-  enqueueExchangeRateRecalculations,
   failExchangeRateRecalculation,
-  resetFailedExchangeRateRecalculations,
   type ClaimedExchangeRateRecalculation,
 } from "@/application/adapters/postgres/exchange-rate-recalculation-jobs";
+import { postgresCurrencyAdapter } from "@/application/adapters/postgres/business-ports/currency";
 import { logger } from "@/lib/logger";
 import { runWithConcurrency } from "@/lib/concurrency";
-import type { ExchangeRatesStoredEvent } from "@/modules/currency/application/ports";
-import { registerExchangeRatesStoredHandler } from "@/modules/currency/events";
+import type { CurrencyPort } from "@/application/contracts";
 
 const CLAIM_LIMIT = 25;
 const CLAIM_LEASE_MS = 300_000;
@@ -21,10 +18,6 @@ const MAX_DRAIN_BATCHES = 20;
 const MAX_DRAIN_DURATION_MS = 30_000;
 export const MAX_CONCURRENT_LEDGERS = 2;
 
-const orchestrationDisposerSymbol = Symbol.for("cashier.exchange-rate-ledger-recalculation");
-type OrchestrationGlobal = typeof globalThis & {
-  [orchestrationDisposerSymbol]?: () => void;
-};
 let recalculateServicePromise: Promise<
   typeof import("@/modules/ledger/application/services/recalculate-entries-converted-amount")
 > | null = null;
@@ -35,50 +28,38 @@ function loadRecalculateService() {
   return recalculateServicePromise;
 }
 
-export function initializeExchangeRateLedgerRecalculationOrchestration(): void {
-  const orchestrationGlobal = globalThis as OrchestrationGlobal;
-  orchestrationGlobal[orchestrationDisposerSymbol]?.();
-
-  orchestrationGlobal[orchestrationDisposerSymbol] = registerExchangeRatesStoredHandler(
-    (event) => onExchangeRatesStored(event),
-    serverComposition.exchangeRates
-  );
+export interface ExchangeRateRecalculationDependencies {
+  currencies: CurrencyPort;
+  recalculateEntriesForDate: (
+    ledgerId: string,
+    rateDate: string,
+    currencies: CurrencyPort
+  ) => Promise<void>;
 }
 
-export function shutdownExchangeRateLedgerRecalculationOrchestration(): void {
-  const orchestrationGlobal = globalThis as OrchestrationGlobal;
-  orchestrationGlobal[orchestrationDisposerSymbol]?.();
-  delete orchestrationGlobal[orchestrationDisposerSymbol];
+async function defaultRecalculateEntriesForDate(
+  ledgerId: string,
+  rateDate: string,
+  currencies: CurrencyPort
+): Promise<void> {
+  const { recalculateEntriesConvertedAmountForDate } = await loadRecalculateService();
+  return recalculateEntriesConvertedAmountForDate(ledgerId, rateDate, currencies);
 }
 
-/**
- * Enqueue one durable recalculation job per active ledger, then run one
- * bounded worker batch immediately. Enqueue failures propagate to
- * notifyRatesStored() (which settles handlers independently) and never roll
- * back the already committed currency rate row.
- */
-export async function onExchangeRatesStored(event: ExchangeRatesStoredEvent): Promise<void> {
-  const rateDate = event.date;
-  try {
-    const reset = await resetFailedExchangeRateRecalculations(rateDate);
-    if (reset > 0) {
-      logger.info({ rateDate, reset }, "Reset failed exchange rate recalculation jobs");
-    }
-    const enqueued = await enqueueExchangeRateRecalculations(rateDate);
-    logger.info({ rateDate, enqueued }, "Enqueued exchange rate recalculation jobs");
-    await drainDueExchangeRateRecalculations();
-  } catch (error) {
-    logger.error({ err: error, rateDate }, "Failed to enqueue exchange rate recalculation jobs");
-    throw error;
-  }
-}
+const defaultDependencies: ExchangeRateRecalculationDependencies = {
+  currencies: postgresCurrencyAdapter,
+  recalculateEntriesForDate: defaultRecalculateEntriesForDate,
+};
 
 /**
  * Claim and process one bounded batch of durable recalculation jobs.
  * Runs at most two ledgers concurrently; a single ledger failure only
  * schedules its own retry and never blocks the rest of the batch.
  */
-export async function runBoundedExchangeRateRecalculation(now = new Date()): Promise<number> {
+export async function runBoundedExchangeRateRecalculation(
+  now = new Date(),
+  dependencies: ExchangeRateRecalculationDependencies = defaultDependencies
+): Promise<number> {
   const claimed = await claimExchangeRateRecalculations({
     now,
     limit: CLAIM_LIMIT,
@@ -97,30 +78,33 @@ export async function runBoundedExchangeRateRecalculation(now = new Date()): Pro
 
   await runWithConcurrency([...groups.values()], MAX_CONCURRENT_LEDGERS, async (jobs) => {
     for (const job of jobs) {
-      await processRecalculationJob(job, now);
+      await processRecalculationJob(job, now, dependencies);
     }
   });
   return claimed.length;
 }
 
 /** Drain every currently due batch while preserving the worker's batch and concurrency bounds. */
-export async function drainDueExchangeRateRecalculations(now = new Date()): Promise<void> {
+export async function drainDueExchangeRateRecalculations(
+  now = new Date(),
+  dependencies: ExchangeRateRecalculationDependencies = defaultDependencies
+): Promise<void> {
   const deadline = Date.now() + MAX_DRAIN_DURATION_MS;
   for (let batches = 0; batches < MAX_DRAIN_BATCHES && Date.now() < deadline; batches += 1) {
-    if ((await runBoundedExchangeRateRecalculation(now)) === 0) return;
+    if ((await runBoundedExchangeRateRecalculation(now, dependencies)) === 0) return;
   }
 }
 
 async function processRecalculationJob(
   job: ClaimedExchangeRateRecalculation,
-  now: Date
+  now: Date,
+  dependencies: ExchangeRateRecalculationDependencies
 ): Promise<void> {
   try {
-    const { recalculateEntriesConvertedAmountForDate } = await loadRecalculateService();
-    await recalculateEntriesConvertedAmountForDate(
+    await dependencies.recalculateEntriesForDate(
       job.ledgerId,
       job.rateDate,
-      serverComposition.currencies
+      dependencies.currencies
     );
     await completeExchangeRateRecalculation({
       rateDate: job.rateDate,

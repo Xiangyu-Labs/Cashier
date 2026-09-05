@@ -9,6 +9,19 @@ export function toEditableImage(image: SourceDocumentModalImage): EditableInputI
   return { ...image };
 }
 
+export function toEditableFileImage(file: File, mimeType = file.type): EditableInputImage {
+  return {
+    data: URL.createObjectURL(file),
+    mimeType,
+    file,
+    objectUrl: true,
+  };
+}
+
+export function releaseEditableImage(image: EditableInputImage): void {
+  if (image.objectUrl === true) URL.revokeObjectURL(image.data);
+}
+
 export function toEditableImages(images?: SourceDocumentModalImage[]) {
   return (images ?? []).map(toEditableImage);
 }
@@ -37,9 +50,11 @@ export function buildSubmitPayload(
   entryDate: Date,
   timeZone?: string
 ): SourceDocumentSubmitPayload {
-  const newImages = images
-    .filter((image) => image.storedFileId == null)
-    .map(({ data, mimeType }) => ({ data, mimeType }));
+  const newImages = images.flatMap((image) =>
+    image.storedFileId == null && image.file != null
+      ? [{ file: image.file, mimeType: image.mimeType }]
+      : []
+  );
   const storedFileIds = images.flatMap((image) =>
     image.storedFileId == null ? [] : [image.storedFileId]
   );

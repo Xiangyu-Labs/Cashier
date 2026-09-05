@@ -13,11 +13,12 @@ import { loadSourceDocumentInputFiles } from "@/modules/source-document/hooks/so
 describe("source-document input images", () => {
   beforeEach(() => {
     compressImageMock.mockReset();
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:preview");
   });
 
   it("uses the compressed image when browser decoding succeeds", async () => {
     compressImageMock.mockResolvedValue({
-      data: "data:image/jpeg;base64,AQ==",
+      file: new File([new Uint8Array([1])], "receipt.jpg", { type: "image/jpeg" }),
       mimeType: "image/jpeg",
     });
 
@@ -27,7 +28,7 @@ describe("source-document input images", () => {
 
     expect(result).toMatchObject({
       kind: "ready",
-      image: { data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" },
+      image: { data: "blob:preview", mimeType: "image/jpeg", objectUrl: true },
     });
   });
 
@@ -43,7 +44,7 @@ describe("source-document input images", () => {
   });
 
   it("starts all selected image conversions before any one resolves", async () => {
-    const resolvers: Array<(value: { data: string; mimeType: string }) => void> = [];
+    const resolvers: Array<(value: { file: File; mimeType: string }) => void> = [];
     compressImageMock.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -58,7 +59,12 @@ describe("source-document input images", () => {
     expect(compressImageMock).toHaveBeenCalledTimes(3);
 
     resolvers.forEach((resolve, index) =>
-      resolve({ data: `data:image/jpeg;base64,${index + 1}`, mimeType: "image/jpeg" })
+      resolve({
+        file: new File([new Uint8Array([index + 1])], `receipt-${index}.jpg`, {
+          type: "image/jpeg",
+        }),
+        mimeType: "image/jpeg",
+      })
     );
     const results = await loading;
 

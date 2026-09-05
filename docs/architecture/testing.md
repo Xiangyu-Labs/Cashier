@@ -18,12 +18,18 @@ the container after the Vitest run. The first run may download PostgreSQL and re
 
 ## Test layers
 
-- Unit tests do not access PostgreSQL, the network, or real time. External boundaries are mocked or
-  replaced with in-memory fakes.
+- Unit tests do not access PostgreSQL, the network, or real time. Pure `.test.ts` logic runs in
+  Node; component tests and tests that actually use browser APIs run in happy-dom. External
+  boundaries are mocked or replaced with in-memory fakes.
 - Integration tests verify PostgreSQL behavior, route and server-action composition, transactions,
   concurrency, and persistence-backed adapters.
 - The same behavior is fully verified at the lowest suitable layer. Higher layers focus on
   authorization, validation, error mapping, and composition.
+
+Production-file helpers exposed only for focused tests use `@testOnly`; compatibility or framework
+entrypoints that static analysis cannot discover use `@publicContract`. The complete Knip pass still
+checks both categories. Only the production-only pass excludes the reviewed labels, so removing the
+last test or caller makes the complete pass fail instead of silently accumulating exports.
 
 ## Isolation
 

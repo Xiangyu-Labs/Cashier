@@ -1,6 +1,6 @@
 "use client";
 
-import type { Settings } from "@/modules/ledger/contracts";
+import type { Ledger, Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { AI_LANGUAGES } from "@/config/languages";
 import {
@@ -20,7 +20,7 @@ import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface AiSettingsProps {
   settings: Settings;
-  onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
+  onUpdateSettings: (data: Partial<Settings>) => Promise<Ledger>;
 }
 
 export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
@@ -71,9 +71,8 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
     setStatus("saving");
     setError(null);
     try {
-      const result = await onUpdateSettings(patch);
-      const savedSettings = extractSettings(result, patch);
-      const nextServer = normalizeAiSettings({ ...draft, ...savedSettings });
+      const savedLedger = await onUpdateSettings(patch);
+      const nextServer = normalizeAiSettings(savedLedger.settings);
       setServer(nextServer);
       setDraft(nextServer);
       setTouchedFields(new Set());
@@ -207,12 +206,4 @@ function rebaseAiDraft(
       ? draft.aiCustomPrompt
       : incoming.aiCustomPrompt,
   };
-}
-
-function extractSettings(result: unknown, fallback: Partial<Settings>): Partial<Settings> {
-  if (typeof result === "object" && result != null && "settings" in result) {
-    const settings = (result as { settings?: unknown }).settings;
-    if (typeof settings === "object" && settings != null) return settings as Partial<Settings>;
-  }
-  return fallback;
 }

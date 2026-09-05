@@ -37,11 +37,13 @@ export async function discardOTPToken(
   return discarded;
 }
 
+/** @testOnly Exported for OTP adapter contract tests. */
 export async function deleteOTPToken(email: string, tokens: OtpTokenPort): Promise<void> {
   await tokens.delete(email.toLowerCase());
   logger.info({ subject: logIdentifier("email", email) }, "OTP token deleted");
 }
 
+/** @testOnly Exported for OTP cleanup contract tests. */
 export async function cleanupExpiredOTPTokens(tokens: OtpTokenPort): Promise<number> {
   const deletedCount = await tokens.cleanupExpired(new Date());
   logger.info({ deleted: deletedCount }, "Cleaned up expired OTP tokens");

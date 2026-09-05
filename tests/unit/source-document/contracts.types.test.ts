@@ -1,20 +1,21 @@
 import { describe, it, expectTypeOf } from "vitest";
 import type {
-  SourceDocMetadata,
-  SourceDocumentMetadata,
   SourceDocumentDto,
   SourceDocumentStatusType,
-  SourceDocumentTypeValue,
-  SourceDocumentLightDto,
+  SourceDocumentLight,
   SourceDocumentListItemDto,
   SourceDocumentCandidateProjectionSummary,
 } from "@/modules/source-document/contracts";
-import { SourceDocumentStatus, SourceDocumentType } from "@/modules/source-document/contracts";
+import {
+  SourceDocumentStatus,
+  SourceDocumentType,
+  type SourceDocumentTypeValue,
+} from "@/lib/source-document-values";
 import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
 
 describe("source-document contract types", () => {
   it("exposes stored-file identities on light DTOs", () => {
-    type LightHasFiles = "files" extends keyof SourceDocumentLightDto ? true : false;
+    type LightHasFiles = "files" extends keyof SourceDocumentLight ? true : false;
     const lightHasFiles: LightHasFiles = true;
 
     expectTypeOf(lightHasFiles).toEqualTypeOf<true>();
@@ -26,11 +27,7 @@ describe("source-document contract types", () => {
     expectTypeOf(text).toEqualTypeOf<null>();
   });
 
-  it("exports metadata aliases from contracts", () => {
-    expectTypeOf<SourceDocMetadata>().toEqualTypeOf<SourceDocumentMetadata>();
-  });
-
-  it("exports status and type runtime values from contracts", () => {
+  it("keeps status and type values aligned with source-document contracts", () => {
     const processingStatus: SourceDocumentStatusType = SourceDocumentStatus.Processing;
     const aiParsedType: SourceDocumentTypeValue = SourceDocumentType.AiParsed;
 
@@ -65,7 +62,7 @@ describe("source-document contract types", () => {
   });
 
   it("exposes activeResultSummary on light DTOs as optional projection summary", () => {
-    expectTypeOf<SourceDocumentLightDto["activeResultSummary"]>().toEqualTypeOf<
+    expectTypeOf<SourceDocumentLight["activeResultSummary"]>().toEqualTypeOf<
       SourceDocumentCandidateProjectionSummary | undefined
     >();
   });

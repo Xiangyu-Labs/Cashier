@@ -1,5 +1,4 @@
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
-import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 import type { SourceDocumentQueryPorts } from "../ports";
 
@@ -31,30 +30,6 @@ function toLightDto(
       : {}),
     ledgerEntries: document.ledgerEntries ?? [],
   };
-}
-
-export async function getSourceDocumentLight(
-  sourceDocumentId: string,
-  ports: SourceDocumentQueryPorts,
-  authorizeLedger: (ledgerId: string) => Promise<unknown>
-): Promise<SourceDocumentLightWithEntriesDto | null> {
-  const accessContext = await getAccessibleSourceDocumentContext(
-    sourceDocumentId,
-    ports.documents,
-    authorizeLedger
-  );
-
-  if (accessContext == null) {
-    return null;
-  }
-
-  const document = await ports.documents.get(accessContext.ledgerId, sourceDocumentId);
-
-  if (document == null) {
-    return null;
-  }
-
-  return toLightDto(document, document.hasImages ?? accessContext.hasImages);
 }
 
 export async function getSourceDocumentLightForLedger(

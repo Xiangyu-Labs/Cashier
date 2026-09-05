@@ -4,7 +4,6 @@ import {
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
-import { getLedgerEntryDetail as getLedgerEntryDetailUseCase } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStatsQuery } from "@/modules/stats/application/queries/get-enhanced-stats";
@@ -20,7 +19,7 @@ import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
 const getLedgerEntryDetail = (id: string, ledgerId: string) =>
-  getLedgerEntryDetailUseCase(id, ledgerId, serverComposition.ledgerReads);
+  serverComposition.ledgerReads.getEntry(id, ledgerId);
 const listLedgerEntries = (
   ledgerId: string,
   input: Parameters<typeof listLedgerEntriesUseCase>[1]

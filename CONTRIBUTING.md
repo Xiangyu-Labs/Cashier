@@ -45,10 +45,15 @@ rules are in [Testing Architecture](./docs/architecture/testing.md).
 
 ## Tests and checks
 
-Unit tests require only Node.js 24. Integration tests also require a running Docker daemon; the
+Unit tests require only Node.js 24. Pure logic tests run in Node; `.test.tsx` files and the small
+set of tests that use browser APIs run in happy-dom. Integration tests also require a running Docker daemon; the
 test runner starts an isolated `postgres:17-alpine` container automatically. The first integration
 run may take longer while Docker downloads the PostgreSQL and resource-reaper images. Tests do not
 require `.env`, real credentials, a fixed local port, or a manually created database.
+
+Dead-code review runs both a complete graph and a production-only graph. Use `@testOnly` only for a
+production-file helper directly exercised by focused tests, and `@publicContract` only for a reviewed
+framework or compatibility entrypoint that Knip cannot discover. Do not add directory-wide ignores.
 
 Run the narrowest relevant check while working:
 

@@ -136,7 +136,7 @@ function toManualProjectionEntry(
   };
 }
 
-export async function saveSourceDocumentChangesAtomically(
+export async function saveChanges(
   input: SaveSourceDocumentChangesAdapterInput
 ): Promise<
   import("@/modules/source-document/contracts").VersionedCommandResult<SaveSourceDocumentChangesResultDto>
@@ -311,7 +311,7 @@ export async function saveSourceDocumentChangesAtomically(
   };
 }
 
-export async function batchUpdateSourceDocuments({
+export async function updateDocuments({
   ledgerId,
   targets,
   data,
@@ -585,7 +585,7 @@ export async function batchUpdateSourceDocuments({
   };
 }
 
-export async function updateLedgerEntryDatesAtomically(input: {
+export async function updateEntryDates(input: {
   ledgerId: string;
   targets: import("@/modules/source-document/contracts").VersionedTarget[];
   ledgerEntryIds: string[];
@@ -628,7 +628,7 @@ export async function updateLedgerEntryDatesAtomically(input: {
   ) {
     throw new NotFoundError("Source document target");
   }
-  const result = await batchUpdateSourceDocuments({
+  const result = await updateDocuments({
     ledgerId: input.ledgerId,
     targets: input.targets,
     ledgerEntryIds: selectedIds,

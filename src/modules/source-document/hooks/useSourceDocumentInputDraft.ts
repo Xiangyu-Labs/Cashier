@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type SetStateAction } from "react";
 import type {
   EditableInputImage,
   SourceDocumentInputInitialData,
 } from "./source-document-input-controller.types";
 import {
   resolveInitialEntryDate,
+  releaseEditableImage,
   toEditableImages,
   toModalImages,
 } from "./source-document-input-controller.core";
@@ -56,17 +57,39 @@ export function useSourceDocumentInputDraft({
     entryDate: entryDate.getTime(),
   }));
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const imagesRef = useRef(images);
   const [isInitializing, startTransition] = useTransition();
   const hasInitializedRef = useRef(false);
   const previousSourceDocumentIdRef = useRef<string | undefined>(sourceDocumentId);
   const resetDraft = () => {
     const nextEntryDate = resolveInitialEntryDate(undefined, timeZone);
     setText("");
-    setImages([]);
+    replaceImages([]);
     setEntryDate(nextEntryDate);
     setInitialDraft({ text: "", images: [], entryDate: nextEntryDate.getTime() });
     setSelectedImageIndex(null);
   };
+
+  const replaceImages = (update: SetStateAction<EditableInputImage[]>) => {
+    setImages((current) => {
+      const next = typeof update === "function" ? update(current) : update;
+      for (const image of current) {
+        if (!next.includes(image)) releaseEditableImage(image);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(
+    () => () => {
+      imagesRef.current.forEach(releaseEditableImage);
+    },
+    []
+  );
 
   useEffect(() => {
     if (previousSourceDocumentIdRef.current !== sourceDocumentId) {
@@ -89,7 +112,7 @@ export function useSourceDocumentInputDraft({
         entryDate: nextEntryDate.getTime(),
       });
       setText(nextText);
-      setImages(nextImages);
+      replaceImages(nextImages);
       setEntryDate(nextEntryDate);
     });
   }, [initialData, startTransition, timeZone]);
@@ -98,7 +121,7 @@ export function useSourceDocumentInputDraft({
     text,
     setText,
     images,
-    setImages,
+    setImages: replaceImages,
     modalImages: toModalImages(images),
     entryDate,
     setEntryDate,
@@ -106,7 +129,9 @@ export function useSourceDocumentInputDraft({
     openImage: (index: number) => setSelectedImageIndex(index),
     closeImage: () => setSelectedImageIndex(null),
     removeImage: (index: number) =>
-      setImages((previousImages) => previousImages.filter((_, imageIndex) => imageIndex !== index)),
+      replaceImages((previousImages) =>
+        previousImages.filter((_, imageIndex) => imageIndex !== index)
+      ),
     canSubmit: text !== "" || images.length > 0,
     isDirty:
       text !== initialDraft.text ||

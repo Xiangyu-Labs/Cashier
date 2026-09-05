@@ -2,12 +2,11 @@ import { type PeriodParams, type PeriodPreset, periodToDateRange } from "@/lib/p
 import {
   type EntryFilters,
   type StreamStatusPreset,
-  STREAM_STATUS_PRESETS,
   STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/ledger/filters";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
 
-export { STREAM_STATUS_PRESETS, STREAM_STATUS_PRESET_VALUES };
+export { STREAM_STATUS_PRESET_VALUES };
 export type { StreamStatusPreset };
 
 type LedgerFilterKeyInput = Pick<

@@ -86,9 +86,7 @@ function sourceDocumentPayloadsEqual(
       left.images,
       right.images,
       (leftImage, rightImage) =>
-        leftImage.data === rightImage.data &&
-        leftImage.mimeType === rightImage.mimeType &&
-        leftImage.storedFileId === rightImage.storedFileId
+        leftImage.file === rightImage.file && leftImage.mimeType === rightImage.mimeType
     )
   );
 }

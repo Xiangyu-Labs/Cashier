@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { StoredFileAdapter } from "@/application/adapters/storage";
+import { createStoredFileAdapter, type StoredFileAdapter } from "@/application/adapters/storage";
 import {
   PostgresProcessingIntentAdapter,
   postgresLedgerProjectionAdapter,
@@ -154,7 +154,7 @@ describe("target source-document submissions", () => {
   it("atomically creates text, image, and mixed pending revisions with durable intents", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const storage = new StoredFileAdapter(new MemoryFileStore());
+    const storage = createStoredFileAdapter({ storage: new MemoryFileStore() });
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
 
     const text = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
@@ -308,7 +308,7 @@ describe("target source-document submissions", () => {
   it("inherits immutable evidence on retry and deduplicates post-commit dispatch", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const storage = new StoredFileAdapter(new MemoryFileStore());
+    const storage = createStoredFileAdapter({ storage: new MemoryFileStore() });
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
     const initial = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
@@ -347,7 +347,7 @@ describe("target source-document submissions", () => {
   it("rejects inherited evidence retry when previous revision exceeds MAX_FILES", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const storage = new StoredFileAdapter(new MemoryFileStore());
+    const storage = createStoredFileAdapter({ storage: new MemoryFileStore() });
 
     // Create MAX_FILES + 1 finalized stored files
     const body = Buffer.from("tiny");
@@ -398,7 +398,7 @@ describe("target source-document submissions", () => {
       undefined,
       crypto.randomUUID()
     );
-    const storage = new StoredFileAdapter(new MemoryFileStore());
+    const storage = createStoredFileAdapter({ storage: new MemoryFileStore() });
     const first = await finalizedFile(storage, ledgerId, Buffer.from("first"));
     const second = await finalizedFile(storage, ledgerId, Buffer.from("second"));
     const other = await finalizedFile(storage, otherLedgerId, Buffer.from("other"));

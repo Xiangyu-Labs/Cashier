@@ -49,7 +49,6 @@ interface InlinePreparationDependencies {
   signal?: AbortSignal;
 }
 
-const DATA_URL_PATTERN = /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/]*={0,2})$/i;
 const QUALITY_STEPS = [0.78, 0.68, 0.58, 0.48, 0.38] as const;
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -62,26 +61,6 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
-}
-
-function dataUrlToFile(dataUrl: string, index: number): File {
-  const match = DATA_URL_PATTERN.exec(dataUrl);
-  if (match == null) throw new SourceDocumentSubmissionUploadError("Invalid image data", "prepare");
-  let binary: string;
-  try {
-    binary = atob(match[2]!);
-  } catch (error) {
-    throw new SourceDocumentSubmissionUploadError("Failed to decode image", "prepare", {
-      cause: error,
-    });
-  }
-  if (binary.length === 0) {
-    throw new SourceDocumentSubmissionUploadError("Image data is empty", "prepare");
-  }
-  const bytes = new Uint8Array(binary.length);
-  for (let offset = 0; offset < binary.length; offset += 1)
-    bytes[offset] = binary.charCodeAt(offset);
-  return new File([bytes], `source-${index}`, { type: match[1]!.toLowerCase() });
 }
 
 function filesFitUploadLimits(files: readonly File[]): boolean {
@@ -123,7 +102,7 @@ export async function uploadSourceDocumentSubmissionImages(
   }
 
   onProgress?.({ phase: "preparing", percent: 0, fileCount: images.length });
-  const originals = images.map((image, index) => dataUrlToFile(image.data, index));
+  const originals = images.map((image) => image.file);
   const compress = dependencies.compress ?? compressImage;
 
   let files: File[] | null = filesFitUploadLimits(originals) ? originals : null;
@@ -150,7 +129,7 @@ export async function uploadSourceDocumentSubmissionImages(
         );
       }
       throwIfAborted(dependencies.signal);
-      const candidates = compressed.map((image, index) => dataUrlToFile(image.data, index));
+      const candidates = compressed.map((image) => image.file);
       onProgress?.({
         phase: "preparing",
         percent: Math.min(80, 15 + qualityIndex * 15),

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getEnhancedStats } from "@/modules/stats/actions";
+import { getEnhancedStats } from "@/modules/stats/server-actions/get-enhanced-stats";
 import { StatsTab } from "@/modules/workspace/ui/StatsTab";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { Ledger } from "@/modules/ledger/contracts";

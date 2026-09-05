@@ -9,13 +9,9 @@ import {
   discardDuplicatePendingRevision,
 } from "../ledger-projections/activate-revision";
 import { postgresSourceDocumentSubmissionAdapter } from "../submissions";
-import {
-  batchUpdateSourceDocuments,
-  saveSourceDocumentChangesAtomically,
-} from "../source-document-updates";
+import { saveChanges, updateDocuments, updateEntryDates } from "../source-document-updates";
 import { splitSourceDocumentAtomically } from "../source-document-splits";
 import { deleteSourceDocumentAtomically } from "../source-document-delete";
-import { updateLedgerEntryDatesAtomically } from "../source-document-updates";
 
 export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWritePort = {
   createProcessingDocument: (input) =>
@@ -23,9 +19,9 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   createIdempotentProcessingDocument: (idempotency, prepare) =>
     postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent(idempotency, prepare),
   createManualDocument: (input) => postgresLedgerProjectionAdapter.createManual(input),
-  saveChanges: saveSourceDocumentChangesAtomically,
-  updateDocuments: batchUpdateSourceDocuments,
-  updateEntryDates: updateLedgerEntryDatesAtomically,
+  saveChanges,
+  updateDocuments,
+  updateEntryDates,
   addEntry: (input) => postgresLedgerEntryCommandAdapter.create(input),
   updateEntries: (input) => postgresLedgerEntryCommandAdapter.update(input),
   deleteEntries: (input) => postgresLedgerEntryCommandAdapter.delete(input),

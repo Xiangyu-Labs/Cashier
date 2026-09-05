@@ -42,6 +42,20 @@ const coverageConfig = {
 };
 
 const defaultProjectExcludes = ["node_modules", ".next"];
+const unitDomTypeScriptTests = [
+  "tests/unit/api/v1/source-documents-route-omission.test.ts",
+  "tests/unit/lib/ai/openai-client.test.ts",
+  "tests/unit/lib/image-utils.test.ts",
+  "tests/unit/lib/utils.test.ts",
+  "tests/unit/modal-stack.test.ts",
+  "tests/unit/modules/currency/useConvertedAmount.test.ts",
+  "tests/unit/modules/source-document/hooks/source-document-input-images.test.ts",
+  "tests/unit/modules/source-document/hooks/source-document-submission-upload.test.ts",
+  "tests/unit/modules/workspace/tab-swipe.test.ts",
+  "tests/unit/modules/workspace/ui/new-record-success-feedback.test.ts",
+  "tests/unit/workspace/ledger-url-navigation.test.ts",
+  "tests/unit/workspace/ledger-url-params.test.ts",
+];
 const sharedProjectTestConfig = {
   globals: true,
   env: {
@@ -65,9 +79,23 @@ export default defineConfig({
         resolve: { alias: resolveAliases },
         test: {
           ...sharedProjectTestConfig,
-          name: "unit-general",
+          name: "unit-node",
           sequence: { groupOrder: 0 },
-          include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
+          include: ["tests/unit/**/*.test.ts"],
+          exclude: [...defaultProjectExcludes, ...unitDomTypeScriptTests],
+          environment: "node",
+          setupFiles: ["./tests/setup.common.ts"],
+          maxWorkers: "100%",
+          testTimeout: 10000,
+        },
+      }),
+      defineProject({
+        resolve: { alias: resolveAliases },
+        test: {
+          ...sharedProjectTestConfig,
+          name: "unit-dom",
+          sequence: { groupOrder: 1 },
+          include: ["tests/unit/**/*.test.tsx", ...unitDomTypeScriptTests],
           exclude: defaultProjectExcludes,
           environment: "happy-dom",
           setupFiles: ["./tests/setup.dom.ts"],

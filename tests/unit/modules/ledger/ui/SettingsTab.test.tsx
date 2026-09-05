@@ -21,7 +21,17 @@ describe("explicit settings section drafts", () => {
   });
 
   it("keeps AI changes local until Save and submits only the diff", async () => {
-    const onUpdateSettings = vi.fn().mockResolvedValue(undefined);
+    const onUpdateSettings = vi.fn().mockResolvedValue({
+      id: "ledger-1",
+      userId: "user-1",
+      settings: {
+        aiLanguage: "zh-CN",
+        duplicateDetectionEnabled: true,
+        aiCustomPrompt: "Draft prompt",
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     render(
       <AiSettings
         settings={{
@@ -52,7 +62,15 @@ describe("explicit settings section drafts", () => {
           duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
         }}
-        onUpdateSettings={() => Promise.resolve()}
+        onUpdateSettings={() =>
+          Promise.resolve({
+            id: "ledger-1",
+            userId: "user-1",
+            settings: {},
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          })
+        }
       />
     );
 
@@ -65,7 +83,18 @@ describe("explicit settings section drafts", () => {
   });
 
   it("keeps bookkeeping switches as a draft until Save", async () => {
-    const onUpdateSettings = vi.fn().mockResolvedValue(undefined);
+    const onUpdateSettings = vi.fn().mockResolvedValue({
+      id: "ledger-1",
+      userId: "user-1",
+      settings: {
+        mainCurrency: "CNY",
+        currencies: ["CNY"],
+        collapseEntriesDefault: true,
+        timeZone: null,
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     render(
       <BookkeepingSettings
         settings={{

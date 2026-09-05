@@ -12,17 +12,14 @@ import {
 } from "@/persistence";
 import { postgresCurrencyAdapter } from "@/application/adapters/postgres";
 import {
-  initializeExchangeRateLedgerRecalculationOrchestration,
+  drainDueExchangeRateRecalculations,
   MAX_CONCURRENT_LEDGERS,
-  onExchangeRatesStored,
   runBoundedExchangeRateRecalculation,
 } from "@/application/orchestration/exchange-rate-ledger-recalculation";
 import {
   claimExchangeRateRecalculations,
   completeExchangeRateRecalculation,
-  enqueueExchangeRateRecalculations,
   failExchangeRateRecalculation,
-  resetFailedExchangeRateRecalculations,
 } from "@/application/adapters/postgres/exchange-rate-recalculation-jobs";
 import { runBoundedMaintenance } from "@/application/adapters/postgres/maintenance";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
@@ -92,6 +89,13 @@ async function seedLedgerWithEntry(input: {
   return ledgerId;
 }
 
+async function seedRecalculationJobs(rateDate: string, ledgerIds: readonly string[]) {
+  if (ledgerIds.length === 0) return;
+  await getTestDb()
+    .insert(exchangeRateRecalculationJobs)
+    .values(ledgerIds.map((ledgerId) => ({ rateDate, ledgerId })));
+}
+
 describe("exchange-rate ledger recalculation orchestration", () => {
   beforeEach(async () => {
     recalculateEntriesConvertedAmountForDateMock.mockReset().mockResolvedValue(undefined);
@@ -103,28 +107,14 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not enqueue deleted ledgers", async () => {
-    const db = getTestDb();
-    const ledgerId = await seedLedgerWithEntry({ entryDate: "2024-02-11" });
-    const deletedLedgerId = await seedLedgerWithEntry({
-      entryDate: "2024-02-11",
-      deleted: true,
-    });
-
-    await expect(enqueueExchangeRateRecalculations("2024-02-11")).resolves.toBe(1);
-    const rows = await db.query.exchangeRateRecalculationJobs.findMany();
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ rateDate: "2024-02-11", ledgerId, status: "pending" });
-    expect(rows[0]?.ledgerId).not.toBe(deletedLedgerId);
-  });
-
   it("processes only one bounded batch of 25 jobs per run", async () => {
     const db = getTestDb();
+    const ledgerIds: string[] = [];
     for (let index = 0; index < 30; index += 1) {
-      await seedLedgerWithEntry({ entryDate: "2024-02-12" });
+      ledgerIds.push(await seedLedgerWithEntry({ entryDate: "2024-02-12" }));
     }
 
-    await expect(enqueueExchangeRateRecalculations("2024-02-12")).resolves.toBe(30);
+    await seedRecalculationJobs("2024-02-12", ledgerIds);
     await runBoundedExchangeRateRecalculation();
 
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(25);
@@ -139,9 +129,11 @@ describe("exchange-rate ledger recalculation orchestration", () => {
   });
 
   it("lets concurrent workers claim disjoint jobs", async () => {
-    await seedLedgerWithEntry({ entryDate: "2024-02-13" });
-    await seedLedgerWithEntry({ entryDate: "2024-02-13" });
-    await enqueueExchangeRateRecalculations("2024-02-13");
+    const ledgerIds = await Promise.all([
+      seedLedgerWithEntry({ entryDate: "2024-02-13" }),
+      seedLedgerWithEntry({ entryDate: "2024-02-13" }),
+    ]);
+    await seedRecalculationJobs("2024-02-13", ledgerIds);
     const now = new Date();
 
     const [first, second] = await Promise.all([
@@ -157,7 +149,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
   it("reclaims an expired claim and fences the old token", async () => {
     const db = getTestDb();
     const ledgerId = await seedLedgerWithEntry({ entryDate: "2024-02-14" });
-    await enqueueExchangeRateRecalculations("2024-02-14");
+    await seedRecalculationJobs("2024-02-14", [ledgerId]);
     const start = new Date();
 
     const first = await claimExchangeRateRecalculations({
@@ -196,7 +188,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
   it("backs off failed jobs and permanently fails after eight attempts", async () => {
     const db = getTestDb();
     const ledgerId = await seedLedgerWithEntry({ entryDate: "2024-02-15" });
-    await enqueueExchangeRateRecalculations("2024-02-15");
+    await seedRecalculationJobs("2024-02-15", [ledgerId]);
     let now = new Date();
 
     let job = (await claimExchangeRateRecalculations({ now, limit: 25, leaseMs: 300_000 }))[0]!;
@@ -236,39 +228,10 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     expect(finalRow).toMatchObject({ status: "failed", attempts: 8 });
   });
 
-  it("resets a failed job when a newer rate snapshot is stored", async () => {
-    const db = getTestDb();
-    const ledgerId = await seedLedgerWithEntry({ entryDate: "2024-02-17" });
-    await enqueueExchangeRateRecalculations("2024-02-17");
-    const failedAt = new Date("2024-02-17T00:00:00.000Z");
-    await db
-      .update(exchangeRateRecalculationJobs)
-      .set({
-        status: "failed",
-        attempts: 8,
-        lastError: "EXCHANGE_RATES_UNAVAILABLE",
-        updatedAt: failedAt,
-      })
-      .where(eq(exchangeRateRecalculationJobs.ledgerId, ledgerId));
-    await db.insert(currencyRates).values({
-      date: "2024-02-17",
-      base: "EUR",
-      rates: { USD: 1.08, CNY: 7.65 },
-      updatedAt: new Date("2024-02-17T00:00:01.000Z"),
-    });
-
-    await expect(resetFailedExchangeRateRecalculations("2024-02-17")).resolves.toBe(1);
-    await expect(db.query.exchangeRateRecalculationJobs.findFirst()).resolves.toMatchObject({
-      status: "pending",
-      attempts: 0,
-      lastError: null,
-    });
-  });
-
   it("recovers pending jobs through bounded maintenance", async () => {
     const db = getTestDb();
     const ledgerId = await seedLedgerWithEntry({ entryDate: "2024-02-16" });
-    await enqueueExchangeRateRecalculations("2024-02-16");
+    await seedRecalculationJobs("2024-02-16", [ledgerId]);
 
     const now = new Date();
     await runBoundedMaintenance(now);
@@ -299,11 +262,18 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       deleted: true,
     });
 
-    await onExchangeRatesStored({
-      date: eventDate,
-      base: "EUR",
-      rates: { USD: 1.08 },
-    });
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ base: "EUR", date: eventDate, rates: { USD: 1.08, CNY: 7.65 } }),
+    } as Response);
+    await convertAmountsBatch(
+      [{ amount: "1", fromCurrency: "USD", date: eventDate }],
+      "CNY",
+      ExchangeRateService
+    );
+    await vi.waitFor(() =>
+      expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(2)
+    );
 
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(2);
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
@@ -338,11 +308,18 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     });
     const ledgerOnOtherDate = await seedLedgerWithEntry({ entryDate: "2026-04-30" });
 
-    await onExchangeRatesStored({
-      date: eventDate,
-      base: "EUR",
-      rates: { USD: 1.08 },
-    });
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ base: "EUR", date: eventDate, rates: { USD: 1.08, CNY: 7.65 } }),
+    } as Response);
+    await convertAmountsBatch(
+      [{ amount: "1", fromCurrency: "USD", date: eventDate }],
+      "CNY",
+      ExchangeRateService
+    );
+    await vi.waitFor(() =>
+      expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(1)
+    );
 
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(1);
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
@@ -376,8 +353,6 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       releaseRecalculation = resolve;
     });
     recalculateEntriesConvertedAmountForDateMock.mockReturnValue(recalculationGate);
-
-    initializeExchangeRateLedgerRecalculationOrchestration();
 
     let firstConversionSettled = false;
     const firstConversion = convertAmountsBatch(
@@ -509,13 +484,8 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       }
     });
 
-    await expect(
-      onExchangeRatesStored({
-        date: "2026-03-01",
-        base: "EUR",
-        rates: { USD: 1.08 },
-      })
-    ).resolves.toBeUndefined();
+    await seedRecalculationJobs("2026-03-01", [ledgerId, secondLedgerId]);
+    await expect(drainDueExchangeRateRecalculations()).resolves.toBeUndefined();
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       ledgerId,
       "2026-03-01",
@@ -557,11 +527,8 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       active -= 1;
     });
 
-    const pending = onExchangeRatesStored({
-      date: eventDate,
-      base: "EUR",
-      rates: { USD: 1.08 },
-    });
+    await seedRecalculationJobs(eventDate, ledgerIds);
+    const pending = drainDueExchangeRateRecalculations();
 
     await vi.waitFor(
       () => {

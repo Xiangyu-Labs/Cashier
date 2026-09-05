@@ -30,14 +30,13 @@ import {
   deleteEntryCategoryAction,
   getEntryCategoriesAction,
   getUncategorizedCountAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/categories";
 import {
   deleteLedgerEntryAction,
   createLedgerEntryAction,
   updateLedgerEntryAction,
-} from "@/modules/ledger/actions";
-import { createLedgerAction } from "@/modules/ledger/actions";
-import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
+} from "@/modules/ledger/server-actions/entries";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
 
 async function getTargetEntryCategoriesAction(ledgerId: string) {
   const db = getTestDb();
@@ -441,27 +440,5 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
       where: and(eq(ledgerEntries.id, entryB.id), isNull(ledgerEntries.deletedAt)),
     });
     expect(remainingEntryB).not.toBeNull();
-  });
-});
-
-// ============================================================================
-// L2: Create Ledger → Default Categories Created
-// ============================================================================
-
-describe("L2: Create Ledger → Default Categories Created", () => {
-  it("should automatically create default categories for new ledger", async () => {
-    // Create ledger via action
-    const ledger = await createLedgerAction({ aiLanguage: "zh-CN" });
-
-    // Verify default categories exist
-    const categories = await getTargetEntryCategoriesAction(ledger.id);
-
-    // Should have some default categories (at least 1)
-    expect(categories.length).toBeGreaterThan(0);
-
-    // All categories should belong to this ledger
-    categories.forEach((cat) => {
-      expect(cat.ledgerId).toBe(ledger.id);
-    });
   });
 });

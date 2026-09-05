@@ -77,16 +77,6 @@ export function useLedgerEntriesStreamData({
     queryHasData,
   } = useSourceDocumentStream(ledgerId, {
     mainCurrency,
-    dateRange: {
-      ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
-      ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
-    },
-    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
-    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
-    ...(filters.statuses != null && filters.statuses.length > 0
-      ? { statuses: filters.statuses }
-      : {}),
-    ...(filters.search != null ? { search: filters.search } : {}),
     queryDescriptor: streamQueryDescriptor,
   });
   const streamQueryStatus =

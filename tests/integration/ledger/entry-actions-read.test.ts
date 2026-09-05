@@ -21,7 +21,7 @@ vi.mock("@/application/adapters/postgres/exchange-rate", () => {
   };
   return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
 });
-import { getLedgerEntriesAction } from "@/modules/ledger/actions";
+import { getLedgerEntriesAction } from "@/modules/ledger/server-actions/entries";
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/contract-schemas";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 

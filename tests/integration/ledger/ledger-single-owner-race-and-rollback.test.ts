@@ -3,15 +3,17 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "tests/setup";
 import { createTestUser } from "tests/helpers/schema-setup";
 import { ledgers } from "@/persistence";
-import { ConflictError } from "@/lib/errors";
-import { createDefaultLedger as createDefaultLedgerUseCase } from "@/modules/ledger/application/use-cases/create-default-ledger";
-import { createLedger as createLedgerUseCase } from "@/modules/ledger/application/use-cases/create-ledger";
 import { serverComposition } from "@/application/server-composition-root";
+import { getDefaultLedger } from "@/config/default-ledger";
 
-const createDefaultLedger = (input: Parameters<typeof createDefaultLedgerUseCase>[0]) =>
-  createDefaultLedgerUseCase(input, serverComposition.ledgers);
-const createLedger = (input: Parameters<typeof createLedgerUseCase>[0]) =>
-  createLedgerUseCase(input, serverComposition.ledgers);
+const createDefaultLedger = (input: { userId: string; locale?: string }) => {
+  const defaults = getDefaultLedger(input.locale ?? "zh");
+  return serverComposition.ledgers.createDefault({
+    userId: input.userId,
+    settings: defaults.settings,
+    categories: defaults.categories,
+  });
+};
 
 describe("ledger single-owner race and rollback", () => {
   beforeEach(() => {
@@ -25,25 +27,10 @@ describe("ledger single-owner race and rollback", () => {
 
     await db.update(ledgers).set({ deletedAt: new Date() }).where(eq(ledgers.id, initial.id));
 
-    const recreated = await createLedger({ userId, locale: "en" });
+    const recreated = await createDefaultLedger({ userId, locale: "en" });
 
     expect(recreated.id).not.toBe(initial.id);
     expect(recreated.userId).toBe(userId);
-  });
-
-  it("preserves normalized conflicts from the ledger port", async () => {
-    const db = getTestDb();
-    const userId = await createTestUser(db, undefined, crypto.randomUUID());
-
-    const createDefaultLedgerSpy = vi
-      .spyOn(
-        await import("@/modules/ledger/application/use-cases/create-default-ledger"),
-        "createDefaultLedger"
-      )
-      .mockRejectedValueOnce(new ConflictError("User already has an active ledger"));
-
-    await expect(createLedger({ userId, locale: "zh" })).rejects.toThrow(ConflictError);
-    createDefaultLedgerSpy.mockRestore();
   });
 
   it("rolls back createDefaultLedger when category insertion fails", async () => {

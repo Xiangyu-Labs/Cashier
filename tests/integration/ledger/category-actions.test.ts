@@ -10,7 +10,7 @@ import {
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
   getEntryCategoriesAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/categories";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 async function getTargetEntryCategoriesAction(ledgerId: string) {

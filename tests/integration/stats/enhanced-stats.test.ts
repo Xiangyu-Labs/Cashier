@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getEnhancedStats } from "@/modules/stats/actions";
+import { getEnhancedStats } from "@/modules/stats/server-actions/get-enhanced-stats";
 import { ValidationError } from "@/lib/errors";
 import { getTestDb } from "../../setup";
 import {

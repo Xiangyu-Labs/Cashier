@@ -3,12 +3,8 @@
 import { useMemo, useRef, useEffect, useCallback } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { listStreamPageAction } from "@/modules/source-document/server-actions/queries";
-import type {
-  SourceDocumentListItemDto,
-  SourceDocumentStatusType,
-} from "@/modules/source-document/contracts";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { ListStreamPageInput } from "../application/queries/list-stream-page";
-import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { queryKeys } from "@/lib/query-keys";
 import {
   buildUnifiedStreamGroups,
@@ -20,27 +16,13 @@ import type {
 } from "@/modules/source-document/contract-refresh";
 import { useLedgerRefreshPolling } from "./useLedgerRefreshPolling";
 
-const STREAM_PAGE_LIMIT = 20;
-
 export interface UseSourceDocumentStreamOptions {
   mainCurrency?: string;
-  dateRange?: {
-    start?: string;
-    end?: string;
-  };
-  minAmount?: string;
-  maxAmount?: string;
-  /** Canonical selected statuses. Empty/undefined means all statuses. */
-  statuses?: SourceDocumentStatusType[];
-  search?: string;
   /** Enable refresh polling for this stream. */
   enableRefresh?: boolean;
-  /**
-   * Optional shared descriptor supplied by the workspace tab. Keeping the
-   * key and request input together prevents prefetch/hydration drift.
-   */
-  queryDescriptor?: {
+  queryDescriptor: {
     queryKey: readonly unknown[];
+    filterSignature: string;
     getPageInput: (pageParam?: string) => ListStreamPageInput;
   };
 }
@@ -60,30 +42,6 @@ function flattenAndDeduplicate(
   return result;
 }
 
-/**
- * Encode filter params into a stable signature string.
- * This is used as the filter signature in refresh requests.
- */
-function encodeFilterSignature(params: {
-  startDate: string | null;
-  endDate: string | null;
-  minAmount: string | null;
-  maxAmount: string | null;
-  statusesKey: string | null;
-  search: string | null;
-}): string {
-  const statusParts = params.statusesKey != null ? params.statusesKey.split(",").sort() : [];
-  const parts = [
-    params.startDate ?? "",
-    params.endDate ?? "",
-    params.minAmount ?? "",
-    params.maxAmount ?? "",
-    params.search != null ? encodeURIComponent(params.search) : "",
-    ...statusParts,
-  ];
-  return parts.join("|");
-}
-
 function seedRefreshBaseline(
   queryClient: ReturnType<typeof useQueryClient>,
   ledgerId: string,
@@ -101,62 +59,11 @@ function seedRefreshBaseline(
   });
 }
 
-export function useSourceDocumentStream(
-  ledgerId: string,
-  options: UseSourceDocumentStreamOptions = {}
-) {
+export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocumentStreamOptions) {
   const queryClient = useQueryClient();
-  const {
-    dateRange,
-    minAmount,
-    maxAmount,
-    statuses: rawStatuses,
-    search,
-    enableRefresh = true,
-    queryDescriptor,
-    mainCurrency,
-  } = options;
-
-  const startDate = dateRange?.start ?? null;
-  const endDate = dateRange?.end ?? null;
-
-  // Normalize statuses: sort and deduplicate for stable cache keys and
-  // consistent filter fingerprints (Fix 6).
-  // Kept as primitive string for React Compiler stability analysis.
-  const canonicalStatuses = canonicalizeSourceDocumentStatuses(rawStatuses);
-  const statusesKey = canonicalStatuses?.join(",") ?? null;
-  // Split back to array for the query function parameter.
-  const stableStatuses =
-    statusesKey != null ? (statusesKey.split(",") as SourceDocumentStatusType[]) : undefined;
-
-  // Build stream page key that includes all filter params
-  const fallbackStreamPageKey = useMemo(
-    () =>
-      queryKeys.sourceDocumentStream(ledgerId, {
-        startDate,
-        endDate,
-        ...(minAmount != null ? { minAmount } : {}),
-        ...(maxAmount != null ? { maxAmount } : {}),
-        statuses: statusesKey,
-        search: search ?? null,
-      }),
-    [endDate, ledgerId, maxAmount, minAmount, search, startDate, statusesKey]
-  );
-  const streamPageKey = queryDescriptor?.queryKey ?? fallbackStreamPageKey;
-
-  // Compute filter signature for refresh coordination
-  const filterSignature = useMemo(
-    () =>
-      encodeFilterSignature({
-        startDate,
-        endDate,
-        minAmount: minAmount ?? null,
-        maxAmount: maxAmount ?? null,
-        statusesKey,
-        search: search ?? null,
-      }),
-    [startDate, endDate, minAmount, maxAmount, statusesKey, search]
-  );
+  const { enableRefresh = true, queryDescriptor, mainCurrency } = options;
+  const streamPageKey = queryDescriptor.queryKey;
+  const filterSignature = queryDescriptor.filterSignature;
 
   // Track the generation from the first page for cross-page consistency
   const generationRef = useRef<string | null>(null);
@@ -165,20 +72,7 @@ export function useSourceDocumentStream(
   const streamQuery = useInfiniteQuery({
     queryKey: streamPageKey,
     queryFn: async ({ pageParam }) => {
-      const pageInput =
-        queryDescriptor?.getPageInput(pageParam as string | undefined) ??
-        ({
-          ...(startDate !== null ? { startDate } : {}),
-          ...(endDate !== null ? { endDate } : {}),
-          ...(minAmount != null ? { minAmount } : {}),
-          ...(maxAmount != null ? { maxAmount } : {}),
-          ...(stableStatuses != null && stableStatuses.length > 0
-            ? { statuses: stableStatuses }
-            : {}),
-          ...(search != null && search !== "" ? { search } : {}),
-          ...(pageParam != null ? { cursor: pageParam as string } : {}),
-          limit: STREAM_PAGE_LIMIT,
-        } satisfies ListStreamPageInput);
+      const pageInput = queryDescriptor.getPageInput(pageParam as string | undefined);
       let page = await listStreamPageAction(ledgerId, pageInput);
       if (pageParam == null && page.restartRequired) {
         page = await listStreamPageAction(ledgerId, pageInput);

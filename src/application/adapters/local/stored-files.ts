@@ -1,19 +1,19 @@
-import type {
-  DirectStoredFilePort,
-  UploadFileRequestContract,
-  UploadPlanContract,
-} from "@/application/contracts";
-import { StoredFileAuthorizedReadAdapter } from "./stored-files/authorized-file-reads";
+import type { DirectStoredFilePort } from "@/application/contracts";
+import { createAuthorizedFileReadOperations } from "./stored-files/authorized-file-reads";
+import {
+  resolveStoredFileAdapterDependencies,
+  type StoredFileAdapterDependencies,
+} from "./stored-files/shared";
 
-export class StoredFileAdapter
-  extends StoredFileAuthorizedReadAdapter
-  implements DirectStoredFilePort {}
+export type StoredFileAdapter = DirectStoredFilePort &
+  ReturnType<typeof createAuthorizedFileReadOperations>;
 
-export const storedFileAdapter = new StoredFileAdapter();
-
-export async function createUploadPlanForSubmission(
-  ledgerId: string,
-  files: readonly UploadFileRequestContract[]
-): Promise<UploadPlanContract | null> {
-  return files.length === 0 ? null : storedFileAdapter.createUploadPlan(ledgerId, files);
+export function createStoredFileAdapter(
+  dependencies: StoredFileAdapterDependencies = {}
+): StoredFileAdapter {
+  return createAuthorizedFileReadOperations(
+    resolveStoredFileAdapterDependencies(dependencies)
+  ) as StoredFileAdapter;
 }
+
+export const storedFileAdapter = createStoredFileAdapter();
