@@ -62,4 +62,23 @@ describe("listLedgerEntries", () => {
       })
     ).rejects.toThrow("Validation failed");
   });
+
+  it("maps the uncategorized sentinel to the null-category filter", async () => {
+    listLedgerEntryPageMock.mockResolvedValueOnce({ items: [], nextCursor: null });
+
+    await listLedgerEntries("ledger-1", {
+      categoryId: "__uncategorized__",
+      limit: 20,
+    });
+
+    expect(listLedgerEntryPageMock).toHaveBeenCalledWith(
+      {
+        ledgerId: "ledger-1",
+        limit: 20,
+        cursor: null,
+        filters: { uncategorizedOnly: true },
+      },
+      reads
+    );
+  });
 });

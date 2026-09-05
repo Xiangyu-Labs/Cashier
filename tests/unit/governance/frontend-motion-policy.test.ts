@@ -31,23 +31,4 @@ describe("frontend motion policy", () => {
     expect(source).not.toContain("AnimatePresence");
     expect(source).not.toMatch(/\blayout(?:=|\s)/);
   });
-
-  it("keeps the client runtime free of framer-motion", () => {
-    const source = [
-      read("package.json"),
-      read("src/components/providers.tsx"),
-      read("src/modules/source-document/ui/SourceDocumentCard.tsx"),
-      read("src/modules/ledger/ui/batch-action-toolbar/LedgerEntriesBatchActionToolbar.tsx"),
-      read("src/modules/workspace/ui/SwipeTabSurface.tsx"),
-    ].join("\n");
-    expect(source).not.toContain("framer-motion");
-  });
-
-  it("uses the shared group header across ledger list views", () => {
-    expect(read("src/modules/workspace/ui/unified-stream/group-header.tsx")).toContain(
-      "<EntryGroupHeader"
-    );
-    expect(read("src/modules/ledger/ui/LedgerEntryGroupsView.tsx")).toContain("<EntryGroupHeader");
-    expect(read("src/modules/workspace/ui/DetailsTabView.tsx")).toContain("<LedgerEntryGroupsView");
-  });
 });

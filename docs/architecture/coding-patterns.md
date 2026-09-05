@@ -74,3 +74,5 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
   show `Total` / `合计`; missing bill titles use `Untitled Bill` / `未命名账单`.
 
 Run `npm run check:architecture` locally. CI must reject import cycles.
+Architecture rules inspect TypeScript syntax for protected writes and structured log fields; comments
+and ordinary strings are not architectural evidence.

@@ -55,24 +55,6 @@ async function loadRatesByDate(
   return ratesByDate;
 }
 
-function resolveBatchItemConversion(
-  item: CurrencyBatchConversionItem,
-  targetCurrency: string,
-  ratesData: ExchangeRates
-): CurrencyBatchConversionResult {
-  if (item.fromCurrency === targetCurrency) {
-    if (!supportedCurrencySet.has(targetCurrency)) {
-      throw new AppError(`Currency not found: ${targetCurrency}`, "CURRENCY_NOT_FOUND", 400);
-    }
-    return {
-      convertedAmount: roundToCurrency(item.amount, targetCurrency),
-      exchangeRate: "1",
-    };
-  }
-
-  return convertWithRates(item.amount, ratesData, item.fromCurrency, targetCurrency);
-}
-
 export async function convertAmountsBatch(
   items: CurrencyBatchConversionItem[],
   defaultTargetCurrency: string,
@@ -110,6 +92,6 @@ export async function convertAmountsBatch(
       );
     }
 
-    return resolveBatchItemConversion(item, targetCurrency, ratesData);
+    return convertWithRates(item.amount, ratesData, item.fromCurrency, targetCurrency);
   });
 }

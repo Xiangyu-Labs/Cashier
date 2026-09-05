@@ -83,15 +83,14 @@ export async function listStreamPage(
   ports: {
     documents: Pick<SourceDocumentReadPort, "list">;
     ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-    changes?: Pick<LedgerChangeReadPort, "getVersion"> &
-      Partial<Pick<LedgerChangeReadPort, "getRefreshBaseline">>;
+    changes: Pick<LedgerChangeReadPort, "getVersion" | "getRefreshBaseline">;
   }
 ): Promise<StreamPage> {
   // Enforce page size cap (defense in depth beyond the action schema)
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);
   const search = normalizeSearchTerm(input.search);
   const filterHash = filterFingerprint(input, search);
-  const beforeVersion = (await ports.changes?.getVersion(ledgerId)) ?? BigInt(0);
+  const beforeVersion = await ports.changes.getVersion(ledgerId);
   const generation = beforeVersion.toString();
 
   // Validate cursor against ledger identity and filter compatibility.
@@ -102,10 +101,7 @@ export async function listStreamPage(
     innerCursor = validateCursor(input.cursor, ledgerId, generation, filterHash);
   } catch (error) {
     if (error instanceof ValidationError) {
-      const baseline = (await ports.changes?.getRefreshBaseline?.(ledgerId)) ?? {
-        version: beforeVersion,
-        hasTransitionalWork: false,
-      };
+      const baseline = await ports.changes.getRefreshBaseline(ledgerId);
       return {
         items: [],
         nextCursor: null,
@@ -149,10 +145,7 @@ export async function listStreamPage(
       ...(search != null ? { search } : {}),
     }),
   }));
-  const baseline = (await ports.changes?.getRefreshBaseline?.(ledgerId)) ?? {
-    version: beforeVersion,
-    hasTransitionalWork: false,
-  };
+  const baseline = await ports.changes.getRefreshBaseline(ledgerId);
   if (baseline.version !== beforeVersion) {
     return {
       items: [],

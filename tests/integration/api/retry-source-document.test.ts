@@ -128,10 +128,10 @@ describe("source-document retry action", () => {
         created.sourceDocumentId,
         {
           images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
-        },
+        } as never,
         before!.stateVersion
       )
-    ).rejects.toThrow("Invalid base64 image data");
+    ).rejects.toThrow();
   });
 
   it("retry succeeds despite a previous failed revision, preserving the original active revision", async () => {

@@ -48,7 +48,7 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
     >;
     expect(callInput).toBeDefined();
     expect(callInput.ledgerId).toBe("ledger-1");
-    expect(callInput.preparedImages).toEqual([preparedImage]);
+    expect(callInput.evidence).toEqual({ kind: "inline", images: [preparedImage] });
     expect(Object.prototype.hasOwnProperty.call(callInput, "images")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "originalImages")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "entryDate")).toBe(false);

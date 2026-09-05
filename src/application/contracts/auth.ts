@@ -106,10 +106,8 @@ export interface UserAccountPort {
   completeRegistration(userId: string, completedAt: Date): Promise<boolean>;
 }
 
-export type UserInterfaceLanguage = "auto" | "zh" | "en";
-
 export interface UserPreferencesContract {
-  interfaceLanguage: UserInterfaceLanguage;
+  interfaceLanguage: "auto" | "zh" | "en";
 }
 
 export interface UserPreferencesPort {

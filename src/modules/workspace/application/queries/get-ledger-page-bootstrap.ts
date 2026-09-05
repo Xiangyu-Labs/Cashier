@@ -64,8 +64,7 @@ export async function getLedgerPageBootstrap(
     sourceDocuments: {
       documents: Pick<SourceDocumentReadPort, "list" | "calculateCompletedTotal">;
       ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-      changes?: Pick<LedgerChangeReadPort, "getVersion"> &
-        Partial<Pick<LedgerChangeReadPort, "getRefreshBaseline">>;
+      changes: Pick<LedgerChangeReadPort, "getVersion" | "getRefreshBaseline">;
     };
     credentials: Pick<ServiceCredentialPort, "list">;
   }

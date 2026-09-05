@@ -6,7 +6,6 @@ import type {
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
 import { createHash } from "crypto";
-import { API_V1_MAX_DECODED_IMAGE_BYTES } from "@/modules/source-document/api-v1-policy";
 import type { PreparedApiV1SourceDocumentInput } from "@/modules/source-document/api-v1-policy";
 import type { SourceDocumentCredentialPorts } from "../ports";
 
@@ -38,17 +37,12 @@ export async function createSourceDocumentFromCredential(
   scheduleProcessing: (intent: ProcessingIntentContract) => void,
   ports: SourceDocumentCredentialPorts
 ): Promise<SourceDocumentSubmissionContract> {
-  const ledger = { id: input.credential.ledgerId };
-
   const payload = input.payload;
-  const images = payload.images ?? [];
   return createAndQueueSourceDocument(
     {
-      ledgerId: ledger.id,
-      ledger,
-      preparedImages: images,
+      ledgerId: input.credential.ledgerId,
+      evidence: { kind: "inline", images: payload.images },
       ...(payload.entryDate == null ? {} : { entryDate: payload.entryDate }),
-      maxDecodedImageBytes: API_V1_MAX_DECODED_IMAGE_BYTES,
       ...(input.idempotencyKey == null
         ? {}
         : {

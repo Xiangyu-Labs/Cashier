@@ -42,6 +42,7 @@ const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPag
   listStreamPageUseCase(ledgerId, input, {
     documents: serverComposition.sourceDocumentReads,
     ledgerReads: serverComposition.ledgerReads,
+    changes: serverComposition.ledgerChanges,
   });
 
 const entry = {

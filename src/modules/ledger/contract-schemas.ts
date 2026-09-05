@@ -48,6 +48,8 @@ const optionalSearchSchema = z.preprocess(
   (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
   z.string().max(MAX_SEARCH_LENGTH).optional()
 );
+export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
+const categoryFilterSchema = z.union([uuidSchema, z.literal(UNCATEGORIZED_SENTINEL)]).optional();
 
 function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -169,7 +171,7 @@ const createServiceCredentialInputSchema = strictObjectSchema({
 const ledgerEntryQueryShape = {
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
-  categoryId: uuidSchema.optional(),
+  categoryId: categoryFilterSchema,
   currency: optionalCurrencyCodeSchema,
   minAmount: optionalQueryDecimalSchema,
   maxAmount: optionalQueryDecimalSchema,
@@ -213,7 +215,7 @@ export const listLedgerEntriesInputSchema = strictObjectSchema({
 
 export const ledgerStatsQuerySchema = strictObjectSchema({
   ...ledgerEntryQueryShape,
-  categoryId: z.union([uuidSchema, z.literal("__uncategorized__")]).optional(),
+  categoryId: categoryFilterSchema,
 }).superRefine(validateLedgerEntryQueryRange);
 
 export const parseCreateLedgerInput = (input: unknown) =>

@@ -22,7 +22,7 @@ vi.mock("@/application/adapters/postgres/exchange-rate", () => {
   return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
 });
 import { getLedgerEntriesAction } from "@/modules/ledger/actions";
-import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/contract-schemas";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";

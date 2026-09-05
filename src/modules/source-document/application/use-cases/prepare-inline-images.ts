@@ -5,10 +5,9 @@ import type {
   UploadPlanContract,
 } from "@/application/contracts";
 import { ValidationError } from "@/lib/errors";
-import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
-import { decodeBase64Image } from "@/modules/source-document/base64-image";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
+import type { PreparedInlineImage } from "@/modules/source-document/api-v1-policy";
 
 /**
  * Interface for the stored-files operations needed by prepareInlineImages.
@@ -38,61 +37,23 @@ export type ImageProcessor = (
 ) => Promise<{ buffer: Buffer; mimeType: string }>;
 
 /**
- * An inline image that is either still base64-encoded (web flow) or has
- * already been decoded once by the API v1 boundary (prepared flow). Both
- * variants share the same Sharp/S3/finalize pipeline.
- */
-export type InlineImageSource =
-  { data: string; mimeType: string } | { bytes: Buffer; mimeType: string };
-
-const DEFAULT_MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
-
-/**
- * Decode either a raw base64 string or a data:image URL into a Buffer.
- * Validates base64 correctness, MIME-type consistency, empty data, and max size.
- *
- * Throws ValidationError for any decode-level failure.
- */
-function decodeImageData(data: string, mimeType: string, maxDecodedSize?: number): Buffer {
-  const buffer = decodeBase64Image(data, mimeType).bytes;
-  const effectiveMax = maxDecodedSize ?? DEFAULT_MAX_DECODED_SIZE;
-  if (buffer.length > effectiveMax) {
-    throw new ValidationError(
-      `Decoded image data exceeds maximum size of ${effectiveMax / 1024 / 1024}MB`
-    );
-  }
-
-  return buffer;
-}
-
-/**
- * Decode, process via sharp, upload to internal storage, and finalize a batch
- * of inline images. Returns the finalized stored-file IDs in the same order as
- * the input `images` array.
+ * Process already-decoded images via Sharp, upload them to internal storage,
+ * and finalize the batch. Returns stored-file IDs in input order.
  *
  * Every image is decoded and processed before any upload begins, so a single
  * upload plan covers the exact processed size / content-type. If *any* image
  * fails to decode or process, no upload plan or durable state is created.
  */
 export async function prepareInlineImages(
-  images: InlineImageSource[],
+  images: PreparedInlineImage[],
   storedFiles: InlineImageUploader,
   processImage: ImageProcessor,
-  ledgerId: string,
-  maxDecodedBytes?: number
+  ledgerId: string
 ): Promise<{ storedFileIds: string[]; uploadSessionId: string }> {
-  // Phase 1: decode and process all images (fail-fast if any is bad)
+  // Process every image before creating durable upload state.
   const processedImages = await Promise.all(
     images.map(async (img) => {
-      const rawBuffer =
-        "bytes" in img ? img.bytes : decodeImageData(img.data, img.mimeType, maxDecodedBytes);
-      const effectiveMax = maxDecodedBytes ?? DEFAULT_MAX_DECODED_SIZE;
-      if (rawBuffer.length > effectiveMax) {
-        throw new ValidationError(
-          `Decoded image data exceeds maximum size of ${effectiveMax / 1024 / 1024}MB`
-        );
-      }
-      const processed = await processImage(rawBuffer, img.mimeType);
+      const processed = await processImage(img.bytes, img.mimeType);
       return { buffer: processed.buffer, mimeType: processed.mimeType };
     })
   );

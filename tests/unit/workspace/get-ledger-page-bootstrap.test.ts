@@ -27,11 +27,14 @@ const bootstrapDependencies = {
       calculateCompletedTotal: vi.fn(),
     },
     ledgerReads: { listEntriesBySourceDocumentIds: vi.fn() },
-    changes: { getVersion: vi.fn() },
+    changes: { getVersion: vi.fn(), getRefreshBaseline: vi.fn() },
   } satisfies {
     documents: Pick<SourceDocumentQueryPorts["documents"], "list" | "calculateCompletedTotal">;
     ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-    changes: Pick<NonNullable<SourceDocumentQueryPorts["changes"]>, "getVersion">;
+    changes: Pick<
+      NonNullable<SourceDocumentQueryPorts["changes"]>,
+      "getVersion" | "getRefreshBaseline"
+    >;
   },
   credentials: { list: vi.fn() } satisfies Pick<ServiceCredentialPort, "list">,
 };

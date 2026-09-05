@@ -25,7 +25,7 @@ describe("createSourceDocumentAction omission semantics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireLedgerAccessMock.mockResolvedValue({
-      ledger: { id: "ledger-1" },
+      ledger: { id: "ledger-1", settings: { timeZone: null } },
       userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     });
     createAndQueueSourceDocumentMock.mockResolvedValue({
@@ -45,11 +45,28 @@ describe("createSourceDocumentAction omission semantics", () => {
 
     expect(callInput).toBeDefined();
     expect(callInput.ledgerId).toBe("ledger-1");
-    expect(callInput.text).toBe("Lunch 12.50");
+    expect(callInput.evidence).toEqual({
+      kind: "stored",
+      text: "Lunch 12.50",
+      storedFileIds: [],
+    });
     expect(Object.prototype.hasOwnProperty.call(callInput, "images")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "originalImages")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "entryDate")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "timezone")).toBe(false);
+  });
+
+  it("uses the authorized ledger timezone when the request omits one", async () => {
+    requireLedgerAccessMock.mockResolvedValue({
+      ledger: { id: "ledger-1", settings: { timeZone: "Asia/Singapore" } },
+      userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    });
+
+    await createSourceDocumentAction("ledger-1", { text: "Lunch" }, CLIENT_SUBMISSION_ID);
+
+    expect(createAndQueueSourceDocumentMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ timezone: "Asia/Singapore" })
+    );
   });
 
   it("injects scheduleProcessing into use case dependencies", async () => {

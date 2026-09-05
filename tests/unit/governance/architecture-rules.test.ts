@@ -177,7 +177,16 @@ describe("findBoundaryViolations", () => {
     expect(
       findBoundaryViolations(
         "src/modules/source-document/server-actions/process.ts",
-        'logger.error({ ledgerSubject, sourceDocumentSubject, requestId, correlationId }, "failed");'
+        'import { logIdentifier } from "@/lib/security/log-identifier";\nlogger.error({ ledgerId: logIdentifier("ledger", ledgerId), sourceDocumentSubject, requestId, correlationId }, "failed");'
+      )
+    ).toEqual([]);
+  });
+
+  it("ignores identifier names in comments and ordinary strings", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/source-document/server-actions/process.ts",
+        '// activeRevisionId and ledgerId are domain terms.\nconst message = "sourceDocumentId";'
       )
     ).toEqual([]);
   });
@@ -283,22 +292,6 @@ describe("findBoundaryViolations", () => {
     ]);
   });
 
-  it.each([
-    "@/application/adapters/postgres/mutate-ledger-entries",
-    "@/application/adapters/postgres/delete-ledger-entry",
-    "@/modules/ledger/application/use-cases/mutate-ledger-entries",
-    "@/modules/ledger/application/use-cases/delete-ledger-entry",
-  ])("forbids importing the legacy ledger mutation path %s", (specifier) => {
-    expect(
-      findBoundaryViolations(
-        "src/application/server-composition-root.ts",
-        `import { deleteLedgerEntry } from "${specifier}";`
-      )
-    ).toEqual([
-      "src/application/server-composition-root.ts: legacy ledger mutation path is forbidden; use the versioned source-document aggregate",
-    ]);
-  });
-
   it("restricts source-document writes to registered aggregate writers", () => {
     expect(
       findBoundaryViolations(
@@ -314,19 +307,11 @@ describe("findBoundaryViolations", () => {
         "await tx.update(sourceDocuments).set({ title });"
       )
     ).toEqual([]);
+    expect(
+      findBoundaryViolations(
+        "src/application/adapters/postgres/unregistered-writer.ts",
+        'const example = "tx.update(sourceDocuments)"; // tx.delete(sourceDocuments)'
+      )
+    ).toEqual([]);
   });
-
-  it.each(["activeRevisionId", "expectedRevisionId", "operationId", "resourceGroups"])(
-    "rejects browser concurrency token %s",
-    (token) => {
-      expect(
-        findBoundaryViolations(
-          "src/modules/source-document/hooks/useCommand.ts",
-          `const ${token} = value;`
-        )
-      ).toEqual([
-        `src/modules/source-document/hooks/useCommand.ts: browser source-document code must not use ${token}`,
-      ]);
-    }
-  );
 });

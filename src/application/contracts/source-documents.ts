@@ -309,7 +309,7 @@ export interface SourceDocumentSubmissionPort {
   createPendingWithIntent(
     input: SourceDocumentSubmissionInput
   ): Promise<PendingRevisionSubmissionContract>;
-  createIdempotentPendingWithIntent?(
+  createIdempotentPendingWithIntent(
     idempotency: SourceDocumentIdempotencyInput,
     prepare: () => Promise<SourceDocumentSubmissionInput>
   ): Promise<PendingRevisionSubmissionContract>;

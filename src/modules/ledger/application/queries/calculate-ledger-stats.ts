@@ -1,5 +1,5 @@
 import { calculateLedgerEntryStats } from "@/modules/ledger/application/queries/calculate-ledger-entry-stats";
-import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/contract-schemas";
 import type { LedgerSummaryDto } from "@/modules/ledger/contracts";
 import type { LedgerReadPort } from "../ports";
 import type { LedgerStatsQueryInput } from "@/modules/ledger/contract-schemas";

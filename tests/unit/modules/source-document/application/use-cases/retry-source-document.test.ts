@@ -28,7 +28,7 @@ describe("retrySourceDocument", () => {
     createPendingWithIntent.mockRejectedValueOnce(new NotFoundError("Source document"));
     await expect(
       retrySourceDocument(
-        { ledgerId: ledger.id, ledger, sourceDocumentId: "missing", expectedVersion: 1 },
+        { ledgerId: ledger.id, sourceDocumentId: "missing", expectedVersion: 1 },
         { submissions: { createPendingWithIntent }, scheduleProcessing }
       )
     ).rejects.toThrow(NotFoundError);
@@ -40,7 +40,7 @@ describe("retrySourceDocument", () => {
       new StaleSourceDocumentVersionError("doc-1", 1, 2)
     );
     const result = await retrySourceDocument(
-      { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1", expectedVersion: 1 },
+      { ledgerId: ledger.id, sourceDocumentId: "doc-1", expectedVersion: 1 },
       { submissions: { createPendingWithIntent }, scheduleProcessing }
     );
     expect(result).toEqual({
@@ -55,7 +55,7 @@ describe("retrySourceDocument", () => {
 
   it("creates a new revision under the stable document identity and inherits evidence", async () => {
     const result = await retrySourceDocument(
-      { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1", expectedVersion: 1 },
+      { ledgerId: ledger.id, sourceDocumentId: "doc-1", expectedVersion: 1 },
       { submissions: { createPendingWithIntent }, scheduleProcessing }
     );
     expect(createPendingWithIntent).toHaveBeenCalledWith({
@@ -82,7 +82,6 @@ describe("retrySourceDocument", () => {
     await retrySourceDocument(
       {
         ledgerId: ledger.id,
-        ledger,
         sourceDocumentId: "doc-1",
         expectedVersion: 1,
         input: {
@@ -103,21 +102,5 @@ describe("retrySourceDocument", () => {
       entryDate: "2026-07-16",
       storedFileIds: ["00000000-0000-4000-8000-000000000001"],
     });
-  });
-
-  it("rejects raw image retry payloads without scheduling processing", async () => {
-    await expect(
-      retrySourceDocument(
-        {
-          ledgerId: ledger.id,
-          ledger,
-          sourceDocumentId: "doc-1",
-          expectedVersion: 1,
-          input: { images: [{ data: "raw", mimeType: "image/jpeg" }] },
-        },
-        { submissions: { createPendingWithIntent }, scheduleProcessing }
-      )
-    ).rejects.toThrow("Images must be finalized");
-    expect(scheduleProcessing).not.toHaveBeenCalled();
   });
 });

@@ -110,7 +110,10 @@ export async function POST(request: NextRequest) {
             credential,
             ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
             requestId,
-            payload: parsed.data,
+            payload: {
+              images: parsed.data.images,
+              ...(parsed.data.entryDate === undefined ? {} : { entryDate: parsed.data.entryDate }),
+            },
           });
         } finally {
           createMs = performance.now() - createStart;

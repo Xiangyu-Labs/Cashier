@@ -21,10 +21,7 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   createProcessingDocument: (input) =>
     postgresSourceDocumentSubmissionAdapter.createPendingWithIntent(input),
   createIdempotentProcessingDocument: (idempotency, prepare) =>
-    postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
-      idempotency,
-      prepare
-    ),
+    postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent(idempotency, prepare),
   createManualDocument: (input) => postgresLedgerProjectionAdapter.createManual(input),
   saveChanges: saveSourceDocumentChangesAtomically,
   updateDocuments: batchUpdateSourceDocuments,
@@ -36,11 +33,6 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   batchDeleteEntries: (input) => postgresLedgerEntryCommandAdapter.batchDelete(input),
   splitEntries: splitSourceDocumentAtomically,
   installRetry: (input) => postgresSourceDocumentSubmissionAdapter.createPendingWithIntent(input),
-  installIdempotentRetry: (idempotency, prepare) =>
-    postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
-      idempotency,
-      prepare
-    ),
   acceptCandidate: acceptCandidateRevision,
   abandonCandidate: abandonCandidateRevision,
   cancelProcessing: cancelPendingRevision,

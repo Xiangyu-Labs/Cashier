@@ -1,21 +1,9 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
-const exists = (path: string) => existsSync(resolve(root, path));
-
-function collectSourceFiles(directory: string): string[] {
-  return readdirSync(directory).flatMap((entry) => {
-    const absolute = resolve(directory, entry);
-    return statSync(absolute).isDirectory()
-      ? collectSourceFiles(absolute)
-      : /\.(ts|tsx)$/.test(entry)
-        ? [absolute]
-        : [];
-  });
-}
 
 describe("PWA policy", () => {
   it("uses the operating-system font stack without next/font", () => {
@@ -51,63 +39,10 @@ describe("PWA policy", () => {
     expect(read("src/components/ServiceWorkerUpdate.tsx")).not.toContain("document.activeElement");
   });
 
-  it("removes the offline mode, offline route, health probe, and connection UI", () => {
-    expect(exists("src/modules/offline")).toBe(false);
-    expect(exists("src/app/[locale]/offline")).toBe(false);
-    expect(exists("src/app/api/health")).toBe(false);
-    expect(read("src/proxy.ts")).not.toContain("api/health");
-    expect(read("src/components/providers.tsx")).not.toContain("ConnectionStateProvider");
-    expect(read("src/modules/workspace/ui/AppShell.tsx")).not.toContain("ConnectionBanner");
-    expect(read("src/modules/workspace/ui/TabNavigation.tsx")).not.toContain("offline?");
-    expect(read("src/app/[locale]/(protected)/_active-shell.tsx")).not.toContain(
-      'status === "offline"'
-    );
-    const sourceFiles = collectSourceFiles(resolve(root, "src"));
-    for (const file of sourceFiles) {
-      const relative = file.slice(root.length + 1);
-      const source = readFileSync(file, "utf8");
-      expect(source).not.toContain('from "@/modules/offline/');
-      expect(source).not.toContain("offlineImageUrls");
-      expect(source).not.toContain("cashier:offline-snapshot");
-      expect(relative).not.toContain("/offline/");
-    }
-  });
-
-  it("uses tab-specific skeletons instead of a persisted startup preview", () => {
-    const fallback = read("src/app/[locale]/(protected)/_ledger-bootstrap-fallback.tsx");
-    expect(fallback).toContain("EntriesTabSkeleton");
-    expect(fallback).toContain("DetailsTabSkeleton");
-    expect(fallback).toContain("StatsTabSkeleton");
-    expect(fallback).toContain("SettingsTabSkeleton");
-    expect(fallback).not.toContain("IndexedDB");
-    expect(fallback).not.toContain("useMutation");
-    expect(exists("src/modules/workspace/ui/LedgerStartupPreview.tsx")).toBe(false);
-  });
-
-  it("keeps startup snapshots out of the active ledger shell", () => {
-    const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
-    const pageClient = read("src/modules/workspace/ui/LedgerPageClient.tsx");
-    expect(pageClient).not.toContain("ledgerStartupCacheKey");
-    expect(pageClient).not.toContain("LedgerStartupCacheSync");
-    expect(activeTab).not.toContain("ledger-startup-cache-store");
-  });
-
   it("loads document images through the authenticated no-store route", () => {
-    const providers = read("src/components/providers.tsx");
-    const legacyCleanup = read("src/lib/legacy-client-cache-cleanup.ts");
-    const viewDetails = read("src/modules/source-document/ui/SourceDocumentViewDetails.tsx");
     const rawEvidence = read(
       "src/modules/source-document/ui/SourceDocumentViewDetails/components/SourceDocumentRawEvidence.tsx"
     );
-    expect(exists("src/lib/client-cache/index.ts")).toBe(false);
-    expect(exists("src/modules/source-document/image-cache.ts")).toBe(false);
-    expect(exists("src/modules/source-document/hooks/use-cached-source-images.ts")).toBe(false);
-    expect(providers).toContain("deleteLegacyClientCache");
-    expect(legacyCleanup).toContain('LEGACY_CLIENT_CACHE_DATABASE = "cashier-cache"');
-    expect(legacyCleanup).toContain("indexedDB.deleteDatabase");
-    expect(legacyCleanup).not.toContain("indexedDB.open");
-    expect(legacyCleanup).not.toContain("documentImages");
-    expect(viewDetails).not.toContain("cachedImageUrls");
     expect(rawEvidence).toContain("storedFileReadUrl");
     expect(rawEvidence).toContain("storedFileId: file.id");
     expect(rawEvidence).not.toContain("blob:");

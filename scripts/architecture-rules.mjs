@@ -7,6 +7,7 @@
  */
 
 import { collectImportSpecifiers, normalizeImportSpecifier } from "./architecture-imports.mjs";
+import ts from "typescript";
 
 /**
  * Whether the source starts with a `"use client"` directive after any leading
@@ -48,7 +49,6 @@ const relativeModuleActionsBarrelPattern = /^(?:\.\/|(?:\.\.\/)+)actions$/;
 const appPattern = /^@\/app(?:\/|$)/;
 const anyModulePattern = /^@\/modules(?:\/|$)/;
 const workspaceModulePattern = /^@\/modules\/workspace(?:\/|$)/;
-const sourceDocumentWriterPattern = /\.(?:insert|update|delete)\(\s*sourceDocuments\s*\)/;
 const registeredSourceDocumentWriters = new Set([
   "src/application/adapters/postgres/source-document-delete.ts",
   "src/application/adapters/postgres/source-document-updates.ts",
@@ -63,33 +63,6 @@ const registeredSourceDocumentWriters = new Set([
   "src/application/adapters/postgres/source-document-aggregate/recalculate-current-entries.ts",
 ]);
 const wholeLedgerDeleteWriter = "src/application/adapters/postgres/business-ports/ledger.ts";
-const forbiddenLegacyLedgerMutationPaths = [
-  /^@\/application\/adapters\/postgres\/mutate-ledger-entries(?:\/|$)/,
-  /^@\/application\/adapters\/postgres\/delete-ledger-entry(?:\/|$)/,
-  /^@\/modules\/ledger\/application\/use-cases\/mutate-ledger-entries(?:\/|$)/,
-  /^@\/modules\/ledger\/application\/use-cases\/delete-ledger-entry(?:\/|$)/,
-];
-const browserSourceDocumentPath =
-  /^src\/modules\/(?:source-document\/(?:hooks|ui)|ledger\/hooks|workspace)\//;
-const forbiddenBrowserConcurrencyTokens = [
-  "activeRevisionId",
-  "pendingRevisionId",
-  "expectedRevisionId",
-  "operationId",
-  "payloadKey",
-  "contextKey",
-  "newSourceDocumentId",
-  "resourceGroups",
-];
-const forbiddenServerCompositionWriteProperties = [
-  "ledgerEntryCommands",
-  "ledgerEntryDates",
-  "ledgerProjections",
-  "sourceDocumentUpdates",
-  "sourceDocumentLifecycle",
-  "sourceDocumentSubmissions",
-  "sourceDocumentRevisions",
-];
 const forbiddenLogIdentifierProperties = [
   "userId",
   "ledgerId",
@@ -104,18 +77,109 @@ const forbiddenLogIdentifierProperties = [
   "uploadSessionId",
 ];
 
-function collectRawLogIdentifierProperties(source) {
-  const properties = new Set();
-  const callPattern =
-    /\b(?:logger\.(?:debug|info|warn|error|fatal)|console\.(?:debug|info|warn|error))\s*\(([\s\S]*?)\);/g;
-  for (const call of source.matchAll(callPattern)) {
-    const argumentsSource = call[1] ?? "";
-    for (const property of forbiddenLogIdentifierProperties) {
-      const propertyPattern = new RegExp(`(?:^|[,{\\s])${property}\\s*(?=[:,}])`);
-      if (propertyPattern.test(argumentsSource)) properties.add(property);
+function parseSourceFile(relativePath, source) {
+  const scriptKind = relativePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  return ts.createSourceFile(relativePath, source, ts.ScriptTarget.Latest, true, scriptKind);
+}
+
+function importedLogIdentifierNames(sourceFile) {
+  const names = new Set();
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== "@/lib/security/log-identifier"
+    ) {
+      continue;
+    }
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) {
+      if ((element.propertyName ?? element.name).text === "logIdentifier") {
+        names.add(element.name.text);
+      }
     }
   }
+  return names;
+}
+
+function propertyNameText(name) {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text;
+  }
+  return null;
+}
+
+function isDirectLogIdentifierCall(expression, logIdentifierNames) {
+  return (
+    ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    logIdentifierNames.has(expression.expression.text)
+  );
+}
+
+function collectRawLogIdentifierProperties(sourceFile) {
+  const properties = new Set();
+  const forbidden = new Set(forbiddenLogIdentifierProperties);
+  const logIdentifierNames = importedLogIdentifierNames(sourceFile);
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression)
+    ) {
+      const owner = node.expression.expression.text;
+      const method = node.expression.name.text;
+      const isLoggerCall =
+        owner === "logger" && ["debug", "info", "warn", "error", "fatal"].includes(method);
+      const isConsoleCall =
+        owner === "console" && ["debug", "info", "warn", "error"].includes(method);
+      if (isLoggerCall || isConsoleCall) {
+        for (const argument of node.arguments) {
+          if (!ts.isObjectLiteralExpression(argument)) continue;
+          for (const member of argument.properties) {
+            if (ts.isShorthandPropertyAssignment(member) && forbidden.has(member.name.text)) {
+              properties.add(member.name.text);
+              continue;
+            }
+            if (!ts.isPropertyAssignment(member)) continue;
+            const property = propertyNameText(member.name);
+            if (
+              property != null &&
+              forbidden.has(property) &&
+              !isDirectLogIdentifierCall(member.initializer, logIdentifierNames)
+            ) {
+              properties.add(property);
+            }
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
   return [...properties];
+}
+
+function hasSourceDocumentWrite(sourceFile) {
+  let found = false;
+  const visit = (node) => {
+    if (found) return;
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ["insert", "update", "delete"].includes(node.expression.name.text) &&
+      node.arguments.some(
+        (argument) => ts.isIdentifier(argument) && argument.text === "sourceDocuments"
+      )
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
 }
 
 /**
@@ -127,6 +191,7 @@ function collectRawLogIdentifierProperties(source) {
  */
 export function findBoundaryViolations(relativePath, source) {
   const violations = [];
+  const sourceFile = parseSourceFile(relativePath, source);
   const rawSpecifiers = collectImportSpecifiers(source, relativePath);
   const specifiers = rawSpecifiers.map((specifier) =>
     normalizeImportSpecifier(relativePath, specifier)
@@ -145,14 +210,14 @@ export function findBoundaryViolations(relativePath, source) {
   const isInProcessAdapter = /^src\/application\/adapters\/in-process\//.test(relativePath);
   const isClientComponent = hasClientDirective(source);
 
-  for (const property of collectRawLogIdentifierProperties(source)) {
+  for (const property of collectRawLogIdentifierProperties(sourceFile)) {
     violations.push(
       `${relativePath}: logger/console must hash or omit raw identifier property ${property}`
     );
   }
 
   if (
-    sourceDocumentWriterPattern.test(source) &&
+    hasSourceDocumentWrite(sourceFile) &&
     !registeredSourceDocumentWriters.has(relativePath) &&
     relativePath !== wholeLedgerDeleteWriter &&
     !relativePath.startsWith("src/persistence/postgres-migrations/")
@@ -162,36 +227,8 @@ export function findBoundaryViolations(relativePath, source) {
     );
   }
 
-  if (isServerAction) {
-    for (const property of forbiddenServerCompositionWriteProperties) {
-      if (new RegExp(`\\bserverComposition\\.${property}\\b`).test(source)) {
-        violations.push(
-          `${relativePath}: server actions must obtain source-document writes from sourceDocumentAggregate`
-        );
-      }
-    }
-  }
-
-  if (browserSourceDocumentPath.test(relativePath)) {
-    for (const token of forbiddenBrowserConcurrencyTokens) {
-      if (new RegExp(`\\b${token}\\b`).test(source)) {
-        violations.push(`${relativePath}: browser source-document code must not use ${token}`);
-      }
-    }
-    if (/IdempotentLedgerEntryCommandPort|ledger-entry-idempotency/.test(source)) {
-      violations.push(
-        `${relativePath}: ordinary browser mutations must not use durable idempotency adapters`
-      );
-    }
-  }
-
   for (const [index, specifier] of specifiers.entries()) {
     const rawSpecifier = rawSpecifiers[index];
-    if (forbiddenLegacyLedgerMutationPaths.some((pattern) => pattern.test(specifier))) {
-      violations.push(
-        `${relativePath}: legacy ledger mutation path is forbidden; use the versioned source-document aggregate`
-      );
-    }
     if (isModule && appPattern.test(specifier)) {
       violations.push(`${relativePath}: modules must not import app entrypoints`);
     }

@@ -47,11 +47,9 @@ describe("createSourceDocumentFromCredential", () => {
     const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0];
     expect(callInput).toEqual({
       ledgerId: "ledger-1",
-      ledger: expect.objectContaining({ id: "ledger-1" }),
-      preparedImages: [preparedImage],
-      maxDecodedImageBytes: 3 * 1024 * 1024,
+      evidence: { kind: "inline", images: [preparedImage] },
     });
-    expect(callInput).not.toHaveProperty("images");
+    expect(callInput).not.toHaveProperty("ledger");
   });
 
   it("threads scheduleProcessing through to createAndQueueSourceDocument", async () => {
