@@ -1,8 +1,5 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import type {
-  LedgerProjectionEntryContract,
-  LedgerProjectionEntryFingerprint,
-} from "@/application/contracts";
+import type { LedgerProjectionEntryContract } from "@/application/contracts";
 export { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { isValidDecimal } from "@/lib/money/decimal";
@@ -15,27 +12,6 @@ export function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) 
     eq(sourceDocuments.id, sourceDocumentId),
     isNull(sourceDocuments.deletedAt)
   )!;
-}
-
-export function sameProjectionFingerprints(
-  left: readonly LedgerProjectionEntryFingerprint[],
-  right: readonly LedgerProjectionEntryFingerprint[]
-): boolean {
-  if (left.length !== right.length) return false;
-  const sort = (entries: readonly LedgerProjectionEntryFingerprint[]) =>
-    [...entries].sort((a, b) => a.id.localeCompare(b.id));
-  const expected = sort(left);
-  const actual = sort(right);
-  return expected.every((entry, index) => {
-    const current = actual[index];
-    return (
-      current != null &&
-      current.id === entry.id &&
-      current.amount === entry.amount &&
-      current.currency === entry.currency &&
-      current.sourceDocumentRevisionId === entry.sourceDocumentRevisionId
-    );
-  });
 }
 
 export function assertEntryValues(entries: readonly LedgerProjectionEntryContract[]): void {

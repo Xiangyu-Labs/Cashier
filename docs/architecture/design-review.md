@@ -1,90 +1,57 @@
-# 全项目设计复审（2026-09-05）
+# 全项目设计整治
 
-## 范围与结论
+## 范围与约束
 
-本复审以个人、小规模自托管为基准，覆盖生产代码、历史迁移、脚本、测试、CI 与部署。
-外部约束保持不变：用户功能、API v1、已有数据、Docker/Next.js 部署方式、认证授权、
-`ledgerId` 租户隔离、软删除、版本冲突和日志脱敏均保留。内部继续采用按职责组织的模块化
-单体，不引入微服务、通用仓储框架、新客户端状态库或新任务平台。
+以当前代码、调用关系和回归测试为依据，不以最近提交为审查范围。
+保持模块化单体、用户功能和 API v1 形状，不引入新的框架、任务平台或客户端状态库。
+保留授权、SQL 租户隔离、金额精度、不可变修订、锁顺序、版本 CAS、租约和 fencing。
 
-AI 解析策略单独延期。当前链路可能执行首次解析、复杂单据第二次解析、分歧仲裁、JSON
-修复和重复检测，调用次数与成本随输入和失败路径变化。本轮只记录这一事实，不修改提示词、
-模型、仲裁、重复检测或质量阈值，也不把 mock 通过视为准确率不退化证据。
+AI 提示词、模型、多次解析、仲裁、JSON 修复和重复检测阈值不变。
+本轮只减少重复证据读取，并停止重试确定性错误；mock 测试不是模型准确率证据。
 
-## 全量设计清单
+## 设计决定
 
-| 子系统           | 代码位置                                                              | 引入背景与原始假设                                     | 当前调用方与实际成本                                     | 决定                                                                                              | 验证证据                                       |
-| ---------------- | --------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 认证与会话       | `src/auth.ts`, `src/modules/auth/`, PostgreSQL account adapters       | OTP、密码和开发登录共享 JWT 会话；账户安全状态持久化   | NextAuth 和认证 actions；旧 sign-in 回调层无调用方       | 保留当前组合，删除旧回调 use case、barrel 和重复事件测试                                          | auth 单元/集成、架构检查                       |
-| 账本与分类       | `src/modules/ledger/`, `adapters/postgres/ledger-*`                   | 单账本所有权、分类和分录通过端口隔离 SQL               | Workspace、API v1、Server Actions；旧包装只转发同一端口  | 调用方直接使用注入端口；保留锁、CAS、租户条件和聚合写                                             | ledger/API/并发集成测试                        |
-| 单据与修订       | `src/modules/source-document/`, `adapters/postgres/source-document-*` | 修订历史、候选、重复审查和处理意图需要版本化聚合       | Stream、详情、API v1、处理器                             | 保留聚合和历史；删除旧删除/轻量查询包装，写端口使用真实方法名                                     | source-document 契约、并发和 API 测试          |
-| 汇率与换算       | `src/modules/currency/`, `exchange-rate*.ts`                          | 每日快照和持久化任务允许失败恢复                       | 换算、统计、后台维护；旧事件订阅会重复入队               | 汇率写事务唯一入队；提交后 best-effort drain；保留租约、退避和漏任务修复                          | 汇率定向集成 17/17                             |
-| 统计             | `src/modules/stats/`, `get-enhanced-stats.ts`                         | Details 与 Stats 共享持久化 accounting amount          | Stats tab 和 API                                         | 保留查询，删除仅作转出的 actions barrel                                                           | stats 与金额完整性集成测试                     |
-| Workspace/Stream | `src/modules/workspace/`, source-document stream hooks                | URL 是筛选状态来源，无限查询负责分页                   | 受保护账本页；旧实现重复构造参数、key 和页输入           | descriptor 唯一构造 query key、total key、签名和页输入                                            | Stream hook、URL、分页测试                     |
-| 应用契约与组合根 | `src/application/contracts/`, `server-composition-root.ts`            | 模块依赖抽象端口，运行时集中装配具体 adapter           | Server Actions、API、处理器                              | 保留向内依赖；业务价值而非固定层数决定是否保留 use case                                           | contract suite、architecture rules             |
-| 对象存储         | `adapters/local/stored-files.ts` 及子目录                             | 直传和 API 内联上传共享授权、确认、补偿                | Web 上传、API v1、文件读取；六级继承隐藏依赖             | 改为 `createStoredFileAdapter(dependencies)` 和职责函数组合                                       | 直传、内联、幂等、取消、补偿、跨账本测试       |
-| 前端翻译         | `src/i18n/use-feature-messages.ts`, `_active-shell.tsx`               | 非活动 tab 按需加载 namespace                          | settings/details/stats；旧模块缓存重复管理请求身份和监听 | 使用 QueryClient；无限 stale/gc，无自动重试、焦点或重连刷新                                       | preload+mount 单请求、显式重试、父级消息零请求 |
-| 设置草稿         | `AiSettings.tsx`, `BookkeepingSettings.tsx`                           | 保存后服务器返回账本是事实来源                         | Settings tab；旧 unknown 探测可掩盖异常响应              | 回调统一 `Promise<LedgerDto>`，不以提交值冒充保存结果                                             | Settings 单元和集成工作流                      |
-| 浏览器图片       | `src/lib/image-utils.ts`, input/upload hooks                          | 压缩后上传并即时预览                                   | 新建和 edit-retry；base64 往返产生内存复制               | 内部用 `File`/`Blob`；对象 URL 在删除、重置、替换、卸载释放；API v1 base64 不变                   | 图片、上传、URL 生命周期测试                   |
-| 数据读取         | `source-document-reads/`, ledger read adapters                        | 列表、详情、编辑种子需要不同边界                       | Stream、详情、edit-retry                                 | 新增 `getEvidence`，编辑种子不读分类或分录；列表继续剥离证据                                      | SQL 捕获：2 次 SELECT，无 `ledger_entries`     |
-| 数据库定义       | `src/persistence/schema/`, `src/persistence/index.ts`                 | PostgreSQL 是唯一事实源                                | 全部 PostgreSQL adapters                                 | 保留约束、软删除、租户键、修订和任务租约；无破坏性 schema 变更                                    | 类型检查、完整迁移、集成测试                   |
-| 历史迁移         | `postgres-migrations/0000..0034`, `meta/_journal.json`                | 自托管实例必须顺序升级并保留历史数据                   | entrypoint、integration schema、`db:migrate`             | 全部保留，审查升级行为而非按当前 schema 反删迁移                                                  | 每个 integration worker 执行完整 journal       |
-| i18n 生成物      | generate/validate scripts、message map、version                       | namespace 映射和版本由 messages 生成                   | i18n API 和客户端 preload                                | 生成脚本是源，生成 JSON/版本不手工重写                                                            | `validate:i18n`、脚本测试                      |
-| 脚本与维护       | `scripts/`                                                            | 迁移、bootstrap、存储清理、架构和测试环境              | npm、Docker、CI                                          | 保留有入口脚本；破坏性清理仍须先审查目标集合                                                      | Knip entry、脚本测试、静态门禁                 |
-| 测试             | `tests/unit/`, `tests/integration/`, helpers                          | 行为、契约、SQL 和并发分层验证                         | 本地和 CI                                                | 删除只证明旧包装互调的测试；OpenAI mock 只模拟当前 parser/arbitration；纯逻辑 Node，DOM happy-dom | unit、integration、coverage 门禁               |
-| CI               | `.github/workflows/ci-cd.yml`                                         | PR 快门禁，main/定时完整门禁，发布多架构镜像           | GitHub Actions                                           | 保留；dead-code 纳入完整源码与生产导出复核                                                        | `check:pr`, `check`                            |
-| 部署             | Dockerfile、Compose、Next config、entrypoint                          | 单应用容器连接外部 PostgreSQL/S3，启动时迁移/bootstrap | 自托管 Docker 与 Next standalone                         | 保留部署拓扑和 secret 文件持久化                                                                  | build check、CI Docker build                   |
-| PWA/框架入口     | service worker、instrumentation、manifests                            | 静态资源更新与 Node instrumentation                    | Next/Serwist 动态发现                                    | 保留入口；instrumentation 不再注册汇率全局订阅                                                    | instrumentation 测试、build check              |
+| 范围         | 问题与处理                                                                           | 回归边界                                   |
+| ------------ | ------------------------------------------------------------------------------------ | ------------------------------------------ |
+| 聚合写入     | 删除独立 projection 替换端口和重复更新端口；单据写入经过版本聚合                     | 锁顺序、CAS、回滚、历史修订、重复审查      |
+| 单据编辑     | 元数据编辑不重算 FX；金额/币种只重算受影响行，日期变化重算全部                       | 原始金额保留、过期版本、锁内主币种核验     |
+| 查询         | 删除重复锁内读取、单 SELECT 的事务和额外 hasImages 查询；批量操作使用集合与 SQL 过滤 | 租户隔离、排序、归档、分页                 |
+| 汇率任务     | 快照事务唯一入队；请求维护负责 drain，删除 detached drain 和运行时历史修复扫描       | 持久化队列、租约、重试、一次性迁移回填     |
+| 清理任务     | 领取 25 个、并发 4 个、租约 5 分钟；确认校验未过期 token                             | 过期 worker 不确认、同会话并发完成、补偿   |
+| 处理器       | 明确 atomic/residual 完成所有权；删除第二条恢复路径                                  | 原子完成不重复确认、批量恢复与 fencing     |
+| 存储         | 扁平职责函数组合；finalize 重放零 UPDATE；单 GET 返回内容和 metadata                 | 授权、上传校验、取消、重放、跨账本拒绝     |
+| 认证         | 删除只被测试使用的适配器、冷却 API 和 OTP 包装；安全状态读取失败不放行               | 密码/OTP、锁定策略、user→challenge 锁序    |
+| 应用契约     | 完整设置必填、更新仍 Partial；删除纯转发包装和废弃端口方法                           | 类型检查、契约测试、生产死代码检查         |
+| Stream       | 同 generation 刷新保留分页；候选和重复审查从详情导航进入                             | 刷新、返回、退出与焦点恢复                 |
+| 表单         | create/retry 判别契约；删除重复初始化状态；保留草稿版本基线                          | 过期提交、未保存离开确认、pending 阻止离开 |
+| 标签页       | 标签页自己管理查询状态；统计保留数据及对应期间                                       | loading/error、切换、刷新、滚动恢复        |
+| 脚本         | 共享环境解析；修复 prune 会话 SQL 和游标扫描；bootstrap 不记录邮箱                   | 环境优先级、空值、扫描、真实入口 mock      |
+| 测试基础设施 | after 回调失败必须失败测试；TRUNCATE 前排空，不重试掩盖死锁                          | 同步/异步错误、超时保留、假时钟            |
+| CI           | 只有确定的纯文档变更跳过集成，其余运行全部集成项目                                   | 空变更集、未知路径、文档路径               |
 
-历史迁移中特别保留：`0012` 修复跳过迁移，`0018` 回填 accounting projection，`0023`
-引入持久化汇率任务，`0033` 引入 state version，`0034` 移除旧状态触发器。它们描述升级路径，
-不是可按当前 schema 判定的死代码。
+## 迁移与验证
 
-## 本轮变更清单
+`0035_maintenance_work_lifecycle.sql` 增加对象清理租约字段并一次性回填历史 FX 任务。
+部署必须先运行正常迁移；不改写历史账目，不执行真实存储清理。
 
-| 批次     | 文件/符号                                                                | 处理决定                                                                              | 验证                                            |
-| -------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 检查盲区 | `knip.json`, `package.json`                                              | 源码统一 `src/**/*.{ts,tsx}!`，开启 `ignoreExportsUsedInFile`；生产阶段仅排除逐项标签 | 初始复现 15 文件/41 导出/8 类型；当前两阶段通过 |
-| 废弃路径 | auth/currency/ledger/source-document/stats 旧 barrel、创建/删除/转发流程 | 删除无生产调用方文件；测试改用当前 action 或 adapter                                  | Knip 无不可达文件                               |
-| 调用层   | ledger 五个转发 query/use case、source-document write 别名               | 调用方直接使用端口，保留真实编排                                                      | TypeScript、模块回归                            |
-| 存储     | `stored-files.ts` 及子目录                                               | 继承层改为函数组合，依赖显式注入                                                      | current-runtime storage 与上传集成              |
-| 前端状态 | feature messages、settings、revision hook、stream descriptor             | 移除重复缓存、unknown 兜底和纯转发 hook                                               | i18n/settings/stream 单元测试                   |
-| 数据路径 | evidence read、image utils/input/upload                                  | 窄读证据；File/Blob 上传和对象 URL 生命周期                                           | SQL 捕获、图片/上传测试                         |
-| 后台编排 | exchange-rate、jobs、orchestration、instrumentation                      | 事务唯一入队，移除事件 Set/Symbol 生命周期，显式依赖                                  | 汇率定向集成 17/17                              |
-| 测试治理 | Vitest projects、OpenAI mock、旧 wrapper tests                           | Node/happy-dom 分流；mock 仅保留当前协议                                              | 单元和集成门禁                                  |
+本轮最终 `npm run check` 已通过：360 个测试文件、2255 个测试全部通过，包含格式、
+架构、测试架构、完整及生产死代码、lint、类型、翻译、覆盖率和隔离生产构建。
+覆盖率：语句 80.28%、分支 71.93%、函数 82.54%、行 81.93%。首次完整运行暴露了
+测试 AI 故障 mock 使用生产随机退避导致的回调超时；测试重试等待改为零后重新跑完整门禁通过。
+生产重试策略与 2500ms 测试回调排空预算均未放宽。
+浏览器验证使用独立 PostgreSQL、虚构数据和禁止真实 AI 调用的配置；开发模式验证不等价于
+生产 service-worker 更新或真实 S3/AI 提供商验证。
 
-## 导出保留规则
+真实 Chromium 验证通过桌面 1440×900 与移动端 390×844 共 12 个场景：登录与布局、
+两页 Stream 刷新、重试草稿返回/提交/失败、统计错误保留旧数据、候选和重复审查关闭及焦点恢复。
+产出 16 张非空截图，无页面级水平溢出和未捕获页面错误。开发工具浮标在测试脚本中隐藏，
+避免遮挡移动导航；页面错误仍导致验证失败。截图未经过人工视觉审阅。
 
-全项目 Knip 阶段检查所有导出，包括测试直接调用的纯函数。生产阶段只排除两种逐符号标签：
+浏览器测试补出了单元测试未捕获的两个缺陷：导航保护必须在 hydration 前安装入口，
+否则路由器可能先卸载草稿；对话框退出必须跟随 Radix 生命周期，不能依赖 CSS 动画事件。
 
-- `@testOnly`：生产文件内的纯函数或 adapter factory，为低层行为/契约测试提供直接入口。
-  删除对应测试后，全项目阶段仍会报告该导出。
-- `@publicContract`：框架不能静态追踪或需要保持兼容的 API v1/Server Action 边界。
+## 保留与延期
 
-不得使用目录级忽略掩盖候选；每个 Knip 告警仍需确认动态入口、公开契约和测试价值。
-
-## 成本与性能记录
-
-- 证据读取有测量：固定两次 SELECT，捕获 SQL 不含 `ledger_entries`；返回 DTO 仅含
-  `id/text/files/status/createdAt`。
-- 翻译有测量：同一 QueryClient 中 preload 与 mounted consumer 共用一次请求；父级已有
-  完整 namespace 时为零请求。
-- 浏览器图片内部流程不再进行 base64 编解码，对象 URL 释放有生命周期测试。
-- 其余改动未建立改造前后 SQL、字节数或耗时对照，因此不宣称整体性能提升。
-
-## 独立后续任务
-
-AI 策略评测需要脱敏标注集、固定模型与参数、多次重复实验、准确率/成本/延迟指标和明确
-验收阈值。需分别测量第二次解析触发率、解析分歧率、仲裁调用率、JSON 修复率，以及重复
-检测的文本和视觉调用率。完成这些证据前，不调整现有提示词、策略或阈值。
-
-## 最终验证
-
-- `npm test`：251 个单元测试文件、1,600 个用例通过。
-- `npm run test:integration`：99 个集成测试文件、598 个用例通过；每个 worker 从完整
-  migration journal 建立隔离 schema。
-- `npm run check`：格式、架构、测试架构、Knip、ESLint、TypeScript、i18n、覆盖率和生产
-  构建全部通过。
-- 覆盖率全量运行：350 个文件、2,198 个用例；statements 79.17%、branches 70.19%、
-  functions 81.46%、lines 80.81%，未降低仓库阈值。
-- Next.js 生产构建通过；受保护路由客户端体积为 208,046 gzip bytes，低于 220,000 预算。
+事务、外部输入验证、幂等、锁、版本、持久化意图和补偿不是无依据的防御代码，继续保留。
+不以删除行数证明性能；本轮可确认的是减少查询、重复读取、无效重试和状态同步路径。
+AI 质量/成本策略、真实部署负载基准和生产 service-worker 升级流程不在本轮实现范围。

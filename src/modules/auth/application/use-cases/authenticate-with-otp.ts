@@ -14,7 +14,7 @@ import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
 import { assertRegistrationAllowed } from "./registration-policy";
 import type { OtpTokenPort, UserAccountPort } from "@/application/contracts";
-import type { RateLimitPort } from "../ports";
+import type { RateLimiterPort } from "@/application/contracts";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,7 +76,7 @@ export async function authenticateWithOTP(
   dependencies: {
     userAccounts: UserAccountPort;
     otpTokens: OtpTokenPort;
-    rateLimiter: RateLimitPort;
+    rateLimiter: RateLimiterPort;
   }
 ): Promise<AuthenticatedPrincipal> {
   const normalizedEmail = validateCredentials(params.email, params.otp);

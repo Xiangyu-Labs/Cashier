@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ModalStackRenderer } from "@/modules/workspace/ui/ModalStackRenderer";
 import { useModalStackStore } from "@/lib/store/modal-stack";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 vi.mock("@/modules/ledger/ui/LedgerEntryDetailWrapper", () => ({
   LedgerEntryDetailWrapper: ({
@@ -28,7 +29,10 @@ vi.mock("@/modules/source-document/ui/SourceDocumentDetailWrapper", () => ({
 }));
 
 describe("ModalStackRenderer", () => {
-  beforeEach(() => useModalStackStore.setState({ stack: [], canGoBack: false }));
+  beforeEach(() => {
+    useModalStackStore.setState({ stack: [], canGoBack: false });
+    useUnsavedChangesStore.setState({ dirtyKeys: new Set(), leaveGuards: new Map() });
+  });
 
   it("keeps the stack item mounted until its exit animation completes", async () => {
     render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
@@ -136,5 +140,24 @@ describe("ModalStackRenderer", () => {
     expect(fallback).toHaveFocus();
     fallback.remove();
     requestAnimationFrame.mockRestore();
+  });
+
+  it("consults the retry guard before exiting the top detail on back", () => {
+    const requestLeave = vi.fn();
+    useUnsavedChangesStore
+      .getState()
+      .registerLeaveGuard("source-document-retry-navigation", { requestLeave });
+    useModalStackStore
+      .getState()
+      .push({ type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" });
+    useModalStackStore
+      .getState()
+      .push({ type: "ledger-entry", id: "entry-2", ledgerId: "ledger-1" });
+    render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: "back" }));
+    expect(requestLeave).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByTestId("ledger-modal")[1]).toHaveAttribute("data-open", "true");
+    act(() => requestLeave.mock.calls[0]![0]());
+    expect(screen.getAllByTestId("ledger-modal")[1]).toHaveAttribute("data-open", "false");
   });
 });

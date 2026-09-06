@@ -18,16 +18,6 @@ const MAX_DRAIN_BATCHES = 20;
 const MAX_DRAIN_DURATION_MS = 30_000;
 export const MAX_CONCURRENT_LEDGERS = 2;
 
-let recalculateServicePromise: Promise<
-  typeof import("@/modules/ledger/application/services/recalculate-entries-converted-amount")
-> | null = null;
-
-function loadRecalculateService() {
-  recalculateServicePromise ??=
-    import("@/modules/ledger/application/services/recalculate-entries-converted-amount");
-  return recalculateServicePromise;
-}
-
 export interface ExchangeRateRecalculationDependencies {
   currencies: CurrencyPort;
   recalculateEntriesForDate: (
@@ -42,8 +32,7 @@ async function defaultRecalculateEntriesForDate(
   rateDate: string,
   currencies: CurrencyPort
 ): Promise<void> {
-  const { recalculateEntriesConvertedAmountForDate } = await loadRecalculateService();
-  return recalculateEntriesConvertedAmountForDate(ledgerId, rateDate, currencies);
+  await currencies.recalculateLedgerForDate(ledgerId, rateDate);
 }
 
 const defaultDependencies: ExchangeRateRecalculationDependencies = {

@@ -19,9 +19,7 @@ describe("useSourceDocumentInputDraft", () => {
       ],
       entryDate: "2026-08-19",
     };
-    const { result } = renderHook(() =>
-      useSourceDocumentInputDraft({ sourceDocumentId: "doc-1", initialData })
-    );
+    const { result } = renderHook(() => useSourceDocumentInputDraft({ initialData }));
 
     expect(result.current.isDirty).toBe(false);
 
@@ -62,5 +60,18 @@ describe("useSourceDocumentInputDraft", () => {
     unmount();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:unmount");
     expect(revokeObjectURL).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not reinitialize a mounted draft when a refreshed seed arrives", () => {
+    const { result, rerender } = renderHook(
+      ({ text }) => useSourceDocumentInputDraft({ initialData: { text } }),
+      { initialProps: { text: "Original" } }
+    );
+    act(() => result.current.setText("Unsaved"));
+    rerender({ text: "Refreshed" });
+    expect(result.current.text).toBe("Unsaved");
+    expect(result.current.isDirty).toBe(true);
+    act(() => result.current.setText("Original"));
+    expect(result.current.isDirty).toBe(false);
   });
 });

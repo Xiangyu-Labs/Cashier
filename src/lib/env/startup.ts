@@ -204,14 +204,20 @@ const startupEnvSchema = z.object(startupEnvFields);
 
 export type StartupEnv = z.infer<typeof startupEnvSchema>;
 
+const parsedFields = new Map<keyof StartupEnv, { raw: string | undefined; value: unknown }>();
+
 export function getStartupEnvValue<K extends keyof StartupEnv>(
   name: K,
   env: NodeJS.ProcessEnv = process.env
 ): StartupEnv[K] {
+  const raw = env[name];
+  const cached = parsedFields.get(name);
+  if (cached != null && cached.raw === raw) return cached.value as StartupEnv[K];
   const schema = startupEnvFields[name];
-  const result = schema.safeParse(env[name]);
+  const result = schema.safeParse(raw);
 
   if (result.success) {
+    parsedFields.set(name, { raw, value: result.data });
     return result.data as StartupEnv[K];
   }
 

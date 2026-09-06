@@ -2,10 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import type { AIContext } from "@/lib/tasks/types";
 import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
+import type { DuplicateDetectionInput } from "@/modules/source-document/application/duplicate-detection";
 
-const { runParsePipelineMock, toOutputMock } = vi.hoisted(() => ({
+const { runParsePipelineMock, toOutputMock, detectDuplicateMock } = vi.hoisted(() => ({
   runParsePipelineMock: vi.fn(),
   toOutputMock: vi.fn(),
+  detectDuplicateMock: vi.fn(),
+}));
+
+vi.mock("@/modules/source-document/application/duplicate-detection", () => ({
+  detectDuplicateBill: detectDuplicateMock,
 }));
 
 vi.mock("@/modules/source-document/application/parse-source-document/pipeline", () => ({
@@ -83,7 +89,10 @@ describe("CurrentRevisionProcessor", () => {
   it("deduplicates concurrent exchange-rate reads within one processing request", async () => {
     const { processor, getRates, activateRevision } = createProcessor(100);
 
-    await expect(processor.process(request)).resolves.toEqual({ outcome: "completed" });
+    await expect(processor.process(request)).resolves.toEqual({
+      outcome: "completed",
+      completion: "atomic",
+    });
 
     expect(getRates).toHaveBeenCalledTimes(1);
     expect(activateRevision.mock.calls[0]?.[0].entries).toHaveLength(100);
@@ -100,7 +109,10 @@ describe("CurrentRevisionProcessor", () => {
       .mockResolvedValueOnce(true);
     const { processor } = createProcessor(1, { getSettings, activateRevision });
 
-    await expect(processor.process(request)).resolves.toEqual({ outcome: "completed" });
+    await expect(processor.process(request)).resolves.toEqual({
+      outcome: "completed",
+      completion: "atomic",
+    });
 
     expect(runParsePipelineMock).toHaveBeenCalledTimes(1);
     expect(activateRevision).toHaveBeenCalledTimes(2);
@@ -124,5 +136,56 @@ describe("CurrentRevisionProcessor", () => {
     expect(activateRevision).toHaveBeenCalledTimes(3);
     expect(getSettings).toHaveBeenCalledTimes(3);
     expect(runParsePipelineMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads each evidence file once per process call across duplicate checks and currency retries", async () => {
+    const loadStoredFiles = vi.fn(async (_ledgerId: string, ids: string[]) =>
+      ids.map((id) => ({
+        url: id,
+        dataUrl: `data:image/png;base64,${id}`,
+        success: true as const,
+      }))
+    );
+    const loadContext = vi.fn().mockResolvedValue({
+      revision: { submittedText: "receipt", outcome: "processing" },
+      document: {
+        activeRevisionId: null,
+        pendingRevisionId: "revision-1",
+        type: "ai_parsed",
+        entryDate: "2026-09-01",
+        createdAt: new Date("2026-09-01"),
+      },
+      storedFileIds: ["current"],
+      categories: [],
+    });
+    detectDuplicateMock.mockImplementation(async (input: DuplicateDetectionInput) => {
+      const [first, second] = await Promise.all([
+        input.loadImages(["current", "candidate"]),
+        input.loadImages(["candidate", "current"]),
+      ]);
+      expect(first.map((item) => item.url)).toEqual(["current", "candidate"]);
+      expect(second.map((item) => item.url)).toEqual(["candidate", "current"]);
+      return null;
+    });
+    const activateRevision = vi
+      .fn()
+      .mockRejectedValueOnce(new LedgerMainCurrencyChangedError())
+      .mockResolvedValue(true);
+    const { processor } = createProcessor(1, {
+      loadContext,
+      loadStoredFiles,
+      activateRevision,
+      getSettings: vi
+        .fn()
+        .mockResolvedValue({ mainCurrency: "CNY", duplicateDetectionEnabled: true }),
+    });
+    await processor.process(request);
+    expect(detectDuplicateMock).toHaveBeenCalledTimes(2);
+    expect(loadStoredFiles.mock.calls).toEqual([
+      ["ledger-1", ["current"]],
+      ["ledger-1", ["candidate"]],
+    ]);
+    await processor.process(request);
+    expect(loadStoredFiles).toHaveBeenCalledTimes(4);
   });
 });

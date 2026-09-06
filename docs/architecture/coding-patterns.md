@@ -47,6 +47,11 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
   increments the target document's `stateVersion` by exactly one.
 - Use the narrowest read port that satisfies the caller. Edit-retry evidence uses `getEvidence`; it
   must not load ledger entries or category projections that the caller discards.
+- Loaded ledger settings are complete contracts; only update inputs are partial. Do not repeat
+  defaults at each consumer. Metadata-only edits preserve stored amounts and FX results; amount,
+  currency, and document-date changes recalculate only affected entries before acquiring locks.
+- Projection replacement is an internal helper of the versioned aggregate, not an independent
+  write port. Pass already locked documents and projections into transaction helpers.
 
 ## Frontend
 
@@ -62,6 +67,15 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
   canonical client entity store.
 - Derive render state directly, use functional state updates, and avoid module barrel imports in
   client entrypoints.
+- Tabs own their query loading and error states. Statistics retain the last successful data with
+  its corresponding period while refreshing. Same-generation Stream refreshes retain loaded pages.
+- Create and retry drafts use distinct typed inputs. Retry keeps the original draft version for
+  conflict detection and shares the unsaved-changes guard for close, history navigation, and pending
+  submission. Server refreshes must not silently advance that baseline.
+- The client instrumentation entrypoint installs the history traversal listener before hydration;
+  the active ledger hook registers and releases its handler. Registering a later `popstate` listener
+  cannot reliably stop the router from unmounting a dirty editor first. Dialog exit completion uses
+  Radix's close-focus lifecycle, not CSS animation events that may never fire.
 
 ### Design baseline
 

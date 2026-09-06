@@ -19,7 +19,6 @@ import { MAX_HEATMAP_DAYS } from "@/modules/stats/lib/heatmap-range";
 import { QUERY } from "@/lib/constants";
 import { DEFAULT_STATS_RANGE_TYPE } from "@/modules/workspace/initial-query-state";
 import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { usePathname } from "@/i18n/routing";
 import {
   readStatsSearchParams,
@@ -39,7 +38,6 @@ interface StatsTabProps {
   onDateDrilldown?: (date: string) => void;
   ledgerToday?: string;
   timeZone?: string;
-  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function StatsTab({
@@ -49,7 +47,6 @@ export function StatsTab({
   onDateDrilldown,
   ledgerToday,
   timeZone,
-  onQueryStateChange,
 }: StatsTabProps) {
   const locale = useLocale();
   const pathname = usePathname();
@@ -162,24 +159,6 @@ export function StatsTab({
         return "";
     }
   }, [contentEndDateStr, contentRangeType, contentStartDateStr, locale]);
-
-  useEffect(() => {
-    onQueryStateChange?.({
-      ledgerId: ledgerId ?? "",
-      tab: "stats",
-      queryKey: queryDescriptor.queryKey,
-      status: statsQuery.status,
-      isFetching: statsQuery.isFetching,
-      hasData: statsQuery.data !== undefined,
-    });
-  }, [
-    ledgerId,
-    onQueryStateChange,
-    queryDescriptor.queryKey,
-    statsQuery.isFetching,
-    statsQuery.data,
-    statsQuery.status,
-  ]);
 
   return (
     <StatsContentView

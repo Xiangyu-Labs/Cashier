@@ -388,6 +388,32 @@ describe("useSourceDocumentStream", () => {
     expect(reset).toHaveBeenCalledTimes(1);
   });
 
+  it("retains two freshly refetched pages in the same new generation", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    const reset = vi.spyOn(queryClient, "resetQueries");
+    const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await act(() => result.current.fetchNextPage());
+    listStreamPageActionMock.mockClear();
+    listStreamPageActionMock.mockImplementation((_ledgerId, params) =>
+      Promise.resolve({
+        items: [makeItem(params.cursor == null ? "doc-new-1" : "doc-new-2")],
+        nextCursor: params.cursor == null ? "new-cursor" : null,
+        generation: "2",
+      })
+    );
+    await act(() => result.current.refetch());
+    expect(listStreamPageActionMock).toHaveBeenCalledTimes(2);
+    expect(reset).not.toHaveBeenCalled();
+    expect(
+      queryClient.getQueryData<{ pages: unknown[] }>(result.current.queryKey)?.pages
+    ).toHaveLength(2);
+  });
+
   it("retries an invalid first page once before exposing stream data", async () => {
     listStreamPageActionMock
       .mockResolvedValueOnce({

@@ -5,6 +5,7 @@ import { getEnhancedStats } from "@/modules/stats/server-actions/get-enhanced-st
 import { StatsTab } from "@/modules/workspace/ui/StatsTab";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { getDefaultLedger } from "@/config/default-ledger";
 
 const { searchParamsState } = vi.hoisted(() => ({
   searchParamsState: { current: new URLSearchParams() },
@@ -25,7 +26,7 @@ vi.mock("@/modules/stats/server-actions/get-enhanced-stats", () => ({
 const ledgerFixture: Ledger = {
   id: "ledger-1",
   userId: "user-1",
-  settings: { mainCurrency: "CNY" },
+  settings: { ...getDefaultLedger().settings, mainCurrency: "CNY" },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
@@ -126,5 +127,23 @@ describe("StatsTab", () => {
     expect(screen.getByText("2026年8月")).toBeInTheDocument();
 
     resolveNext(statsFixture);
+  });
+
+  it("keeps the successful amount and original period after a new period fails", async () => {
+    vi.mocked(getEnhancedStats)
+      .mockResolvedValueOnce(statsFixture)
+      .mockRejectedValue(new Error("unavailable"));
+    const { queryClient, rerender } = renderStatsTab();
+    await screen.findByText("¥120.00");
+    searchParamsState.current = new URLSearchParams("statsRange=week");
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} ledgerToday="2026-08-24" />
+      </QueryClientProvider>
+    );
+    await screen.findByRole("alert");
+    expect(screen.getByText("¥120.00")).toBeInTheDocument();
+    expect(screen.getByText("2026年8月")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "周" })).toHaveAttribute("aria-pressed", "true");
   });
 });

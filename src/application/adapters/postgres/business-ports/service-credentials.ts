@@ -1,31 +1,13 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import type { AuthenticationPort, ServiceCredentialPort } from "@/application/contracts";
+import type { ServiceCredentialPort } from "@/application/contracts";
 import { db } from "@/lib/db";
-import { ConflictError, RateLimitUnavailableError, UnauthorizedError } from "@/lib/errors";
+import { ConflictError, RateLimitUnavailableError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
-import { ledgers, serviceCredentials, users } from "@/persistence";
+import { ledgers, serviceCredentials } from "@/persistence";
 import { createToken, computeHash } from "@/lib/security/service-credential-token";
 import { lockLedgerForUpdate } from "../transaction-locks";
 
 import { SERVICE_CREDENTIAL_LAST_USED_STALE_MS, toIso } from "./shared";
-
-/** @testOnly Injectable authentication adapter factory used by contract tests. */
-export function createPostgresAuthenticationAdapter(
-  resolveAuthenticatedUserId: () => Promise<string | null>
-): AuthenticationPort {
-  return {
-    async requireUser() {
-      const userId = await resolveAuthenticatedUserId();
-      if (userId == null || userId === "") throw new UnauthorizedError();
-      const user = await db.query.users.findFirst({
-        where: and(eq(users.id, userId), isNull(users.deletedAt)),
-        columns: { id: true },
-      });
-      if (user == null) throw new UnauthorizedError();
-      return user;
-    },
-  };
-}
 
 export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
   async authenticate(key) {

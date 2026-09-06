@@ -1,5 +1,4 @@
 import { ValidationError } from "@/lib/errors";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
@@ -128,14 +127,11 @@ export async function listStreamPage(
   });
 
   // Batch-load ledger entries for items that need them (completed cards etc.)
-  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds(
-    {
-      ledgerId,
-      sourceDocumentIds: page.items.map((item) => item.id),
-      includeDuplicatePending: true,
-    },
-    ports.ledgerReads
-  );
+  const entriesByDocId = await ports.ledgerReads.listEntriesBySourceDocumentIds({
+    ledgerId,
+    sourceDocumentIds: page.items.map((item) => item.id),
+    includeDuplicatePending: true,
+  });
 
   const items = page.items.map((item) => ({
     ...item,

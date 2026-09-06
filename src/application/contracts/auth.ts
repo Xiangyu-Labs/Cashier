@@ -4,10 +4,6 @@ import type {
   ServiceCredentialContract,
 } from "./ledger";
 import type { LedgerId } from "./source-documents";
-
-export interface AuthenticationPort {
-  requireUser(): Promise<{ id: string }>;
-}
 export interface ServiceCredentialPort {
   authenticate(key: string): Promise<AuthenticatedServiceCredentialContract | null>;
   list(ledgerId: LedgerId): Promise<readonly ServiceCredentialContract[]>;
@@ -77,8 +73,6 @@ export interface OtpTokenPort {
   release(input: { email: string; tokenHash: string }): Promise<boolean>;
   consume(input: { email: string; tokenHash: string }): Promise<boolean>;
   discard(input: { email: string; tokenHash: string }): Promise<boolean>;
-  delete(email: string): Promise<void>;
-  cleanupExpired(now: Date): Promise<number>;
 }
 
 interface UserAccountContract {

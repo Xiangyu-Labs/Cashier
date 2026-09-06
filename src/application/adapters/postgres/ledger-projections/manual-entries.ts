@@ -19,9 +19,9 @@ export async function replaceManualProjection(
   input: {
     ledgerId: string;
     sourceDocumentId: string;
-    previousRevisionId: string;
     revisionId: string;
     entries: readonly LedgerProjectionEntryContract[];
+    previousEntries: readonly (typeof ledgerEntries.$inferSelect)[];
   }
 ): Promise<void> {
   assertEntryValues(input.entries);
@@ -31,17 +31,7 @@ export async function replaceManualProjection(
     throw new ValidationError("A ledger entry may only appear once per manual revision");
   }
 
-  const previousEntries = await tx
-    .select()
-    .from(ledgerEntries)
-    .where(
-      and(
-        eq(ledgerEntries.ledgerId, input.ledgerId),
-        eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
-        eq(ledgerEntries.sourceDocumentRevisionId, input.previousRevisionId),
-        isNull(ledgerEntries.deletedAt)
-      )
-    );
+  const previousEntries = input.previousEntries;
   const previousById = new Map(previousEntries.map((entry) => [entry.id, entry]));
   const foreignRequestedIds = requestedIds.filter((id) => !previousById.has(id));
   if (foreignRequestedIds.length > 0) {
@@ -227,6 +217,8 @@ export async function replaceActiveProjectionInTransaction(
   tx: PostgresTransaction,
   input: {
     ledgerId: string;
+    document: typeof sourceDocuments.$inferSelect;
+    previousEntries: readonly (typeof ledgerEntries.$inferSelect)[];
     sourceDocumentId: string;
     expectedActiveRevisionId: string;
     expectedStateVersion: number;
@@ -236,17 +228,8 @@ export async function replaceActiveProjectionInTransaction(
     entryDate?: string;
   }
 ): Promise<string> {
-  const document = await tx
-    .select({
-      activeRevisionId: sourceDocuments.activeRevisionId,
-      pendingRevisionId: sourceDocuments.pendingRevisionId,
-      currentStatus: sourceDocuments.currentStatus,
-      stateVersion: sourceDocuments.stateVersion,
-    })
-    .from(sourceDocuments)
-    .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-    .then((rows) => rows[0]);
-  if (document == null || document.stateVersion !== input.expectedStateVersion) {
+  const document = input.document;
+  if (document.stateVersion !== input.expectedStateVersion) {
     throw new ConflictError("Source document changed during the edit");
   }
   if (!hasEditableActiveProjection(document)) {
@@ -282,9 +265,9 @@ export async function replaceActiveProjectionInTransaction(
     toRevisionId: revision.id,
   });
   await replaceManualProjection(tx, {
+    previousEntries: input.previousEntries,
     ledgerId: input.ledgerId,
     sourceDocumentId: input.sourceDocumentId,
-    previousRevisionId: input.expectedActiveRevisionId,
     revisionId: revision.id,
     entries: input.entries,
   });

@@ -20,6 +20,9 @@ describe("test environment", () => {
     expect(environment.NODE_ENV).toBe("test");
     expect((environment as Record<string, string | undefined>)["PATH"]).toBe("/bin");
     expect(() => validateStartupEnv(environment as NodeJS.ProcessEnv)).not.toThrow();
+    const validated = validateStartupEnv(environment as NodeJS.ProcessEnv);
+    expect(validated.AI_RETRY_DELAY_MS).toBe(0);
+    expect(validated.AI_MAX_RETRIES).toBe(3);
   });
 
   it("installs placeholders into an existing environment and permits explicit overrides", () => {

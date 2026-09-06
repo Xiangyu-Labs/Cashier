@@ -9,10 +9,13 @@ export interface ObjectStore {
     sha256: string,
     expiresInSeconds: number
   ): Promise<{ url: string; requiredHeaders: Readonly<Record<string, string>> }>;
-  head?(key: string): Promise<{
-    byteSize: number;
-    contentType: string;
-    metadata: Readonly<Record<string, string>>;
+  readObject?(key: string): Promise<{
+    bytes: Buffer;
+    metadata: {
+      byteSize: number;
+      contentType: string;
+      metadata: Readonly<Record<string, string>>;
+    };
   }>;
   copy?(sourceKey: string, destinationKey: string): Promise<void>;
 }

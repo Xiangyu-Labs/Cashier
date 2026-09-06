@@ -41,14 +41,14 @@ interface CreateSubmissionIdentity {
   uploadedPayload: SourceDocumentSubmitPayload | null;
 }
 
-interface UseSourceDocumentSubmitMutationsOptions {
+type UseSourceDocumentSubmitMutationsOptions = {
   ledgerId: string;
-  mode: "create" | "retry";
-  sourceDocumentId?: string;
-  sourceDocumentVersion?: number;
   messages: SourceDocumentInputControllerMessages;
   onSuccess?: (result: CreatedRecordResult) => void;
-}
+} & (
+  | { mode: "create"; sourceDocumentId?: never; sourceDocumentVersion?: never }
+  | { mode: "retry"; sourceDocumentId: string; sourceDocumentVersion: number }
+);
 
 function waitForPaint(): Promise<void> {
   return new Promise((resolve) => {

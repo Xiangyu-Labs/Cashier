@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AiSettings } from "@/modules/ledger/ui/settings/AiSettings";
 import { BookkeepingSettings } from "@/modules/ledger/ui/settings/BookkeepingSettings";
+import { getDefaultLedger } from "@/config/default-ledger";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -25,6 +26,7 @@ describe("explicit settings section drafts", () => {
       id: "ledger-1",
       userId: "user-1",
       settings: {
+        ...getDefaultLedger().settings,
         aiLanguage: "zh-CN",
         duplicateDetectionEnabled: true,
         aiCustomPrompt: "Draft prompt",
@@ -35,6 +37,7 @@ describe("explicit settings section drafts", () => {
     render(
       <AiSettings
         settings={{
+          ...getDefaultLedger().settings,
           aiLanguage: "zh-CN",
           duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
@@ -58,6 +61,7 @@ describe("explicit settings section drafts", () => {
     render(
       <AiSettings
         settings={{
+          ...getDefaultLedger().settings,
           aiLanguage: "zh-CN",
           duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
@@ -66,7 +70,7 @@ describe("explicit settings section drafts", () => {
           Promise.resolve({
             id: "ledger-1",
             userId: "user-1",
-            settings: {},
+            settings: { ...getDefaultLedger().settings },
             createdAt: "2026-01-01T00:00:00.000Z",
             updatedAt: "2026-01-01T00:00:00.000Z",
           })
@@ -87,6 +91,7 @@ describe("explicit settings section drafts", () => {
       id: "ledger-1",
       userId: "user-1",
       settings: {
+        ...getDefaultLedger().settings,
         mainCurrency: "CNY",
         currencies: ["CNY"],
         collapseEntriesDefault: true,
@@ -98,6 +103,7 @@ describe("explicit settings section drafts", () => {
     render(
       <BookkeepingSettings
         settings={{
+          ...getDefaultLedger().settings,
           mainCurrency: "CNY",
           currencies: ["CNY"],
           collapseEntriesDefault: false,

@@ -65,8 +65,6 @@ export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocu
   const streamPageKey = queryDescriptor.queryKey;
   const filterSignature = queryDescriptor.filterSignature;
 
-  // Track the generation from the first page for cross-page consistency
-  const generationRef = useRef<string | null>(null);
   const observedRestartFingerprintRef = useRef<string | null>(null);
 
   const streamQuery = useInfiniteQuery({
@@ -92,7 +90,6 @@ export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocu
   // A new filter window starts fresh: generation/restart state from the
   // previous window must not trigger a background restart for the new key.
   useEffect(() => {
-    generationRef.current = null;
     observedRestartFingerprintRef.current = null;
   }, [filterSignature, ledgerId]);
 
@@ -108,22 +105,14 @@ export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocu
     const firstGen = pages[0]?.generation;
     if (firstGen == null) return;
 
-    if (generationRef.current === null) {
-      generationRef.current = firstGen;
-      return;
-    }
-
     const generationChanged =
-      anyRestart ||
-      firstGen !== generationRef.current ||
-      (pages.length > 1 && pages.some((p) => p.generation !== firstGen));
+      anyRestart || (pages.length > 1 && pages.some((p) => p.generation !== firstGen));
     if (!generationChanged) return;
     const fingerprint = pages
       .map((page) => `${page.generation}:${page.restartRequired ? "1" : "0"}`)
       .join("|");
     if (observedRestartFingerprintRef.current === fingerprint) return;
     observedRestartFingerprintRef.current = fingerprint;
-    generationRef.current = firstGen;
     void queryClient.resetQueries({ queryKey: streamPageKey, exact: true });
   }, [data, queryClient, streamPageKey]);
 
@@ -155,6 +144,7 @@ export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocu
     queryStatus: streamQuery.status,
     queryIsFetching: streamQuery.isFetching,
     queryHasData: streamQuery.data !== undefined,
+    refetch: streamQuery.refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,

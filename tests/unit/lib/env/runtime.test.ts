@@ -22,6 +22,18 @@ afterEach(() => {
 });
 
 describe("runtimeEnv", () => {
+  it("revalidates changed raw values without caching failures", async () => {
+    const { getStartupEnvValue } = await import("@/lib/env/startup");
+    const env: NodeJS.ProcessEnv = { NODE_ENV: "test", AI_MAX_RETRIES: "5" };
+    expect(getStartupEnvValue("AI_MAX_RETRIES", env)).toBe(5);
+    expect(getStartupEnvValue("AI_MAX_RETRIES", env)).toBe(5);
+    env.AI_MAX_RETRIES = "invalid";
+    expect(() => getStartupEnvValue("AI_MAX_RETRIES", env)).toThrow("AI_MAX_RETRIES");
+    env.AI_MAX_RETRIES = "2";
+    expect(getStartupEnvValue("AI_MAX_RETRIES", env)).toBe(2);
+    delete env.AI_MAX_RETRIES;
+    expect(getStartupEnvValue("AI_MAX_RETRIES", env)).toBe(3);
+  });
   it("reads validated application env through typed accessors", async () => {
     process.env = {
       ...originalEnv,

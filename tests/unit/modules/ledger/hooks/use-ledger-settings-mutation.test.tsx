@@ -4,6 +4,7 @@ import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { useLedgerSettingsMutation } from "@/modules/ledger/hooks/useLedgerSettingsMutation";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { getDefaultLedger } from "@/config/default-ledger";
 
 const { updateLedgerSettingsAction, toastError } = vi.hoisted(() => ({
   updateLedgerSettingsAction: vi.fn(),
@@ -16,7 +17,7 @@ vi.mock("sonner", () => ({ toast: { error: toastError, success: vi.fn() } }));
 const ledger: Ledger = {
   id: "ledger-1",
   userId: "user-1",
-  settings: { currencies: ["USD", "CNY"] },
+  settings: { ...getDefaultLedger().settings, currencies: ["USD", "CNY"] },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };

@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "./SourceDocumentInput";
 import { useTranslations } from "next-intl";
@@ -23,26 +24,41 @@ interface SourceDocumentEditRetryDialogProps {
   onPendingChange?: (pending: boolean) => void;
 }
 
-export function SourceDocumentEditRetryDialog({
+export function SourceDocumentEditRetryDialog(props: SourceDocumentEditRetryDialogProps) {
+  return props.open ? (
+    <EditRetryDialogContent key={`${props.ledgerId}:${props.sourceDocument.id}`} {...props} />
+  ) : null;
+}
+
+function EditRetryDialogContent({
   ledgerId,
-  sourceDocument,
+  sourceDocument: sourceDocumentProp,
   open,
   onOpenChange,
   onSuccess,
   onPendingChange,
 }: SourceDocumentEditRetryDialogProps) {
   const t = useTranslations("SourceDocumentEditRetryDialog");
+  const [sourceDocument] = useState(sourceDocumentProp);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [discardOpen, setDiscardOpen] = useState(false);
-  const closeRequestedRef = useRef(false);
+  const { confirmOpen, setConfirmOpen, requestLeave, resolveLeave } = useUnsavedChangesGuard({
+    key: "source-document-retry-navigation",
+    hasUnsavedChanges: isDirty,
+    isBlocked: isSubmitting,
+  });
+  const handlePendingChange = useCallback(
+    (pending: boolean) => {
+      setIsSubmitting(pending);
+      onPendingChange?.(pending);
+    },
+    [onPendingChange]
+  );
 
   const requestClose = () => {
     if (isSubmitting) return;
     if (isDirty) {
-      closeRequestedRef.current = true;
-      setDiscardOpen(true);
+      requestLeave(null);
       return;
     }
     onOpenChange(false);
@@ -57,17 +73,13 @@ export function SourceDocumentEditRetryDialog({
     data: fullData,
     isLoading,
     isFetching,
-    error,
     refetch,
   } = useQuery({
     queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocument.id),
     queryFn: async () => {
       const result = await getSourceDocumentFullAction(ledgerId, sourceDocument.id);
       if (result == null) return null;
-      return {
-        text: result.text,
-        files: result.files,
-      };
+      return result;
     },
     enabled: open && needsFetch,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -105,11 +117,11 @@ export function SourceDocumentEditRetryDialog({
         </DialogHeader>
         <div
           className="relative min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
-          aria-busy={isLoading || isFetching || isInitializing}
+          aria-busy={isLoading || isFetching}
         >
           {isLoading ? (
             <EditRetryDialogSkeleton />
-          ) : error != null || !seedReady ? (
+          ) : !seedReady ? (
             <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
               <p className="text-sm text-destructive" role="alert">
                 {t("loadError")}
@@ -133,39 +145,31 @@ export function SourceDocumentEditRetryDialog({
                 sourceDocumentId={sourceDocument.id}
                 sourceDocumentVersion={sourceDocument.version}
                 initialData={initialData}
-                onPendingChange={(pending) => {
-                  setIsSubmitting(pending);
-                  onPendingChange?.(pending);
-                }}
-                onInitializingChange={setIsInitializing}
+                onPendingChange={handlePendingChange}
                 onDirtyChange={setIsDirty}
                 onSuccess={() => {
                   onOpenChange(false);
                   onSuccess?.();
                 }}
               />
-              {isInitializing ? (
-                <div className="absolute inset-0 z-10 bg-background" aria-hidden="true">
-                  <EditRetryDialogSkeleton />
-                </div>
-              ) : null}
             </div>
           )}
         </div>
       </DialogContent>
       <ConfirmDialog
-        open={discardOpen}
-        onOpenChange={setDiscardOpen}
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
         title={t("unsavedTitle")}
         description={t("unsavedDescription")}
         cancelLabel={t("continueEditing")}
         confirmLabel={t("discardAndLeave")}
         variant="destructive"
         onConfirm={() => {
+          if (isSubmitting) return false;
           setIsDirty(false);
-          setDiscardOpen(false);
-          if (closeRequestedRef.current) onOpenChange(false);
-          closeRequestedRef.current = false;
+          const leave = resolveLeave();
+          onOpenChange(false);
+          leave?.();
         }}
       />
     </Dialog>

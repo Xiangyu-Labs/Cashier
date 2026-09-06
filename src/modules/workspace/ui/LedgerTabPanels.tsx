@@ -13,7 +13,6 @@ import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contrac
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -44,7 +43,6 @@ interface LedgerTabPanelsProps {
   onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters: LedgerAdvancedFilters;
   effectiveTimeZone?: string | undefined;
-  onQueryStateChange: (report: TabQueryStateReport) => void;
   ledgerToday?: string | undefined;
   onCategoryDrilldown: (categoryId: string, startDate: string, endDate: string) => void;
   onDateDrilldown: (
@@ -69,7 +67,6 @@ export function LedgerTabPanels({
   onFiltersChange,
   advancedFilters,
   effectiveTimeZone,
-  onQueryStateChange,
   ledgerToday,
   onCategoryDrilldown,
   onDateDrilldown,
@@ -89,8 +86,7 @@ export function LedgerTabPanels({
               periodParams={periodParams}
               onFiltersChange={onFiltersChange}
               advancedFilters={advancedFilters}
-              collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
-              onQueryStateChange={onQueryStateChange}
+              collapseEntriesDefault={ledger.settings.collapseEntriesDefault}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
             />
           </DeferredFeatureMessages>
@@ -111,7 +107,6 @@ export function LedgerTabPanels({
               periodParams={periodParams}
               onFiltersChange={onFiltersChange}
               advancedFilters={advancedFilters}
-              onQueryStateChange={onQueryStateChange}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
             />
           </DeferredFeatureMessages>
@@ -127,7 +122,6 @@ export function LedgerTabPanels({
               onCategoryDrilldown={onCategoryDrilldown}
               onDateDrilldown={onDateDrilldown}
               {...(ledgerToday !== undefined ? { ledgerToday } : {})}
-              onQueryStateChange={onQueryStateChange}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
             />
           </DeferredFeatureMessages>
@@ -149,7 +143,6 @@ export function LedgerTabPanels({
               {...(hasPassword !== undefined ? { hasPassword } : {})}
               {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
               {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
-              onQueryStateChange={onQueryStateChange}
             />
           </DeferredFeatureMessages>
         </div>

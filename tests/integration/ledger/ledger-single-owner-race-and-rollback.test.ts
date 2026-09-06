@@ -45,6 +45,7 @@ describe("ledger single-owner race and rollback", () => {
         collapseEntriesDefault: false,
         aiCustomPrompt: "",
         duplicateDetectionEnabled: true,
+        timeZone: null,
       },
       categories: [
         {

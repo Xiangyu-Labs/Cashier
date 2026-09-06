@@ -214,12 +214,12 @@ const bookkeepingFields: readonly BookkeepingField[] = [
   "timeZone",
 ];
 
-function normalizeBookkeepingSettings(settings: Partial<Settings>): BookkeepingDraft {
+function normalizeBookkeepingSettings(settings: BookkeepingDraft): BookkeepingDraft {
   return {
-    mainCurrency: settings.mainCurrency ?? "CNY",
-    currencies: [...(settings.currencies ?? [])],
-    collapseEntriesDefault: settings.collapseEntriesDefault ?? false,
-    timeZone: settings.timeZone ?? null,
+    mainCurrency: settings.mainCurrency,
+    currencies: [...settings.currencies],
+    collapseEntriesDefault: settings.collapseEntriesDefault,
+    timeZone: settings.timeZone,
   };
 }
 

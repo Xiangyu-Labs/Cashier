@@ -22,7 +22,7 @@ export const postgresSettingsAdapter: SettingsPort = {
         timeZone: true,
       },
     });
-    return ledger == null ? null : mapLedgerSettings(ledger as typeof ledgers.$inferSelect);
+    return ledger == null ? null : mapLedgerSettings(ledger);
   },
 
   async getRequiredExchangeRateDates(ledgerId, userId) {
@@ -83,10 +83,8 @@ export const postgresSettingsAdapter: SettingsPort = {
       }
       const settings = { ...mapLedgerSettings(ledger), ...input.settings };
       const previousMainCurrency = ledger.mainCurrency;
-      const nextMainCurrency = (settings.mainCurrency ?? ledger.mainCurrency).trim().toUpperCase();
-      const nextCurrencies = (settings.currencies ?? ledger.preferredCurrencies).map((currency) =>
-        currency.trim().toUpperCase()
-      );
+      const nextMainCurrency = settings.mainCurrency.trim().toUpperCase();
+      const nextCurrencies = settings.currencies.map((currency) => currency.trim().toUpperCase());
       if (
         !SUPPORTED_CURRENCIES.includes(nextMainCurrency as (typeof SUPPORTED_CURRENCIES)[number])
       ) {

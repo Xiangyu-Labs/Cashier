@@ -11,20 +11,22 @@ import { useSourceDocumentInputDraft } from "./useSourceDocumentInputDraft";
 import { useSourceDocumentSubmitMutations } from "./useSourceDocumentSubmitMutations";
 import { MAX_FILES } from "@/lib/storage/upload-policy";
 
-interface UseSourceDocumentInputControllerOptions extends SourceDocumentInputProps {
+type UseSourceDocumentInputControllerOptions = SourceDocumentInputProps & {
   messages: SourceDocumentInputControllerMessages;
-}
+};
 
-export function useSourceDocumentInputController({
-  ledgerId,
-  onSuccess,
-  mode = "create",
-  sourceDocumentId,
-  sourceDocumentVersion,
-  initialData,
-  messages,
-  timeZone,
-}: UseSourceDocumentInputControllerOptions) {
+export function useSourceDocumentInputController(options: UseSourceDocumentInputControllerOptions) {
+  const { ledgerId, onSuccess, initialData, messages, timeZone } = options;
+  const [target] = useState(() =>
+    options.mode === "retry"
+      ? {
+          mode: options.mode,
+          sourceDocumentId: options.sourceDocumentId,
+          sourceDocumentVersion: options.sourceDocumentVersion,
+        }
+      : { mode: "create" as const }
+  );
+  const mode = target.mode;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileReservationsRef = useRef(0);
   const mountedRef = useRef(true);
@@ -32,20 +34,17 @@ export function useSourceDocumentInputController({
   const [pendingFileCount, setPendingFileCount] = useState(0);
   const imageCountRef = useRef(0);
   const draft = useSourceDocumentInputDraft({
-    ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
     ...(initialData != null ? { initialData } : {}),
     ...(timeZone != null ? { timeZone } : {}),
   });
   const submitMutations = useSourceDocumentSubmitMutations({
     ledgerId,
-    mode,
+    ...target,
     messages,
     onSuccess: (result) => {
       draft.resetDraft();
       onSuccess?.(result);
     },
-    ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
-    ...(sourceDocumentVersion != null ? { sourceDocumentVersion } : {}),
   });
   imageCountRef.current = draft.images.length;
   useEffect(() => {
@@ -147,10 +146,9 @@ export function useSourceDocumentInputController({
     images: draft.modalImages,
     selectedImageIndex: draft.selectedImageIndex,
     fileInputRef,
-    isPending: draft.isInitializing || pendingFileCount > 0 || submitMutations.isPending,
+    isPending: pendingFileCount > 0 || submitMutations.isPending,
     isPreparingImages: pendingFileCount > 0,
     isSubmitting: submitMutations.isPending,
-    isInitializing: draft.isInitializing,
     progress: submitMutations.progress,
     canCancelUpload: submitMutations.canCancel,
     canSubmit: draft.canSubmit && pendingFileCount === 0,

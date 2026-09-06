@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type SetStateAction } from "react";
 import type {
   EditableInputImage,
   SourceDocumentInputInitialData,
@@ -13,7 +13,6 @@ import {
 } from "./source-document-input-controller.core";
 
 interface UseSourceDocumentInputDraftOptions {
-  sourceDocumentId?: string;
   initialData?: SourceDocumentInputInitialData;
   timeZone?: string;
 }
@@ -40,7 +39,6 @@ function areImagesEqual(left: EditableInputImage[], right: EditableInputImage[])
 }
 
 export function useSourceDocumentInputDraft({
-  sourceDocumentId,
   initialData,
   timeZone,
 }: UseSourceDocumentInputDraftOptions) {
@@ -58,9 +56,6 @@ export function useSourceDocumentInputDraft({
   }));
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const imagesRef = useRef(images);
-  const [isInitializing, startTransition] = useTransition();
-  const hasInitializedRef = useRef(false);
-  const previousSourceDocumentIdRef = useRef<string | undefined>(sourceDocumentId);
   const resetDraft = () => {
     const nextEntryDate = resolveInitialEntryDate(undefined, timeZone);
     setText("");
@@ -91,32 +86,6 @@ export function useSourceDocumentInputDraft({
     []
   );
 
-  useEffect(() => {
-    if (previousSourceDocumentIdRef.current !== sourceDocumentId) {
-      hasInitializedRef.current = false;
-      previousSourceDocumentIdRef.current = sourceDocumentId;
-    }
-  }, [sourceDocumentId]);
-
-  useEffect(() => {
-    if (initialData == null || hasInitializedRef.current) return;
-
-    hasInitializedRef.current = true;
-    startTransition(() => {
-      const nextText = initialData.text ?? "";
-      const nextImages = toEditableImages(initialData.images);
-      const nextEntryDate = resolveInitialEntryDate(initialData.entryDate, timeZone);
-      setInitialDraft({
-        text: nextText,
-        images: nextImages,
-        entryDate: nextEntryDate.getTime(),
-      });
-      setText(nextText);
-      replaceImages(nextImages);
-      setEntryDate(nextEntryDate);
-    });
-  }, [initialData, startTransition, timeZone]);
-
   return {
     text,
     setText,
@@ -137,7 +106,6 @@ export function useSourceDocumentInputDraft({
       text !== initialDraft.text ||
       !areImagesEqual(images, initialDraft.images) ||
       entryDate.getTime() !== initialDraft.entryDate,
-    isInitializing,
     resetDraft,
   };
 }

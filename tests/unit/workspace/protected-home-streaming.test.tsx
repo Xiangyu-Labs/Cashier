@@ -1,4 +1,5 @@
 import React from "react";
+import { getDefaultLedger } from "@/config/default-ledger";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // --------------------------------------------------------------------------
@@ -238,7 +239,7 @@ describe("protected home streaming boundary", () => {
     const ledgerDto = {
       id: "ledger-1",
       userId: "user-1",
-      settings: { mainCurrency: "USD" },
+      settings: { ...getDefaultLedger("en").settings, mainCurrency: "USD" },
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     };
@@ -256,7 +257,7 @@ describe("protected home streaming boundary", () => {
     const ledgerDto = {
       id: "ledger-1",
       userId: "user-1",
-      settings: {},
+      settings: getDefaultLedger("zh").settings,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     };

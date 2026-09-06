@@ -3,6 +3,8 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import pg from "pg";
+import { pathToFileURL } from "node:url";
+import { loadLocalEnvironment } from "./load-local-environment.mjs";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{8,128}$/;
@@ -16,7 +18,7 @@ function requiredDatabaseUrl() {
   return value;
 }
 
-async function main() {
+export async function main() {
   const client = new pg.Client({ connectionString: requiredDatabaseUrl() });
   await client.connect();
   try {
@@ -49,7 +51,7 @@ async function main() {
       [crypto.randomUUID(), email, now, passwordHash]
     );
     await client.query("COMMIT");
-    console.log(`[bootstrap] Initial user created: ${email}`);
+    console.log("[bootstrap] Initial user created");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error;
@@ -58,7 +60,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(`[bootstrap] ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  loadLocalEnvironment();
+  main().catch((error) => {
+    console.error(`[bootstrap] ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
+}

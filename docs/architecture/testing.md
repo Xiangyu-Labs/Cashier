@@ -55,6 +55,16 @@ Integration files are serialized within a worker because their setup truncates t
 between tests. Do not use `test.concurrent` or `describe.concurrent` in database-backed tests
 without introducing test-case-level isolation.
 
+The `after()` mock runs callbacks immediately and tracks their returned promises. Teardown drains
+all tracked work before truncation or pool shutdown; synchronous and asynchronous callback failures
+fail the test. The bounded drain uses real timers even in fake-timer tests and retains timed-out
+work, so unfinished callbacks cannot silently cross into a fresh database fixture. Do not add
+deadlock retries around truncation to hide unfinished work.
+
+The PR selector skips integration only when every changed path is documentation (`docs/**`, root
+`README*.md`, `CONTRIBUTING.md`, or `AGENTS.md`). Empty or unknown change sets run both integration
+projects.
+
 ## Duplicate and compatibility coverage
 
 Verify a behavior completely once at the lowest suitable layer. Keep upper-layer tests for the

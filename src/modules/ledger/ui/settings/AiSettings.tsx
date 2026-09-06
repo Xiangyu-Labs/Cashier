@@ -155,11 +155,11 @@ interface AiDraft {
 type AiField = keyof AiDraft;
 const aiFields: readonly AiField[] = ["aiLanguage", "duplicateDetectionEnabled", "aiCustomPrompt"];
 
-function normalizeAiSettings(settings: Partial<Settings>): AiDraft {
+function normalizeAiSettings(settings: AiDraft): AiDraft {
   return {
-    aiLanguage: settings.aiLanguage ?? "zh-CN",
-    duplicateDetectionEnabled: settings.duplicateDetectionEnabled ?? true,
-    aiCustomPrompt: settings.aiCustomPrompt ?? "",
+    aiLanguage: settings.aiLanguage,
+    duplicateDetectionEnabled: settings.duplicateDetectionEnabled,
+    aiCustomPrompt: settings.aiCustomPrompt,
   };
 }
 

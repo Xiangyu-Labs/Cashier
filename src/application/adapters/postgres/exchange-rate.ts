@@ -15,7 +15,6 @@ import { dateStringSchema } from "@/lib/validation";
 import type { FxRateBook } from "@/modules/currency/application/ports";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
-import { drainDueExchangeRateRecalculations } from "@/application/orchestration/exchange-rate-ledger-recalculation";
 
 // Current exchange-rate cache and provider adapter.
 
@@ -193,7 +192,7 @@ export class ExchangeRateService {
       }
       const data = parseProviderRates(payload, targetDateStr);
 
-      const stored = await db.transaction(async (tx) => {
+      return await db.transaction(async (tx) => {
         const insertedRows = await tx
           .insert(currencyRates)
           .values({ date: targetDateStr, base: data.base, rates: data.rates })
@@ -208,8 +207,9 @@ export class ExchangeRateService {
             throw new AppError("Stored exchange rates disappeared", "EXCHANGE_RATES_UNAVAILABLE");
           }
           return {
-            inserted: false,
-            rates: { base: persisted.base, date: persisted.date, rates: persisted.rates },
+            base: persisted.base,
+            date: persisted.date,
+            rates: persisted.rates,
           };
         }
 
@@ -232,16 +232,8 @@ export class ExchangeRateService {
           WHERE ${ledgers.deletedAt} IS NULL
           ON CONFLICT (rate_date, ledger_id) DO NOTHING
         `);
-        return { inserted: true, rates: data };
+        return data;
       });
-
-      if (stored.inserted) {
-        // The transaction above is the sole enqueue point. Draining is
-        // best-effort and never delays the rate lookup response.
-        void drainDueExchangeRateRecalculations().catch(() => undefined);
-      }
-
-      return stored.rates;
     } finally {
       // Remove from pending map once finished (success or failure)
       this.pendingRequests.delete(targetDateStr);

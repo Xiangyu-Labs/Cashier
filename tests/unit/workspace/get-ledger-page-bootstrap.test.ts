@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultLedger } from "@/config/default-ledger";
 import { getLedgerPageBootstrap as getLedgerPageBootstrapUseCase } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
 import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import type { CategoryPort } from "@/application/contracts";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import type { StatsReadPort } from "@/modules/stats/application/ports";
-import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+import type {
+  SourceDocumentReadPort,
+  LedgerChangeReadPort,
+} from "@/modules/source-document/application/ports";
 import type { ServiceCredentialPort } from "@/application/contracts";
 
 const bootstrapDependencies = {
@@ -29,12 +33,9 @@ const bootstrapDependencies = {
     ledgerReads: { listEntriesBySourceDocumentIds: vi.fn() },
     changes: { getVersion: vi.fn(), getRefreshBaseline: vi.fn() },
   } satisfies {
-    documents: Pick<SourceDocumentQueryPorts["documents"], "list" | "calculateCompletedTotal">;
+    documents: Pick<SourceDocumentReadPort, "list" | "calculateCompletedTotal">;
     ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-    changes: Pick<
-      NonNullable<SourceDocumentQueryPorts["changes"]>,
-      "getVersion" | "getRefreshBaseline"
-    >;
+    changes: Pick<LedgerChangeReadPort, "getVersion" | "getRefreshBaseline">;
   },
   credentials: { list: vi.fn() } satisfies Pick<ServiceCredentialPort, "list">,
 };
@@ -82,7 +83,7 @@ function createPreAuthorizedLedgerDto() {
   return {
     id: "ledger-1",
     userId: "user-1",
-    settings: { mainCurrency: "USD" },
+    settings: { ...getDefaultLedger("en").settings, mainCurrency: "USD" },
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   };
@@ -464,10 +465,10 @@ describe("getLedgerPageBootstrap", () => {
     }
   });
 
-  it("uses CNY default currency when ledger metadata has no mainCurrency", async () => {
+  it("accepts a ledger initialized with the Chinese defaults", async () => {
     const dto = {
       ...createPreAuthorizedLedgerDto(),
-      settings: {},
+      settings: getDefaultLedger("zh").settings,
     };
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",

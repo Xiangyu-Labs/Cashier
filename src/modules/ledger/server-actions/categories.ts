@@ -15,11 +15,9 @@ import {
   type UpdateEntryCategoryInput,
   type SaveEntryCategoriesInput,
 } from "@/modules/ledger/contract-schemas";
-import { getUncategorizedEntryCount } from "@/modules/ledger/application/queries/get-uncategorized-entry-count";
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { createEntryCategory } from "@/modules/ledger/application/use-cases/create-entry-category";
 import { deleteEntryCategory } from "@/modules/ledger/application/use-cases/delete-entry-category";
-import { reorderEntryCategories } from "@/modules/ledger/application/use-cases/reorder-entry-categories";
 import { updateEntryCategory } from "@/modules/ledger/application/use-cases/update-entry-category";
 import { serverComposition } from "@/application/server-composition-root";
 import { saveEntryCategories } from "@/modules/ledger/application/use-cases/save-entry-categories";
@@ -69,7 +67,7 @@ export const deleteEntryCategoryAction = withLedgerAccess(
 export const reorderEntryCategoriesAction = withLedgerAccess(
   async (ledgerId: string, categoryIds: string[]): Promise<ReorderEntryCategoriesResultDto> => {
     const validatedIds = parseReorderEntryCategoriesInput(categoryIds);
-    await reorderEntryCategories(ledgerId, validatedIds, serverComposition.categories);
+    await serverComposition.categories.reorder(ledgerId, validatedIds);
     return {
       categoryIds: validatedIds,
       reorderedCount: validatedIds.length,
@@ -108,5 +106,5 @@ export const getEntryCategoriesAction = withLedgerAccess((ledgerId: string) =>
 /** @publicContract Retained server-action boundary for uncategorized counts. */
 export const getUncategorizedCountAction = withLedgerAccess(
   async (ledgerId: string): Promise<number> =>
-    getUncategorizedEntryCount(ledgerId, serverComposition.categories)
+    serverComposition.categories.countUncategorized(ledgerId)
 );

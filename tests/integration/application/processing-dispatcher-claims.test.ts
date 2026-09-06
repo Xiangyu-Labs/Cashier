@@ -14,6 +14,7 @@ import {
   duplicateReviews,
   processingAttempts,
   processingOutbox,
+  currencyRates,
 } from "@/persistence";
 
 vi.mock("@/lib/tasks/ai-context", () => ({
@@ -89,14 +90,14 @@ describe("PostgresProcessingIntentAdapter", () => {
         sourceDocumentId: intent.sourceDocumentId,
         revisionId: intent.revisionId,
       })
-    ).resolves.toEqual({ outcome: "completed" });
+    ).resolves.toEqual({ outcome: "completed", completion: "atomic" });
     await expect(
       processor.process({
         ledgerId,
         sourceDocumentId: intent.sourceDocumentId,
         revisionId: intent.revisionId,
       })
-    ).resolves.toEqual({ outcome: "completed" });
+    ).resolves.toEqual({ outcome: "completed", completion: "residual" });
 
     expect(generate).toHaveBeenCalledTimes(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
@@ -245,6 +246,11 @@ describe("PostgresProcessingIntentAdapter", () => {
 
   it("retried revision uses current ledger settings", async () => {
     const db = getTestDb();
+    await db.insert(currencyRates).values({
+      date: new Date().toISOString().slice(0, 10),
+      base: "EUR",
+      rates: { EUR: 1, CNY: 8, USD: 1.2 },
+    });
     const { ledgerId, intent } = await pendingIntent(
       "2026-07-15T00:00:00.000Z",
       crypto.randomUUID()

@@ -38,6 +38,4 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
       : discardDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion),
   deleteDocuments: deleteSourceDocumentAtomically,
   completeProcessing: (input) => postgresLedgerProjectionAdapter.activateRevision(input),
-  applyMainCurrencyChange: (input) => postgresLedgerProjectionAdapter.recalculate(input),
-  recalculateConversions: (input) => postgresLedgerProjectionAdapter.recalculate(input),
 };

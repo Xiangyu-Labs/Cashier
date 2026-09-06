@@ -208,9 +208,9 @@ export async function processImage(
     // (the original bytes have been decoded by sharp and are trusted, but we
     // always store the processed version for consistency)
     if (outputBuffer.length > MAX_OUTPUT_SIZE) {
-      if (retryCount >= MAX_RETRIES) {
+      if (retryCount >= MAX_RETRIES || outputMimeType === "image/png" || opts.quality <= 60) {
         throw new ValidationError(
-          `Unable to compress image within size limit after ${MAX_RETRIES} attempts`
+          "Unable to compress image within size limit using the permitted encoding settings"
         );
       }
       logger.warn(

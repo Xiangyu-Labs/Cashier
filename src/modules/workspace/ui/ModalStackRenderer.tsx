@@ -30,7 +30,9 @@ export function ModalStackRenderer({
   };
   const requestBack = () => {
     const guardKey = ledgerDetailLeaveGuardKey(item.type, item.ledgerId, item.id);
-    const guard = useUnsavedChangesStore.getState().getLeaveGuard(guardKey);
+    const guards = useUnsavedChangesStore.getState();
+    const guard =
+      guards.getLeaveGuard("source-document-retry-navigation") ?? guards.getLeaveGuard(guardKey);
     if (guard == null) startExit();
     else guard.requestLeave(startExit);
   };

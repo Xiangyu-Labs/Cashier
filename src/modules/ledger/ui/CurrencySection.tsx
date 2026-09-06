@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 
 interface CurrencySectionProps {
-  settings: Settings;
+  settings: Pick<Settings, "currencies" | "mainCurrency">;
   onUpdateSettings: (data: Partial<Settings>) => void;
   disabled?: boolean;
 }
@@ -127,8 +127,8 @@ export function CurrencySection({
   disabled = false,
 }: CurrencySectionProps) {
   const t = useTranslations("Settings");
-  const settingsCurrencies = settings.currencies ?? [];
-  const mainCurrency = settings.mainCurrency ?? "CNY";
+  const settingsCurrencies = settings.currencies;
+  const mainCurrency = settings.mainCurrency;
   const [pendingMainCurrency, setPendingMainCurrency] = useState<string | null>(null);
 
   return (

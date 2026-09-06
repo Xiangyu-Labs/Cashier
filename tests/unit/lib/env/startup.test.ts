@@ -66,8 +66,8 @@ describe("validateStartupEnv", () => {
     ).toThrow(/AI_MAX_RETRIES/);
   });
 
-  it("applies defaults for optional startup-validated env vars", () => {
-    const result = validateStartupEnv(baseEnv);
+  it("applies production defaults independently of test-environment overrides", () => {
+    const result = validateStartupEnv({ ...baseEnv, NODE_ENV: "production" });
 
     expect(result.AI_MODEL).toBe("gpt-4o");
     expect(result.AI_MAX_RETRIES).toBe(3);

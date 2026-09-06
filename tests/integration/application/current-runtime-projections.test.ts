@@ -4,6 +4,7 @@ import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { postgresSourceDocumentAggregateAdapter } from "@/application/adapters/postgres/source-document-aggregate";
 
 const projectionEntry = {
   categoryId: null,
@@ -31,20 +32,27 @@ describe("current-runtime target adapters", () => {
     });
     expect(originalEntry).toBeDefined();
 
-    const replacementRevisionId = await postgresLedgerProjectionAdapter.replaceManual({
+    const edited = await postgresSourceDocumentAggregateAdapter.saveChanges({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
-      title: "Edited",
-      entries: [{ ...projectionEntry, amount: "18.00" }],
+      expectedVersion: 1,
+      sourceDocument: { title: "Edited" },
+      entries: [{ ledgerEntryId: originalEntry!.id, data: { amount: "18.00" } }],
     });
+    expect(edited.ok).toBe(true);
+    const replacementRevisionId = (await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    }))!.activeRevisionId!;
     const replacementEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentRevisionId, replacementRevisionId),
     });
     expect(replacementEntry?.amount).toBe("18.000");
+    expect(replacementEntry?.id).toBe(originalEntry!.id);
     expect(
-      (await db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, originalEntry!.id) }))
-        ?.deletedAt
-    ).not.toBeNull();
+      await db.query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.sourceDocumentRevisionId, created.revisionId),
+      })
+    ).toMatchObject({ amount: "12.500", deletedAt: expect.any(Date) });
 
     const beforeRecalculation = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),

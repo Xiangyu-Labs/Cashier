@@ -93,26 +93,22 @@ export function createExecuteSingleProcessingIntent(
         signal: controller.signal,
         lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
       });
-      await adapter.complete({
-        intentId: claim.intent.id,
-        claimToken: claim.claimToken,
-        outcome: result.outcome,
-      });
+      if (result.completion === "residual") {
+        await adapter.complete({
+          intentId: claim.intent.id,
+          claimToken: claim.claimToken,
+          outcome: result.outcome,
+        });
+      }
     } catch (error) {
       if (error instanceof ProcessingCancelledError || controller.signal.aborted) return true;
-      const preserved = await dependencies.preserveTerminalOutcome({
+      await dependencies.preserveTerminalOutcome({
         ledgerId: claim.ledgerId,
         sourceDocumentId: claim.intent.sourceDocumentId,
         revisionId: claim.intent.revisionId,
         outcome: "failed",
         failureCode: toFailureCode(error),
         lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
-      });
-      if (!preserved) return true;
-      await adapter.complete({
-        intentId: claim.intent.id,
-        claimToken: claim.claimToken,
-        outcome: "failed",
       });
     } finally {
       stopped = true;

@@ -1,13 +1,13 @@
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import type { SplitSourceDocumentInput } from "../../contracts";
-import type { SourceDocumentReadPort, SourceDocumentUpdatePort } from "../ports";
+import type { SourceDocumentReadPort, SourceDocumentAggregateWritePort } from "../ports";
 
 export async function splitSourceDocument(
   ledgerId: string,
   input: SplitSourceDocumentInput,
   ports: {
     documents: Pick<SourceDocumentReadPort, "get">;
-    updates: Pick<SourceDocumentUpdatePort, "split">;
+    updates: Pick<SourceDocumentAggregateWritePort, "splitEntries">;
   }
 ) {
   const sourceDocument = await ports.documents.get(ledgerId, input.sourceDocumentId);
@@ -15,5 +15,5 @@ export async function splitSourceDocument(
   if (!sourceDocument.supportedActions.includes("split_entries")) {
     throw new ConflictError("Source document cannot be split in its current state");
   }
-  return ports.updates.split({ ledgerId, ...input });
+  return ports.updates.splitEntries({ ledgerId, ...input });
 }

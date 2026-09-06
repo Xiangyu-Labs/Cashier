@@ -1,7 +1,6 @@
-"use server";
+import "server-only";
 import type { OtpTokenContract, OtpTokenPort } from "@/application/contracts";
 import { logger } from "@/lib/logger";
-import { logIdentifier } from "@/lib/security/log-identifier";
 import { getLockoutExpiration, getMaxAttempts } from "./otp";
 import { verificationChallenges } from "./verification-challenge";
 
@@ -75,22 +74,4 @@ export async function releaseOTPClaim(claim: ClaimedOTP, tokens: OtpTokenPort): 
 
 export async function consumeOTPClaim(claim: ClaimedOTP, tokens: OtpTokenPort): Promise<boolean> {
   return tokens.consume(claim);
-}
-
-/** @testOnly Exported for lockout policy integration tests. */
-export async function isAccountLocked(
-  email: string,
-  tokens: OtpTokenPort
-): Promise<{ locked: boolean; lockedUntil?: Date }> {
-  try {
-    const record = await findOTPRecord(email, tokens);
-    if (record?.lockedUntil == null || record.lockedUntil <= new Date()) return { locked: false };
-    return { locked: true, lockedUntil: record.lockedUntil };
-  } catch (error) {
-    logger.error(
-      { error, subject: logIdentifier("email", email) },
-      "Failed to check account lock status"
-    );
-    return { locked: false };
-  }
 }

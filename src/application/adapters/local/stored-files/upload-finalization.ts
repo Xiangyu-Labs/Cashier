@@ -17,21 +17,22 @@ import {
   safeTokenMatches,
   temporaryKey,
 } from "./shared";
-import { createProxyUploadOperations } from "./proxy-uploads";
 
 export function createUploadFinalizationOperations(
   dependencies: ResolvedStoredFileAdapterDependencies
 ) {
   const { storage: objectStorage, now: clock } = dependencies;
-  const proxyUploads = createProxyUploadOperations(dependencies);
 
   async function finalizeDirectUpload(
-    input: UploadFinalizationContract
+    input: UploadFinalizationContract,
+    loadedSession?: typeof uploadSessions.$inferSelect
   ): Promise<readonly StoredFileContract[]> {
     const storage = requireDirectStorage(objectStorage);
-    let session = await db.query.uploadSessions.findFirst({
-      where: eq(uploadSessions.id, input.uploadSessionId),
-    });
+    let session =
+      loadedSession ??
+      (await db.query.uploadSessions.findFirst({
+        where: eq(uploadSessions.id, input.uploadSessionId),
+      }));
     if (
       session == null ||
       session.transport !== "direct" ||
@@ -97,7 +98,7 @@ export function createUploadFinalizationOperations(
         })) ?? session;
     }
     if (session.status === "finalized") {
-      return finalizeUpload(input);
+      return finalizeSession(input, session);
     }
     if (session.status !== "finalizing") {
       throw new ConflictError("Upload session cannot be finalized");
@@ -112,7 +113,7 @@ export function createUploadFinalizationOperations(
       const uploaded = await Promise.all(
         targets.map(async (target) => {
           const key = temporaryKey(session.ledgerId, session.id, target.targetId);
-          const [metadata, bytes] = await Promise.all([storage.head(key), storage.download(key)]);
+          const { metadata, bytes } = await storage.readObject(key);
           return { metadata, bytes, checksum: checksum(bytes) };
         })
       );
@@ -238,7 +239,7 @@ export function createUploadFinalizationOperations(
       })
     );
 
-    const files = await finalizeUpload(input);
+    const files = await finalizeSession(input, session);
     const cleanupResults = await Promise.all(
       targets.map((target) =>
         storage.delete(temporaryKey(session.ledgerId, session.id, target.targetId))
@@ -271,8 +272,9 @@ export function createUploadFinalizationOperations(
     const session = await db.query.uploadSessions.findFirst({
       where: eq(uploadSessions.id, input.uploadSessionId),
     });
-    if (session?.transport === "direct") return finalizeDirectUpload(input);
-    return finalizeUpload(input);
+    if (session == null) throw new NotFoundError("Upload session");
+    if (session.transport === "direct") return finalizeDirectUpload(input, session);
+    return finalizeSession(input, session);
   }
 
   async function finalizeUpload(
@@ -281,8 +283,15 @@ export function createUploadFinalizationOperations(
     const session = await db.query.uploadSessions.findFirst({
       where: eq(uploadSessions.id, input.uploadSessionId),
     });
+    if (session == null) throw new NotFoundError("Upload session");
+    return finalizeSession(input, session);
+  }
+
+  async function finalizeSession(
+    input: UploadFinalizationContract,
+    session: typeof uploadSessions.$inferSelect
+  ): Promise<readonly StoredFileContract[]> {
     if (
-      session == null ||
       (input.ownerLedgerId != null && session.ledgerId !== input.ownerLedgerId) ||
       !safeTokenMatches(input.finalizationToken, session.finalizationTokenHash)
     ) {
@@ -291,24 +300,6 @@ export function createUploadFinalizationOperations(
     const targetIds = [...new Set(input.targetIds)];
     if (targetIds.length === 0 || targetIds.length !== input.targetIds.length) {
       throw new ValidationError("Finalization requires unique upload targets");
-    }
-    if (session.transport === "direct") {
-      const plannedTargets = await db
-        .select({ targetId: uploadSessionFiles.targetId })
-        .from(uploadSessionFiles)
-        .where(
-          and(
-            eq(uploadSessionFiles.ledgerId, session.ledgerId),
-            eq(uploadSessionFiles.uploadSessionId, session.id)
-          )
-        )
-        .orderBy(asc(uploadSessionFiles.position));
-      if (
-        plannedTargets.length !== input.targetIds.length ||
-        plannedTargets.some((target, position) => target.targetId !== input.targetIds[position])
-      ) {
-        throw new ValidationError("Upload targets must be complete and in planned order");
-      }
     }
     const now = clock();
     if (session.expiresAt.getTime() <= now.getTime() && session.status === "open") {
@@ -348,10 +339,21 @@ export function createUploadFinalizationOperations(
           and(
             eq(uploadSessionFiles.ledgerId, session.ledgerId),
             eq(uploadSessionFiles.uploadSessionId, session.id),
-            inArray(uploadSessionFiles.targetId, targetIds)
+            lockedSession.transport === "direct"
+              ? undefined
+              : inArray(uploadSessionFiles.targetId, targetIds)
           )
         )
         .orderBy(asc(uploadSessionFiles.position));
+      if (
+        lockedSession.transport === "direct" &&
+        (targets.length !== input.targetIds.length ||
+          targets.some((target, position) => target.targetId !== input.targetIds[position]))
+      )
+        throw new ValidationError("Upload targets must be complete and in planned order");
+      if (lockedSession.status === "open" && lockedSession.expiresAt <= now) {
+        throw new ConflictError("Upload plan has expired");
+      }
       if (
         targets.length !== targetIds.length ||
         targets.some(
@@ -381,6 +383,7 @@ export function createUploadFinalizationOperations(
           `Total stored bytes ${totalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
         );
       }
+      if (lockedSession.status === "finalized") return { files, targets };
       await tx.execute(sql`
         UPDATE ${uploadSessionFiles} AS target
         SET expected_byte_size = file.byte_size
@@ -429,8 +432,7 @@ export function createUploadFinalizationOperations(
   }
 
   return {
-    ...proxyUploads,
-    finalizeDirectUpload,
+    finalizeDirectUpload: (input: UploadFinalizationContract) => finalizeDirectUpload(input),
     finalizeBrowserUpload,
     finalizeUpload,
   };

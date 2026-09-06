@@ -1,12 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  currencyRates,
-  exchangeRateRecalculationJobs,
-  ledgerEntries,
-  ledgers,
-  sourceDocuments,
-} from "@/persistence";
+import { exchangeRateRecalculationJobs } from "@/persistence";
 
 export interface ClaimedExchangeRateRecalculation {
   rateDate: string;
@@ -18,43 +12,6 @@ export interface ClaimedExchangeRateRecalculation {
 const MAX_EXCHANGE_RATE_RECALCULATION_ATTEMPTS = 8;
 const DEFAULT_EXCHANGE_RATE_CLAIM_LIMIT = 25;
 const DEFAULT_EXCHANGE_RATE_CLAIM_LEASE_MS = 300_000;
-
-/** Repair jobs missed by deployments predating the atomic rate/job insert. */
-export async function enqueueMissingExchangeRateRecalculations(limit = 1000): Promise<number> {
-  const result = await db.execute<{ inserted: number }>(sql`
-    WITH candidates AS (
-      SELECT rates.date::text AS rate_date, ${ledgers.id} AS ledger_id
-      FROM ${currencyRates} AS rates
-      INNER JOIN ${sourceDocuments}
-        ON (${sourceDocuments.entryDate} = rates.date OR ${sourceDocuments.entryDate} IS NULL)
-        AND ${sourceDocuments.deletedAt} IS NULL
-      INNER JOIN ${ledgers}
-        ON ${ledgers.id} = ${sourceDocuments.ledgerId}
-        AND ${ledgers.deletedAt} IS NULL
-      INNER JOIN ${ledgerEntries}
-        ON ${ledgerEntries.ledgerId} = ${ledgers.id}
-        AND ${ledgerEntries.sourceDocumentId} = ${sourceDocuments.id}
-        AND ${ledgerEntries.deletedAt} IS NULL
-        AND (
-          ${sourceDocuments.activeRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
-          OR ${sourceDocuments.pendingRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
-        )
-      LEFT JOIN ${exchangeRateRecalculationJobs} AS jobs
-        ON jobs.rate_date = rates.date::text AND jobs.ledger_id = ${ledgers.id}
-      WHERE jobs.rate_date IS NULL
-      GROUP BY rates.date, ${ledgers.id}
-      ORDER BY rates.date, ${ledgers.id}
-      LIMIT ${limit}
-    ), inserted AS (
-      INSERT INTO ${exchangeRateRecalculationJobs} (rate_date, ledger_id)
-      SELECT rate_date, ledger_id FROM candidates
-      ON CONFLICT (rate_date, ledger_id) DO NOTHING
-      RETURNING 1
-    )
-    SELECT count(*)::int AS inserted FROM inserted
-  `);
-  return result.rows[0]?.inserted ?? 0;
-}
 
 /**
  * Claim up to `limit` due jobs inside a transaction using FOR UPDATE SKIP

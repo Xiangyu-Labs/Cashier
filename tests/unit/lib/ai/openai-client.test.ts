@@ -58,6 +58,25 @@ describe("openai-client", () => {
       sdkClient.client.chat.completions.create = vi.fn().mockRejectedValue(error);
     };
 
+    it.each([
+      ["content_filter", "OPENAI_CONTENT_FILTERED"],
+      ["length", "OPENAI_INPUT_TOO_LARGE"],
+    ])("does not retry deterministic %s responses", async (reason, code) => {
+      process.env.AI_MAX_RETRIES = "3";
+      const client = await loadClient();
+      const create = vi.fn().mockResolvedValue({
+        choices: [{ finish_reason: reason, message: { content: "" } }],
+      });
+      const sdkClient = client as unknown as {
+        client: { chat: { completions: { create: unknown } } };
+      };
+      sdkClient.client.chat.completions.create = create;
+      await expect(
+        client.generateContent("system", [{ role: "user", content: "test" }], "gpt-4o")
+      ).rejects.toMatchObject({ code });
+      expect(create).toHaveBeenCalledTimes(1);
+    });
+
     it("maps exhausted rate-limit retries to AI_PROVIDER_RATE_LIMITED", async () => {
       const { OpenAI } = await import("openai");
       const client = await loadClient();

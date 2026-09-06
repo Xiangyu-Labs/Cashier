@@ -22,7 +22,8 @@ export const TEST_STARTUP_ENV = Object.freeze({
   TZ: "",
   AI_MODEL: "test-model",
   AI_MAX_RETRIES: "",
-  AI_RETRY_DELAY_MS: "",
+  // Exercise retries without randomized production backoff consuming the after() budget.
+  AI_RETRY_DELAY_MS: "0",
   AI_REQUEST_TIMEOUT_MS: "",
   AI_REVISION_DEADLINE_MS: "",
   UPLOAD_PLAN_LIMIT_PER_15_MIN: "",

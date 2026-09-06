@@ -9,11 +9,9 @@ import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import { ledgers, storedFiles, uploadSessionFiles, uploadSessions } from "@/persistence";
 import { checksum, mapStoredFile } from "./shared";
 import type { ResolvedStoredFileAdapterDependencies } from "./shared";
-import { createUploadPlanOperations } from "./upload-plans";
 
 export function createProxyUploadOperations(dependencies: ResolvedStoredFileAdapterDependencies) {
   const { storage, now } = dependencies;
-  const uploadPlans = createUploadPlanOperations(dependencies);
 
   async function uploadTargetForUser(input: {
     userId: string;
@@ -138,5 +136,5 @@ export function createProxyUploadOperations(dependencies: ResolvedStoredFileAdap
     }
   }
 
-  return { ...uploadPlans, uploadTargetForUser, uploadTarget };
+  return { uploadTargetForUser, uploadTarget };
 }

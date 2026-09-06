@@ -68,12 +68,7 @@ export function getTestPool() {
   return testDatabase.pool;
 }
 
-/**
- * TRUNCATE every table in the worker schema. A leftover request-bound
- * transaction (see `flushAfterCallbacks`) can occasionally make PostgreSQL
- * choose this statement as a deadlock victim; retrying is safe because the
- * whole TRUNCATE statement is atomic and rolled back on deadlock.
- */
+/** TRUNCATE only after all request-bound work has settled. */
 async function truncateAllTables(database: TestDatabase): Promise<void> {
   const tables = await database.pool.query<{ table_name: string }>(
     `SELECT table_name
@@ -87,16 +82,7 @@ async function truncateAllTables(database: TestDatabase): Promise<void> {
   );
   if (tableNames.length === 0) return;
   const statement = `TRUNCATE TABLE ${tableNames.join(", ")} RESTART IDENTITY CASCADE`;
-  for (let attempt = 1; attempt <= 5; attempt += 1) {
-    try {
-      await database.pool.query(statement);
-      return;
-    } catch (error) {
-      const code = (error as { code?: unknown } | null)?.code;
-      if (code !== "40P01" || attempt === 5) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
-    }
-  }
+  await database.pool.query(statement);
 }
 
 beforeAll(async () => {
@@ -134,6 +120,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await flushAfterCallbacks();
   await testDatabase?.pool.end();
   testDatabase = undefined;
 });

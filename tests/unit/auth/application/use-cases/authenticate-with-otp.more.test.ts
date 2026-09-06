@@ -80,7 +80,7 @@ import {
 
 const otpTokens = {} as OtpTokenPort;
 const fallbackUsers = {} as UserAccountPort;
-const rateLimiter = {} as import("@/modules/auth/application/ports").RateLimitPort;
+const rateLimiter = {} as import("@/application/contracts").RateLimiterPort;
 const authenticateWithOTP = (
   input: Parameters<typeof authenticateWithOTPUseCase>[0],
   users: UserAccountPort = fallbackUsers

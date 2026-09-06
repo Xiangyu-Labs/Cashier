@@ -58,9 +58,6 @@ vi.mock("@/modules/ledger/application/use-cases/delete-entry-category", () => ({
 vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
   deleteServiceCredential: vi.fn(),
 }));
-vi.mock("@/modules/ledger/application/services/recalculate-entries-converted-amount", () => ({
-  recalculateEntriesConvertedAmount: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/use-cases/reorder-entry-categories", () => ({
   reorderEntryCategories: vi.fn(),
 }));

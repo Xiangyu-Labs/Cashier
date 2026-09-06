@@ -325,11 +325,13 @@ describe("target upper workflows", () => {
       items: [],
     });
     await expect(
-      postgresLedgerProjectionAdapter.replaceManual({
+      serverComposition.sourceDocumentAggregate.saveChanges({
         ledgerId,
         sourceDocumentId: created.sourceDocumentId,
-        expectedActiveRevisionId: created.revisionId,
-        entries: [{ ...entry, categoryId: otherCategory!.id }],
+        expectedVersion: beforeDocument!.stateVersion,
+        entries: [
+          { ledgerEntryId: beforeEntryCount[0]!.id, data: { categoryId: otherCategory!.id } },
+        ],
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 

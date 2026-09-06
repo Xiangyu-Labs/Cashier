@@ -13,8 +13,7 @@ export async function recalculateCurrentEntries(
   includeUndated = false
 ): Promise<number> {
   const entries = await tx
-    .select({
-      id: ledgerEntries.id,
+    .selectDistinct({
       currency: ledgerEntries.currency,
       entryDate: sourceDocuments.entryDate,
     })

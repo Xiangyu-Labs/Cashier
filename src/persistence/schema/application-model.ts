@@ -394,6 +394,8 @@ export const objectCleanupJobs = pgTable(
       onDelete: "cascade",
     }),
     attempts: integer("attempts").notNull().default(0),
+    claimToken: uuid("claim_token"),
+    claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
     nextAttemptAt: requiredTimestamp("next_attempt_at").$defaultFn(() => new Date()),
     lastError: text("last_error"),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),

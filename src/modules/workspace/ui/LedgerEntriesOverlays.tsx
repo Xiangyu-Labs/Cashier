@@ -16,14 +16,6 @@ const SourceDocumentEditRetryDialog = dynamic(
   () => loadEditRetryDialog().then((module) => module.SourceDocumentEditRetryDialog),
   { ssr: false }
 );
-const SourceDocumentCandidateReviewDialog = dynamic(
-  () => loadCandidateReviewDialog().then((module) => module.SourceDocumentCandidateReviewDialog),
-  { ssr: false }
-);
-const SourceDocumentDuplicateReviewDialog = dynamic(
-  () => loadDuplicateReviewDialog().then((module) => module.SourceDocumentDuplicateReviewDialog),
-  { ssr: false }
-);
 
 export function preloadEditRetryDialog() {
   void loadEditRetryDialog();
@@ -45,11 +37,6 @@ interface LedgerEntriesOverlaysProps {
   retrySourceDocument: SourceDocument | null;
   onRetryDialogOpenChange: (open: boolean) => void;
   ledgerId: string;
-  candidateReviewDocument: SourceDocument | null;
-  onCandidateReviewOpenChange: (open: boolean) => void;
-  duplicateReviewDocument: SourceDocument | null;
-  onDuplicateReviewOpenChange: (open: boolean) => void;
-  mainCurrency: string;
 }
 
 export function LedgerEntriesOverlays({
@@ -60,11 +47,6 @@ export function LedgerEntriesOverlays({
   retrySourceDocument,
   onRetryDialogOpenChange,
   ledgerId,
-  candidateReviewDocument,
-  onCandidateReviewOpenChange,
-  duplicateReviewDocument,
-  onDuplicateReviewOpenChange,
-  mainCurrency,
 }: LedgerEntriesOverlaysProps) {
   return (
     <>
@@ -84,26 +66,6 @@ export function LedgerEntriesOverlays({
           open={true}
           onOpenChange={onRetryDialogOpenChange}
           ledgerId={ledgerId}
-        />
-      )}
-
-      {candidateReviewDocument != null && (
-        <SourceDocumentCandidateReviewDialog
-          ledgerId={ledgerId}
-          sourceDocumentId={candidateReviewDocument.id}
-          open={true}
-          onOpenChange={onCandidateReviewOpenChange}
-          mainCurrency={mainCurrency}
-        />
-      )}
-
-      {duplicateReviewDocument != null && (
-        <SourceDocumentDuplicateReviewDialog
-          ledgerId={ledgerId}
-          sourceDocumentId={duplicateReviewDocument.id}
-          open={true}
-          onOpenChange={onDuplicateReviewOpenChange}
-          mainCurrency={mainCurrency}
         />
       )}
     </>

@@ -75,7 +75,7 @@ export async function getLedgerPageBootstrap(
   const queryClient = new QueryClient();
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);
 
-  const mainCurrency = ledgerDto.settings.mainCurrency ?? "CNY";
+  const mainCurrency = ledgerDto.settings.mainCurrency;
   const fixedTimeZone = ledgerDto.settings.timeZone ?? runtimeEnv.timeZone;
   const zonedToday = getDateInTimezone(fixedTimeZone);
   const ledgerToday = zonedToday ?? getDateInTimezone("UTC")!;

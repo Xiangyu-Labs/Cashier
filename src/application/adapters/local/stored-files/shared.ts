@@ -18,7 +18,8 @@ import {
 } from "@/lib/storage/upload-policy";
 import { storedFiles } from "@/persistence";
 
-type DirectObjectFileStore = Required<Pick<ObjectStore, "presignUpload" | "head">> & ObjectStore;
+type DirectObjectFileStore = Required<Pick<ObjectStore, "presignUpload" | "readObject">> &
+  ObjectStore;
 
 export interface StoredFileAdapterDependencies {
   storage?: ObjectStore;
@@ -98,7 +99,7 @@ export function validateRequests(files: readonly UploadFileRequestContract[]): v
 }
 
 export function requireDirectStorage(storage: ObjectStore): DirectObjectFileStore {
-  if (storage.presignUpload == null || storage.head == null) {
+  if (storage.presignUpload == null || storage.readObject == null) {
     throw new AppError("Direct upload storage is not configured", "STORAGE_UNAVAILABLE", 503);
   }
   return storage as DirectObjectFileStore;

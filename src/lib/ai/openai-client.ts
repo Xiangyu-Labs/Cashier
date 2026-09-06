@@ -145,7 +145,10 @@ export class OpenAIClient {
         }
 
         // Determine if the error is retryable
-        let isRetryable = true;
+        let isRetryable = !(
+          error instanceof AppError &&
+          (error.code === "OPENAI_CONTENT_FILTERED" || error.code === "OPENAI_INPUT_TOO_LARGE")
+        );
 
         // If it's an OpenAI APIError, check the status code
         if (error instanceof OpenAI.APIError && error.status != null) {

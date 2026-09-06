@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ interface SourceDocumentCandidateReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mainCurrency: string;
+  onBack?: () => void;
+  onExitComplete?: () => void;
 }
 
 export function SourceDocumentCandidateReviewDialog({
@@ -35,6 +37,8 @@ export function SourceDocumentCandidateReviewDialog({
   open,
   onOpenChange,
   mainCurrency,
+  onBack,
+  onExitComplete,
 }: SourceDocumentCandidateReviewDialogProps) {
   const t = useTranslations("CandidateReview");
   const tReview = useTranslations("ReviewDialog");
@@ -65,6 +69,7 @@ export function SourceDocumentCandidateReviewDialog({
     <>
       <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
         <SourceDocumentReviewDialogContent
+          {...(onExitComplete !== undefined ? { onExitComplete } : {})}
           isPending={isPending}
           isLoading={reviewQuery.isLoading}
           isReloading={reviewQuery.isFetching}
@@ -75,7 +80,21 @@ export function SourceDocumentCandidateReviewDialog({
           onReload={() => void reviewQuery.refetch()}
           header={
             <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
-              <DialogTitle className="text-base">{t("title")}</DialogTitle>
+              <div className="flex items-center gap-2">
+                {onBack != null && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onBack}
+                    disabled={isPending}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">{tCommon("back")}</span>
+                  </Button>
+                )}
+                <DialogTitle className="text-base">{t("title")}</DialogTitle>
+              </div>
             </DialogHeader>
           }
           footer={

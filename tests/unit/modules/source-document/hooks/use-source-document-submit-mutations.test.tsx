@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,6 +40,28 @@ vi.mock(
 
 import type { SourceDocumentInputControllerMessages } from "@/modules/source-document/hooks/source-document-input-controller.types";
 import { useSourceDocumentSubmitMutations } from "@/modules/source-document/hooks/useSourceDocumentSubmitMutations";
+import { SourceDocumentInput } from "@/modules/source-document/ui/SourceDocumentInput";
+
+vi.mock("@/modules/source-document/ui/SourceDocumentInputView", () => ({
+  SourceDocumentInputView: ({
+    text,
+    onTextChange,
+    onSubmit,
+  }: {
+    text: string;
+    onTextChange: (text: string) => void;
+    onSubmit: () => void;
+  }) => (
+    <>
+      <input
+        aria-label="draft"
+        value={text}
+        onChange={(event) => onTextChange(event.target.value)}
+      />
+      <button onClick={onSubmit}>submit</button>
+    </>
+  ),
+}));
 
 const messages: SourceDocumentInputControllerMessages = {
   retrySuccess: "retried",
@@ -229,5 +251,49 @@ describe("useSourceDocumentSubmitMutations", () => {
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it("forwards the retry draft version to the action and keeps stale drafts intact", async () => {
+    retrySourceDocumentActionMock.mockResolvedValue({
+      ok: false,
+      sourceDocumentId: "source-1",
+      expectedVersion: 7,
+      currentVersion: 8,
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const onSuccess = vi.fn();
+    const form = (version: number, id = "source-1") => (
+      <QueryClientProvider client={queryClient}>
+        <SourceDocumentInput
+          ledgerId="ledger-1"
+          mode="retry"
+          sourceDocumentId={id}
+          sourceDocumentVersion={version}
+          initialData={{ text: "Original", entryDate: "2026-07-17" }}
+          onSuccess={onSuccess}
+        />
+      </QueryClientProvider>
+    );
+    const view = render(form(7));
+    fireEvent.change(screen.getByRole("textbox", { name: "draft" }), {
+      target: { value: "Unsaved" },
+    });
+    view.rerender(form(8));
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() =>
+      expect(retrySourceDocumentActionMock).toHaveBeenCalledWith(
+        "ledger-1",
+        "source-1",
+        expect.objectContaining({ text: "Unsaved" }),
+        7
+      )
+    );
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalled());
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "draft" })).toHaveValue("Unsaved");
+    view.rerender(form(2, "source-2"));
+    expect(screen.getByRole("textbox", { name: "draft" })).toHaveValue("Original");
   });
 });

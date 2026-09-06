@@ -100,15 +100,28 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     const { revision, document, storedFileIds, categories } = context;
     if (revision == null || document == null) throw new NotFoundError("Pending revision");
     if (document.activeRevisionId === request.revisionId && revision.outcome === "completed") {
-      return { outcome: "completed" };
+      return { outcome: "completed", completion: "residual" };
     }
     if (document.pendingRevisionId !== request.revisionId) {
       throw new Error("Revision processing request is stale");
     }
     throwIfProcessingCancelled(signal);
 
-    throwIfProcessingCancelled(signal);
-    const loadedEvidence = await this.options.loadStoredFiles(request.ledgerId, storedFileIds);
+    const evidenceReads = new Map<string, Promise<LoadImageResult>>();
+    const loadFiles = (fileIds: readonly string[]) => {
+      const missing = [...new Set(fileIds)].filter((id) => !evidenceReads.has(id));
+      if (missing.length > 0) {
+        const batch = this.options.loadStoredFiles(request.ledgerId, missing);
+        missing.forEach((id, index) => {
+          evidenceReads.set(
+            id,
+            batch.then((files) => files[index]!)
+          );
+        });
+      }
+      return Promise.all(fileIds.map((id) => evidenceReads.get(id)!));
+    };
+    const loadedEvidence = await loadFiles(storedFileIds);
     throwIfProcessingCancelled(signal);
     const failedEvidence = loadedEvidence.filter(isFailedLoadImageResult);
     if (failedEvidence.length > 0) {
@@ -159,7 +172,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       if (!preserved && request.lease != null) {
         throw new ProcessingCancelledError();
       }
-      return { outcome: "anomaly", anomalyReason };
+      return { outcome: "anomaly", anomalyReason, completion: "atomic" };
     }
 
     const validation = validateEntries(output.ledgerEntries);
@@ -175,7 +188,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       if (!preserved && request.lease != null) {
         throw new ProcessingCancelledError();
       }
-      return { outcome: "anomaly", anomalyReason };
+      return { outcome: "anomaly", anomalyReason, completion: "atomic" };
     }
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
     const validEntries = output.ledgerEntries.filter(
@@ -249,9 +262,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
             currentStoredFileIds: storedFileIds,
             candidates,
             loadImages: async (candidateFileIds) => {
-              const loaded = await this.options.loadStoredFiles(request.ledgerId, [
-                ...candidateFileIds,
-              ]);
+              const loaded = await loadFiles(candidateFileIds);
               return loaded
                 .filter(isSuccessfulLoadImageResult)
                 .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
@@ -294,7 +305,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
                   if (request.lease != null) throw new ProcessingCancelledError();
                   throw new Error("Failed to store duplicate pending revision");
                 }
-                return { outcome: "completed" };
+                return { outcome: "completed", completion: "atomic" };
               }
               throwIfProcessingCancelled(signal);
               const stored = await this.options.storeCandidateRevision(
@@ -311,7 +322,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
                 if (request.lease != null) throw new ProcessingCancelledError();
                 throw new Error("Failed to store candidate revision");
               }
-              return { outcome: "completed" };
+              return { outcome: "completed", completion: "atomic" };
             }
           }
         }
@@ -351,7 +362,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
             throw new Error("Failed to store candidate revision");
           }
         }
-        return { outcome: "completed" };
+        return { outcome: "completed", completion: "atomic" };
       } catch (error) {
         if (!(error instanceof LedgerMainCurrencyChangedError)) throw error;
       }

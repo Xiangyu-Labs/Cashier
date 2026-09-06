@@ -37,6 +37,7 @@ export interface RevisionProcessingRequestContract {
 }
 
 export interface RevisionProcessingResultContract {
+  completion: "atomic" | "residual";
   outcome: Extract<RevisionOutcome, "completed" | "anomaly">;
   anomalyReason?: string;
 }

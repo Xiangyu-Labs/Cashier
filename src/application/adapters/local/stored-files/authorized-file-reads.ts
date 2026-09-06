@@ -6,13 +6,11 @@ import type {
 } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
 import { mapStoredFile, type ResolvedStoredFileAdapterDependencies } from "./shared";
-import { createUploadFinalizationOperations } from "./upload-finalization";
 
 export function createAuthorizedFileReadOperations(
   dependencies: ResolvedStoredFileAdapterDependencies
 ) {
   const { authorizedFiles, storage } = dependencies;
-  const uploadFinalization = createUploadFinalizationOperations(dependencies);
 
   async function readAuthorized(
     ledgerId: LedgerId,
@@ -84,7 +82,6 @@ export function createAuthorizedFileReadOperations(
   }
 
   return {
-    ...uploadFinalization,
     readAuthorized,
     readAuthorizedForUser,
     readAuthorizedStreamForUser,

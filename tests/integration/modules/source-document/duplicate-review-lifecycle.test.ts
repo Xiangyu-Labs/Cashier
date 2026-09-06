@@ -22,6 +22,7 @@ import { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/pe
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 import { StaleSourceDocumentVersionError } from "@/lib/errors";
+import { postgresSourceDocumentAggregateAdapter } from "@/application/adapters/postgres/source-document-aggregate";
 
 async function currentVersion(sourceDocumentId: string): Promise<number> {
   const db = getTestDb();
@@ -373,13 +374,14 @@ describe("duplicate review lifecycle", () => {
     const staleVersion = await currentVersion(sourceDocumentId);
 
     await expect(
-      postgresLedgerProjectionAdapter.replaceActive({
+      postgresSourceDocumentAggregateAdapter.saveChanges({
         ledgerId,
         sourceDocumentId,
-        expectedActiveRevisionId: revisionId,
-        entries: [entry],
+        expectedVersion: staleVersion,
+        sourceDocument: { title: "Changed" },
+        entries: [],
       })
-    ).rejects.toThrow("Source document has a pending duplicate review");
+    ).rejects.toThrow("Source document is not editable");
 
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
