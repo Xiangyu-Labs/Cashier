@@ -1,14 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["src/service-worker.ts!", "scripts/**/*.mjs", "tests/stubs/server-only.ts"],
-  "project": [
-    "src/**/*.{ts,tsx}",
-    "src/modules/source-document/**/*.{ts,tsx}!",
-    "src/application/adapters/postgres/source-document-reads/**/*.{ts,tsx}!",
-    "src/application/adapters/postgres/source-document-updates.ts!",
-    "scripts/**/*.mjs",
-    "tests/**/*.{ts,tsx}",
-    "*.{ts,mts}"
-  ],
+  "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.mjs", "tests/**/*.{ts,tsx}", "*.{ts,mts}"],
+  "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["pino-pretty", "tailwindcss", "tw-animate-css"]
 }

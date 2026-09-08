@@ -33,16 +33,26 @@ vi.mock("sonner", () => ({
   toast: { success: toastSuccessMock, error: toastErrorMock, warning: toastWarningMock },
 }));
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/candidates", () => ({
   acceptSourceDocumentCandidateAction: acceptSourceDocumentCandidateActionMock,
   abandonSourceDocumentCandidateAction: abandonSourceDocumentCandidateActionMock,
-  batchUpdateSourceDocumentsAction: batchUpdateSourceDocumentsActionMock,
-  batchDeleteSourceDocumentsAction: vi.fn(),
-  batchResolveDuplicateReviewsAction: vi.fn(),
-  batchRetrySourceDocumentsAction: vi.fn(),
-  deleteSourceDocumentAction: deleteSourceDocumentActionMock,
-  retrySourceDocumentAction: retrySourceDocumentActionMock,
   cancelSourceDocumentProcessingAction: vi.fn(),
+}));
+vi.mock("@/modules/source-document/server-actions/update", () => ({
+  batchUpdateSourceDocumentsAction: batchUpdateSourceDocumentsActionMock,
+}));
+vi.mock("@/modules/source-document/server-actions/batch", () => ({
+  batchDeleteSourceDocumentsAction: vi.fn(),
+  batchRetrySourceDocumentsAction: vi.fn(),
+}));
+vi.mock("@/modules/source-document/server-actions/duplicate-reviews", () => ({
+  batchResolveDuplicateReviewsAction: vi.fn(),
+}));
+vi.mock("@/modules/source-document/server-actions/delete", () => ({
+  deleteSourceDocumentAction: deleteSourceDocumentActionMock,
+}));
+vi.mock("@/modules/source-document/server-actions/retry", () => ({
+  retrySourceDocumentAction: retrySourceDocumentActionMock,
 }));
 
 function createWrapper(

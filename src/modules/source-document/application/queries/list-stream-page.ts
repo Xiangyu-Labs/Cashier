@@ -1,5 +1,4 @@
 import { ValidationError } from "@/lib/errors";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
@@ -83,14 +82,14 @@ export async function listStreamPage(
   ports: {
     documents: Pick<SourceDocumentReadPort, "list">;
     ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-    changes?: Pick<LedgerChangeReadPort, "getVersion">;
+    changes: Pick<LedgerChangeReadPort, "getVersion" | "getRefreshBaseline">;
   }
 ): Promise<StreamPage> {
   // Enforce page size cap (defense in depth beyond the action schema)
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);
   const search = normalizeSearchTerm(input.search);
   const filterHash = filterFingerprint(input, search);
-  const beforeVersion = (await ports.changes?.getVersion(ledgerId)) ?? BigInt(0);
+  const beforeVersion = await ports.changes.getVersion(ledgerId);
   const generation = beforeVersion.toString();
 
   // Validate cursor against ledger identity and filter compatibility.
@@ -101,7 +100,14 @@ export async function listStreamPage(
     innerCursor = validateCursor(input.cursor, ledgerId, generation, filterHash);
   } catch (error) {
     if (error instanceof ValidationError) {
-      return { items: [], nextCursor: null, generation, restartRequired: true };
+      const baseline = await ports.changes.getRefreshBaseline(ledgerId);
+      return {
+        items: [],
+        nextCursor: null,
+        generation: baseline.version.toString(),
+        hasTransitionalWork: baseline.hasTransitionalWork,
+        restartRequired: true,
+      };
     }
     throw error;
   }
@@ -121,14 +127,11 @@ export async function listStreamPage(
   });
 
   // Batch-load ledger entries for items that need them (completed cards etc.)
-  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds(
-    {
-      ledgerId,
-      sourceDocumentIds: page.items.map((item) => item.id),
-      includeDuplicatePending: true,
-    },
-    ports.ledgerReads
-  );
+  const entriesByDocId = await ports.ledgerReads.listEntriesBySourceDocumentIds({
+    ledgerId,
+    sourceDocumentIds: page.items.map((item) => item.id),
+    includeDuplicatePending: true,
+  });
 
   const items = page.items.map((item) => ({
     ...item,
@@ -138,12 +141,13 @@ export async function listStreamPage(
       ...(search != null ? { search } : {}),
     }),
   }));
-  const afterVersion = (await ports.changes?.getVersion(ledgerId)) ?? beforeVersion;
-  if (afterVersion !== beforeVersion) {
+  const baseline = await ports.changes.getRefreshBaseline(ledgerId);
+  if (baseline.version !== beforeVersion) {
     return {
       items: [],
       nextCursor: null,
-      generation: afterVersion.toString(),
+      generation: baseline.version.toString(),
+      hasTransitionalWork: baseline.hasTransitionalWork,
       restartRequired: true,
     };
   }
@@ -152,5 +156,6 @@ export async function listStreamPage(
     items: items as SourceDocumentListItemDto[],
     nextCursor: encodeSourceDocumentStreamCursor(ledgerId, generation, filterHash, page.nextCursor),
     generation,
+    hasTransitionalWork: baseline.hasTransitionalWork,
   };
 }

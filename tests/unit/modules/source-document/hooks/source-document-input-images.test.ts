@@ -13,11 +13,12 @@ import { loadSourceDocumentInputFiles } from "@/modules/source-document/hooks/so
 describe("source-document input images", () => {
   beforeEach(() => {
     compressImageMock.mockReset();
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:preview");
   });
 
   it("uses the compressed image when browser decoding succeeds", async () => {
     compressImageMock.mockResolvedValue({
-      data: "data:image/jpeg;base64,AQ==",
+      file: new File([new Uint8Array([1])], "receipt.jpg", { type: "image/jpeg" }),
       mimeType: "image/jpeg",
     });
 
@@ -27,7 +28,7 @@ describe("source-document input images", () => {
 
     expect(result).toMatchObject({
       kind: "ready",
-      image: { data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" },
+      image: { data: "blob:preview", mimeType: "image/jpeg", objectUrl: true },
     });
   });
 
@@ -40,5 +41,33 @@ describe("source-document input images", () => {
         new File([new Uint8Array([1])], "receipt.heic", { type: "image/heic" }),
       ])
     ).resolves.toEqual([{ kind: "unsupported", fileName: "receipt.heic" }]);
+  });
+
+  it("starts all selected image conversions before any one resolves", async () => {
+    const resolvers: Array<(value: { file: File; mimeType: string }) => void> = [];
+    compressImageMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+    const files = ["first.png", "second.png", "third.png"].map(
+      (name) => new File([new Uint8Array([1])], name, { type: "image/png" })
+    );
+
+    const loading = loadSourceDocumentInputFiles(files);
+    expect(compressImageMock).toHaveBeenCalledTimes(3);
+
+    resolvers.forEach((resolve, index) =>
+      resolve({
+        file: new File([new Uint8Array([index + 1])], `receipt-${index}.jpg`, {
+          type: "image/jpeg",
+        }),
+        mimeType: "image/jpeg",
+      })
+    );
+    const results = await loading;
+
+    expect(results.map((result) => result.kind)).toEqual(["ready", "ready", "ready"]);
   });
 });

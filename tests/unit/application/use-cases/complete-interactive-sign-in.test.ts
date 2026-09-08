@@ -59,7 +59,16 @@ const otpPrincipal: AuthenticatedPrincipal = {
 describe("completeInteractiveSignIn", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    ensureUserLedgerMock.mockResolvedValue({ ledgerId: "ledger-1", created: false });
+    ensureUserLedgerMock.mockResolvedValue({
+      ledger: {
+        id: "ledger-1",
+        userId: "user-1",
+        settings: {},
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      created: false,
+    });
     consumeOTPClaimMock.mockResolvedValue(true);
     releaseOTPClaimMock.mockResolvedValue(true);
     sendLoginNotificationMock.mockResolvedValue(undefined);

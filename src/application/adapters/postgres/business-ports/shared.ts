@@ -8,7 +8,18 @@ export function toIso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
 }
 
-export function mapLedgerSettings(row: typeof ledgers.$inferSelect) {
+export function mapLedgerSettings(
+  row: Pick<
+    typeof ledgers.$inferSelect,
+    | "aiLanguage"
+    | "preferredCurrencies"
+    | "mainCurrency"
+    | "collapseEntriesDefault"
+    | "aiCustomPrompt"
+    | "duplicateDetectionEnabled"
+    | "timeZone"
+  >
+): LedgerSettingsContract {
   return {
     aiLanguage: row.aiLanguage,
     currencies: row.preferredCurrencies,

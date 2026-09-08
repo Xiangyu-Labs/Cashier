@@ -1,13 +1,13 @@
 "use client";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
+import { batchUpdateSourceDocumentsAction } from "@/modules/source-document/server-actions/update";
 import {
-  deleteSourceDocumentAction,
-  batchUpdateSourceDocumentsAction,
   batchDeleteSourceDocumentsAction,
-  batchResolveDuplicateReviewsAction,
   batchRetrySourceDocumentsAction,
-} from "@/modules/source-document/actions";
+} from "@/modules/source-document/server-actions/batch";
+import { batchResolveDuplicateReviewsAction } from "@/modules/source-document/server-actions/duplicate-reviews";
 import type {
   PartialBatchCommandResult,
   BatchUpdateSourceDocumentsResultDto,
@@ -46,6 +46,7 @@ export function useBatchSourceDocumentActions(
     void,
     string | { id: string; onCommitted: () => void }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (input) => {
       const id = typeof input === "string" ? input : input.id;
       const result = await deleteSourceDocumentAction(ledgerId, id, versionFor(id));
@@ -64,6 +65,7 @@ export function useBatchSourceDocumentActions(
     BatchUpdateSourceDocumentsResultDto,
     { ids: string[]; entryDate: string }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ ids, entryDate }) => {
       const result = await batchUpdateSourceDocumentsAction(ledgerId, {
         targets: ids.map((sourceDocumentId) => ({
@@ -119,6 +121,7 @@ export function useBatchSourceDocumentActions(
     PartialBatchCommandResult,
     string[] | { ids: string[]; onCommitted: () => void }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (input) =>
       batchDeleteSourceDocumentsAction(
         ledgerId,
@@ -134,6 +137,7 @@ export function useBatchSourceDocumentActions(
   });
 
   const batchRetry = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, targetsFor(ids)),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
@@ -144,6 +148,7 @@ export function useBatchSourceDocumentActions(
   const batchKeepDuplicates = useLedgerMutation<PartialBatchCommandResult, DuplicateBatchVariables>(
     ledgerId,
     {
+      invalidates: ["documents", "stats"],
       mutationFn: (variables) =>
         batchResolveDuplicateReviewsAction(
           ledgerId,
@@ -165,6 +170,7 @@ export function useBatchSourceDocumentActions(
     PartialBatchCommandResult,
     DuplicateBatchVariables
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: (variables) =>
       batchResolveDuplicateReviewsAction(
         ledgerId,

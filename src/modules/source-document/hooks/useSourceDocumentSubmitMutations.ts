@@ -3,10 +3,8 @@
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import {
-  createSourceDocumentAction,
-  editRetrySourceDocumentAction,
-} from "@/modules/source-document/actions";
+import { createSourceDocumentAction } from "@/modules/source-document/server-actions/create";
+import { editRetrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import type {
   CreatedRecordResult,
   RetrySourceDocumentResponseDto,
@@ -28,7 +26,6 @@ import {
 
 interface CreateVariables {
   payload: SourceDocumentSubmitPayload;
-  payloadFingerprint: string;
   clientSubmissionId: string;
   signal: AbortSignal;
 }
@@ -39,19 +36,19 @@ interface RetryVariables {
 }
 
 interface CreateSubmissionIdentity {
-  payloadFingerprint: string;
+  payload: SourceDocumentSubmitPayload;
   clientSubmissionId: string;
   uploadedPayload: SourceDocumentSubmitPayload | null;
 }
 
-interface UseSourceDocumentSubmitMutationsOptions {
+type UseSourceDocumentSubmitMutationsOptions = {
   ledgerId: string;
-  mode: "create" | "retry";
-  sourceDocumentId?: string;
-  sourceDocumentVersion?: number;
   messages: SourceDocumentInputControllerMessages;
   onSuccess?: (result: CreatedRecordResult) => void;
-}
+} & (
+  | { mode: "create"; sourceDocumentId?: never; sourceDocumentVersion?: never }
+  | { mode: "retry"; sourceDocumentId: string; sourceDocumentVersion: number }
+);
 
 function waitForPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -61,6 +58,49 @@ function waitForPaint(): Promise<void> {
       globalThis.setTimeout(resolve, 0);
     }
   });
+}
+
+function arraysEqual<T>(
+  left: readonly T[] | undefined,
+  right: readonly T[] | undefined,
+  equals: (leftItem: T, rightItem: T) => boolean
+): boolean {
+  const leftLength = left?.length ?? 0;
+  if (leftLength !== (right?.length ?? 0)) return false;
+  for (let index = 0; index < leftLength; index += 1) {
+    if (!equals(left![index]!, right![index]!)) return false;
+  }
+  return true;
+}
+
+function sourceDocumentPayloadsEqual(
+  left: SourceDocumentSubmitPayload,
+  right: SourceDocumentSubmitPayload
+): boolean {
+  return (
+    left.entryDate === right.entryDate &&
+    left.timezone === right.timezone &&
+    left.text === right.text &&
+    arraysEqual(left.storedFileIds, right.storedFileIds, (leftId, rightId) => leftId === rightId) &&
+    arraysEqual(
+      left.images,
+      right.images,
+      (leftImage, rightImage) =>
+        leftImage.file === rightImage.file && leftImage.mimeType === rightImage.mimeType
+    )
+  );
+}
+
+function snapshotPayload(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
+  return {
+    entryDate: payload.entryDate,
+    ...(payload.timezone === undefined ? {} : { timezone: payload.timezone }),
+    ...(payload.text === undefined ? {} : { text: payload.text }),
+    ...(payload.storedFileIds === undefined ? {} : { storedFileIds: [...payload.storedFileIds] }),
+    ...(payload.images === undefined
+      ? {}
+      : { images: payload.images.map((image) => ({ ...image })) }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -95,11 +135,11 @@ export function useSourceDocumentSubmitMutations({
     Awaited<ReturnType<typeof createSourceDocumentAction>>,
     CreateVariables
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (variables: CreateVariables) => {
       const currentIdentity = createSubmissionIdentityRef.current;
       let uploadedPayload =
-        currentIdentity?.clientSubmissionId === variables.clientSubmissionId &&
-        currentIdentity.payloadFingerprint === variables.payloadFingerprint
+        currentIdentity?.clientSubmissionId === variables.clientSubmissionId
           ? currentIdentity.uploadedPayload
           : null;
       if (uploadedPayload == null) {
@@ -110,9 +150,7 @@ export function useSourceDocumentSubmitMutations({
           setMonotonicProgress
         );
         if (
-          createSubmissionIdentityRef.current?.clientSubmissionId ===
-            variables.clientSubmissionId &&
-          createSubmissionIdentityRef.current.payloadFingerprint === variables.payloadFingerprint
+          createSubmissionIdentityRef.current?.clientSubmissionId === variables.clientSubmissionId
         ) {
           createSubmissionIdentityRef.current.uploadedPayload = uploadedPayload;
         }
@@ -158,6 +196,7 @@ export function useSourceDocumentSubmitMutations({
   const retryMutation = useLedgerMutation<RetrySourceDocumentResponseDto, RetryVariables>(
     ledgerId,
     {
+      invalidates: ["documents", "stats"],
       mutationFn: async (variables: RetryVariables) => {
         if (sourceDocumentId == null) throw new Error("No source document ID for retry");
         // Fail before uploading anything: a missing version must not upload
@@ -217,12 +256,14 @@ export function useSourceDocumentSubmitMutations({
     const controller = new AbortController();
     uploadControllerRef.current = controller;
     setProgress({ phase: "preparing", percent: 0 });
-    const payloadFingerprint = JSON.stringify(payload);
     if (mode === "create") {
       const currentIdentity = createSubmissionIdentityRef.current;
-      if (currentIdentity?.payloadFingerprint !== payloadFingerprint) {
+      if (
+        currentIdentity == null ||
+        !sourceDocumentPayloadsEqual(currentIdentity.payload, payload)
+      ) {
         createSubmissionIdentityRef.current = {
-          payloadFingerprint,
+          payload: snapshotPayload(payload),
           clientSubmissionId: crypto.randomUUID(),
           uploadedPayload: null,
         };
@@ -244,7 +285,6 @@ export function useSourceDocumentSubmitMutations({
 
       createMutation.mutate({
         payload,
-        payloadFingerprint,
         clientSubmissionId: createSubmissionIdentityRef.current!.clientSubmissionId,
         signal: controller.signal,
       });

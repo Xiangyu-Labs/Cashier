@@ -19,9 +19,10 @@ export const getSourceDocumentLightAction = withSourceDocumentLedgerAccess(
     if (!parsed.success) {
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
-    return getSourceDocumentLightForLedger(context.ledgerId, parsed.data, {
-      documents: serverComposition.sourceDocumentReads,
-      ledgerReads: serverComposition.ledgerReads,
-    });
+    return getSourceDocumentLightForLedger(
+      context.ledgerId,
+      parsed.data,
+      serverComposition.sourceDocumentReads
+    );
   }
 );

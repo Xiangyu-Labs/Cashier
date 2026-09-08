@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { changePasswordAction, setPasswordAction } from "@/modules/auth/actions";
+import { changePasswordAction } from "@/modules/auth/server-actions/change-password";
+import { setPasswordAction } from "@/modules/auth/server-actions/set-password";
 import type { PasswordMutationActionErrorCode } from "@/modules/auth/contracts";
 import { CredentialChangeDialog } from "./CredentialChangeDialog";
 

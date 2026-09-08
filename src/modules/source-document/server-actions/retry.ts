@@ -15,7 +15,6 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { scheduleProcessingAfter } from "./schedule-processing";
-import { processImage } from "@/lib/storage/image-processing";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -49,15 +48,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       {
         submissions: {
           createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
-          ...(serverComposition.sourceDocumentAggregate.installIdempotentRetry == null
-            ? {}
-            : {
-                createIdempotentPendingWithIntent:
-                  serverComposition.sourceDocumentAggregate.installIdempotentRetry,
-              }),
         },
-        storedFiles: serverComposition.storedFiles,
-        processImage,
         scheduleProcessing,
       }
     );
@@ -105,15 +96,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
       {
         submissions: {
           createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
-          ...(serverComposition.sourceDocumentAggregate.installIdempotentRetry == null
-            ? {}
-            : {
-                createIdempotentPendingWithIntent:
-                  serverComposition.sourceDocumentAggregate.installIdempotentRetry,
-              }),
         },
-        storedFiles: serverComposition.storedFiles,
-        processImage,
         scheduleProcessing,
       }
     );

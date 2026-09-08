@@ -3,13 +3,21 @@ import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
 
 export type SourceDocumentInputInitialData = NonNullable<SourceDocumentInputProps["initialData"]>;
 
-export type EditableInputImage = SourceDocumentModalImage;
+export type EditableInputImage = SourceDocumentModalImage & {
+  file?: File;
+  objectUrl?: boolean;
+};
+
+export interface SourceDocumentUploadImage {
+  file: File;
+  mimeType: string;
+}
 
 export interface SourceDocumentSubmitPayload {
   entryDate: string;
   timezone?: string;
   text?: string;
-  images?: SourceDocumentModalImage[];
+  images?: SourceDocumentUploadImage[];
   storedFileIds?: string[];
 }
 

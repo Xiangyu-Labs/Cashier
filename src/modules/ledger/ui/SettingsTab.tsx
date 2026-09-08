@@ -25,11 +25,12 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { SettingsSectionActions } from "./settings/SettingsSectionActions";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import { queryKeys } from "@/lib/query-keys";
-import { getEntryCategoriesAction } from "@/modules/ledger/actions";
+import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/categories";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -40,7 +41,6 @@ interface SettingsTabProps {
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
   interfaceLanguage?: InterfaceLanguage;
-  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 type AppearanceField = "theme" | "language";
@@ -54,12 +54,12 @@ export function SettingsTab({
   hasPassword = false,
   passwordUpdatedAt = null,
   interfaceLanguage = "auto",
-  onQueryStateChange,
 }: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
   const t = useTranslations("Settings");
+  const tQueryError = useTranslations("LedgerQueryError");
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -123,29 +123,8 @@ export function SettingsTab({
     credentials,
     updateLedgerMutation,
     isPending,
-    settingsQueryKey,
     settingsQueryStatus,
-    settingsQueryIsFetching,
-    settingsQueryHasData,
   } = useLedgerSettings({ ledgerId, ledger, initialCategories, metadataPollingSession });
-
-  useEffect(() => {
-    onQueryStateChange?.({
-      ledgerId,
-      tab: "settings",
-      queryKey: settingsQueryKey,
-      status: settingsQueryStatus,
-      isFetching: settingsQueryIsFetching,
-      hasData: settingsQueryHasData,
-    });
-  }, [
-    ledgerId,
-    onQueryStateChange,
-    settingsQueryIsFetching,
-    settingsQueryHasData,
-    settingsQueryKey,
-    settingsQueryStatus,
-  ]);
 
   // Use reactive ledger for settings that need optimistic updates
   const settingsLedger = reactiveLedger || ledger;
@@ -253,6 +232,31 @@ export function SettingsTab({
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
+      {settingsQueryStatus === "error" && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 border border-danger/30 bg-danger/10 px-3 py-2 text-sm"
+        >
+          <span>{tQueryError("description")}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void queryClient.refetchQueries({
+                type: "active",
+                predicate: ({ queryKey: key }) =>
+                  key[0] === "ledger" &&
+                  key[1] === ledgerId &&
+                  (key.length === 2 || key[2] === "categories" || key[2] === "settings"),
+              });
+            }}
+          >
+            <RefreshCw className="size-4" />
+            {tQueryError("retry")}
+          </Button>
+        </div>
+      )}
       <SettingsSection title={t("appearanceAndLanguage")}>
         <SettingsField title={t("theme")}>
           <Select

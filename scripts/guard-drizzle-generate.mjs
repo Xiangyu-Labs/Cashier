@@ -2,7 +2,8 @@
 // Drizzle generates migrations from the newest snapshot in meta/.
 // Drizzle compares the schema to the newest snapshot, so generation is only
 // safe when that snapshot has caught up with the journal. Hand-written SQL is
-// tracked separately in meta/manual-migrations.json.
+// tracked separately in meta/_manual-migrations.json. Drizzle treats every
+// non-underscore-prefixed file in meta/ as a snapshot.
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 

@@ -6,6 +6,7 @@ const zhLedger = {
     collapseEntriesDefault: false,
     aiCustomPrompt: "",
     duplicateDetectionEnabled: true,
+    timeZone: null,
   },
   categories: [
     {
@@ -72,6 +73,7 @@ const enLedger = {
     collapseEntriesDefault: false,
     aiCustomPrompt: "",
     duplicateDetectionEnabled: true,
+    timeZone: null,
   },
   categories: [
     {

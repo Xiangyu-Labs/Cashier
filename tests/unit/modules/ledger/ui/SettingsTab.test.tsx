@@ -5,6 +5,7 @@ import { BookkeepingSettings } from "@/modules/ledger/ui/settings/BookkeepingSet
 import { toast } from "sonner";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+import { getDefaultLedger } from "@/config/default-ledger";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -24,10 +25,22 @@ describe("explicit settings section drafts", () => {
   });
 
   it("keeps AI changes local until Save and submits only the diff", async () => {
-    const onUpdateSettings = vi.fn().mockResolvedValue(undefined);
+    const onUpdateSettings = vi.fn().mockResolvedValue({
+      id: "ledger-1",
+      userId: "user-1",
+      settings: {
+        ...getDefaultLedger().settings,
+        aiLanguage: "zh-CN",
+        duplicateDetectionEnabled: true,
+        aiCustomPrompt: "Draft prompt",
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     render(
       <AiSettings
         settings={{
+          ...getDefaultLedger().settings,
           aiLanguage: "zh-CN",
           duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
@@ -51,11 +64,20 @@ describe("explicit settings section drafts", () => {
     render(
       <AiSettings
         settings={{
+          ...getDefaultLedger().settings,
           aiLanguage: "zh-CN",
           duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
         }}
-        onUpdateSettings={() => Promise.resolve()}
+        onUpdateSettings={() =>
+          Promise.resolve({
+            id: "ledger-1",
+            userId: "user-1",
+            settings: { ...getDefaultLedger().settings },
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          })
+        }
       />
     );
 
@@ -73,10 +95,23 @@ describe("explicit settings section drafts", () => {
   });
 
   it("keeps bookkeeping switches as a draft until Save", async () => {
-    const onUpdateSettings = vi.fn().mockResolvedValue(undefined);
+    const onUpdateSettings = vi.fn().mockResolvedValue({
+      id: "ledger-1",
+      userId: "user-1",
+      settings: {
+        ...getDefaultLedger().settings,
+        mainCurrency: "CNY",
+        currencies: ["CNY"],
+        collapseEntriesDefault: true,
+        timeZone: null,
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     render(
       <BookkeepingSettings
         settings={{
+          ...getDefaultLedger().settings,
           mainCurrency: "CNY",
           currencies: ["CNY"],
           collapseEntriesDefault: false,
@@ -107,7 +142,7 @@ describe("explicit settings section drafts", () => {
     const onUpdateSettings = vi.fn();
     const { rerender } = render(
       <AiSettings
-        settings={{ aiCustomPrompt: "Server prompt" }}
+        settings={{ ...getDefaultLedger().settings, aiCustomPrompt: "Server prompt" }}
         onUpdateSettings={onUpdateSettings}
       />
     );
@@ -116,7 +151,7 @@ describe("explicit settings section drafts", () => {
     });
     rerender(
       <AiSettings
-        settings={{ aiCustomPrompt: "New server prompt" }}
+        settings={{ ...getDefaultLedger().settings, aiCustomPrompt: "New server prompt" }}
         onUpdateSettings={onUpdateSettings}
       />
     );

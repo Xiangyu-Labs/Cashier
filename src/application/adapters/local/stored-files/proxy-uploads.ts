@@ -8,10 +8,12 @@ import { logger } from "@/lib/logger";
 import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import { ledgers, storedFiles, uploadSessionFiles, uploadSessions } from "@/persistence";
 import { checksum, mapStoredFile } from "./shared";
-import { StoredFileUploadPlanAdapter } from "./upload-plans";
+import type { ResolvedStoredFileAdapterDependencies } from "./shared";
 
-export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
-  async uploadTargetForUser(input: {
+export function createProxyUploadOperations(dependencies: ResolvedStoredFileAdapterDependencies) {
+  const { storage, now } = dependencies;
+
+  async function uploadTargetForUser(input: {
     userId: string;
     uploadSessionId: string;
     targetId: string;
@@ -26,10 +28,10 @@ export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
       .limit(1);
     const ledgerId = ownership[0]?.ledgerId;
     if (ledgerId == null) throw new NotFoundError("Upload target");
-    return this.uploadTarget({ ...input, ledgerId });
+    return uploadTarget({ ...input, ledgerId });
   }
 
-  async uploadTarget(input: {
+  async function uploadTarget(input: {
     ledgerId: string;
     uploadSessionId: string;
     targetId: string;
@@ -42,11 +44,11 @@ export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
         eq(uploadSessions.id, input.uploadSessionId)
       ),
     });
-    const now = this.now();
+    const uploadedAt = now();
     if (session == null || session.transport !== "proxy" || session.status !== "open") {
       throw new NotFoundError("Upload target");
     }
-    if (session.expiresAt.getTime() <= now.getTime()) {
+    if (session.expiresAt.getTime() <= uploadedAt.getTime()) {
       await db
         .update(uploadSessions)
         .set({ status: "expired" })
@@ -86,7 +88,7 @@ export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
 
     const storedFileId = crypto.randomUUID();
     const storageKey = `${input.ledgerId}/stored/${storedFileId}`;
-    await this.storage.upload(storageKey, bytes, input.contentType);
+    await storage.upload(storageKey, bytes, input.contentType);
     try {
       const file = await db.transaction(async (tx) => {
         const insertedFile = await tx
@@ -100,7 +102,7 @@ export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
             byteSize: bytes.length,
             originalFilename: target.originalFilename,
             checksum: actualChecksum,
-            createdAt: now,
+            createdAt: uploadedAt,
           })
           .returning()
           .then((rows) => rows[0]);
@@ -122,7 +124,7 @@ export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
       });
       return mapStoredFile(file);
     } catch (error) {
-      const cleanup = await this.storage.delete(storageKey);
+      const cleanup = await storage.delete(storageKey);
       if (!cleanup.success) {
         await enqueueObjectCleanup(storageKey);
         logger.error(
@@ -133,4 +135,6 @@ export class StoredFileProxyUploadAdapter extends StoredFileUploadPlanAdapter {
       throw error;
     }
   }
+
+  return { uploadTargetForUser, uploadTarget };
 }

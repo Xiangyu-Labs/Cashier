@@ -36,14 +36,3 @@ export async function discardOTPToken(
   }
   return discarded;
 }
-
-export async function deleteOTPToken(email: string, tokens: OtpTokenPort): Promise<void> {
-  await tokens.delete(email.toLowerCase());
-  logger.info({ subject: logIdentifier("email", email) }, "OTP token deleted");
-}
-
-export async function cleanupExpiredOTPTokens(tokens: OtpTokenPort): Promise<number> {
-  const deletedCount = await tokens.cleanupExpired(new Date());
-  logger.info({ deleted: deletedCount }, "Cleaned up expired OTP tokens");
-  return deletedCount;
-}

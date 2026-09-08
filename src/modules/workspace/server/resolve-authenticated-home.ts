@@ -44,14 +44,10 @@ export const resolveAuthenticatedHome = cache(async (): Promise<AuthenticatedHom
   const locale = await getLocale();
   const home = await resolveHome({ userId, locale }, serverComposition.ledgers);
 
-  if (!isValidUuid(home.ledgerId)) {
+  if (!isValidUuid(home.ledger.id)) {
     throw new NotFoundError("Ledger");
   }
-
-  const ledger = await serverComposition.ledgers.getOwned(home.ledgerId, userId);
-  if (ledger == null) {
-    throw new NotFoundError("Ledger");
-  }
+  const ledger = home.ledger;
 
   const ledgerDto: LedgerDto = {
     id: ledger.id,
@@ -63,7 +59,7 @@ export const resolveAuthenticatedHome = cache(async (): Promise<AuthenticatedHom
 
   return {
     userId,
-    ledgerId: home.ledgerId,
+    ledgerId: ledger.id,
     ledgerDto,
     session: {
       user: {

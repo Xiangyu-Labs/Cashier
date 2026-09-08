@@ -1,40 +1,20 @@
-import { listLedgerEntryPage } from "@/modules/ledger/application/queries/list-ledger-entry-page";
 import {
   type ListLedgerEntriesInput,
   type ListLedgerEntriesValidatedInput,
+  UNCATEGORIZED_SENTINEL,
   parseListLedgerEntriesInput,
 } from "@/modules/ledger/contract-schemas";
 import type { LedgerEntryPageDto } from "@/modules/ledger/contracts";
 import type { LedgerReadPort } from "../ports";
-
-// "__uncategorized__" is a UI/query sentinel for `categoryId = null`.
-// It must be normalized at query boundaries and must never be persisted as a real category id.
-export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
 
 export async function listLedgerEntries(
   ledgerId: string,
   params: ListLedgerEntriesInput,
   reads: Pick<LedgerReadPort, "listEntries">
 ): Promise<LedgerEntryPageDto> {
-  const paramsRecord =
-    typeof params === "object" && params !== null ? (params as Record<string, unknown>) : null;
-  const categoryIdCandidate = paramsRecord?.categoryId;
-  const isUncategorizedFilter = categoryIdCandidate === UNCATEGORIZED_SENTINEL;
-  const sanitizedParams =
-    isUncategorizedFilter && paramsRecord
-      ? ({
-          ...paramsRecord,
-          categoryId: undefined,
-        } as ListLedgerEntriesInput)
-      : params;
-
-  const validated = parseListLedgerEntriesInput(sanitizedParams);
-  return listLedgerEntriesFromValidatedInput(
-    ledgerId,
-    validated,
-    { uncategorizedOnly: isUncategorizedFilter },
-    reads
-  );
+  const validated = parseListLedgerEntriesInput(params);
+  const uncategorizedOnly = validated.categoryId === UNCATEGORIZED_SENTINEL;
+  return listLedgerEntriesFromValidatedInput(ledgerId, validated, { uncategorizedOnly }, reads);
 }
 
 async function listLedgerEntriesFromValidatedInput(
@@ -43,10 +23,12 @@ async function listLedgerEntriesFromValidatedInput(
   options: { uncategorizedOnly?: boolean } | undefined,
   reads: Pick<LedgerReadPort, "listEntries">
 ): Promise<LedgerEntryPageDto> {
-  const filters: Parameters<typeof listLedgerEntryPage>[0]["filters"] = {};
+  const filters: Parameters<LedgerReadPort["listEntries"]>[0]["filters"] = {};
   if (validated.startDate !== undefined) filters.startDate = validated.startDate;
   if (validated.endDate !== undefined) filters.endDate = validated.endDate;
-  if (validated.categoryId !== undefined) filters.categoryId = validated.categoryId;
+  if (validated.categoryId !== undefined && validated.categoryId !== UNCATEGORIZED_SENTINEL) {
+    filters.categoryId = validated.categoryId;
+  }
   if (validated.currency !== undefined) filters.currency = validated.currency;
   if (validated.minAmount !== undefined) filters.minAmount = validated.minAmount;
   if (validated.maxAmount !== undefined) filters.maxAmount = validated.maxAmount;
@@ -55,10 +37,12 @@ async function listLedgerEntriesFromValidatedInput(
     filters.uncategorizedOnly = true;
   }
 
-  const result = await listLedgerEntryPage(
-    { ledgerId, limit: validated.limit, cursor: validated.cursor ?? null, filters },
-    reads
-  );
+  const result = await reads.listEntries({
+    ledgerId,
+    limit: validated.limit,
+    cursor: validated.cursor ?? null,
+    filters,
+  });
 
   return {
     ...result,

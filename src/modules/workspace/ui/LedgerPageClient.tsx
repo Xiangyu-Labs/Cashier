@@ -1,5 +1,4 @@
 "use client";
-import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useMessages, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
@@ -17,21 +16,11 @@ import type { LedgerTab } from "@/lib/ledger-tabs";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { LedgerQueryErrorBanner } from "@/modules/workspace/ui/LedgerQueryErrorBanner";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LedgerTabPanels } from "./LedgerTabPanels";
 import { NewRecordDialog } from "./NewRecordDialog";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import dynamic from "next/dynamic";
-import { ModalStackLoadingFallback } from "./ModalStackLoadingFallback";
-
-const ModalStackRenderer = dynamic(
-  () =>
-    import("@/modules/workspace/ui/ModalStackRenderer").then((module) => ({
-      default: module.ModalStackRenderer,
-    })),
-  { ssr: false, loading: () => <ModalStackLoadingFallback /> }
-);
+import { ModalStackGate } from "./ModalStackGate";
 
 interface LedgerPageClientProps {
   ledgerId: string;
@@ -100,10 +89,6 @@ export function LedgerPageClient({
   );
   const activeFeatureStatus = activeFeatureMessages.status;
   const retryFeatureMessages = activeFeatureMessages.retry;
-  const [tabQueryReport, setTabQueryReport] = useState<TabQueryStateReport | null>(null);
-  const handleQueryStateChange = useCallback((report: TabQueryStateReport) => {
-    setTabQueryReport(report);
-  }, []);
 
   const newRecordDialog = useNewRecordDialogState({ ledgerId });
   const {
@@ -149,12 +134,9 @@ export function LedgerPageClient({
   });
 
   const advancedFilters = filterParams;
-  const { activeTabQueryState, retryActiveTab, refreshActiveTab } = useActiveTabQueryState({
+  const { isRefreshing, refreshActiveTab } = useActiveTabQueryState({
     ledgerId,
     activeTab,
-    activeFeatureStatus,
-    tabQueryReport,
-    retryFeatureMessages,
   });
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
@@ -177,16 +159,13 @@ export function LedgerPageClient({
         <div className="flex h-9 items-center justify-end px-2">
           <RefreshButton
             onRefresh={refreshActiveTab}
-            isRefreshing={activeTabQueryState === "refreshing"}
+            isRefreshing={isRefreshing}
             disabled={activeTab === "settings" && dirtyChangeCount > 0}
           />
         </div>
         {/* Only mount the active tab — inactive tabs load lazily */}
-        {activeTabQueryState === "error-with-data" ? (
-          <LedgerQueryErrorBanner onRetry={retryActiveTab} />
-        ) : null}
-        {activeTabQueryState === "error-empty" ? (
-          <LedgerQueryErrorBanner empty onRetry={retryActiveTab} />
+        {activeFeatureStatus === "error" ? (
+          <LedgerQueryErrorBanner empty onRetry={retryFeatureMessages} />
         ) : null}
         {categoriesQuery.isError ? (
           <LedgerQueryErrorBanner
@@ -203,7 +182,7 @@ export function LedgerPageClient({
 
         <LedgerTabPanels
           activeTab={activeTab}
-          hidden={activeTabQueryState === "error-empty" || categoriesHaveNoData}
+          hidden={categoriesHaveNoData}
           locale={locale}
           ledgerId={ledgerId}
           ledger={ledger}
@@ -212,7 +191,6 @@ export function LedgerPageClient({
           onFiltersChange={handleFiltersChange}
           advancedFilters={advancedFilters}
           effectiveTimeZone={effectiveTimeZone}
-          onQueryStateChange={handleQueryStateChange}
           ledgerToday={ledgerToday}
           onCategoryDrilldown={handleCategoryDrilldown}
           onDateDrilldown={handleDateDrilldown}
@@ -255,7 +233,7 @@ export function LedgerPageClient({
           onConfirm={confirmDiscard}
         />
 
-        <ModalStackRenderer
+        <ModalStackGate
           categories={categories}
           mainCurrency={mainCurrency}
           preferredCurrencies={preferredCurrencies}

@@ -77,40 +77,6 @@ const SUPPORTED_MIME_PATTERN = SUPPORTED_MIME_TYPES.map((t) =>
 ).join("|");
 const IMAGE_MIME_REGEX = new RegExp(`^image/(${SUPPORTED_MIME_PATTERN})$`);
 
-const imagePayloadSchema = strictObjectSchema({
-  data: z.string(),
-  mimeType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
-});
-
-const imagesSchema = z
-  .array(imagePayloadSchema)
-  .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
-  .superRefine((images, ctx) => {
-    let total = 0;
-    images.forEach((image, index) => {
-      try {
-        const size = decodeBase64Image(image.data, image.mimeType).bytes.length;
-        total += size;
-        if (size > MAX_ORIGINAL_BYTES_PER_FILE) {
-          ctx.addIssue({
-            code: "custom",
-            path: [index, "data"],
-            message: `Image exceeds ${MAX_ORIGINAL_BYTES_PER_FILE / 1024 / 1024}MB`,
-          });
-        }
-      } catch (error) {
-        ctx.addIssue({
-          code: "custom",
-          path: [index, "data"],
-          message: error instanceof Error ? error.message : "Invalid base64 image data",
-        });
-      }
-    });
-    if (total > API_V1_MAX_DECODED_BATCH_BYTES) {
-      ctx.addIssue({ code: "custom", message: "Decoded image batch exceeds 3 MiB" });
-    }
-  });
-
 export const sourceDocumentIdSchema = uuidSchema;
 export const clientSubmissionIdSchema = uuidSchema;
 export const versionedTargetSchema = strictObjectSchema({
@@ -173,8 +139,6 @@ const sourceDocumentPayloadSchema = strictObjectSchema({
     .array(uuidSchema)
     .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
     .optional(),
-  images: imagesSchema.optional(),
-  originalImages: imagesSchema.optional(),
   entryDate: optionalDateStringSchema,
   timezone: timezoneSchema,
 });
@@ -183,7 +147,6 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
   (value, ctx) => {
     if (
       (value.text == null || value.text === "") &&
-      (value.images == null || value.images.length === 0) &&
       (value.storedFileIds == null || value.storedFileIds.length === 0)
     ) {
       ctx.addIssue({
@@ -191,31 +154,8 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
         message: "Content (text or images) is required",
       });
     }
-
-    // Enforce aggregate file count (storedFileIds + images + originalImages)
-    // at the schema boundary. Although originalImages are rejected by the
-    // use case, they are still counted here as defense in depth.
-    const storedCount = value.storedFileIds?.length ?? 0;
-    const imageCount = value.images?.length ?? 0;
-    const originalCount = value.originalImages?.length ?? 0;
-    const totalFiles = storedCount + imageCount + originalCount;
-    if (totalFiles > MAX_FILES) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Total file count ${totalFiles} exceeds maximum of ${MAX_FILES}`,
-      });
-    }
   }
 );
-
-/**
- * Validate a source-document payload without requiring content to be present.
- * Used by internal prepared-input paths (API v1) that carry pre-validated,
- * already-decoded images and check the content requirement themselves.
- */
-export function parseSourceDocumentPayloadInput(input: unknown) {
-  return parseSourceDocumentContract(sourceDocumentPayloadSchema, input);
-}
 
 /** API v1 is the compact Shortcut contract: inline images plus an optional business date. */
 const API_V1_TIMESTAMP_PATTERN =
@@ -286,49 +226,6 @@ const sourceDocumentPayloadSchemaV1 = strictObjectSchema({
 });
 
 export const createSourceDocumentInputSchemaV1 = sourceDocumentPayloadSchemaV1;
-
-/**
- * Validates the internal prepared API v1 payload without decoding again.
- * Re-checks shape, MIME, per-image and batch sizes as defense in depth at the
- * server-action boundary.
- */
-const preparedApiV1ImageSchema = strictObjectSchema({
-  bytes: z.instanceof(Buffer, { message: "Image bytes are required" }),
-  mimeType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
-  contentHash: z.string().regex(/^[a-f\d]{64}$/i, "Invalid content hash"),
-}).superRefine((image, ctx) => {
-  const byteLength = image.bytes?.length ?? 0;
-  if (byteLength === 0) {
-    ctx.addIssue({ code: "custom", path: ["bytes"], message: "Image data is empty" });
-  }
-  if (byteLength > API_V1_MAX_DECODED_IMAGE_BYTES) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["bytes"],
-      message: `Image exceeds ${API_V1_MAX_DECODED_IMAGE_BYTES / 1024 / 1024}MB`,
-    });
-  }
-  if (
-    byteLength > 0 &&
-    createHash("sha256").update(image.bytes).digest("hex") !== image.contentHash.toLowerCase()
-  ) {
-    ctx.addIssue({ code: "custom", path: ["contentHash"], message: "Content hash mismatch" });
-  }
-});
-
-export const preparedApiV1SourceDocumentInputSchema = strictObjectSchema({
-  images: z
-    .array(preparedApiV1ImageSchema)
-    .min(1, "At least one image is required")
-    .max(API_V1_MAX_IMAGES, `Maximum ${API_V1_MAX_IMAGES} images allowed`)
-    .superRefine((images, ctx) => {
-      const total = images.reduce((sum, image) => sum + (image.bytes?.length ?? 0), 0);
-      if (total > API_V1_MAX_DECODED_BATCH_BYTES) {
-        ctx.addIssue({ code: "custom", message: "Decoded image batch exceeds 3 MiB" });
-      }
-    }),
-  entryDate: optionalDateStringSchema,
-});
 
 export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
 

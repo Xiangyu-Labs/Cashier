@@ -6,13 +6,13 @@ import { hashOTP } from "@/modules/auth/services/otp";
 import { db } from "@/lib/db";
 import {
   findOTPRecord as findOTPRecordWithPort,
-  isAccountLocked as isAccountLockedWithPort,
+  verifyOTPWithPolicy,
 } from "@/modules/auth/services/otp-verification";
 import { serverComposition } from "@/application/server-composition-root";
 
 const findOTPRecord = (email: string) => findOTPRecordWithPort(email, serverComposition.otpTokens);
-const isAccountLocked = (email: string) =>
-  isAccountLockedWithPort(email, serverComposition.otpTokens);
+const verify = async (email: string) =>
+  verifyOTPWithPolicy(email, "123456", (await findOTPRecord(email))!, serverComposition.otpTokens);
 
 describe("otp-verification service", () => {
   it("findOTPRecord is case-insensitive for email input", async () => {
@@ -44,20 +44,19 @@ describe("otp-verification service", () => {
       lockedUntil: new Date(Date.now() + 60_000),
     });
 
-    const result = await isAccountLocked(email);
-    expect(result.locked).toBe(true);
+    const result = await verify(email);
+    expect(result).toMatchObject({ success: false, reason: "locked" });
     expect(result.lockedUntil).toBeInstanceOf(Date);
   });
 
-  it("fails open when lock-status query throws", async () => {
+  it("propagates a failed OTP lookup instead of reporting an unlocked account", async () => {
     const originalSelect = (db as unknown as { select: unknown }).select;
     (db as unknown as { select: unknown }).select = vi.fn(() => {
       throw new Error("db unavailable");
     });
 
     try {
-      const result = await isAccountLocked("anyone@example.com");
-      expect(result).toEqual({ locked: false });
+      await expect(findOTPRecord("anyone@example.com")).rejects.toThrow("db unavailable");
     } finally {
       (db as unknown as { select: unknown }).select = originalSelect;
     }
@@ -71,12 +70,12 @@ describe("otp-verification service", () => {
       email,
       tokenHash: hashOTP("123456"),
       expires: new Date(Date.now() + 60_000),
-      attempts: 5,
+      attempts: 0,
       lockedUntil: new Date(Date.now() - 60_000),
     });
 
-    const result = await isAccountLocked(email);
-    expect(result).toEqual({ locked: false });
+    const result = await verify(email);
+    expect(result).toEqual({ success: true });
   });
 
   it("findOTPRecord returns undefined when record does not exist", async () => {

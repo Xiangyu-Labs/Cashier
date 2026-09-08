@@ -31,6 +31,7 @@ export const convertCurrencyAction = withLedgerAccess(
   }
 );
 
+/** @publicContract Retained server-action boundary used by existing clients and API tests. */
 export const batchConvertCurrencyAction = withLedgerAccess(
   async (
     _ledgerId: string,

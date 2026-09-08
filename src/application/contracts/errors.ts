@@ -19,6 +19,14 @@ export interface ApplicationErrorContract {
   correlationId?: string;
 }
 
+import { AppError, ConflictError } from "@/lib/errors";
+
+export class LedgerMainCurrencyChangedError extends ConflictError {
+  constructor() {
+    super("Ledger currency changed before the projection was committed");
+  }
+}
+
 const CODE_BY_LEGACY_CODE: Readonly<Record<string, ApplicationErrorCode>> = {
   VALIDATION_ERROR: "VALIDATION_FAILED",
   UNAUTHORIZED: "UNAUTHENTICATED",
@@ -55,4 +63,3 @@ export function toApplicationError(error: unknown): ApplicationErrorContract {
     ...(hidesDetails ? { correlationId: crypto.randomUUID() } : {}),
   };
 }
-import { AppError } from "@/lib/errors";

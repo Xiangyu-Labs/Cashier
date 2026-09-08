@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultLedger } from "@/config/default-ledger";
 import type { CategoryPort, ServiceCredentialPort } from "@/application/contracts";
 import { getLedgerSettingsBootstrap as getBootstrap } from "@/modules/workspace/application/queries/get-ledger-settings-bootstrap";
 
@@ -23,7 +24,7 @@ const dependencies = {
 const ledgerDto = {
   id: "ledger-1",
   userId: "user-1",
-  settings: { mainCurrency: "USD" },
+  settings: { ...getDefaultLedger("en").settings, mainCurrency: "USD" },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };

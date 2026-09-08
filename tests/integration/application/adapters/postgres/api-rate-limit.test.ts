@@ -196,45 +196,43 @@ describe("PostgresRateLimiter", () => {
       ).resolves.toMatchObject({ acquired: true });
     });
 
-    it("setCooldown activates a cooldown", async () => {
+    it("acquireCooldown activates a cooldown and reports remaining time", async () => {
       const key = "cd-test-activate";
 
-      await postgresRateLimiter.setCooldown(key, 60);
+      await postgresRateLimiter.acquireCooldown(key, 60);
 
-      const remaining = await postgresRateLimiter.getCooldownRemaining(key, 60);
+      const { retryAfter: remaining } = await postgresRateLimiter.acquireCooldown(key, 60);
       expect(remaining).toBeGreaterThan(0);
       expect(remaining).toBeLessThanOrEqual(60);
     });
 
-    it("getCooldownRemaining returns 0 for missing key", async () => {
-      const remaining = await postgresRateLimiter.getCooldownRemaining("cd-missing", 60);
-      expect(remaining).toBe(0);
+    it("acquires a missing cooldown", async () => {
+      expect(await postgresRateLimiter.acquireCooldown("cd-missing", 60)).toMatchObject({
+        acquired: true,
+        retryAfter: 0,
+      });
     });
 
-    it("getCooldownRemaining returns 0 for expired cooldown", async () => {
+    it("reacquires an expired cooldown", async () => {
       const key = "cd-expired";
 
-      await postgresRateLimiter.setCooldown(key, 1);
-      vi.advanceTimersByTime(1100);
+      await postgresRateLimiter.acquireCooldown(key, 1);
+      await db.execute(
+        sql`UPDATE rate_limit_buckets SET window_start = now() - interval '2 seconds' WHERE bucket_key = ${key}`
+      );
 
-      const remaining = await postgresRateLimiter.getCooldownRemaining(key, 1);
-      expect(remaining).toBe(0);
+      expect(await postgresRateLimiter.acquireCooldown(key, 1)).toMatchObject({
+        acquired: true,
+        retryAfter: 0,
+      });
     });
 
-    it("setCooldown refreshes an existing cooldown window", async () => {
+    it("does not extend an active cooldown on another acquisition attempt", async () => {
       const key = "cd-refresh";
 
-      await postgresRateLimiter.setCooldown(key, 60);
-      const before = await postgresRateLimiter.getCooldownRemaining(key, 60);
-      expect(before).toBeGreaterThan(0);
-
-      // Wait briefly, then set cooldown again
-      vi.advanceTimersByTime(200);
-      await postgresRateLimiter.setCooldown(key, 60);
-
-      // After refresh, remaining should be closer to 60 than before the wait
-      const after = await postgresRateLimiter.getCooldownRemaining(key, 60);
-      expect(after).toBeGreaterThanOrEqual(before);
+      const before = await postgresRateLimiter.acquireCooldown(key, 60);
+      const after = await postgresRateLimiter.acquireCooldown(key, 60);
+      expect(after).toMatchObject({ acquired: false, acquiredAt: before.acquiredAt });
     });
   });
 });

@@ -123,6 +123,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Coffee Shop",
       [entry],
       reviewSnapshot(matched, {

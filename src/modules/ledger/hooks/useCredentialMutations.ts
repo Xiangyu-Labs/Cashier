@@ -4,7 +4,7 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createServiceCredentialAction,
   deleteServiceCredentialAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/credentials";
 import type { CreatedServiceCredential } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ export function useCredentialMutations(ledgerId: string) {
   const tCredentials = useTranslations("ServiceCredentials");
   const tCommon = useTranslations("Common");
   const createCredential = useLedgerMutation<CreatedServiceCredential, string>(ledgerId, {
+    invalidates: ["credentials"],
     mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
     successMessage: t("credentialCreated"),
     errorMessage: null,
@@ -24,6 +25,7 @@ export function useCredentialMutations(ledgerId: string) {
   });
 
   const deleteCredential = useLedgerMutation<void, string>(ledgerId, {
+    invalidates: ["credentials"],
     mutationFn: (id) => deleteServiceCredentialAction(ledgerId, id),
     successMessage: t("credentialDeleted"),
     errorMessage: t("deleteFailed"),

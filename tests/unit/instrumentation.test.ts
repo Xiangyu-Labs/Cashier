@@ -5,7 +5,6 @@ const logger = {
   error: vi.fn(),
 };
 
-const initializeExchangeRateLedgerRecalculationOrchestration = vi.fn();
 const validateStartupEnv = vi.fn(() => ({
   DATABASE_URL: "file:./data/sqlite.db",
   S3_BUCKET: "cashier-images",
@@ -13,10 +12,6 @@ const validateStartupEnv = vi.fn(() => ({
 
 vi.mock("@/lib/logger", () => ({
   logger,
-}));
-
-vi.mock("@/application/orchestration/exchange-rate-ledger-recalculation", () => ({
-  initializeExchangeRateLedgerRecalculationOrchestration,
 }));
 
 vi.mock("@/lib/env/startup", () => ({
@@ -29,16 +24,15 @@ describe("instrumentation.register", () => {
     process.env.NEXT_RUNTIME = "nodejs";
   });
 
-  it("validates startup env and initializes orchestration without a global processing dispatcher", async () => {
+  it("validates startup env without installing process-global orchestration", async () => {
     const { register } = await import("@/instrumentation");
 
     await register();
 
     expect(validateStartupEnv).toHaveBeenCalledTimes(1);
-    expect(initializeExchangeRateLedgerRecalculationOrchestration).toHaveBeenCalledTimes(1);
   });
 
-  it("rethrows startup env validation failures without initializing the runtime", async () => {
+  it("rethrows startup env validation failures", async () => {
     validateStartupEnv.mockImplementationOnce(() => {
       throw new Error("invalid env");
     });
@@ -46,7 +40,6 @@ describe("instrumentation.register", () => {
     const { register } = await import("@/instrumentation");
 
     await expect(register()).rejects.toThrow("invalid env");
-    expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
 });

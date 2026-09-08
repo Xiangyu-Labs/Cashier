@@ -2,7 +2,6 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-  HeadObjectCommand,
   PutObjectCommand,
   type S3Client,
 } from "@aws-sdk/client-s3";
@@ -58,6 +57,7 @@ describe("S3StorageProvider", () => {
       .fn()
       .mockResolvedValueOnce({
         ContentLength: 3,
+        Body: { transformToByteArray: vi.fn(async () => new Uint8Array([1, 2, 3])) },
         ContentType: "image/png",
         Metadata: { sha256: "a".repeat(64) },
       })
@@ -78,10 +78,13 @@ describe("S3StorageProvider", () => {
         "x-amz-meta-sha256": "a".repeat(64),
       },
     });
-    await expect(storage.head("temporary/ledger/session/target")).resolves.toEqual({
-      byteSize: 3,
-      contentType: "image/png",
-      metadata: { sha256: "a".repeat(64) },
+    await expect(storage.readObject("temporary/ledger/session/target")).resolves.toEqual({
+      bytes: Buffer.from([1, 2, 3]),
+      metadata: {
+        byteSize: 3,
+        contentType: "image/png",
+        metadata: { sha256: "a".repeat(64) },
+      },
     });
     await expect(
       storage.copy("temporary/ledger/session/target", "ledger/stored/target")
@@ -92,7 +95,7 @@ describe("S3StorageProvider", () => {
       signableHeaders: new Set(["content-type"]),
       unhoistableHeaders: new Set(["x-amz-meta-sha256"]),
     });
-    expect(send.mock.calls[0]?.[0]).toBeInstanceOf(HeadObjectCommand);
+    expect(send.mock.calls[0]?.[0]).toBeInstanceOf(GetObjectCommand);
     expect(send.mock.calls[1]?.[0]).toBeInstanceOf(CopyObjectCommand);
     expect(send.mock.calls[1]?.[0].input.CopySource).toBe(
       "cashier-images/temporary/ledger/session/target"

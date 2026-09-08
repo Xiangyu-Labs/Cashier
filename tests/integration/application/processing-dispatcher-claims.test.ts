@@ -3,10 +3,6 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
-  CurrentRevisionProcessor,
-  executeSingleProcessingIntent,
-} from "@/application/adapters/in-process";
-import {
   PostgresProcessingIntentAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
@@ -18,6 +14,7 @@ import {
   duplicateReviews,
   processingAttempts,
   processingOutbox,
+  currencyRates,
 } from "@/persistence";
 
 vi.mock("@/lib/tasks/ai-context", () => ({
@@ -85,9 +82,7 @@ describe("PostgresProcessingIntentAdapter", () => {
         reasoning: "single item",
       }),
     }));
-    const processor = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate }),
-    });
+    const processor = serverComposition.createRevisionProcessor(() => ({ generate }));
 
     await expect(
       processor.process({
@@ -95,14 +90,14 @@ describe("PostgresProcessingIntentAdapter", () => {
         sourceDocumentId: intent.sourceDocumentId,
         revisionId: intent.revisionId,
       })
-    ).resolves.toEqual({ outcome: "completed" });
+    ).resolves.toEqual({ outcome: "completed", completion: "atomic" });
     await expect(
       processor.process({
         ledgerId,
         sourceDocumentId: intent.sourceDocumentId,
         revisionId: intent.revisionId,
       })
-    ).resolves.toEqual({ outcome: "completed" });
+    ).resolves.toEqual({ outcome: "completed", completion: "residual" });
 
     expect(generate).toHaveBeenCalledTimes(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
@@ -154,9 +149,7 @@ describe("PostgresProcessingIntentAdapter", () => {
       }),
     }));
 
-    const processor = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate }),
-    });
+    const processor = serverComposition.createRevisionProcessor(() => ({ generate }));
 
     await processor.process({
       ledgerId,
@@ -229,9 +222,7 @@ describe("PostgresProcessingIntentAdapter", () => {
         reasoning: "single item",
       }),
     }));
-    const processor = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate }),
-    });
+    const processor = serverComposition.createRevisionProcessor(() => ({ generate }));
 
     await processor.process({
       ledgerId,
@@ -255,6 +246,11 @@ describe("PostgresProcessingIntentAdapter", () => {
 
   it("retried revision uses current ledger settings", async () => {
     const db = getTestDb();
+    await db.insert(currencyRates).values({
+      date: new Date().toISOString().slice(0, 10),
+      base: "EUR",
+      rates: { EUR: 1, CNY: 8, USD: 1.2 },
+    });
     const { ledgerId, intent } = await pendingIntent(
       "2026-07-15T00:00:00.000Z",
       crypto.randomUUID()
@@ -283,9 +279,7 @@ describe("PostgresProcessingIntentAdapter", () => {
       }),
     }));
 
-    const processor1 = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate: generate1 }),
-    });
+    const processor1 = serverComposition.createRevisionProcessor(() => ({ generate: generate1 }));
 
     await processor1.process({
       ledgerId,
@@ -332,9 +326,7 @@ describe("PostgresProcessingIntentAdapter", () => {
       }),
     }));
 
-    const processor2 = new CurrentRevisionProcessor({
-      createAIContext: () => ({ generate: generate2 }),
-    });
+    const processor2 = serverComposition.createRevisionProcessor(() => ({ generate: generate2 }));
 
     await processor2.process({
       ledgerId,
@@ -360,6 +352,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const claims = await Promise.all([adapter.claim(intent.id), adapter.claim(intent.id)]);
 
     expect(claims.filter((claim) => claim != null)).toHaveLength(1);
+    expect(claims.find((claim) => claim != null)?.ledgerId).toBeDefined();
     expect(await db.select().from(processingOutbox)).toHaveLength(1);
     expect(await db.select().from(processingAttempts)).toHaveLength(1);
   });
@@ -420,7 +413,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
-    const result = await executeSingleProcessingIntent(intent);
+    const result = await serverComposition.executeSingleProcessingIntent(intent);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({

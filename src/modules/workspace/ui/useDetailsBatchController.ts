@@ -12,7 +12,7 @@ import {
   batchUpdateLedgerEntriesAction,
   batchUpdateLedgerEntryDatesAction,
   previewBatchLedgerEntryDateAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { VersionedTarget } from "@/modules/source-document/contracts";
 import { unwrapAtomicBatchCommandResult } from "@/modules/source-document/command-results";
@@ -79,6 +79,7 @@ export function useDetailsBatchController(
     { ledgerEntryIds: string[]; affectedCount: number },
     { categoryId?: string | null; currency?: string | null }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (data: { categoryId?: string | null; currency?: string | null }) => {
       const result = await batchUpdateLedgerEntriesAction(
         ledgerId,
@@ -100,6 +101,7 @@ export function useDetailsBatchController(
     Awaited<ReturnType<typeof batchDeleteLedgerEntriesAction>>,
     void
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: () =>
       batchDeleteLedgerEntriesAction(
         ledgerId,
@@ -132,6 +134,7 @@ export function useDetailsBatchController(
     onError: () => toast.error(tCommon("error")),
   });
   const updateDates = useLedgerMutation<{ impact: BatchDateImpact }, void>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async () => {
       const snapshot = dateSelectionSnapshot;
       if (

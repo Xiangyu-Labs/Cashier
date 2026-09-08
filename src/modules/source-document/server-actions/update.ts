@@ -11,10 +11,6 @@ import {
   saveSourceDocumentChangesInputSchema,
   type BatchUpdateSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
-import {
-  batchUpdateSourceDocuments,
-  saveSourceDocumentChanges,
-} from "../application/use-cases/source-document-updates";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { serverComposition } from "@/application/server-composition-root";
 
@@ -30,16 +26,11 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
     }
   ): Promise<AtomicBatchCommandResult<BatchUpdateSourceDocumentsResultDto>> => {
     const validated = batchUpdateSourceDocumentsInputSchema.parse(input);
-    return batchUpdateSourceDocuments(
-      {
-        ledgerId,
-        targets: validated.targets,
-        data: validated.data,
-      },
-      {
-        batchUpdate: serverComposition.sourceDocumentAggregate.updateDocuments,
-      }
-    );
+    return serverComposition.sourceDocumentAggregate.updateDocuments({
+      ledgerId,
+      targets: validated.targets,
+      data: validated.data,
+    });
   }
 );
 
@@ -49,19 +40,14 @@ export const saveSourceDocumentChangesAction = withSourceDocumentLedgerAccess(
     input: SaveSourceDocumentChangesInput
   ): Promise<VersionedCommandResult<SaveSourceDocumentChangesResultDto>> => {
     const validated = saveSourceDocumentChangesInputSchema.parse(input);
-    return saveSourceDocumentChanges(
+    return serverComposition.sourceDocumentAggregate.saveChanges({
       ledgerId,
-      {
-        sourceDocumentId: validated.sourceDocumentId,
-        expectedVersion: validated.expectedVersion,
-        ...(validated.sourceDocument === undefined
-          ? {}
-          : { sourceDocument: validated.sourceDocument }),
-        entries: validated.entries,
-      },
-      {
-        saveChangesAtomically: serverComposition.sourceDocumentAggregate.saveChanges,
-      }
-    );
+      sourceDocumentId: validated.sourceDocumentId,
+      expectedVersion: validated.expectedVersion,
+      ...(validated.sourceDocument === undefined
+        ? {}
+        : { sourceDocument: validated.sourceDocument }),
+      entries: validated.entries,
+    });
   }
 );

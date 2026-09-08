@@ -18,11 +18,11 @@ import {
 import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
 import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
-import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 import { duplicateReviews, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 import { StaleSourceDocumentVersionError } from "@/lib/errors";
+import { postgresSourceDocumentAggregateAdapter } from "@/application/adapters/postgres/source-document-aggregate";
 
 async function currentVersion(sourceDocumentId: string): Promise<number> {
   const db = getTestDb();
@@ -106,6 +106,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Coffee Shop",
       [entry],
       reviewSnapshot(matched, {
@@ -168,6 +169,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, { confidence: 0.8 })
@@ -283,6 +285,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, {
@@ -363,6 +366,7 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, { reason: "Same bill" })
@@ -370,13 +374,14 @@ describe("duplicate review lifecycle", () => {
     const staleVersion = await currentVersion(sourceDocumentId);
 
     await expect(
-      postgresLedgerProjectionAdapter.replaceActive({
+      postgresSourceDocumentAggregateAdapter.saveChanges({
         ledgerId,
         sourceDocumentId,
-        expectedActiveRevisionId: revisionId,
-        entries: [entry],
+        expectedVersion: staleVersion,
+        sourceDocument: { title: "Changed" },
+        entries: [],
       })
-    ).rejects.toThrow("Source document has a pending duplicate review");
+    ).rejects.toThrow("Source document is not editable");
 
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
@@ -404,14 +409,15 @@ describe("duplicate review lifecycle", () => {
       ledgerId,
       sourceDocumentId,
       revisionId,
+      "CNY",
       "Original",
       [entry],
       reviewSnapshot(matched, { reason: "Same bill" })
     );
 
-    await expect(
-      deleteSourceDocument({ ledgerId, sourceDocumentId }, postgresRevisionAdapter)
-    ).resolves.toEqual({ sourceDocumentId, deleted: true });
+    await expect(postgresRevisionAdapter.softDelete(ledgerId, sourceDocumentId)).resolves.toBe(
+      true
+    );
 
     const review = await db.query.duplicateReviews.findFirst({
       where: eq(duplicateReviews.sourceDocumentId, sourceDocumentId),

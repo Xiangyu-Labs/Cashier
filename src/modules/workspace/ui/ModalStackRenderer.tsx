@@ -7,7 +7,7 @@ import { closeLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { ledgerDetailLeaveGuardKey } from "@/lib/navigation/ledger-detail-key";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
-interface ModalStackRendererProps {
+export interface ModalStackRendererProps {
   categories: EntryCategory[];
   mainCurrency: string;
   preferredCurrencies: string[];
@@ -30,7 +30,9 @@ export function ModalStackRenderer({
   };
   const requestBack = () => {
     const guardKey = ledgerDetailLeaveGuardKey(item.type, item.ledgerId, item.id);
-    const guard = useUnsavedChangesStore.getState().getLeaveGuard(guardKey);
+    const guards = useUnsavedChangesStore.getState();
+    const guard =
+      guards.getLeaveGuard("source-document-retry-navigation") ?? guards.getLeaveGuard(guardKey);
     if (guard == null) startExit();
     else guard.requestLeave(startExit);
   };

@@ -5,10 +5,9 @@ import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
   cancelSourceDocumentProcessingAction,
-  retrySourceDocumentAction,
-} from "@/modules/source-document/actions";
+} from "@/modules/source-document/server-actions/candidates";
+import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import { useTranslations } from "next-intl";
-import { useSourceDocumentRevisionDecisionMutation } from "./useSourceDocumentRevisionDecisionMutation";
 import { useVersionedSourceDocumentMutation } from "./useVersionedSourceDocumentMutation";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
@@ -40,7 +39,7 @@ export function useSourceDocumentRecoveryMutations({
   // Accept candidate
   // -----------------------------------------------------------------------
 
-  const acceptMutation = useSourceDocumentRevisionDecisionMutation({
+  const acceptMutation = useVersionedSourceDocumentMutation({
     ledgerId,
     sourceDocumentId,
     expectedVersion: version,
@@ -54,7 +53,7 @@ export function useSourceDocumentRecoveryMutations({
   // Abandon candidate
   // -----------------------------------------------------------------------
 
-  const abandonMutation = useSourceDocumentRevisionDecisionMutation({
+  const abandonMutation = useVersionedSourceDocumentMutation({
     ledgerId,
     sourceDocumentId,
     expectedVersion: version,

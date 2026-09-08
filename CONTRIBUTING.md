@@ -45,13 +45,30 @@ rules are in [Testing Architecture](./docs/architecture/testing.md).
 
 ## Tests and checks
 
+Unit tests require only Node.js 24. Pure logic tests run in Node; `.test.tsx` files and the small
+set of tests that use browser APIs run in happy-dom. Integration tests also require a running Docker daemon; the
+test runner starts an isolated `postgres:17-alpine` container automatically. The first integration
+run may take longer while Docker downloads the PostgreSQL and resource-reaper images. Tests do not
+require `.env`, real credentials, a fixed local port, or a manually created database.
+
+Dead-code review runs both a complete graph and a production-only graph. Use `@testOnly` only for a
+production-file helper directly exercised by focused tests, and `@publicContract` only for a reviewed
+framework or compatibility entrypoint that Knip cannot discover. Do not add directory-wide ignores.
+
 Run the narrowest relevant check while working:
 
 ```bash
-npm run test:unit
+npm test
+npm run test:watch
 npm run test:integration
 npx vitest run tests/unit/path/to/file.test.ts
 ```
+
+`npm run test:all` runs all unit and integration projects once; `npm run test:run` is an equivalent
+compatibility entrypoint. `npm run test:prepare` performs a one-time PostgreSQL environment check
+and then releases its container. An explicit `TEST_DATABASE_URL` may be used for advanced workflows,
+but it must reference a PostgreSQL database whose name ends in `_test`, with `public.pg_trgm` already
+installed and permission to create schemas. Test commands never fall back to `DATABASE_URL`.
 
 Before opening a pull request, run:
 
@@ -59,9 +76,10 @@ Before opening a pull request, run:
 npm run check
 ```
 
-This runs formatting, architecture checks, lint, type checking, tests, coverage, production build,
-and translation validation. Coverage thresholds are 70% for lines, 68% for statements, 65% for
-functions, and 60% for branches.
+This runs formatting, architecture checks, lint, type checking, tests, coverage, a production build
+with isolated build-check placeholders, and translation validation. Coverage thresholds are 70% for
+lines, 68% for statements, 65% for functions, and 60% for branches. The ordinary `npm run build`
+still uses the caller's production configuration.
 
 ## Browser smoke tests
 
@@ -72,7 +90,7 @@ npx playwright install chromium
 npm run test:smoke
 ```
 
-The runner creates a uniquely named database on the loopback `cashier_test` PostgreSQL service,
+The runner starts a temporary PostgreSQL container and creates a uniquely named smoke database,
 applies real migrations, seeds a fictional password account, builds production assets, and runs
 desktop and mobile Chromium tests. It does not use an authentication bypass, real email, AI, or
 object storage. `TEST_DATABASE_URL` may override the test connection, but must still point to a

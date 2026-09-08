@@ -3,6 +3,7 @@ import { roundToCurrency } from "@/lib/money/currency-precision";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
 import type { QuickEntryPorts } from "../ports";
+import type { LedgerSettingsContract } from "@/application/contracts";
 
 export interface CreateQuickEntryPayload {
   categoryId: string;
@@ -58,17 +59,13 @@ async function createQuickEntryAtomically(
   return { sourceDocumentId: created.sourceDocumentId, ledgerEntryId };
 }
 
-export async function createQuickEntry<
-  TLedger extends {
-    settings: { mainCurrency?: string; timeZone?: string | null };
-  },
->(
+export async function createQuickEntry(
   ledgerId: string,
-  ledger: TLedger,
+  ledger: { settings: Pick<LedgerSettingsContract, "mainCurrency" | "timeZone"> },
   payload: CreateQuickEntryPayload,
   ports: QuickEntryPorts
 ): Promise<QuickEntryResponseDto> {
-  const mainCurrency = ledger.settings.mainCurrency ?? "CNY";
+  const mainCurrency = ledger.settings.mainCurrency;
   const entryCurrency = payload.currency ?? mainCurrency;
   const timeZone = ledger.settings.timeZone ?? undefined;
   const entryDate =

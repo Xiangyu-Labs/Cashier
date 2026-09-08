@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import {
-  createSourceDocumentAction,
-  deleteSourceDocumentAction,
-} from "@/modules/source-document/actions";
+import { createSourceDocumentAction } from "@/modules/source-document/server-actions/create";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
 import { getTestDb } from "../../setup";
 import {
   entryCategories as categories,
@@ -14,7 +12,7 @@ import {
 } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
-import { createMultiStageMock } from "../../helpers/mocks/openai";
+import { createOpenAIMock } from "../../helpers/mocks/openai";
 
 // Mock OpenAI
 vi.mock("@/lib/ai/openai-client", () => ({
@@ -43,7 +41,7 @@ describe("SourceDocument Actions", () => {
   beforeEach(async () => {
     // Reset mock to use multi-stage mock by default
     vi.mocked(getOpenAIClient).mockReturnValue(
-      createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
+      createOpenAIMock() as unknown as ReturnType<typeof getOpenAIClient>
     );
 
     const db = getTestDb();
@@ -79,7 +77,7 @@ describe("SourceDocument Actions", () => {
   it("should persist ledger entries with notes", async () => {
     // Override mock for this test with custom entries
     vi.mocked(getOpenAIClient).mockReturnValue(
-      createMultiStageMock({
+      createOpenAIMock({
         categories: ["水果"],
         entries: [
           {

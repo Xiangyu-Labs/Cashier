@@ -277,54 +277,89 @@ export const postgresCategoryAdapter: CategoryPort = {
         const existing = currentById.get(target.id ?? target.clientId!);
         return existing != null && existing.name !== target.name;
       });
-      for (const target of renamedExisting) {
-        const resolvedId = target.id ?? target.clientId!;
-        await tx
-          .update(entryCategories)
-          .set({
+      if (renamedExisting.length > 0) {
+        const temporaryNames = JSON.stringify(
+          renamedExisting.map((target) => ({
+            id: target.id ?? target.clientId!,
             name: `__cashier_internal_category_rename__:${crypto.randomUUID()}:${"x".repeat(80)}`,
-            updatedAt: now,
-          })
-          .where(
-            and(
-              eq(entryCategories.ledgerId, ledgerId),
-              eq(entryCategories.id, resolvedId),
-              isNull(entryCategories.deletedAt)
+          }))
+        );
+        const renamed = await tx.execute(sql`
+          WITH renames AS (
+            SELECT * FROM jsonb_to_recordset(${temporaryNames}::jsonb) AS value(
+              id uuid,
+              name text
             )
-          );
+          )
+          UPDATE entry_categories AS category
+          SET name = renames.name,
+              updated_at = ${now}
+          FROM renames
+          WHERE category.id = renames.id
+            AND category.ledger_id = ${ledgerId}
+            AND category.deleted_at IS NULL
+          RETURNING category.id
+        `);
+        if (renamed.rows.length !== renamedExisting.length) {
+          throw new ConflictError("Category collection changed during rename");
+        }
       }
 
-      for (const target of targets) {
-        const resolvedId = target.id ?? target.clientId!;
-        const existing = currentById.get(resolvedId);
-        if (existing == null) {
-          await tx.insert(entryCategories).values({
-            id: resolvedId,
+      const existingTargets = targets.filter((target) =>
+        currentById.has(target.id ?? target.clientId!)
+      );
+      if (existingTargets.length > 0) {
+        const updates = JSON.stringify(
+          existingTargets.map((target) => ({
+            id: target.id ?? target.clientId!,
+            name: target.name,
+            description: target.description,
+            icon: target.icon,
+            sort_order: target.sortOrder,
+          }))
+        );
+        const updated = await tx.execute(sql`
+          WITH changes AS (
+            SELECT * FROM jsonb_to_recordset(${updates}::jsonb) AS value(
+              id uuid,
+              name text,
+              description text,
+              icon text,
+              sort_order integer
+            )
+          )
+          UPDATE entry_categories AS category
+          SET name = changes.name,
+              description = changes.description,
+              icon = changes.icon,
+              sort_order = changes.sort_order,
+              updated_at = ${now}
+          FROM changes
+          WHERE category.id = changes.id
+            AND category.ledger_id = ${ledgerId}
+            AND category.deleted_at IS NULL
+          RETURNING category.id
+        `);
+        if (updated.rows.length !== existingTargets.length) {
+          throw new ConflictError("Category collection changed during update");
+        }
+      }
+
+      const newTargets = targets.filter(
+        (target) => !currentById.has(target.id ?? target.clientId!)
+      );
+      if (newTargets.length > 0) {
+        await tx.insert(entryCategories).values(
+          newTargets.map((target) => ({
+            id: target.id ?? target.clientId!,
             ledgerId,
             name: target.name,
             description: target.description,
             icon: target.icon,
             sortOrder: target.sortOrder,
             updatedAt: now,
-          });
-        } else {
-          await tx
-            .update(entryCategories)
-            .set({
-              name: target.name,
-              description: target.description,
-              icon: target.icon,
-              sortOrder: target.sortOrder,
-              updatedAt: now,
-            })
-            .where(
-              and(
-                eq(entryCategories.ledgerId, ledgerId),
-                eq(entryCategories.id, resolvedId),
-                isNull(entryCategories.deletedAt)
-              )
-            );
-        }
+          }))
+        );
       }
 
       const savedIds = targets.map((target) => target.id ?? target.clientId!);

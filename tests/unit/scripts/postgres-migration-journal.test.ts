@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0034_remove_source_document_status_triggers");
+    expect(journal.entries.at(-1)?.tag).toBe("0035_maintenance_work_lifecycle");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {
@@ -85,7 +85,7 @@ describe("Postgres migration journal", () => {
 
   it("registers every hand-written migration without a same-prefix snapshot", () => {
     const manual = JSON.parse(
-      readFileSync(path.join(migrationsDirectory, "meta", "manual-migrations.json"), "utf8")
+      readFileSync(path.join(migrationsDirectory, "meta", "_manual-migrations.json"), "utf8")
     ) as { migrations: Array<{ file: string; sha256: string }> };
     const registered = new Map(manual.migrations.map((entry) => [entry.file, entry.sha256]));
     const sqlFiles = readdirSync(migrationsDirectory)
@@ -97,15 +97,24 @@ describe("Postgres migration journal", () => {
       .sort();
 
     expect(sqlFiles.length).toBeGreaterThan(0);
-    for (const file of sqlFiles) {
+    expect(registered.has("0035_maintenance_work_lifecycle.sql")).toBe(false);
+    for (const file of new Set([...sqlFiles, ...registered.keys()])) {
       const sha256 = createHash("sha256")
         .update(readFileSync(path.join(migrationsDirectory, file)))
         .digest("hex");
       expect(
         registered.get(file),
-        `${file} must be registered in meta/manual-migrations.json`
+        `${file} must be registered in meta/_manual-migrations.json`
       ).toBe(sha256);
     }
+  });
+
+  it("keeps auxiliary metadata out of Drizzle's snapshot discovery", () => {
+    const discovered = readdirSync(path.join(migrationsDirectory, "meta")).filter(
+      (file) => !file.startsWith("_")
+    );
+    expect(discovered.length).toBeGreaterThan(0);
+    for (const file of discovered) expect(file).toMatch(/^\d{4}_snapshot\.json$/);
   });
 
   it("allows db:generate when the snapshot baseline matches the journal", () => {

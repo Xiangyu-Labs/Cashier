@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { createLedgerEntryAction } from "@/modules/ledger/actions";
+import { createLedgerEntryAction } from "@/modules/ledger/server-actions/entries";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../setup";
 import { activateTestSourceDocumentProjection, TEST_USER_ID } from "../../helpers/schema-setup";

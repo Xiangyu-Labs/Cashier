@@ -29,9 +29,8 @@ import { getTestDb } from "tests/setup";
  * caller-supplied `expectedVersion` CAS. Excluded, and why:
  * - `createProcessingDocument` / `createManualDocument`: create a *new*
  *   document; there is no prior version to be a CAS against.
- * - `completeProcessing` / `applyMainCurrencyChange` / `recalculateConversions`:
- *   provider- and ledger-settings-driven internal writes keyed by revision
- *   ids or FX recalculation batches, not a browser-facing versioned command.
+ * - `completeProcessing`: provider-driven internal writes keyed by revision
+ *   ids, not a browser-facing versioned command.
  * - `resolveDuplicate`: one port method with two distinct terminal outcomes
  *   ("keep" vs "discard"), split here into two scenario keys so each is
  *   independently exercised.
@@ -44,8 +43,6 @@ type ExistingDocumentCommand =
       | "createManualDocument"
       | "installIdempotentRetry"
       | "completeProcessing"
-      | "applyMainCurrencyChange"
-      | "recalculateConversions"
       | "resolveDuplicate"
     >
   | "resolveDuplicateKeep"
@@ -153,6 +150,7 @@ async function createCandidatePendingDocument(ledgerId: string) {
     ledgerId,
     active.sourceDocumentId,
     pending.revision.id,
+    "CNY",
     "Candidate",
     [{ ...entry, itemName: "Candidate item" }]
   );
@@ -174,6 +172,7 @@ async function createDuplicatePendingDocument(ledgerId: string) {
       where: eq(sourceDocuments.id, pending.sourceDocumentId),
       columns: { pendingRevisionId: true },
     }))!.pendingRevisionId!,
+    "CNY",
     "Duplicate candidate",
     [entry],
     {
@@ -728,16 +727,6 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
     await expect(
       port.deleteDocuments({ ledgerId, target: { sourceDocumentId, expectedVersion: 3 } })
     ).rejects.toThrow(NotFoundError);
-  },
-
-  async deleteDocumentsBatch() {
-    // Not implemented in the production composition root: `deleteDocuments`
-    // is called once per target instead (see
-    // `batchDeleteSourceDocumentsAction` in
-    // `src/modules/source-document/server-actions/batch.ts`), which is
-    // already covered above by the `deleteDocuments` scenario. This optional
-    // port slot is reserved for a future true multi-document batch adapter.
-    expect(port.deleteDocumentsBatch).toBeUndefined();
   },
 };
 

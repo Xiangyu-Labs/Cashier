@@ -1,9 +1,33 @@
+"use client";
+
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SourceDocumentCandidateReviewDialog } from "@/modules/source-document/ui/SourceDocumentCandidateReviewDialog";
-import { SourceDocumentDuplicateReviewDialog } from "@/modules/source-document/ui/SourceDocumentDuplicateReviewDialog";
-import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui/SourceDocumentEditRetryDialog";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { LedgerEntriesDeleteConfirmState } from "./useLedgerEntriesTabState";
+import dynamic from "next/dynamic";
+
+const loadEditRetryDialog = () =>
+  import("@/modules/source-document/ui/SourceDocumentEditRetryDialog");
+const loadCandidateReviewDialog = () =>
+  import("@/modules/source-document/ui/SourceDocumentCandidateReviewDialog");
+const loadDuplicateReviewDialog = () =>
+  import("@/modules/source-document/ui/SourceDocumentDuplicateReviewDialog");
+
+const SourceDocumentEditRetryDialog = dynamic(
+  () => loadEditRetryDialog().then((module) => module.SourceDocumentEditRetryDialog),
+  { ssr: false }
+);
+
+export function preloadEditRetryDialog() {
+  void loadEditRetryDialog();
+}
+
+export function preloadCandidateReviewDialog() {
+  void loadCandidateReviewDialog();
+}
+
+export function preloadDuplicateReviewDialog() {
+  void loadDuplicateReviewDialog();
+}
 
 interface LedgerEntriesOverlaysProps {
   deleteConfirm: LedgerEntriesDeleteConfirmState;
@@ -13,11 +37,6 @@ interface LedgerEntriesOverlaysProps {
   retrySourceDocument: SourceDocument | null;
   onRetryDialogOpenChange: (open: boolean) => void;
   ledgerId: string;
-  candidateReviewDocument: SourceDocument | null;
-  onCandidateReviewOpenChange: (open: boolean) => void;
-  duplicateReviewDocument: SourceDocument | null;
-  onDuplicateReviewOpenChange: (open: boolean) => void;
-  mainCurrency: string;
 }
 
 export function LedgerEntriesOverlays({
@@ -28,11 +47,6 @@ export function LedgerEntriesOverlays({
   retrySourceDocument,
   onRetryDialogOpenChange,
   ledgerId,
-  candidateReviewDocument,
-  onCandidateReviewOpenChange,
-  duplicateReviewDocument,
-  onDuplicateReviewOpenChange,
-  mainCurrency,
 }: LedgerEntriesOverlaysProps) {
   return (
     <>
@@ -52,26 +66,6 @@ export function LedgerEntriesOverlays({
           open={true}
           onOpenChange={onRetryDialogOpenChange}
           ledgerId={ledgerId}
-        />
-      )}
-
-      {candidateReviewDocument != null && (
-        <SourceDocumentCandidateReviewDialog
-          ledgerId={ledgerId}
-          sourceDocumentId={candidateReviewDocument.id}
-          open={true}
-          onOpenChange={onCandidateReviewOpenChange}
-          mainCurrency={mainCurrency}
-        />
-      )}
-
-      {duplicateReviewDocument != null && (
-        <SourceDocumentDuplicateReviewDialog
-          ledgerId={ledgerId}
-          sourceDocumentId={duplicateReviewDocument.id}
-          open={true}
-          onOpenChange={onDuplicateReviewOpenChange}
-          mainCurrency={mainCurrency}
         />
       )}
     </>

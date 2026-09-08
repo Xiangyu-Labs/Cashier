@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import {
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { PartialBatchCommandResult } from "@/modules/source-document/contracts";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
@@ -29,6 +29,7 @@ export function useSourceDocumentEntryMutations({
     { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
       const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
@@ -56,6 +57,7 @@ export function useSourceDocumentEntryMutations({
         onCommitted?: ((result: PartialBatchCommandResult) => void) | undefined;
       }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (input) => {
       const entryIds = Array.isArray(input) ? input : input.entryIds;
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");

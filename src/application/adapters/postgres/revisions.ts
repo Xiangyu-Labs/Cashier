@@ -204,24 +204,23 @@ export async function createPendingRevisionInTransaction(
   if (fileIds.length !== (input.storedFileIds?.length ?? 0)) {
     throw new ValidationError("A stored file may only appear once in a revision");
   }
-  // Collect byte sizes for the per-revision aggregate check
-  const storedFileRows: Array<{ id: string; byteSize: number }> = [];
-  for (const storedFileId of fileIds) {
-    const file = await tx
-      .select({ id: storedFiles.id, byteSize: storedFiles.byteSize })
-      .from(storedFiles)
-      .where(
-        and(
-          eq(storedFiles.ledgerId, input.ledgerId),
-          eq(storedFiles.id, storedFileId),
-          isNull(storedFiles.deletedAt),
-          isNotNull(storedFiles.finalizedAt)
-        )
-      )
-      .then((rows) => rows[0]);
-    if (file == null) throw new NotFoundError("Stored file");
-    storedFileRows.push(file);
-  }
+  const foundStoredFiles =
+    fileIds.length === 0
+      ? []
+      : await tx
+          .select({ id: storedFiles.id, byteSize: storedFiles.byteSize })
+          .from(storedFiles)
+          .where(
+            and(
+              eq(storedFiles.ledgerId, input.ledgerId),
+              inArray(storedFiles.id, fileIds),
+              isNull(storedFiles.deletedAt),
+              isNotNull(storedFiles.finalizedAt)
+            )
+          );
+  if (foundStoredFiles.length !== fileIds.length) throw new NotFoundError("Stored file");
+  const storedFileById = new Map(foundStoredFiles.map((file) => [file.id, file]));
+  const storedFileRows = fileIds.map((id) => storedFileById.get(id)!);
   // Enforce per-revision byte aggregate limit
   const totalBytes = storedFileRows.reduce((sum, f) => sum + f.byteSize, 0);
   if (totalBytes > MAX_NORMALIZED_BYTES_PER_REVISION) {

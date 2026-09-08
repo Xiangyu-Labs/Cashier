@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
+import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { serverComposition } from "@/application/server-composition-root";
 import { getSourceDocumentFullQuery as getSourceDocumentFullQueryUseCase } from "@/modules/source-document/application/queries/get-source-document-full";
 import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
-import { sourceDocuments } from "@/persistence";
+import { ledgerEntries, sourceDocuments, storedFiles } from "@/persistence";
 import {
   activateTestSourceDocumentProjection,
   createTestUserWithLedger,
@@ -18,6 +19,7 @@ const listLedgerEntries = (
 const queryPorts = {
   documents: serverComposition.sourceDocumentReads,
   ledgerReads: serverComposition.ledgerReads,
+  changes: serverComposition.ledgerChanges,
 };
 const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
   listStreamPageUseCase(ledgerId, input, queryPorts);
@@ -47,14 +49,15 @@ function normalizeSql(statement: string): string {
   return statement.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-async function captureSqlStatements<T>(fn: () => Promise<T>) {
+async function captureSqlStatements<T>(fn: (getStatements: () => string[]) => Promise<T>) {
+  interface CapturedConnection {
+    query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
+    release: (...args: unknown[]) => void;
+  }
   const dbWithClient = getTestDb() as unknown as {
     $client?: {
       query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
-      connect: (...args: unknown[]) => Promise<{
-        query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
-        release: (...args: unknown[]) => void;
-      }>;
+      connect: (...args: unknown[]) => unknown;
     };
   };
   const client = dbWithClient.$client;
@@ -69,8 +72,7 @@ async function captureSqlStatements<T>(fn: () => Promise<T>) {
     record(query);
     return originalQuery(query, ...args);
   }) as typeof client.query;
-  client.connect = (async (...args: unknown[]) => {
-    const connection = await originalConnect(...args);
+  const instrumentConnection = (connection: CapturedConnection) => {
     const connectionQuery = connection.query.bind(connection);
     const connectionRelease = connection.release.bind(connection);
     connection.query = ((query: string | { text?: string }, ...queryArgs: unknown[]) => {
@@ -83,9 +85,21 @@ async function captureSqlStatements<T>(fn: () => Promise<T>) {
       connectionRelease(...releaseArgs);
     }) as typeof connection.release;
     return connection;
+  };
+  client.connect = ((...args: unknown[]) => {
+    const callback = args[0];
+    if (typeof callback === "function") {
+      return originalConnect(
+        (error: Error | undefined, connection: CapturedConnection | undefined, done: () => void) =>
+          callback(error, connection == null ? connection : instrumentConnection(connection), done)
+      );
+    }
+    return Promise.resolve(originalConnect(...args)).then((connection) =>
+      instrumentConnection(connection as CapturedConnection)
+    );
   }) as typeof client.connect;
   try {
-    const result = await fn();
+    const result = await fn(() => [...statements]);
     return { result, statements };
   } finally {
     client.query = originalQuery;
@@ -144,25 +158,96 @@ describe("bounded target read models", () => {
       .insert(sourceDocuments)
       .values({ ledgerId, currentStatus: "completed", entryDate: "2026-09-03" })
       .returning();
+    await db.insert(ledgerEntries).values({
+      ledgerId,
+      sourceDocumentId: document!.id,
+      amount: "12.00",
+      currency: "CNY",
+      convertedAmount: "12.00",
+      exchangeRate: "1.000000",
+      itemName: "Bounded item",
+    });
     await activateTestSourceDocumentProjection(db, document!.id, {
       text: "bounded evidence",
       imageUrls: ["/api/uploads/bounded.jpg"],
     });
 
-    const listCapture = await captureSqlStatements(() =>
-      serverComposition.sourceDocumentReads.list({ ledgerId, limit: 20 })
-    );
-    const detailCapture = await captureSqlStatements(() =>
-      serverComposition.sourceDocumentReads.get(ledgerId, document!.id)
-    );
     const readStatements = (statements: string[]) =>
-      statements.map(normalizeSql).filter((statement) => /^(select|with)\b/.test(statement));
+      statements
+        .map(normalizeSql)
+        .filter((statement) => /^(select|with)\b/.test(statement))
+        .filter((statement, index, normalized) => statement !== normalized[index - 1]);
+    const capture = await captureSqlStatements(async (getStatements) => {
+      const list = await serverComposition.sourceDocumentReads.list({ ledgerId, limit: 20 });
+      const afterList = readStatements(getStatements()).length;
+      const detail = await serverComposition.sourceDocumentReads.get(ledgerId, document!.id);
+      const afterDetail = readStatements(getStatements()).length;
+      const evidence = await serverComposition.sourceDocumentReads.getEvidence(
+        ledgerId,
+        document!.id
+      );
+      const afterEvidence = readStatements(getStatements()).length;
+      await listStreamPage(ledgerId, { limit: 20 });
+      const afterStream = readStatements(getStatements()).length;
+      const ledgerPage = await listLedgerEntries(ledgerId, { limit: 20 });
+      const afterLedgerPage = readStatements(getStatements()).length;
+      return {
+        list,
+        detail,
+        evidence,
+        ledgerPage,
+        listReadCount: afterList,
+        detailReadCount: afterDetail - afterList,
+        evidenceReadCount: afterEvidence - afterDetail,
+        evidenceStatements: readStatements(getStatements()).slice(afterDetail, afterEvidence),
+        streamReadCount: afterStream - afterEvidence,
+        ledgerPageReadCount: afterLedgerPage - afterStream,
+      };
+    });
 
-    expect(listCapture.result.items).toHaveLength(1);
-    expect(detailCapture.result?.files).toHaveLength(1);
-    expect(detailCapture.result?.ledgerEntries).toEqual([]);
-    expect(readStatements(listCapture.statements).length).toBeLessThanOrEqual(4);
-    expect(readStatements(detailCapture.statements).length).toBeLessThanOrEqual(5);
+    expect(capture.result.list.items).toHaveLength(1);
+    expect(capture.result.detail?.files).toHaveLength(1);
+    expect(capture.result.detail?.ledgerEntries).toHaveLength(1);
+    expect(capture.result.evidence?.files).toHaveLength(1);
+    expect(capture.result.evidence).not.toHaveProperty("ledgerEntries");
+    expect(capture.result.ledgerPage.items).toHaveLength(1);
+    expect(capture.result.listReadCount).toBeLessThanOrEqual(4);
+    expect(capture.result.detailReadCount).toBeLessThanOrEqual(3);
+    expect(capture.result.evidenceReadCount).toBe(2);
+    expect(capture.result.evidenceStatements.join(" ")).not.toContain("ledger_entries");
+    expect(capture.result.streamReadCount).toBe(4);
+    expect(capture.result.ledgerPageReadCount).toBeLessThanOrEqual(2);
+  });
+
+  it.each([1, 3])("checks ownership for %i stored files with one select", async (fileCount) => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const files = await db
+      .insert(storedFiles)
+      .values(
+        Array.from({ length: fileCount }, (_, index) => ({
+          ledgerId,
+          storageProvider: "local",
+          storageKey: `bounded-ownership/${fileCount}/${index}`,
+          contentType: "image/jpeg",
+          byteSize: 1,
+          finalizedAt: new Date(),
+        }))
+      )
+      .returning({ id: storedFiles.id });
+
+    const capture = await captureSqlStatements(async () =>
+      postgresRevisionAdapter.createPending({
+        ledgerId,
+        storedFileIds: files.map((file) => file.id),
+      })
+    );
+    const ownershipSelects = capture.statements
+      .map(normalizeSql)
+      .filter((statement) => statement.startsWith("select"))
+      .filter((statement) => statement.includes('from "stored_files"'));
+
+    expect(ownershipSelects).toHaveLength(1);
   });
 
   it("paginates a large source-document history with a bounded list DTO", async () => {

@@ -1,15 +1,10 @@
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { compare as compareDecimal } from "@/lib/money/decimal";
 import { transitionSourceDocument } from "@/modules/source-document/application/source-document-state";
-import {
-  duplicateReviews,
-  ledgerEntries,
-  sourceDocumentRevisions,
-  sourceDocuments,
-} from "@/persistence";
+import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import {
   lockLedgerForUpdate,
   lockSourceDocumentForUpdate,
@@ -18,20 +13,8 @@ import {
 import { completeProcessingLeaseInTransaction } from "../processing-terminal";
 import { softDeleteSourceDocumentInTransaction } from "../source-document-delete";
 
-import {
-  LedgerMainCurrencyChangedError,
-  activeDocumentWhere,
-  assertCategoryOwnership,
-  assertEntryValues,
-  replaceProjection,
-  sameProjectionFingerprints,
-} from "./shared";
-import {
-  copyRevisionFiles,
-  createCompletedRevision,
-  createCompletedProjectionInTransaction,
-  replaceManualProjection,
-} from "./manual-entries";
+import { LedgerMainCurrencyChangedError, activeDocumentWhere, replaceProjection } from "./shared";
+import { createCompletedProjectionInTransaction } from "./manual-entries";
 
 export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
   async activateRevision(input) {
@@ -39,7 +22,10 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       // Lock the ledger row to serialise with concurrent main-currency changes.
       // This is the first-active-projection path; the lock prevents a settings
       // main-currency change from interleaving with entry creation.
-      await lockLedgerForUpdate(tx, input.ledgerId);
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      if (ledger.mainCurrency !== input.expectedMainCurrency) {
+        throw new LedgerMainCurrencyChangedError();
+      }
 
       // Also lock the source document row to serialise with concurrent soft-delete.
       // Lock order: ledger → source document (prevents deadlocks).
@@ -122,214 +108,6 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         entries: input.entries,
       });
       return { sourceDocumentId, revisionId };
-    });
-  },
-
-  async replaceManual(input) {
-    return db.transaction(async (tx) => {
-      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
-      if (
-        input.expectedMainCurrency !== undefined &&
-        ledger.mainCurrency !== input.expectedMainCurrency
-      ) {
-        throw new ConflictError("Ledger currency changed before the manual edit");
-      }
-      const document = await lockSourceDocumentForUpdate(
-        tx,
-        input.ledgerId,
-        input.sourceDocumentId
-      );
-      if (document.type !== "manual" || document.activeRevisionId == null) {
-        throw new ConflictError("Source document is not an active manual entry");
-      }
-      if (
-        input.expectedActiveRevisionId !== undefined &&
-        document.activeRevisionId !== input.expectedActiveRevisionId
-      ) {
-        throw new ConflictError("Manual entry changed before the edit was committed");
-      }
-      if (input.expectedProjection !== undefined) {
-        const currentProjection = await tx
-          .select({
-            id: ledgerEntries.id,
-            amount: ledgerEntries.amount,
-            currency: ledgerEntries.currency,
-            sourceDocumentRevisionId: ledgerEntries.sourceDocumentRevisionId,
-          })
-          .from(ledgerEntries)
-          .where(
-            and(
-              eq(ledgerEntries.ledgerId, input.ledgerId),
-              eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
-              isNull(ledgerEntries.deletedAt),
-              or(
-                eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
-                ...(document.pendingRevisionId == null
-                  ? []
-                  : [eq(ledgerEntries.sourceDocumentRevisionId, document.pendingRevisionId)])
-              )
-            )
-          );
-        if (!sameProjectionFingerprints(input.expectedProjection, currentProjection)) {
-          throw new ConflictError("Ledger entries changed before the manual edit");
-        }
-      }
-      if (input.projectionConversions !== undefined && input.projectionConversions.length > 0) {
-        const changesJson = JSON.stringify(
-          input.projectionConversions.map((update) => ({
-            id: update.ledgerEntryId,
-            converted_amount: update.convertedAmount,
-            exchange_rate: update.exchangeRate,
-          }))
-        );
-        const updatedEntries = await tx.execute(sql`
-          WITH changes AS (
-            SELECT * FROM jsonb_to_recordset(${changesJson}::jsonb) AS value(
-              id uuid,
-              converted_amount numeric,
-              exchange_rate numeric
-            )
-          )
-          UPDATE ledger_entries AS entry
-          SET converted_amount = changes.converted_amount,
-              exchange_rate = changes.exchange_rate,
-              updated_at = ${new Date()}
-          FROM changes
-          WHERE entry.id = changes.id
-            AND entry.ledger_id = ${input.ledgerId}
-            AND entry.source_document_id = ${input.sourceDocumentId}
-            AND entry.deleted_at IS NULL
-          RETURNING entry.id
-        `);
-        if (updatedEntries.rows.length !== input.projectionConversions.length) {
-          throw new ConflictError("Ledger entries changed before the manual edit");
-        }
-      }
-      if (document.pendingRevisionId != null) {
-        const pending = await tx
-          .select({ outcome: sourceDocumentRevisions.outcome })
-          .from(sourceDocumentRevisions)
-          .where(eq(sourceDocumentRevisions.id, document.pendingRevisionId))
-          .then((rows) => rows[0]);
-        if (pending?.outcome === "processing" || pending?.outcome === "completed") {
-          throw new ConflictError("Source document has processing work");
-        }
-      }
-      assertEntryValues(input.entries);
-      await assertCategoryOwnership(tx, input.ledgerId, input.entries);
-      const revision = await createCompletedRevision(tx, input);
-      await replaceManualProjection(tx, {
-        ...input,
-        previousRevisionId: document.activeRevisionId,
-        revisionId: revision.id,
-      });
-      await tx
-        .update(sourceDocuments)
-        .set({
-          activeRevisionId: revision.id,
-          pendingRevisionId: null,
-          currentStatus: "completed",
-          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
-          ...(input.title === undefined ? {} : { title: input.title }),
-          ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
-          updatedAt: new Date(),
-        })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
-      return revision.id;
-    });
-  },
-
-  async replaceActive(input) {
-    return db.transaction(async (tx) => {
-      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
-      if (
-        input.expectedMainCurrency !== undefined &&
-        ledger.mainCurrency !== input.expectedMainCurrency
-      ) {
-        throw new LedgerMainCurrencyChangedError();
-      }
-      const document = await lockSourceDocumentForUpdate(
-        tx,
-        input.ledgerId,
-        input.sourceDocumentId
-      );
-      if (
-        document.activeRevisionId == null ||
-        document.activeRevisionId !== input.expectedActiveRevisionId
-      ) {
-        throw new ConflictError("Source document active revision changed");
-      }
-      const pendingDuplicateReview = await tx
-        .select({ id: duplicateReviews.id })
-        .from(duplicateReviews)
-        .where(
-          and(
-            eq(duplicateReviews.ledgerId, input.ledgerId),
-            eq(duplicateReviews.sourceDocumentId, input.sourceDocumentId),
-            eq(duplicateReviews.status, "pending")
-          )
-        )
-        .then((rows) => rows[0]);
-      if (pendingDuplicateReview != null) {
-        throw new ConflictError("Source document has a pending duplicate review");
-      }
-      if (document.pendingRevisionId != null) {
-        const pending = await tx
-          .select({ outcome: sourceDocumentRevisions.outcome })
-          .from(sourceDocumentRevisions)
-          .where(
-            and(
-              eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-              eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
-              eq(sourceDocumentRevisions.id, document.pendingRevisionId)
-            )
-          )
-          .then((rows) => rows[0]);
-        if (pending?.outcome === "processing" || pending?.outcome === "completed") {
-          throw new ConflictError("Source document has processing work");
-        }
-      }
-
-      const activeRevision = await tx
-        .select({ submittedText: sourceDocumentRevisions.submittedText })
-        .from(sourceDocumentRevisions)
-        .where(
-          and(
-            eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-            eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
-            eq(sourceDocumentRevisions.id, document.activeRevisionId),
-            eq(sourceDocumentRevisions.outcome, "completed")
-          )
-        )
-        .then((rows) => rows[0]);
-      if (activeRevision == null) throw new ConflictError("Active revision is not completed");
-
-      const revision = await createCompletedRevision(tx, {
-        ledgerId: input.ledgerId,
-        sourceDocumentId: input.sourceDocumentId,
-        submittedText: activeRevision.submittedText,
-      });
-      await copyRevisionFiles(tx, {
-        ledgerId: input.ledgerId,
-        fromRevisionId: document.activeRevisionId,
-        toRevisionId: revision.id,
-      });
-      await replaceManualProjection(tx, {
-        ...input,
-        previousRevisionId: document.activeRevisionId,
-        revisionId: revision.id,
-      });
-      await tx
-        .update(sourceDocuments)
-        .set({
-          activeRevisionId: revision.id,
-          pendingRevisionId: null,
-          currentStatus: "completed",
-          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
-      return revision.id;
     });
   },
 

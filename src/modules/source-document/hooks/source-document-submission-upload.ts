@@ -2,12 +2,15 @@
 
 import { compressImage } from "@/lib/image-utils";
 import { API_V1_MAX_IMAGES } from "@/modules/source-document/api-v1-policy";
-import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
+import {
+  MAX_NORMALIZED_BYTES_PER_REVISION,
+  MAX_ORIGINAL_BYTES_PER_FILE,
+} from "@/lib/storage/upload-policy";
 import type { SourceDocumentSubmitPayload } from "./source-document-input-controller.types";
 import {
   createSourceDocumentUploadPlanAction,
   finalizeSourceDocumentUploadAction,
-} from "../actions";
+} from "@/modules/source-document/server-actions/uploads";
 
 export interface SourceDocumentSubmissionProgress {
   phase:
@@ -46,7 +49,6 @@ interface InlinePreparationDependencies {
   signal?: AbortSignal;
 }
 
-const DATA_URL_PATTERN = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*={0,2})$/i;
 const QUALITY_STEPS = [0.78, 0.68, 0.58, 0.48, 0.38] as const;
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -61,24 +63,11 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-function dataUrlToFile(dataUrl: string, index: number): File {
-  const match = DATA_URL_PATTERN.exec(dataUrl);
-  if (match == null) throw new SourceDocumentSubmissionUploadError("Invalid image data", "prepare");
-  let binary: string;
-  try {
-    binary = atob(match[1]!);
-  } catch (error) {
-    throw new SourceDocumentSubmissionUploadError("Failed to decode image", "prepare", {
-      cause: error,
-    });
-  }
-  if (binary.length === 0) {
-    throw new SourceDocumentSubmissionUploadError("Image data is empty", "prepare");
-  }
-  const bytes = new Uint8Array(binary.length);
-  for (let offset = 0; offset < binary.length; offset += 1)
-    bytes[offset] = binary.charCodeAt(offset);
-  return new File([bytes], `source-${index}.jpg`, { type: "image/jpeg" });
+function filesFitUploadLimits(files: readonly File[]): boolean {
+  return (
+    files.every((file) => file.size <= MAX_ORIGINAL_BYTES_PER_FILE) &&
+    files.reduce((total, file) => total + file.size, 0) <= MAX_NORMALIZED_BYTES_PER_REVISION
+  );
 }
 
 function submissionBase(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
@@ -113,37 +102,43 @@ export async function uploadSourceDocumentSubmissionImages(
   }
 
   onProgress?.({ phase: "preparing", percent: 0, fileCount: images.length });
-  const originals = images.map((image, index) => dataUrlToFile(image.data, index));
+  const originals = images.map((image) => image.file);
   const compress = dependencies.compress ?? compressImage;
 
-  let files: File[] | null = null;
-  for (let qualityIndex = 0; qualityIndex < QUALITY_STEPS.length; qualityIndex += 1) {
-    throwIfAborted(dependencies.signal);
-    const quality = QUALITY_STEPS[qualityIndex]!;
-    let compressed;
-    try {
-      compressed = await Promise.all(
-        originals.map((file) => compress(file, 1080, 1080, quality, dependencies.signal))
-      );
-    } catch (error) {
-      if (dependencies.signal?.aborted === true || isAbortError(error)) {
-        throwIfAborted(dependencies.signal);
-        throw error;
+  let files: File[] | null = filesFitUploadLimits(originals) ? originals : null;
+  if (files == null) {
+    for (let qualityIndex = 0; qualityIndex < QUALITY_STEPS.length; qualityIndex += 1) {
+      throwIfAborted(dependencies.signal);
+      const quality = QUALITY_STEPS[qualityIndex]!;
+      let compressed;
+      try {
+        compressed = await Promise.all(
+          originals.map((file) => compress(file, 1080, 1080, quality, dependencies.signal))
+        );
+      } catch (error) {
+        if (dependencies.signal?.aborted === true || isAbortError(error)) {
+          throwIfAborted(dependencies.signal);
+          throw error;
+        }
+        throw new SourceDocumentSubmissionUploadError(
+          "Failed to compress source image",
+          "prepare",
+          {
+            cause: error,
+          }
+        );
       }
-      throw new SourceDocumentSubmissionUploadError("Failed to compress source image", "prepare", {
-        cause: error,
+      throwIfAborted(dependencies.signal);
+      const candidates = compressed.map((image) => image.file);
+      onProgress?.({
+        phase: "preparing",
+        percent: Math.min(80, 15 + qualityIndex * 15),
+        fileCount: candidates.length,
       });
-    }
-    throwIfAborted(dependencies.signal);
-    const candidates = compressed.map((image, index) => dataUrlToFile(image.data, index));
-    onProgress?.({
-      phase: "preparing",
-      percent: Math.min(80, 15 + qualityIndex * 15),
-      fileCount: candidates.length,
-    });
-    if (candidates.every((file) => file.size <= MAX_ORIGINAL_BYTES_PER_FILE)) {
-      files = candidates;
-      break;
+      if (filesFitUploadLimits(candidates)) {
+        files = candidates;
+        break;
+      }
     }
   }
   if (files == null) {

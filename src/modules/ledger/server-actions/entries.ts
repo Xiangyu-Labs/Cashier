@@ -1,7 +1,5 @@
 "use server";
 import { withLedgerAccess } from "../access";
-import { getBatchEntryDateImpact } from "@/modules/ledger/application/queries/get-batch-entry-date-impact";
-import { updateLedgerEntryDates } from "@/modules/ledger/application/use-cases/update-ledger-entry-dates";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import {
   parseBatchUpdateLedgerEntriesInput,
@@ -123,10 +121,10 @@ export const batchDeleteLedgerEntriesAction = withLedgerAccess(
 export const previewBatchLedgerEntryDateAction = withLedgerAccess(
   async (ledgerId: string, inputIds: string[]) => {
     const entryIds = parseLedgerEntryIds(inputIds);
-    return getBatchEntryDateImpact(
-      { ledgerId, ledgerEntryIds: entryIds },
-      serverComposition.ledgerReads
-    );
+    return serverComposition.ledgerReads.getBatchEntryDateImpact({
+      ledgerId,
+      ledgerEntryIds: entryIds,
+    });
   }
 );
 
@@ -142,17 +140,12 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
       entryIds: inputIds,
       entryDate,
     });
-    const impact = await updateLedgerEntryDates(
-      {
-        ledgerId,
-        targets,
-        ledgerEntryIds: validated.entryIds,
-        entryDate: validated.entryDate,
-      },
-      {
-        updates: { updateDates: serverComposition.sourceDocumentAggregate.updateEntryDates },
-      }
-    );
+    const impact = await serverComposition.sourceDocumentAggregate.updateEntryDates({
+      ledgerId,
+      targets,
+      ledgerEntryIds: validated.entryIds,
+      entryDate: validated.entryDate,
+    });
     return impact;
   }
 );

@@ -35,20 +35,3 @@ export interface AccountSecurityPort {
     | { status: "incorrect"; attemptsRemaining: number; locked: boolean }
   >;
 }
-
-export interface RateLimitPort {
-  increment(
-    key: string,
-    limit: number,
-    windowSeconds: number
-  ): Promise<{ success: boolean; remaining: number; resetTime: number }>;
-  releaseIncrement(key: string, windowSeconds: number, resetTime: number): Promise<void>;
-  current(key: string, windowSeconds: number): Promise<number>;
-  acquireCooldown(
-    key: string,
-    seconds: number
-  ): Promise<{ acquired: boolean; acquiredAt: Date; retryAfter: number }>;
-  releaseCooldown(key: string, acquiredAt: Date): Promise<boolean>;
-  setCooldown(key: string, cooldownSeconds: number): Promise<void>;
-  getCooldownRemaining(key: string, cooldownSeconds: number): Promise<number>;
-}

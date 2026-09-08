@@ -24,7 +24,7 @@ const { discardActionMock, keepActionMock, reviewActionMock, toastSuccessMock, t
     toastErrorMock: vi.fn(),
   }));
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/duplicate-reviews", () => ({
   getSourceDocumentDuplicateReviewAction: (...args: unknown[]) => reviewActionMock(...args),
   keepDuplicateSourceDocumentAction: (...args: unknown[]) => keepActionMock(...args),
   discardDuplicateSourceDocumentAction: (...args: unknown[]) => discardActionMock(...args),
@@ -102,6 +102,7 @@ function createQueryClient() {
         items: [listItem("doc-1", "Original bill"), listItem(DUPLICATE_ID, "Duplicate bill")],
         nextCursor: null,
         generation: "1",
+        hasTransitionalWork: false,
       },
     ],
     pageParams: [null],

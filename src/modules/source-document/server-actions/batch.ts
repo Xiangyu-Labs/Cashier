@@ -104,12 +104,6 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
           {
             submissions: {
               createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
-              ...(serverComposition.sourceDocumentAggregate.installIdempotentRetry == null
-                ? {}
-                : {
-                    createIdempotentPendingWithIntent:
-                      serverComposition.sourceDocumentAggregate.installIdempotentRetry,
-                  }),
             },
             scheduleProcessing: (intent) => intents.push(intent),
           }

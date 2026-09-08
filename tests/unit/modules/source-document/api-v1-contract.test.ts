@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createHash } from "node:crypto";
 import {
   apiV1IdempotencyKeySchema,
+  createSourceDocumentInputSchema,
   createSourceDocumentInputSchemaV1,
-  preparedApiV1SourceDocumentInputSchema,
+  retrySourceDocumentInputSchema,
 } from "@/modules/source-document/contract-schemas";
 import {
   API_V1_MAX_DECODED_BATCH_BYTES,
@@ -100,50 +100,13 @@ describe("API v1 source-document contract", () => {
     }
   });
 
-  it("validates a fabricated prepared payload without decoding", () => {
-    const prepared = {
-      images: [
-        {
-          bytes: Buffer.from([1]),
-          mimeType: "image/jpeg",
-          contentHash: createHash("sha256")
-            .update(Buffer.from([1]))
-            .digest("hex"),
-        },
-      ],
-    };
-    expect(preparedApiV1SourceDocumentInputSchema.safeParse(prepared).success).toBe(true);
-    expect(decodeBase64ImageMock).not.toHaveBeenCalled();
-  });
-
-  it("rejects a fabricated prepared payload with wrong shape or sizes", () => {
-    expect(
-      preparedApiV1SourceDocumentInputSchema.safeParse({
-        images: [
-          {
-            bytes: Buffer.alloc(API_V1_MAX_DECODED_IMAGE_BYTES + 1),
-            mimeType: "image/tiff",
-            contentHash: "zz",
-          },
-        ],
-      }).success
-    ).toBe(false);
-    expect(
-      preparedApiV1SourceDocumentInputSchema.safeParse({
-        images: [],
-      }).success
-    ).toBe(false);
-    expect(
-      preparedApiV1SourceDocumentInputSchema.safeParse({
-        images: [
-          {
-            bytes: "not-bytes",
-            mimeType: "image/jpeg",
-            contentHash: "a".repeat(64),
-          },
-        ],
-      }).success
-    ).toBe(false);
+  it("rejects legacy inline image fields at browser action boundaries", () => {
+    const legacyImages = { images: [image], text: "receipt" };
+    const legacyOriginals = { originalImages: [image], text: "receipt" };
+    expect(createSourceDocumentInputSchema.safeParse(legacyImages).success).toBe(false);
+    expect(createSourceDocumentInputSchema.safeParse(legacyOriginals).success).toBe(false);
+    expect(retrySourceDocumentInputSchema.safeParse(legacyImages).success).toBe(false);
+    expect(retrySourceDocumentInputSchema.safeParse(legacyOriginals).success).toBe(false);
   });
 
   describe("apiV1IdempotencyKeySchema", () => {

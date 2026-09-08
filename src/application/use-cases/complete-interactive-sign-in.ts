@@ -22,7 +22,7 @@ import { sendLoginNotification } from "@/modules/auth/services/notifications";
 export async function completeInteractiveSignIn(
   principal: AuthenticatedPrincipal,
   dependencies: {
-    ledgers: Pick<LedgerPort, "listIdsForUser" | "createDefault">;
+    ledgers: Pick<LedgerPort, "listForUser" | "createDefault">;
     otpTokens: OtpTokenPort;
     users: UserAccountPort;
     emailDelivery: EmailDeliveryPort;

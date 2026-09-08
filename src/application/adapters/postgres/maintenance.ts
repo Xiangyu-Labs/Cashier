@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   emailChangeChallenges,
@@ -8,8 +8,9 @@ import {
 } from "@/persistence";
 import { getS3Storage } from "@/lib/storage/s3";
 import { logger } from "@/lib/logger";
+import { runWithConcurrency } from "@/lib/concurrency";
 import { drainDueExchangeRateRecalculations } from "@/application/orchestration/exchange-rate-ledger-recalculation";
-import { enqueueMissingExchangeRateRecalculations } from "./exchange-rate-recalculation-jobs";
+import { acknowledgeObjectCleanup, claimObjectCleanup } from "./object-cleanup";
 
 const LIMIT = 1000;
 const MAINTENANCE_LOCK = 1_381_247_119;
@@ -20,6 +21,14 @@ export async function runBoundedMaintenance(now = new Date()): Promise<void> {
       sql`SELECT pg_try_advisory_xact_lock(${MAINTENANCE_LOCK}) AS acquired`
     );
     if (lock.rows?.[0]?.acquired !== true) return false;
+    const cooldown = await tx.execute(sql`
+      INSERT INTO rate_limit_buckets (bucket_key, count, window_start, created_at)
+      VALUES ('maintenance:global', 1, ${now}, ${now})
+      ON CONFLICT (bucket_key) DO UPDATE SET window_start = EXCLUDED.window_start
+      WHERE rate_limit_buckets.window_start <= ${new Date(now.getTime() - 60_000)}
+      RETURNING bucket_key
+    `);
+    if (cooldown.rows.length === 0) return false;
     const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
@@ -97,45 +106,25 @@ export async function runBoundedMaintenance(now = new Date()): Promise<void> {
   });
   if (!acquired) return;
 
-  await enqueueMissingExchangeRateRecalculations(LIMIT);
   await drainDueExchangeRateRecalculations(now);
 
-  const jobs = await db
-    .select()
-    .from(objectCleanupJobs)
-    .where(sql`${objectCleanupJobs.nextAttemptAt} <= ${now}`)
-    .orderBy(objectCleanupJobs.nextAttemptAt, objectCleanupJobs.createdAt)
-    .limit(LIMIT);
+  const jobs = await claimObjectCleanup(new Date());
   if (jobs.length === 0) return;
   const storage = getS3Storage();
-  for (const job of jobs) {
-    const result = await storage.delete(job.storageKey);
-    if (!result.success) {
-      const attempts = job.attempts + 1;
-      const backoffMs = Math.min(60 * 60 * 1000, 1000 * 2 ** Math.min(attempts, 12));
-      await db
-        .update(objectCleanupJobs)
-        .set({
-          attempts,
-          nextAttemptAt: new Date(now.getTime() + backoffMs),
-          lastError: result.error?.name ?? "ObjectDeleteFailed",
-        })
-        .where(eq(objectCleanupJobs.id, job.id));
-      logger.warn({ cleanupJobId: job.id, attempts }, "Object cleanup will be retried");
-      continue;
+  await runWithConcurrency(jobs, 4, async (job) => {
+    let errorCode: string | null = null;
+    try {
+      const result = await storage.delete(job.storageKey);
+      if (!result.success) errorCode = result.error?.name ?? "ObjectDeleteFailed";
+    } catch (error) {
+      errorCode = error instanceof Error ? error.name : "ObjectDeleteFailed";
     }
-
-    await db.transaction(async (tx) => {
-      await tx.delete(objectCleanupJobs).where(eq(objectCleanupJobs.id, job.id));
-      if (job.uploadSessionId == null) return;
-      const remaining = await tx
-        .select({ id: objectCleanupJobs.id })
-        .from(objectCleanupJobs)
-        .where(eq(objectCleanupJobs.uploadSessionId, job.uploadSessionId))
-        .limit(1);
-      if (remaining.length === 0) {
-        await tx.delete(uploadSessions).where(eq(uploadSessions.id, job.uploadSessionId));
-      }
-    });
-  }
+    const acknowledged = await acknowledgeObjectCleanup(job, errorCode);
+    if (acknowledged && errorCode != null) {
+      logger.warn(
+        { cleanupJobId: job.id, attempts: job.attempts + 1 },
+        "Object cleanup will be retried"
+      );
+    }
+  });
 }

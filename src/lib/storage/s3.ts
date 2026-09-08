@@ -4,7 +4,6 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -149,26 +148,30 @@ export class S3StorageProvider implements StorageProvider {
     }
   }
 
-  async head(key: string): Promise<S3ObjectMetadata> {
+  async readObject(key: string): Promise<{ bytes: Buffer; metadata: S3ObjectMetadata }> {
     assertSafeStorageKey(key);
     try {
       const response = await this.getClient().send(
-        new HeadObjectCommand({ Bucket: this.getBucket(), Key: key })
+        new GetObjectCommand({ Bucket: this.getBucket(), Key: key })
       );
       if (response.ContentLength == null || response.ContentType == null) {
-        throw storageError("S3 object metadata is incomplete", "S3_HEAD_FAILED", key);
+        throw storageError("S3 object metadata is incomplete", "S3_DOWNLOAD_FAILED", key);
       }
+      if (response.Body == null) throw storageError("File not found in S3", "FILE_NOT_FOUND", key);
       return {
-        byteSize: response.ContentLength,
-        contentType: response.ContentType,
-        metadata: response.Metadata ?? {},
+        bytes: Buffer.from(await response.Body.transformToByteArray()),
+        metadata: {
+          byteSize: response.ContentLength,
+          contentType: response.ContentType,
+          metadata: response.Metadata ?? {},
+        },
       };
     } catch (error) {
       if (error instanceof AppError) throw error;
       if (isNotFound(error)) {
         throw storageError("File not found in S3", "FILE_NOT_FOUND", key, error);
       }
-      throw storageError("Failed to inspect S3 object", "S3_HEAD_FAILED", key, error);
+      throw storageError("Failed to read S3 object", "S3_DOWNLOAD_FAILED", key, error);
     }
   }
 

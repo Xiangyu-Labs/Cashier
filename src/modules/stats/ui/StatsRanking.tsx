@@ -1,5 +1,4 @@
 "use client";
-import { useMemo } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -37,10 +36,6 @@ export function StatsRanking({
 }: StatsRankingProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
-  const sorted = useMemo(
-    () => data.toSorted((a, b) => new Decimal(b.totalConverted).cmp(a.totalConverted)),
-    [data]
-  );
 
   if (isLoading) {
     return (
@@ -81,7 +76,7 @@ export function StatsRanking({
       <h3 className="font-semibold text-lg flex items-center gap-2">{t("expenseRanking")}</h3>
 
       <div className="space-y-5">
-        {sorted.map((cat) => {
+        {data.map((cat) => {
           const percent = cat.percent;
           const displayName = cat.id === null ? t("uncategorized") : cat.name;
           const handleClick = () => {

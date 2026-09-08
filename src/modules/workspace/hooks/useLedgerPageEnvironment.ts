@@ -3,7 +3,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
-import { getLedgerAction, getEntryCategoriesAction } from "@/modules/ledger/actions";
+import { getLedgerAction } from "@/modules/ledger/server-actions/get";
+import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/categories";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import { useShellController } from "@/components/providers/shell-controller";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
@@ -71,15 +72,15 @@ export function useLedgerPageEnvironment({
   }, [dirtyChangeCount]);
 
   // Wire the real new-record handler into the shell once this component mounts.
-  const { setInputIntent, setOpenInput } = useShellController();
+  const { registerInputIntent, registerOpenInput } = useShellController();
 
   useEffect(() => {
-    setOpenInput(() => () => setIsInputOpen(true));
-  }, [setOpenInput, setIsInputOpen]);
+    return registerOpenInput(() => setIsInputOpen(true));
+  }, [registerOpenInput, setIsInputOpen]);
 
   useEffect(() => {
-    setInputIntent(() => preloadNewRecordModules);
-  }, [setInputIntent]);
+    return registerInputIntent(preloadNewRecordModules);
+  }, [registerInputIntent]);
 
   return {
     ledger,

@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
-  createPostgresAuthenticationAdapter,
   postgresCategoryAdapter,
   postgresCurrencyAdapter,
   postgresLedgerAdapter,
@@ -40,11 +39,6 @@ describe("current-runtime target adapters", () => {
       mainCurrency: "CNY",
     });
     await expect(postgresCurrencyAdapter.convert("16", "CNY", "USD")).resolves.toBe("4.00");
-    await expect(
-      createPostgresAuthenticationAdapter(async () => userId).requireUser()
-    ).resolves.toEqual({
-      id: userId,
-    });
     await expect(postgresServiceCredentialAdapter.authenticate("secret-key")).resolves.toEqual({
       id: credentialId,
       ledgerId,

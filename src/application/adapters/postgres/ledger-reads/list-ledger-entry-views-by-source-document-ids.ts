@@ -1,4 +1,4 @@
-import { and, asc, inArray, sql } from "drizzle-orm";
+import { and, asc, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
@@ -31,7 +31,19 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
     where: and(
       q.whereActive,
       inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
-      buildLedgerEntryVisibilityCondition(ledgerId)
+      includeDuplicatePending
+        ? or(
+            buildLedgerEntryVisibilityCondition(ledgerId),
+            sql`EXISTS (
+              SELECT 1 FROM source_documents sd
+              WHERE sd.ledger_id = ${ledgerEntries.ledgerId}
+                AND sd.id = ${ledgerEntries.sourceDocumentId}
+                AND sd.deleted_at IS NULL
+                AND sd.current_status = 'duplicate_pending'
+                AND sd.pending_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
+            )`
+          )
+        : buildLedgerEntryVisibilityCondition(ledgerId)
     ),
     with: { category: true },
     orderBy: [
@@ -40,36 +52,6 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
       asc(ledgerEntries.id),
     ],
   });
-
-  if (includeDuplicatePending) {
-    const duplicateEntries = await db.query.ledgerEntries.findMany({
-      where: and(
-        q.whereActive,
-        inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
-        sql`EXISTS (
-          SELECT 1 FROM source_documents sd
-          WHERE sd.ledger_id = ${ledgerEntries.ledgerId}
-            AND sd.id = ${ledgerEntries.sourceDocumentId}
-            AND sd.deleted_at IS NULL
-            AND sd.current_status = 'duplicate_pending'
-            AND sd.pending_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
-        )`
-      ),
-      with: { category: true },
-      orderBy: [
-        asc(ledgerEntries.sourceDocumentId),
-        asc(ledgerEntries.position),
-        asc(ledgerEntries.id),
-      ],
-    });
-    entries.push(...duplicateEntries);
-    entries.sort(
-      (left, right) =>
-        (left.sourceDocumentId ?? "").localeCompare(right.sourceDocumentId ?? "") ||
-        left.position - right.position ||
-        left.id.localeCompare(right.id)
-    );
-  }
 
   for (const entry of entries) {
     if (entry.sourceDocumentId == null || entry.sourceDocumentId === "") {

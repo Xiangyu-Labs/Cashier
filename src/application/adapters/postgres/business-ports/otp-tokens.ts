@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import type { OtpTokenPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { otpTokens } from "@/persistence";
@@ -117,15 +117,5 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
       .where(and(eq(otpTokens.email, input.email), eq(otpTokens.tokenHash, input.tokenHash)))
       .returning({ id: otpTokens.id });
     return rows.length === 1;
-  },
-  async delete(email) {
-    await db.delete(otpTokens).where(eq(otpTokens.email, email));
-  },
-  async cleanupExpired(now) {
-    const deleted = await db
-      .delete(otpTokens)
-      .where(lt(otpTokens.expires, now))
-      .returning({ id: otpTokens.id });
-    return deleted.length;
   },
 };

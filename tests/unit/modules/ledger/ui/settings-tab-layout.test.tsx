@@ -90,6 +90,10 @@ const ledger: Ledger = {
   id: "ledger-1",
   userId: "user-1",
   settings: {
+    collapseEntriesDefault: false,
+    aiCustomPrompt: "",
+    duplicateDetectionEnabled: true,
+    timeZone: null,
     mainCurrency: "CNY",
     currencies: ["CNY"],
     aiLanguage: "zh-CN",

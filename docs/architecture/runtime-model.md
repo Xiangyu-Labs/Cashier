@@ -9,6 +9,9 @@ for contributors, not as a deployment guarantee.
 - A submission creates a durable processing intent and schedules work with Next.js `after()`.
 - There is no global drain loop, cron process, external queue, or continuously running worker.
 - Processing intents use idempotent dispatch, claim leases, and lease renewal.
+- Processor completion reports `atomic` when the aggregate transaction already completed its
+  intent, and `residual` when the dispatcher must acknowledge remaining work. Only residual
+  completion invokes the separate acknowledgement; recovery claims batches through one path.
 - On Vercel, processing remains bounded by the function `maxDuration`; Docker does not impose that
   serverless lifecycle limit.
 
@@ -60,3 +63,26 @@ Authenticated reads stream through `/api/stored-files/{fileId}`.
 
 API v1 inline images use the server-side upload path. The public v1 response contract is independent
 of internal server-action reconciliation DTOs.
+
+The stored-file adapter is assembled with `createStoredFileAdapter(dependencies)`. Upload planning,
+proxy upload, finalization and compensation, and authorized reads are responsibility-focused
+functions sharing explicit storage, clock, authorization-query, and upload-session dependencies.
+
+Finalization replay is read-only after authorization. Evidence reads fetch bytes and metadata in
+one object-store GET and share a promise only within one processing invocation.
+
+Request-triggered maintenance uses a 60-second cooldown. Object cleanup claims at most 25 jobs,
+executes four deletions concurrently, and uses five-minute leases. Acknowledgement requires the
+current unexpired token; successful sibling jobs lock their upload session before deleting the
+job and checking whether the session has any remaining work.
+
+## Exchange-rate recalculation
+
+The transaction that first persists a daily exchange-rate snapshot is the only normal enqueue point
+for ledger recalculation jobs. Request-triggered maintenance drains due jobs; snapshot persistence
+does not start detached promises. There is no process-global event subscriber registry or
+instrumentation lifecycle token.
+
+Jobs remain durable and use claim leases, fencing tokens, bounded concurrency, exponential retry,
+and a permanent-failure state. Migration `0035_maintenance_work_lifecycle.sql` backfills historical
+snapshots once. Runtime maintenance does not repeatedly scan history to recreate missing jobs.

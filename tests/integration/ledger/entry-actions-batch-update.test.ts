@@ -25,7 +25,7 @@ import {
   batchUpdateLedgerEntriesAction,
   batchUpdateLedgerEntryDatesAction,
   previewBatchLedgerEntryDateAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -171,6 +171,41 @@ describe("batchUpdateLedgerEntriesAction", () => {
       });
       expect(entry?.categoryId).toBeNull();
     }
+  });
+
+  it("uses one batch conversion for many amount updates", async () => {
+    const db = getTestDb();
+    const doc = await seedDoc(db, ledgerId, "2026-09-01");
+    const ids = (
+      await db
+        .insert(ledgerEntries)
+        .values(
+          Array.from({ length: 20 }, (_, index) => ({
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: doc.id,
+            itemName: `Converted ${index}`,
+            amount: "10.00",
+            currency: "USD",
+          }))
+        )
+        .returning({ id: ledgerEntries.id })
+    ).map((entry) => entry.id);
+    await activateTestSourceDocumentProjection(db, doc.id);
+    convertBatchMock.mockImplementation(async (items: Array<{ amount: string }>) =>
+      items.map((item) => ({ convertedAmount: item.amount, exchangeRate: "1" }))
+    );
+
+    await batchUpdateLedgerEntriesAction(
+      ledgerId,
+      [{ sourceDocumentId: doc.id, expectedVersion: 1 }],
+      ids,
+      { amount: "12.00" }
+    );
+
+    expect(convertBatchMock).toHaveBeenCalledTimes(1);
+    expect(convertBatchMock.mock.calls[0]?.[0]).toHaveLength(20);
+    expect(getRatesMock).not.toHaveBeenCalled();
   });
 
   it("rolls back the entire atomic batch when one target is stale", async () => {

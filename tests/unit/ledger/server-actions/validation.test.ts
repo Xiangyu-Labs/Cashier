@@ -51,6 +51,13 @@ describe("search param validation", () => {
     });
   });
 
+  it("accepts the uncategorized sentinel but rejects other non-UUID categories", () => {
+    expect(parseListLedgerEntriesInput({ categoryId: "__uncategorized__" }).categoryId).toBe(
+      "__uncategorized__"
+    );
+    expect(() => parseListLedgerEntriesInput({ categoryId: "not-a-category" })).toThrow();
+  });
+
   it("preserves decimal precision and normalizes currency", () => {
     expect(
       parseListLedgerEntriesInput({

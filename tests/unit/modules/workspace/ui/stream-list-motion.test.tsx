@@ -267,6 +267,26 @@ describe("stream list motion", () => {
     expect(moved.style.transform).toBe("");
   });
 
+  it("does not read card rects when the semantic list is unchanged", () => {
+    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      left: 0,
+      right: 300,
+      bottom: 68,
+      width: 300,
+      height: 68,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    const { rerender } = renderGroups(["doc-1", "doc-2"]);
+    rectSpy.mockClear();
+
+    rerenderGroups(rerender, ["doc-1", "doc-2"]);
+
+    expect(rectSpy).not.toHaveBeenCalled();
+  });
+
   it("skips all animation states under reduced motion", () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,

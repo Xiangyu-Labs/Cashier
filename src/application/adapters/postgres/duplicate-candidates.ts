@@ -1,4 +1,4 @@
-import { and, asc, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ledgerEntries, revisionFiles } from "@/persistence";
 import type { DuplicateCandidateContract } from "@/modules/source-document/application/duplicate-detection";
@@ -73,6 +73,7 @@ export async function listDuplicateDetectionCandidates(
       .from(ledgerEntries)
       .where(
         and(
+          eq(ledgerEntries.ledgerId, ledgerId),
           inArray(ledgerEntries.sourceDocumentRevisionId, revisionIds),
           isNull(ledgerEntries.deletedAt)
         )
@@ -84,7 +85,9 @@ export async function listDuplicateDetectionCandidates(
         storedFileId: revisionFiles.storedFileId,
       })
       .from(revisionFiles)
-      .where(inArray(revisionFiles.revisionId, revisionIds))
+      .where(
+        and(eq(revisionFiles.ledgerId, ledgerId), inArray(revisionFiles.revisionId, revisionIds))
+      )
       .orderBy(asc(revisionFiles.revisionId), asc(revisionFiles.position)),
   ]);
 

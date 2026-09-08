@@ -5,26 +5,21 @@ import { useSourceDocumentInputController } from "../hooks/useSourceDocumentInpu
 import type { SourceDocumentInputProps } from "./source-document-input.types";
 import { SourceDocumentInputView } from "./SourceDocumentInputView";
 
-export function SourceDocumentInput({
-  ledgerId,
-  onSuccess,
-  onPendingChange,
-  onInitializingChange,
-  onDirtyChange,
-  mode = "create",
-  sourceDocumentId,
-  initialData,
-  timeZone,
-}: SourceDocumentInputProps) {
+export function SourceDocumentInput(props: SourceDocumentInputProps) {
+  return (
+    <SourceDocumentInputSession
+      key={`${props.ledgerId}:${props.sourceDocumentId ?? "create"}`}
+      {...props}
+    />
+  );
+}
+
+function SourceDocumentInputSession(props: SourceDocumentInputProps) {
+  const { onPendingChange, onDirtyChange } = props;
   const t = useTranslations("SourceDocumentInput");
   const tCommon = useTranslations("Common");
   const controller = useSourceDocumentInputController({
-    ledgerId,
-    mode,
-    ...(onSuccess !== undefined ? { onSuccess } : {}),
-    ...(sourceDocumentId !== undefined ? { sourceDocumentId } : {}),
-    ...(initialData !== undefined ? { initialData } : {}),
-    ...(timeZone !== undefined ? { timeZone } : {}),
+    ...props,
     messages: {
       retrySuccess: t("retrySuccess"),
       retryError: t("retryError"),
@@ -43,11 +38,6 @@ export function SourceDocumentInput({
     onPendingChange?.(controller.isSubmitting);
     return () => onPendingChange?.(false);
   }, [controller.isSubmitting, onPendingChange]);
-
-  useEffect(() => {
-    onInitializingChange?.(controller.isInitializing);
-    return () => onInitializingChange?.(false);
-  }, [controller.isInitializing, onInitializingChange]);
 
   useEffect(() => {
     onDirtyChange?.(controller.isDirty);

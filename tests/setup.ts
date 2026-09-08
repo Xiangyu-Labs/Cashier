@@ -1,14 +1,14 @@
 import path from "node:path";
-import { afterAll, beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, inject, vi } from "vitest";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import * as schema from "@/persistence";
 import { flushAfterCallbacks } from "./setup.common";
 
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
-const TEST_RUN_ID = requireEnvironment("CASHIER_TEST_RUN_ID");
+const postgresContext = inject("cashierPostgres");
+const TEST_DATABASE_URL = postgresContext.databaseUrl;
+const TEST_RUN_ID = postgresContext.runId;
 // VITEST_POOL_ID identifies a reusable worker slot; VITEST_WORKER_ID identifies the
 // isolated worker instance, so both are part of the schema name.
 const VITEST_POOL_ID = requireEnvironment("VITEST_POOL_ID");
@@ -68,12 +68,7 @@ export function getTestPool() {
   return testDatabase.pool;
 }
 
-/**
- * TRUNCATE every table in the worker schema. A leftover request-bound
- * transaction (see `flushAfterCallbacks`) can occasionally make PostgreSQL
- * choose this statement as a deadlock victim; retrying is safe because the
- * whole TRUNCATE statement is atomic and rolled back on deadlock.
- */
+/** TRUNCATE only after all request-bound work has settled. */
 async function truncateAllTables(database: TestDatabase): Promise<void> {
   const tables = await database.pool.query<{ table_name: string }>(
     `SELECT table_name
@@ -87,16 +82,7 @@ async function truncateAllTables(database: TestDatabase): Promise<void> {
   );
   if (tableNames.length === 0) return;
   const statement = `TRUNCATE TABLE ${tableNames.join(", ")} RESTART IDENTITY CASCADE`;
-  for (let attempt = 1; attempt <= 5; attempt += 1) {
-    try {
-      await database.pool.query(statement);
-      return;
-    } catch (error) {
-      const code = (error as { code?: unknown } | null)?.code;
-      if (code !== "40P01" || attempt === 5) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
-    }
-  }
+  await database.pool.query(statement);
 }
 
 beforeAll(async () => {
@@ -134,6 +120,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await flushAfterCallbacks();
   await testDatabase?.pool.end();
   testDatabase = undefined;
 });

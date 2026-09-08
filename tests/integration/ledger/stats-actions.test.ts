@@ -4,7 +4,7 @@ import { getTestDb } from "../../setup";
 import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
-import { getLedgerStatsAction } from "@/modules/ledger/actions";
+import { getLedgerStatsAction } from "@/modules/ledger/server-actions/stats";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";

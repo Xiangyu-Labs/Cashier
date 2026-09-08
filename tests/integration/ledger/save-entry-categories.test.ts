@@ -160,4 +160,41 @@ describe("saveEntryCategoriesAction", () => {
       db.query.entryCategories.findFirst({ where: eq(entryCategories.id, categoryId) })
     ).resolves.toMatchObject({ name: "Changed elsewhere" });
   });
+
+  it("saves the maximum category batch while swapping every unique name", async () => {
+    const db = getTestDb();
+    const ledger = createLedgerData({ userId });
+    const categories = Array.from({ length: 100 }, (_, index) => ({
+      id: crypto.randomUUID(),
+      ledgerId: ledger.id,
+      name: `Category ${index}`,
+      sortOrder: index,
+    }));
+    await db.insert(ledgers).values(ledger);
+    await db.insert(entryCategories).values(categories);
+    const expectedRevision = await computeCategoryCollectionRevision(
+      await db.query.entryCategories.findMany({
+        where: eq(entryCategories.ledgerId, ledger.id),
+        orderBy: entryCategories.sortOrder,
+      })
+    );
+
+    const saved = await saveEntryCategoriesAction(ledger.id, {
+      expectedRevision,
+      categories: categories.map((category, index) => ({
+        id: category.id,
+        name: `Category ${(index + 1) % categories.length}`,
+        description: `Position ${index}`,
+        icon: null,
+      })),
+    });
+
+    expect(saved).toHaveLength(100);
+    expect(saved.map((category) => category.name)).toEqual(
+      Array.from({ length: 100 }, (_, index) => `Category ${(index + 1) % 100}`)
+    );
+    expect(saved.map((category) => category.sortOrder)).toEqual(
+      Array.from({ length: 100 }, (_, index) => index)
+    );
+  });
 });

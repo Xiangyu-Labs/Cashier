@@ -584,7 +584,10 @@ if (referenceCatalog != null) {
       fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
     );
     const { usages, rawKeyLiterals, dynamicUsages } = collectTranslationUsages(sourceFile);
-    const relativeFileName = path.relative(path.resolve(currentDirPath, ".."), fileName);
+    const relativeFileName = path
+      .relative(path.resolve(currentDirPath, ".."), fileName)
+      .split(path.sep)
+      .join("/");
     const visibleStringLiterals = collectVisibleStringLiterals(sourceFile, relativeFileName);
 
     for (const usage of usages) {

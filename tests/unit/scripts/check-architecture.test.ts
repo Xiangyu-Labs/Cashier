@@ -165,4 +165,14 @@ describe("check-architecture inward dependency rules", () => {
     });
     expect(runChecker(root).status).toBe(0);
   });
+
+  it("detects cycles formed through literal dynamic imports", () => {
+    const root = makeFixture({
+      "src/lib/a.ts": 'export const load = () => import("./b");',
+      "src/lib/b.ts": 'export const load = () => import("./a");',
+    });
+    const result = runChecker(root);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("Architecture cycle:");
+  });
 });

@@ -103,6 +103,7 @@ export async function splitSourceDocumentAtomically(input: {
     })),
     ledger.mainCurrency
   );
+  const movedIndexById = new Map(movedEntries.map((entry, index) => [entry.id, index]));
 
   const splitSourceDocumentId = crypto.randomUUID();
   const outcome = await db.transaction(async (tx) => {
@@ -178,33 +179,48 @@ export async function splitSourceDocumentAtomically(input: {
     const now = new Date();
     let sourcePosition = 0;
     let splitPosition = 0;
-    for (const entry of currentEntries) {
-      const movedIndex = movedEntries.findIndex((candidate) => candidate.id === entry.id);
-      const isMoved = movedIndex >= 0;
-      await tx
-        .update(ledgerEntries)
-        .set({
-          sourceDocumentId: isMoved ? splitSourceDocumentId : input.sourceDocumentId,
-          sourceDocumentRevisionId: isMoved ? splitRevision.id : sourceRevision.id,
-          position: isMoved ? splitPosition++ : sourcePosition++,
-          ...(isMoved
-            ? {
-                convertedAmount: roundToCurrency(
-                  conversions[movedIndex]!.convertedAmount,
-                  lockedLedger.mainCurrency
-                ),
-                exchangeRate: round(conversions[movedIndex]!.exchangeRate, 12),
-              }
-            : {}),
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(ledgerEntries.ledgerId, input.ledgerId),
-            eq(ledgerEntries.id, entry.id),
-            isNull(ledgerEntries.deletedAt)
-          )
-        );
+    const entryPatches = currentEntries.map((entry) => {
+      const movedIndex = movedIndexById.get(entry.id);
+      const isMoved = movedIndex != null;
+      return {
+        id: entry.id,
+        source_document_id: isMoved ? splitSourceDocumentId : input.sourceDocumentId,
+        source_document_revision_id: isMoved ? splitRevision.id : sourceRevision.id,
+        position: isMoved ? splitPosition++ : sourcePosition++,
+        converted_amount: isMoved
+          ? roundToCurrency(conversions[movedIndex]!.convertedAmount, lockedLedger.mainCurrency)
+          : entry.convertedAmount,
+        exchange_rate: isMoved
+          ? round(conversions[movedIndex]!.exchangeRate, 12)
+          : entry.exchangeRate,
+      };
+    });
+    const updatedEntries = await tx.execute(sql`
+      WITH patches AS (
+        SELECT * FROM jsonb_to_recordset(${JSON.stringify(entryPatches)}::jsonb) AS value(
+          id uuid,
+          source_document_id uuid,
+          source_document_revision_id uuid,
+          position integer,
+          converted_amount numeric,
+          exchange_rate numeric
+        )
+      )
+      UPDATE ledger_entries AS entry
+      SET source_document_id = patches.source_document_id,
+          source_document_revision_id = patches.source_document_revision_id,
+          position = patches.position,
+          converted_amount = patches.converted_amount,
+          exchange_rate = patches.exchange_rate,
+          updated_at = ${now}
+      FROM patches
+      WHERE entry.id = patches.id
+        AND entry.ledger_id = ${input.ledgerId}
+        AND entry.deleted_at IS NULL
+      RETURNING entry.id
+    `);
+    if (updatedEntries.rows.length !== currentEntries.length) {
+      throw new ConflictError("Source document entries changed during the split");
     }
     if (currentEntries.length > 0) {
       await tx.insert(ledgerEntries).values(

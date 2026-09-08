@@ -1,69 +1,19 @@
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
-import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
-import type { SourceDocumentDto } from "@/modules/source-document/contracts";
-import type { SourceDocumentQueryPorts } from "../ports";
-
-function toLightDto(
-  document: SourceDocumentDto,
-  hasImages: boolean
-): SourceDocumentLightWithEntriesDto {
-  return {
-    id: document.id,
-    version: document.version,
-    ledgerId: document.ledgerId,
-    title: document.title,
-    text: document.text,
-    files: document.files,
-    status: document.status,
-    type: document.type,
-    anomalyReason: document.anomalyReason,
-    entryDate: document.entryDate,
-    createdAt: document.createdAt,
-    hasImages,
-    supportedActions: document.supportedActions,
-    canEdit: document.canEdit,
-    errorCode: document.errorCode,
-    ...(document.activeResultSummary !== undefined
-      ? { activeResultSummary: document.activeResultSummary }
-      : {}),
-    ...(document.duplicateReview !== undefined
-      ? { duplicateReview: document.duplicateReview }
-      : {}),
-    ledgerEntries: document.ledgerEntries ?? [],
-  };
-}
-
-export async function getSourceDocumentLight(
-  sourceDocumentId: string,
-  ports: SourceDocumentQueryPorts,
-  authorizeLedger: (ledgerId: string) => Promise<unknown>
-): Promise<SourceDocumentLightWithEntriesDto | null> {
-  const accessContext = await getAccessibleSourceDocumentContext(
-    sourceDocumentId,
-    ports.documents,
-    authorizeLedger
-  );
-
-  if (accessContext == null) {
-    return null;
-  }
-
-  const document = await ports.documents.get(accessContext.ledgerId, sourceDocumentId);
-
-  if (document == null) {
-    return null;
-  }
-
-  return toLightDto(document, document.hasImages ?? accessContext.hasImages);
-}
+import type { SourceDocumentReadPort } from "../ports";
 
 export async function getSourceDocumentLightForLedger(
   ledgerId: string,
   sourceDocumentId: string,
-  ports: SourceDocumentQueryPorts
+  documents: Pick<SourceDocumentReadPort, "get">
 ): Promise<SourceDocumentLightWithEntriesDto | null> {
-  const document = await ports.documents.get(ledgerId, sourceDocumentId);
+  const document = await documents.get(ledgerId, sourceDocumentId);
   if (document == null) return null;
 
-  return toLightDto(document, document.hasImages ?? false);
+  // Keep the public detail payload while sharing the normal document read.
+  const { metadata: _metadata, deletedAt: _deletedAt, updatedAt: _updatedAt, ...detail } = document;
+  return {
+    ...detail,
+    hasImages: document.hasImages ?? false,
+    ledgerEntries: document.ledgerEntries ?? [],
+  };
 }

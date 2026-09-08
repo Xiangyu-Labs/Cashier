@@ -11,6 +11,7 @@ import { serverComposition } from "@/application/server-composition-root";
 const queryPorts = {
   documents: serverComposition.sourceDocumentReads,
   ledgerReads: serverComposition.ledgerReads,
+  changes: serverComposition.ledgerChanges,
 };
 const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
   listStreamPageUseCase(ledgerId, input, queryPorts);

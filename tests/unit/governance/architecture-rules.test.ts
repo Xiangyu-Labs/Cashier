@@ -49,7 +49,7 @@ describe("findBoundaryViolations", () => {
     ["use-cases", "@/modules/ledger/application/use-cases/list-entries"],
     ["hooks", "@/modules/ledger/hooks/useCategoryMutations"],
     ["ui", "@/modules/ledger/ui/LedgerEntryDetailModal"],
-    ["events", "@/modules/currency/events"],
+    ["server actions", "@/modules/currency/server-actions/convert-currency"],
   ])("rejects src/lib importing module %s", (_label, specifier) => {
     const violations = findBoundaryViolations(
       "src/lib/orchestration/worker.ts",
@@ -146,6 +146,65 @@ describe("findBoundaryViolations", () => {
     ).toEqual([]);
   });
 
+  it.each(["@/modules/ledger/actions", "./actions", "../actions", "../../actions"])(
+    "rejects client imports from module actions barrel %s",
+    (specifier) => {
+      expect(
+        findBoundaryViolations(
+          "src/modules/ledger/hooks/useLedger.ts",
+          `"use client";\nimport { getLedgerAction } from "${specifier}";`
+        )
+      ).toEqual([
+        "src/modules/ledger/hooks/useLedger.ts: client components must import concrete server actions, not module actions barrels",
+      ]);
+    }
+  );
+
+  it("rejects raw business identifiers in logger and console object arguments", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/source-document/server-actions/process.ts",
+        'logger.error({ error, ledgerId, sourceDocumentId }, "failed");\nconsole.error("failed", { revisionId });'
+      )
+    ).toEqual([
+      "src/modules/source-document/server-actions/process.ts: logger/console must hash or omit raw identifier property ledgerId",
+      "src/modules/source-document/server-actions/process.ts: logger/console must hash or omit raw identifier property sourceDocumentId",
+      "src/modules/source-document/server-actions/process.ts: logger/console must hash or omit raw identifier property revisionId",
+    ]);
+  });
+
+  it("allows hashed subjects and correlation identifiers in logs", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/source-document/server-actions/process.ts",
+        'import { logIdentifier } from "@/lib/security/log-identifier";\nlogger.error({ ledgerId: logIdentifier("ledger", ledgerId), sourceDocumentSubject, requestId, correlationId }, "failed");'
+      )
+    ).toEqual([]);
+  });
+
+  it("ignores identifier names in comments and ordinary strings", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/source-document/server-actions/process.ts",
+        '// activeRevisionId and ledgerId are domain terms.\nconst message = "sourceDocumentId";'
+      )
+    ).toEqual([]);
+  });
+
+  it.each(["@/lib/db", "@/persistence", "@/application/adapters/postgres/revisions"])(
+    "rejects in-process adapters importing concrete runtime dependency %s",
+    (specifier) => {
+      expect(
+        findBoundaryViolations(
+          "src/application/adapters/in-process/processor.ts",
+          `import { dependency } from "${specifier}";`
+        )
+      ).toEqual([
+        "src/application/adapters/in-process/processor.ts: in-process adapters must receive persistence and concrete adapters explicitly",
+      ]);
+    }
+  );
+
   it("catches dynamic imports and re-exports", () => {
     expect(
       findBoundaryViolations(
@@ -169,6 +228,24 @@ describe("findBoundaryViolations", () => {
     ).toEqual([
       "src/lib/lazy-client.ts: client components must not import server-only infrastructure",
     ]);
+  });
+
+  it("normalizes relative imports before applying boundaries", () => {
+    expect(
+      findBoundaryViolations(
+        "src/lib/lazy.ts",
+        'export const load = () => import("../modules/ledger/contracts");'
+      )
+    ).toEqual(["src/lib/lazy.ts: src/lib must not import modules, app, or application adapters"]);
+  });
+
+  it("allows in-process adapters to import sibling helpers", () => {
+    expect(
+      findBoundaryViolations(
+        "src/application/adapters/in-process/processor.ts",
+        'import { load } from "./stored-image-loader";'
+      )
+    ).toEqual([]);
   });
 
   it("catches namespace re-exports from banned paths", () => {
@@ -199,11 +276,11 @@ describe("findBoundaryViolations", () => {
   it("keeps the existing module application and server action rules", () => {
     expect(
       findBoundaryViolations(
-        "src/modules/ledger/application/use-cases/delete-ledger.ts",
+        "src/modules/ledger/application/use-cases/update-ledger.ts",
         'import { serverComposition } from "@/application/server-composition-root";'
       )
     ).toEqual([
-      "src/modules/ledger/application/use-cases/delete-ledger.ts: application code must receive ports explicitly",
+      "src/modules/ledger/application/use-cases/update-ledger.ts: application code must receive ports explicitly",
     ]);
     expect(
       findBoundaryViolations(
@@ -212,22 +289,6 @@ describe("findBoundaryViolations", () => {
       )
     ).toEqual([
       "src/modules/ledger/server-actions/entries.ts: server actions must call application ports/use cases",
-    ]);
-  });
-
-  it.each([
-    "@/application/adapters/postgres/mutate-ledger-entries",
-    "@/application/adapters/postgres/delete-ledger-entry",
-    "@/modules/ledger/application/use-cases/mutate-ledger-entries",
-    "@/modules/ledger/application/use-cases/delete-ledger-entry",
-  ])("forbids importing the legacy ledger mutation path %s", (specifier) => {
-    expect(
-      findBoundaryViolations(
-        "src/application/server-composition-root.ts",
-        `import { deleteLedgerEntry } from "${specifier}";`
-      )
-    ).toEqual([
-      "src/application/server-composition-root.ts: legacy ledger mutation path is forbidden; use the versioned source-document aggregate",
     ]);
   });
 
@@ -246,19 +307,11 @@ describe("findBoundaryViolations", () => {
         "await tx.update(sourceDocuments).set({ title });"
       )
     ).toEqual([]);
+    expect(
+      findBoundaryViolations(
+        "src/application/adapters/postgres/unregistered-writer.ts",
+        'const example = "tx.update(sourceDocuments)"; // tx.delete(sourceDocuments)'
+      )
+    ).toEqual([]);
   });
-
-  it.each(["activeRevisionId", "expectedRevisionId", "operationId", "resourceGroups"])(
-    "rejects browser concurrency token %s",
-    (token) => {
-      expect(
-        findBoundaryViolations(
-          "src/modules/source-document/hooks/useCommand.ts",
-          `const ${token} = value;`
-        )
-      ).toEqual([
-        `src/modules/source-document/hooks/useCommand.ts: browser source-document code must not use ${token}`,
-      ]);
-    }
-  );
 });

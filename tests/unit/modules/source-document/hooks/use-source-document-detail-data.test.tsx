@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/query-keys";
 
 const getSourceDocumentLightAction = vi.fn();
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/get-document-light", () => ({
   getSourceDocumentLightAction: (...args: unknown[]) => getSourceDocumentLightAction(...args),
 }));
 

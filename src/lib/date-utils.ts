@@ -147,6 +147,7 @@ export function formatCivilDate(
  *
  * Uses date-fns for reliable parsing and day boundary calculation.
  */
+/** @testOnly Exported for date-boundary regression tests. */
 export function parseDateRangeStart(dateStr: string | null | undefined): Date | null {
   if (dateStr == null || dateStr === "") return null;
 
@@ -163,6 +164,7 @@ export function parseDateRangeStart(dateStr: string | null | undefined): Date | 
  *
  * Uses date-fns for reliable parsing and day boundary calculation.
  */
+/** @testOnly Exported for date-boundary regression tests. */
 export function parseDateRangeEnd(dateStr: string | null | undefined): Date | null {
   if (dateStr == null || dateStr === "") return null;
 

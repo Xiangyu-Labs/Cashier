@@ -1,9 +1,8 @@
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { add as decimalAdd, normalize as normalizeDecimal } from "@/lib/money/decimal";
 import type { AiContextContract, AiMessageContentPart } from "./parse-source-document/contracts";
 import { normalizeDuplicateReason } from "../duplicate-reason";
-
-export { normalizeDuplicateReason } from "../duplicate-reason";
 
 /**
  * Best-effort duplicate detection for first-parsed AI source documents.
@@ -332,7 +331,10 @@ async function shortlistCandidates(
     }
   } catch (error) {
     logger.warn(
-      { error, sourceDocumentId: input.sourceDocumentId },
+      {
+        error,
+        sourceDocumentSubject: logIdentifier("source-document", input.sourceDocumentId),
+      },
       "Duplicate shortlist AI failed; using deterministic fallback"
     );
   }
@@ -472,8 +474,11 @@ export async function detectDuplicateBill(
     ) {
       logger.warn(
         {
-          sourceDocumentId: input.sourceDocumentId,
-          matchedSourceDocumentId: verdict.matchedSourceDocumentId,
+          sourceDocumentSubject: logIdentifier("source-document", input.sourceDocumentId),
+          matchedSourceDocumentSubject: logIdentifier(
+            "source-document",
+            verdict.matchedSourceDocumentId
+          ),
         },
         "Duplicate verdict referenced an ID outside the candidate set; ignoring"
       );
@@ -488,8 +493,11 @@ export async function detectDuplicateBill(
     if (matchedCandidate == null) {
       logger.warn(
         {
-          sourceDocumentId: input.sourceDocumentId,
-          matchedSourceDocumentId: verdict.matchedSourceDocumentId,
+          sourceDocumentSubject: logIdentifier("source-document", input.sourceDocumentId),
+          matchedSourceDocumentSubject: logIdentifier(
+            "source-document",
+            verdict.matchedSourceDocumentId
+          ),
         },
         "Duplicate verdict referenced a candidate without a matched revision; ignoring"
       );
@@ -510,7 +518,10 @@ export async function detectDuplicateBill(
     };
   } catch (error) {
     logger.warn(
-      { error, sourceDocumentId: input.sourceDocumentId },
+      {
+        error,
+        sourceDocumentSubject: logIdentifier("source-document", input.sourceDocumentId),
+      },
       "Duplicate detection failed open"
     );
     return noDuplicate(input.candidates.length);

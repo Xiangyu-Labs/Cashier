@@ -3,9 +3,9 @@ import {
   buildLedgerEntryFilters,
   buildLedgerFilterKey,
   splitLedgerFilterChange,
-  STREAM_STATUS_PRESETS,
   STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/workspace/ledger-filter-state";
+import { STREAM_STATUS_PRESETS } from "@/modules/ledger/filters";
 
 describe("ledger-filter-state", () => {
   it("derives entry filters and filterKey from period + advanced filters", () => {

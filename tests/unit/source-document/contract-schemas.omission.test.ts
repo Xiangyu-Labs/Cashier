@@ -74,68 +74,32 @@ describe("contract schema omission semantics", () => {
     expect(parsed.maxAmount).toBe("100");
   });
 
-  it("rejects combined storedFileIds + images + originalImages exceeding MAX_FILES", () => {
+  it("limits stored files and rejects legacy browser inline-image fields", () => {
     const uuid = () => crypto.randomUUID();
 
-    // 10+0 success
     expect(() =>
       createSourceDocumentInputSchema.parse({
         storedFileIds: Array.from({ length: MAX_FILES }, () => uuid()),
       })
     ).not.toThrow();
 
-    // 0+10 success
     expect(() =>
       createSourceDocumentInputSchema.parse({
-        images: Array.from({ length: MAX_FILES }, () => ({
-          data: "dGVzdA==",
-          mimeType: "image/jpeg",
-        })),
+        storedFileIds: Array.from({ length: MAX_FILES + 1 }, () => uuid()),
       })
-    ).not.toThrow();
+    ).toThrow();
 
-    // 1+2 success
     expect(() =>
       createSourceDocumentInputSchema.parse({
-        storedFileIds: [uuid()],
-        images: Array.from({ length: 2 }, () => ({
-          data: "dGVzdA==",
-          mimeType: "image/jpeg",
-        })),
-      })
-    ).not.toThrow();
-
-    // 10+1 failure (11 files)
-    expect(() =>
-      createSourceDocumentInputSchema.parse({
-        storedFileIds: Array.from({ length: MAX_FILES }, () => uuid()),
+        text: "receipt",
         images: [{ data: "dGVzdA==", mimeType: "image/jpeg" }],
       })
     ).toThrow();
 
-    // 6+5 failure (11 files)
     expect(() =>
       createSourceDocumentInputSchema.parse({
-        storedFileIds: Array.from({ length: 6 }, () => uuid()),
-        images: Array.from({ length: 5 }, () => ({
-          data: "dGVzdA==",
-          mimeType: "image/jpeg",
-        })),
-      })
-    ).toThrow();
-
-    // originalImages counted in total
-    expect(() =>
-      createSourceDocumentInputSchema.parse({
-        storedFileIds: Array.from({ length: 5 }, () => uuid()),
-        images: Array.from({ length: 3 }, () => ({
-          data: "dGVzdA==",
-          mimeType: "image/jpeg",
-        })),
-        originalImages: Array.from({ length: 3 }, () => ({
-          data: "dGVzdA==",
-          mimeType: "image/jpeg",
-        })),
+        text: "receipt",
+        originalImages: [{ data: "dGVzdA==", mimeType: "image/jpeg" }],
       })
     ).toThrow();
   });

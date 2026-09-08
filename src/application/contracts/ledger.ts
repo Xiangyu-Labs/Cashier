@@ -107,16 +107,16 @@ interface CategoryWithCountContract extends CategoryContract {
 }
 
 export interface LedgerSettingsContract {
-  aiLanguage?: string;
-  currencies?: string[];
-  mainCurrency?: string;
-  collapseEntriesDefault?: boolean;
-  aiCustomPrompt?: string;
-  duplicateDetectionEnabled?: boolean;
-  timeZone?: string | null;
+  aiLanguage: string;
+  currencies: string[];
+  mainCurrency: string;
+  collapseEntriesDefault: boolean;
+  aiCustomPrompt: string;
+  duplicateDetectionEnabled: boolean;
+  timeZone: string | null;
 }
 
-interface LedgerContract {
+export interface LedgerContract {
   id: LedgerId;
   userId: string;
   settings: LedgerSettingsContract;
@@ -153,16 +153,10 @@ export interface LedgerProjectionEntryContract {
   createdAt?: string;
 }
 
-export interface LedgerProjectionEntryFingerprint {
-  id: string;
-  amount: string;
-  currency: string | null;
-  sourceDocumentRevisionId: string | null;
-}
-
 export interface LedgerProjectionPort {
   activateRevision(input: {
     ledgerId: LedgerId;
+    expectedMainCurrency: string;
     sourceDocumentId: SourceDocumentId;
     revisionId: RevisionId;
     title?: string | null;
@@ -178,29 +172,6 @@ export interface LedgerProjectionPort {
     entryDate?: string | null;
     entries: readonly LedgerProjectionEntryContract[];
   }): Promise<{ sourceDocumentId: SourceDocumentId; revisionId: RevisionId }>;
-  replaceManual(input: {
-    ledgerId: LedgerId;
-    sourceDocumentId: SourceDocumentId;
-    expectedActiveRevisionId?: RevisionId;
-    submittedText?: string | null;
-    title?: string | null;
-    entryDate?: string | null;
-    expectedMainCurrency?: string;
-    expectedProjection?: readonly LedgerProjectionEntryFingerprint[];
-    projectionConversions?: readonly {
-      ledgerEntryId: string;
-      convertedAmount: string;
-      exchangeRate: string;
-    }[];
-    entries: readonly LedgerProjectionEntryContract[];
-  }): Promise<RevisionId>;
-  replaceActive(input: {
-    ledgerId: LedgerId;
-    sourceDocumentId: SourceDocumentId;
-    expectedActiveRevisionId: RevisionId;
-    expectedMainCurrency?: string;
-    entries: readonly LedgerProjectionEntryContract[];
-  }): Promise<RevisionId>;
   recalculate(input: {
     ledgerId: LedgerId;
     updates: readonly { ledgerEntryId: string; convertedAmount: string; exchangeRate: string }[];

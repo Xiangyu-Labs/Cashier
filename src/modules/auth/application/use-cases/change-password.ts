@@ -5,12 +5,13 @@ import { validatePassword } from "@/modules/auth/services/password-policy";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
-import type { AccountSecurityPort, RateLimitPort } from "../ports";
+import type { AccountSecurityPort } from "../ports";
+import type { RateLimiterPort } from "@/application/contracts";
 
 const PASSWORD_CHANGE_PREFIX = "auth:password-change:user:";
 
 async function releasePasswordChangeReservation(
-  rateLimiter: RateLimitPort,
+  rateLimiter: RateLimiterPort,
   key: string,
   windowSeconds: number,
   resetTime: number,
@@ -34,7 +35,7 @@ export async function changePassword(
     newPassword: string;
     confirmPassword: string;
   },
-  dependencies: { accounts: AccountSecurityPort; rateLimiter: RateLimitPort }
+  dependencies: { accounts: AccountSecurityPort; rateLimiter: RateLimiterPort }
 ): Promise<Date> {
   if (params.newPassword !== params.confirmPassword) {
     throw new AppError("Passwords do not match", AUTH_ERROR_CODES.PASSWORD_MISMATCH, 400);
@@ -44,7 +45,7 @@ export async function changePassword(
   const key = `${PASSWORD_CHANGE_PREFIX}${params.userId}`;
   const limit = runtimeEnv.authPasswordEmailMaxAttempts;
   const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
-  let reservation: Awaited<ReturnType<RateLimitPort["increment"]>>;
+  let reservation: Awaited<ReturnType<RateLimiterPort["increment"]>>;
   try {
     reservation = await dependencies.rateLimiter.increment(key, limit, windowSeconds);
     if (!reservation.success) {

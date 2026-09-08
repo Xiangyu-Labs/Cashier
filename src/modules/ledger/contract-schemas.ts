@@ -48,6 +48,8 @@ const optionalSearchSchema = z.preprocess(
   (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
   z.string().max(MAX_SEARCH_LENGTH).optional()
 );
+export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
+const categoryFilterSchema = z.union([uuidSchema, z.literal(UNCATEGORIZED_SENTINEL)]).optional();
 
 function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -56,10 +58,6 @@ function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
   }
   return result.data;
 }
-
-const createLedgerInputSchema = strictObjectSchema({
-  aiLanguage: aiLanguageSchema.optional(),
-});
 
 const updateLedgerInputSchema = nonEmptyStrictObjectSchema({
   expectedUpdatedAt: z.string().datetime({ offset: true }),
@@ -169,7 +167,7 @@ const createServiceCredentialInputSchema = strictObjectSchema({
 const ledgerEntryQueryShape = {
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
-  categoryId: uuidSchema.optional(),
+  categoryId: categoryFilterSchema,
   currency: optionalCurrencyCodeSchema,
   minAmount: optionalQueryDecimalSchema,
   maxAmount: optionalQueryDecimalSchema,
@@ -213,11 +211,9 @@ export const listLedgerEntriesInputSchema = strictObjectSchema({
 
 export const ledgerStatsQuerySchema = strictObjectSchema({
   ...ledgerEntryQueryShape,
-  categoryId: z.union([uuidSchema, z.literal("__uncategorized__")]).optional(),
+  categoryId: categoryFilterSchema,
 }).superRefine(validateLedgerEntryQueryRange);
 
-export const parseCreateLedgerInput = (input: unknown) =>
-  parseLedgerContract(createLedgerInputSchema, input);
 export const parseUpdateLedgerInput = (input: unknown) =>
   parseLedgerContract(updateLedgerInputSchema, input);
 export const parseCreateEntryCategoryInput = (input: unknown) =>
@@ -252,7 +248,6 @@ export const parseLedgerId = (input: unknown) => parseLedgerContract(ledgerIdSch
 export const parseLedgerStatsQuery = (input: unknown) =>
   parseLedgerContract(ledgerStatsQuerySchema, input);
 
-export type CreateLedgerInput = z.infer<typeof createLedgerInputSchema>;
 export type UpdateLedgerInput = z.infer<typeof updateLedgerInputSchema>;
 export type CreateEntryCategoryInput = z.infer<typeof createEntryCategoryInputSchema>;
 export type UpdateEntryCategoryInput = z.infer<typeof updateEntryCategoryInputSchema>;

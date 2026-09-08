@@ -21,10 +21,6 @@ export async function register() {
       },
       "Service configuration status"
     );
-
-    const { initializeExchangeRateLedgerRecalculationOrchestration } =
-      await import("@/application/orchestration/exchange-rate-ledger-recalculation");
-    initializeExchangeRateLedgerRecalculationOrchestration();
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
     throw error;

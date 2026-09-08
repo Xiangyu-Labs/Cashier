@@ -49,11 +49,11 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
 
   async createEmailChangeChallenge(input) {
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select id from users where id = ${input.userId} for update`);
-      const current = await tx.query.users.findFirst({
-        where: and(eq(users.id, input.userId), isNull(users.deletedAt)),
-        columns: { email: true },
-      });
+      const [current] = await tx
+        .select({ email: users.email })
+        .from(users)
+        .where(and(eq(users.id, input.userId), isNull(users.deletedAt)))
+        .for("update");
       const duplicate = await tx.query.users.findFirst({
         where: and(
           eq(users.email, input.newEmail),
@@ -119,15 +119,16 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
     try {
       return await db.transaction(async (tx) => {
         await tx.execute(sql`select id from users where id = ${input.userId} for update`);
-        await tx.execute(
-          sql`select id from email_change_challenges where user_id = ${input.userId} for update`
-        );
-        const challenge = await tx.query.emailChangeChallenges.findFirst({
-          where: and(
-            eq(emailChangeChallenges.userId, input.userId),
-            eq(emailChangeChallenges.newEmail, input.newEmail)
-          ),
-        });
+        const [challenge] = await tx
+          .select()
+          .from(emailChangeChallenges)
+          .where(
+            and(
+              eq(emailChangeChallenges.userId, input.userId),
+              eq(emailChangeChallenges.newEmail, input.newEmail)
+            )
+          )
+          .for("update");
         if (challenge == null) return { status: "not_found" as const };
         const check = verificationChallenges.check(challenge, input.otp, input.now);
         if (!check.ok && check.reason === "locked") return { status: "locked" as const };

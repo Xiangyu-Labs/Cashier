@@ -69,8 +69,8 @@ const DialogContent = React.forwardRef<
       variant,
       hideCloseButton = false,
       onExitComplete,
-      onAnimationEnd,
       onInteractOutside,
+      onCloseAutoFocus,
       style,
       ...props
     },
@@ -89,14 +89,9 @@ const DialogContent = React.forwardRef<
             className
           )}
           style={{ ...style, zIndex: 110 + depth * 20 }}
-          onAnimationEnd={(event) => {
-            onAnimationEnd?.(event);
-            if (
-              event.target === event.currentTarget &&
-              event.currentTarget.dataset.state === "closed"
-            ) {
-              onExitComplete?.();
-            }
+          onCloseAutoFocus={(event) => {
+            onCloseAutoFocus?.(event);
+            onExitComplete?.();
           }}
           {...props}
           onInteractOutside={(event) => {

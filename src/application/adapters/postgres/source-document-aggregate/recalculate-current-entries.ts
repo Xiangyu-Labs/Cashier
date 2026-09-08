@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { AppError, ConflictError } from "@/lib/errors";
+import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 import { currencyRates, ledgerEntries, sourceDocuments } from "@/persistence";
 import type { PostgresTransaction } from "../transaction-locks";
 
@@ -12,8 +13,7 @@ export async function recalculateCurrentEntries(
   includeUndated = false
 ): Promise<number> {
   const entries = await tx
-    .select({
-      id: ledgerEntries.id,
+    .selectDistinct({
       currency: ledgerEntries.currency,
       entryDate: sourceDocuments.entryDate,
     })
@@ -84,12 +84,7 @@ export async function recalculateCurrentEntries(
     }
   }
 
-  const decimals =
-    mainCurrency === "JPY" || mainCurrency === "KRW"
-      ? 0
-      : ["BHD", "JOD", "KWD", "OMR", "TND"].includes(mainCurrency)
-        ? 3
-        : 2;
+  const decimals = getCurrencyDecimals(mainCurrency);
   const now = new Date();
   const result = await tx.execute(sql`
     WITH candidates AS (

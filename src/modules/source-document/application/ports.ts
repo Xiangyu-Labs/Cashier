@@ -4,12 +4,10 @@ import type {
   DirectStoredFilePort,
   LedgerProjectionPort,
   StoredFileContract,
-  SourceDocumentPort,
   SourceDocumentIdempotencyInput,
   SourceDocumentSubmissionInput,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
-import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import type { LedgerEntryCommandPort } from "@/modules/ledger/application/ports";
 import type {
   BatchUpdateSourceDocumentsInput,
@@ -25,7 +23,6 @@ import type {
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
   AtomicBatchCommandResult,
-  PartialBatchCommandResult,
   VersionedCommandResult,
   VersionedTarget,
 } from "../contracts";
@@ -67,6 +64,10 @@ export interface SourceDocumentReadPort {
     ledgerId: string,
     sourceDocumentIds: readonly string[]
   ): Promise<PendingDuplicateReviewContract[]>;
+  getEvidence(
+    ledgerId: string,
+    sourceDocumentId: string
+  ): Promise<import("../contracts").SourceDocumentFullDto | null>;
   get(ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentDto | null>;
   getAccessContext(
     sourceDocumentId: string
@@ -77,13 +78,20 @@ export interface SourceDocumentReadPort {
   }>;
 }
 
-export interface SourceDocumentUpdatePort {
-  batchUpdate(input: {
+/** The only application-facing boundary for writes that change a document's visible projection. */
+export interface SourceDocumentAggregateWritePort {
+  createProcessingDocument: SourceDocumentSubmissionPort["createPendingWithIntent"];
+  createIdempotentProcessingDocument: (
+    idempotency: SourceDocumentIdempotencyInput,
+    prepare: () => Promise<SourceDocumentSubmissionInput>
+  ) => ReturnType<SourceDocumentSubmissionPort["createIdempotentPendingWithIntent"]>;
+  createManualDocument: LedgerProjectionPort["createManual"];
+  updateDocuments(input: {
     ledgerId: string;
     targets: VersionedTarget[];
     data: BatchUpdateSourceDocumentsInput;
   }): Promise<AtomicBatchCommandResult<BatchUpdateSourceDocumentsResultDto>>;
-  saveChangesAtomically(input: {
+  saveChanges(input: {
     ledgerId: string;
     sourceDocumentId: string;
     expectedVersion: number;
@@ -93,25 +101,13 @@ export interface SourceDocumentUpdatePort {
       data: import("@/modules/ledger/contract-schemas").UpdateLedgerEntryInput;
     }>;
   }): Promise<VersionedCommandResult<SaveSourceDocumentChangesResultDto>>;
-  split(input: {
+  splitEntries(input: {
     ledgerId: string;
     sourceDocumentId: string;
     expectedVersion: number;
     ledgerEntryIds: string[];
     entryDate: string;
   }): Promise<VersionedCommandResult<SplitSourceDocumentResultDto>>;
-}
-
-/** The only application-facing boundary for writes that change a document's visible projection. */
-export interface SourceDocumentAggregateWritePort {
-  createProcessingDocument: SourceDocumentSubmissionPort["createPendingWithIntent"];
-  createIdempotentProcessingDocument?: (
-    idempotency: SourceDocumentIdempotencyInput,
-    prepare: () => Promise<SourceDocumentSubmissionInput>
-  ) => ReturnType<NonNullable<SourceDocumentSubmissionPort["createIdempotentPendingWithIntent"]>>;
-  createManualDocument: LedgerProjectionPort["createManual"];
-  saveChanges: SourceDocumentUpdatePort["saveChangesAtomically"];
-  updateDocuments: SourceDocumentUpdatePort["batchUpdate"];
   updateEntryDates(input: {
     ledgerId: string;
     targets: VersionedTarget[];
@@ -127,14 +123,9 @@ export interface SourceDocumentAggregateWritePort {
   deleteEntries: LedgerEntryCommandPort["delete"];
   batchUpdateEntries: LedgerEntryCommandPort["batchUpdate"];
   batchDeleteEntries: LedgerEntryCommandPort["batchDelete"];
-  splitEntries: SourceDocumentUpdatePort["split"];
   installRetry(
     input: SourceDocumentSubmissionInput & { sourceDocumentId: string; expectedVersion: number }
   ): ReturnType<SourceDocumentSubmissionPort["createPendingWithIntent"]>;
-  installIdempotentRetry?: (
-    idempotency: SourceDocumentIdempotencyInput,
-    prepare: () => Promise<SourceDocumentSubmissionInput>
-  ) => ReturnType<NonNullable<SourceDocumentSubmissionPort["createIdempotentPendingWithIntent"]>>;
   acceptCandidate: SourceDocumentLifecyclePort["acceptCandidate"];
   abandonCandidate: SourceDocumentLifecyclePort["abandonCandidate"];
   cancelProcessing: SourceDocumentLifecyclePort["cancelPending"];
@@ -148,19 +139,7 @@ export interface SourceDocumentAggregateWritePort {
     ledgerId: string;
     target: VersionedTarget;
   }): Promise<VersionedCommandResult<import("../contracts").DeleteSourceDocumentResultDto>>;
-  deleteDocumentsBatch?: (
-    ledgerId: string,
-    targets: VersionedTarget[]
-  ) => Promise<PartialBatchCommandResult>;
   completeProcessing: LedgerProjectionPort["activateRevision"];
-  applyMainCurrencyChange: LedgerProjectionPort["recalculate"];
-  recalculateConversions: LedgerProjectionPort["recalculate"];
-}
-
-export interface SourceDocumentQueryPorts {
-  documents: SourceDocumentReadPort;
-  ledgerReads: LedgerReadPort;
-  changes?: LedgerChangeReadPort;
 }
 
 export interface SourceDocumentCredentialPorts {
@@ -186,8 +165,6 @@ export interface QuickEntryPorts {
     date?: string;
   }): Promise<{ convertedAmount: string; exchangeRate: string }>;
 }
-
-export type SourceDocumentRevisionPort = SourceDocumentPort;
 
 export interface SourceDocumentLifecyclePort {
   acceptCandidate(
@@ -221,19 +198,10 @@ export interface SourceDocumentLifecyclePort {
 }
 
 export interface ProcessingRecoveryPort {
-  reconcileResidualIntents(ledgerId: string, limit: number): Promise<number>;
-  exhaustStaleIntents(ledgerId: string, maxAttempts: number, limit: number): Promise<number>;
-  selectRecoverable(
+  recoverBatch(
     ledgerId: string,
-    maxAttempts: number,
-    limit: number
+    config: import("@/application/contracts").ProcessingRecoveryConfig
   ): Promise<readonly RecoverableProcessingIntentContract[]>;
-  scheduleRecovery(
-    revisionId: string,
-    intentId: string,
-    ledgerId: string,
-    cooldownSeconds: number
-  ): Promise<boolean>;
 }
 
 export interface CredentialSourceDocumentStatusResult {
@@ -269,6 +237,7 @@ export interface CredentialSourceDocumentReadPort {
 
 export interface LedgerChangeReadPort {
   getVersion(ledgerId: string): Promise<bigint>;
+  getRefreshBaseline(ledgerId: string): Promise<{ version: bigint; hasTransitionalWork: boolean }>;
   summarizeChanges(input: { ledgerId: string; afterVersion: bigint }): Promise<{
     currentVersion: bigint;
     firstRetainedVersion: bigint | null;

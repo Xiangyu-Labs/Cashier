@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import type { LedgerEntryCommandPort } from "@/modules/ledger/application/ports";
@@ -239,24 +239,29 @@ async function prepareBatchConversions(input: {
   if (rows.length !== requestedIds.length) {
     throw new NotFoundError("Active ledger entry projection");
   }
-  const conversions = await Promise.all(
-    rows.map(async (entry) => {
-      const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
-      const effectiveCurrency = nextCurrency ?? entry.mainCurrency;
-      const nextAmount = input.amount ?? entry.amount;
-      const conversion = await convertEntryAmount(
-        {
-          amount: nextAmount,
-          fromCurrency: effectiveCurrency,
-          toCurrency: entry.mainCurrency,
-          ...(entry.entryDate == null ? {} : { date: entry.entryDate }),
-        },
-        postgresFxRateBook
-      );
-      return [entry.id, { ...entry, effectiveCurrency, nextAmount, conversion }] as const;
-    })
+  const preparedRows = rows.map((entry) => {
+    const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
+    const effectiveCurrency = nextCurrency ?? entry.mainCurrency;
+    return {
+      entry,
+      effectiveCurrency,
+      nextAmount: input.amount ?? entry.amount,
+    };
+  });
+  const conversions = await postgresFxRateBook.convertBatch(
+    preparedRows.map(({ entry, effectiveCurrency, nextAmount }) => ({
+      amount: nextAmount,
+      from: effectiveCurrency,
+      ...(entry.entryDate == null ? {} : { date: entry.entryDate }),
+    })),
+    rows[0]!.mainCurrency
   );
-  return new Map(conversions);
+  return new Map(
+    preparedRows.map(({ entry, effectiveCurrency, nextAmount }, index) => [
+      entry.id,
+      { ...entry, effectiveCurrency, nextAmount, conversion: conversions[index]! },
+    ])
+  );
 }
 
 function targetMap(targets: readonly VersionedTarget[]) {
@@ -296,6 +301,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       );
       const ledgerEntryId = crypto.randomUUID();
       await replaceActiveProjectionInTransaction(tx, {
+        document,
+        previousEntries: entries,
         ledgerId: input.ledgerId,
         sourceDocumentId: document.id,
         expectedActiveRevisionId: document.activeRevisionId,
@@ -372,6 +379,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         exchangeRate = prepared.conversion.exchangeRate;
       }
       await replaceActiveProjectionInTransaction(tx, {
+        document,
+        previousEntries: entries,
         ledgerId: input.ledgerId,
         sourceDocumentId: document.id,
         expectedActiveRevisionId: document.activeRevisionId,
@@ -430,6 +439,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         throw new NotFoundError("Active ledger entry projection");
       }
       await replaceActiveProjectionInTransaction(tx, {
+        document,
+        previousEntries: entries,
         ledgerId: input.ledgerId,
         sourceDocumentId: document.id,
         expectedActiveRevisionId: document.activeRevisionId,
@@ -477,9 +488,19 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       }
       await assertCategoryOwnership(tx, input.ledgerId, input.categoryId);
       const requestedIds = [...new Set(input.ledgerEntryIds)].sort();
-      const entries = await tx
-        .select()
+      const requested = new Set(requestedIds);
+      const activeEntries = await tx
+        .select(getTableColumns(ledgerEntries))
         .from(ledgerEntries)
+        .innerJoin(
+          sourceDocuments,
+          and(
+            eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+            eq(sourceDocuments.ledgerId, input.ledgerId),
+            eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+            isNull(sourceDocuments.deletedAt)
+          )
+        )
         .where(
           and(
             eq(ledgerEntries.ledgerId, input.ledgerId),
@@ -491,17 +512,15 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
           )
         )
         .orderBy(ledgerEntries.sourceDocumentId, ledgerEntries.position, ledgerEntries.id);
-      const activeRevisionByDocument = new Map(
-        documents.map((document) => [document.id, document.activeRevisionId!] as const)
-      );
-      const activeEntries = entries.filter(
-        (entry) =>
-          entry.sourceDocumentId != null &&
-          entry.sourceDocumentRevisionId === activeRevisionByDocument.get(entry.sourceDocumentId)
-      );
+      const entriesByDocument = new Map<string, typeof activeEntries>();
+      for (const entry of activeEntries) {
+        const group = entriesByDocument.get(entry.sourceDocumentId!) ?? [];
+        group.push(entry);
+        entriesByDocument.set(entry.sourceDocumentId!, group);
+      }
       const selectedById = new Map(
         activeEntries
-          .filter((entry) => requestedIds.includes(entry.id))
+          .filter((entry) => requested.has(entry.id))
           .map((entry) => [entry.id, entry] as const)
       );
       if (selectedById.size !== requestedIds.length) {
@@ -553,24 +572,25 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         });
       }
 
-      const changedDocuments = documents.filter((document) =>
-        activeEntries.some(
-          (entry) => entry.sourceDocumentId === document.id && changedIds.has(entry.id)
-        )
+      const changedDocumentIds = new Set(
+        [...selectedById.values()]
+          .filter((entry) => changedIds.has(entry.id))
+          .map((entry) => entry.sourceDocumentId!)
       );
+      const changedDocuments = documents.filter((document) => changedDocumentIds.has(document.id));
       for (const document of changedDocuments) {
+        const entries = entriesByDocument.get(document.id)!;
         await replaceActiveProjectionInTransaction(tx, {
+          document,
+          previousEntries: entries,
           ledgerId: input.ledgerId,
           sourceDocumentId: document.id,
           expectedActiveRevisionId: document.activeRevisionId!,
           expectedStateVersion: document.stateVersion,
           revisionId: crypto.randomUUID(),
-          entries: activeEntries
-            .filter((entry) => entry.sourceDocumentId === document.id)
-            .map((entry) => nextById.get(entry.id) ?? toProjectionEntry(entry)),
+          entries: entries.map((entry) => nextById.get(entry.id) ?? toProjectionEntry(entry)),
         });
       }
-      const changedDocumentIds = new Set(changedDocuments.map((document) => document.id));
       return {
         ok: true as const,
         versions: documents.map((document) => ({
@@ -643,6 +663,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
             throw new NotFoundError("Active ledger entry projection");
           }
           await replaceActiveProjectionInTransaction(tx, {
+            document,
+            previousEntries: entries,
             ledgerId: input.ledgerId,
             sourceDocumentId,
             expectedActiveRevisionId: document.activeRevisionId,

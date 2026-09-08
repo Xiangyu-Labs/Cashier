@@ -28,6 +28,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     const validated = createSourceDocumentInputSchema.parse(input);
     const validatedClientSubmissionId = clientSubmissionIdSchema.parse(clientSubmissionId);
     const payload = omitUndefinedProperties(validated);
+    const timezone = payload.timezone ?? ledger.settings.timeZone ?? undefined;
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
       scheduleProcessingAfter(intent);
     };
@@ -35,8 +36,13 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     const result = await createAndQueueSourceDocument(
       {
         ledgerId,
-        ledger,
-        ...payload,
+        evidence: {
+          kind: "stored",
+          ...(payload.text == null ? {} : { text: payload.text }),
+          storedFileIds: payload.storedFileIds ?? [],
+        },
+        ...(payload.entryDate == null ? {} : { entryDate: payload.entryDate }),
+        ...(timezone === undefined ? {} : { timezone }),
         idempotency: {
           principalType: "user",
           principalId: userId,
@@ -48,12 +54,8 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
         submissions: {
           createPendingWithIntent:
             serverComposition.sourceDocumentAggregate.createProcessingDocument,
-          ...(serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument == null
-            ? {}
-            : {
-                createIdempotentPendingWithIntent:
-                  serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument,
-              }),
+          createIdempotentPendingWithIntent:
+            serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument,
         },
         storedFiles: serverComposition.storedFiles,
         processImage: processImageFn,

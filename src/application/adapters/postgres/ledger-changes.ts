@@ -14,6 +14,11 @@ interface ChangeSummaryRow extends Record<string, unknown> {
   hasTransitionalWork: boolean;
 }
 
+interface RefreshBaselineRow extends Record<string, unknown> {
+  version: string;
+  hasTransitionalWork: boolean;
+}
+
 export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
   async getVersion(ledgerId) {
     const state = await db.query.ledgerSyncState.findFirst({
@@ -21,6 +26,26 @@ export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
       columns: { version: true },
     });
     return state?.version ?? BigInt(0);
+  },
+
+  async getRefreshBaseline(ledgerId) {
+    const result = await db.execute<RefreshBaselineRow>(sql`
+      SELECT
+        COALESCE(
+          (SELECT version FROM ledger_sync_state WHERE ledger_id = ${ledgerId}),
+          0
+        )::text AS version,
+        EXISTS (
+          SELECT 1
+          FROM source_documents document
+          WHERE document.ledger_id = ${ledgerId}
+            AND document.deleted_at IS NULL
+            AND document.current_status = 'processing'
+        ) AS "hasTransitionalWork"
+    `);
+    const row = result.rows[0];
+    if (row == null) throw new Error("Ledger refresh baseline returned no row");
+    return { version: BigInt(row.version), hasTransitionalWork: row.hasTransitionalWork };
   },
 
   async summarizeChanges({ ledgerId, afterVersion }) {

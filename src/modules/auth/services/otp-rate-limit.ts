@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
 import { RateLimitUnavailableError } from "@/lib/errors";
 import { getResendCooldown } from "./otp";
-import type { RateLimitPort } from "../application/ports";
+import type { RateLimiterPort } from "@/application/contracts";
 import { createHmac } from "node:crypto";
 
 // Config reads below (bucketKey and the getXxx() helpers) touch runtimeEnv
@@ -47,7 +47,7 @@ function getVerifyMaxAttempts(): number {
 
 export async function checkSendRateLimit(
   email: string,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ): Promise<{
   allowed: boolean;
   remainingAttempts: number;
@@ -87,7 +87,7 @@ export async function checkSendRateLimit(
 
 export async function checkSendRateLimitByIP(
   ip: string,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ): Promise<{
   allowed: boolean;
   remainingAttempts: number;
@@ -126,7 +126,7 @@ export async function checkSendRateLimitByIP(
 
 export async function acquireResendCooldown(
   email: string,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ): Promise<{
   acquired: boolean;
   acquiredAt: Date;
@@ -148,7 +148,7 @@ export async function acquireResendCooldown(
 export async function releaseResendCooldown(
   email: string,
   acquiredAt: Date,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ): Promise<boolean> {
   const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
   return rateLimiter.releaseCooldown(key, acquiredAt);
@@ -156,7 +156,7 @@ export async function releaseResendCooldown(
 
 export async function checkVerifyRateLimit(
   ip: string,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ): Promise<boolean> {
   const key = bucketKey(OTP_VERIFY_PREFIX.slice(0, -1), ip);
   const verifyMaxAttempts = getVerifyMaxAttempts();

@@ -25,6 +25,7 @@ async function createActiveDocument(ledgerId: string) {
   });
   await postgresLedgerProjectionAdapter.activateRevision({
     ledgerId,
+    expectedMainCurrency: "CNY",
     sourceDocumentId: pending.document.id,
     revisionId: pending.revision.id,
     title: "Original",
@@ -162,17 +163,24 @@ describe("cancel source-document processing", () => {
       sourceDocumentId: active.document.id,
       inheritEvidence: true,
     });
-    await storeCandidateRevision(ledgerId, active.document.id, retry.revision.id, "Candidate", [
-      {
-        amount: "20.00",
-        currency: "CNY",
-        itemName: "Candidate",
-        categoryId: null,
-        description: null,
-        convertedAmount: "20.00",
-        exchangeRate: "1",
-      },
-    ]);
+    await storeCandidateRevision(
+      ledgerId,
+      active.document.id,
+      retry.revision.id,
+      "CNY",
+      "Candidate",
+      [
+        {
+          amount: "20.00",
+          currency: "CNY",
+          itemName: "Candidate",
+          categoryId: null,
+          description: null,
+          convertedAmount: "20.00",
+          exchangeRate: "1",
+        },
+      ]
+    );
     const versionAfterCandidateStored = await currentVersion(active.document.id);
 
     // The candidate *revision* is abandoned, but the document's own status
@@ -208,7 +216,7 @@ describe("cancel source-document processing", () => {
     // of its own) or is rejected as stale (cancelPendingRevision's version no
     // longer matches once the other writer has already committed).
     const [stored, cancelled] = await Promise.allSettled([
-      storeCandidateRevision(ledgerId, active.document.id, retry.revision.id, "Candidate", [
+      storeCandidateRevision(ledgerId, active.document.id, retry.revision.id, "CNY", "Candidate", [
         {
           amount: "20.00",
           currency: "CNY",

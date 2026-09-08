@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTestDb } from "../../setup";
 import { currencyRates } from "@/persistence/schema/currency";
 import { ledgers } from "@/persistence";
-import { convertCurrencyAction, batchConvertCurrencyAction } from "@/modules/currency/actions";
+import {
+  convertCurrencyAction,
+  batchConvertCurrencyAction,
+} from "@/modules/currency/server-actions/convert-currency";
 
 const TEST_LEDGER_ID = "10000000-0000-4000-8000-000000000001";
 

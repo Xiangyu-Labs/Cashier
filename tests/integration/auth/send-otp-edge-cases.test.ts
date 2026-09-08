@@ -23,7 +23,7 @@ vi.mock("resend", () => ({
   },
 }));
 
-import { sendOTPAction } from "@/modules/auth/actions";
+import { sendOTPAction } from "@/modules/auth/server-actions/send-otp";
 
 describe("sendOTPAction edge cases", () => {
   const _originalResendKey = process.env.AUTH_RESEND_KEY;

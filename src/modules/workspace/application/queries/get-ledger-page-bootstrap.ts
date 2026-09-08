@@ -1,4 +1,9 @@
-import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
+import {
+  QueryClient,
+  dehydrate,
+  type DehydratedState,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
@@ -59,7 +64,7 @@ export async function getLedgerPageBootstrap(
     sourceDocuments: {
       documents: Pick<SourceDocumentReadPort, "list" | "calculateCompletedTotal">;
       ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
-      changes?: Pick<LedgerChangeReadPort, "getVersion">;
+      changes: Pick<LedgerChangeReadPort, "getVersion" | "getRefreshBaseline">;
     };
     credentials: Pick<ServiceCredentialPort, "list">;
   }
@@ -70,7 +75,7 @@ export async function getLedgerPageBootstrap(
   const queryClient = new QueryClient();
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);
 
-  const mainCurrency = ledgerDto.settings.mainCurrency ?? "CNY";
+  const mainCurrency = ledgerDto.settings.mainCurrency;
   const fixedTimeZone = ledgerDto.settings.timeZone ?? runtimeEnv.timeZone;
   const zonedToday = getDateInTimezone(fixedTimeZone);
   const ledgerToday = zonedToday ?? getDateInTimezone("UTC")!;
@@ -113,12 +118,25 @@ export async function getLedgerPageBootstrap(
           // First stream page (all-statuses, filtered by period+amount, paginated)
           queryClient.prefetchInfiniteQuery({
             queryKey: streamDescriptor.queryKey,
-            queryFn: ({ pageParam }) =>
-              listStreamPage(
+            queryFn: async ({ pageParam }) => {
+              const pageInput = streamDescriptor.getPageInput(pageParam as string | undefined);
+              let page = await listStreamPage(
                 input.ledgerId,
-                streamDescriptor.getPageInput(pageParam as string | undefined),
+                pageInput,
                 dependencies.sourceDocuments
-              ),
+              );
+              if (pageParam == null && page.restartRequired) {
+                page = await listStreamPage(
+                  input.ledgerId,
+                  pageInput,
+                  dependencies.sourceDocuments
+                );
+                if (page.restartRequired) {
+                  throw new Error("Stream restart did not produce a valid first page");
+                }
+              }
+              return page;
+            },
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: StreamPage) => lastPage.nextCursor,
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
@@ -194,6 +212,18 @@ export async function getLedgerPageBootstrap(
       : []),
     categoriesPromise,
   ]);
+  if (input.initialTab === "stream") {
+    const stream = queryClient.getQueryData<InfiniteData<StreamPage>>(streamDescriptor.queryKey);
+    const firstPage = stream?.pages[0];
+    if (firstPage != null && !firstPage.restartRequired) {
+      queryClient.setQueryData(queryKeys.sourceDocumentRefresh(input.ledgerId), {
+        version: firstPage.generation,
+        changed: false,
+        hasTransitionalWork: firstPage.hasTransitionalWork,
+        invalidations: { categories: false, settings: false, stats: false },
+      });
+    }
+  }
   const initialCategories = await categoriesPromise;
 
   return {

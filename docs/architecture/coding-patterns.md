@@ -10,6 +10,10 @@ entrypoints. Dependencies point inward:
 3. Server actions and API routes authenticate, validate with Zod, invoke one use case, and map results.
 4. The server composition root is the only place that assembles concrete adapters.
 
+An application layer is justified by business decisions, transaction orchestration, or contract
+mapping, not by a fixed number of calls. A server action may call an injected port directly when an
+intermediate function would only rename and forward the same arguments.
+
 Transport DTOs do not cross into persistence adapters. Database rows and provider response types do
 not cross into modules. New code must not add a service locator lookup inside domain logic; pass the
 required port through the use case boundary. Concrete runtime wiring belongs in the server composition root.
@@ -41,16 +45,37 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
   that changes nothing observable for the caller (a no-op replay, an unchanged field) must not
   increment `stateVersion` — every aggregate command that does produce a user-observable change
   increments the target document's `stateVersion` by exactly one.
+- Use the narrowest read port that satisfies the caller. Edit-retry evidence uses `getEvidence`; it
+  must not load ledger entries or category projections that the caller discards.
+- Loaded ledger settings are complete contracts; only update inputs are partial. Do not repeat
+  defaults at each consumer. Metadata-only edits preserve stored amounts and FX results; amount,
+  currency, and document-date changes recalculate only affected entries before acquiring locks.
+- Projection replacement is an internal helper of the versioned aggregate, not an independent
+  write port. Pass already locked documents and projections into transaction helpers.
 
 ## Frontend
 
 - Use centralized query keys and `useLedgerMutation` for server state changes.
 - Load tab-specific components and translations only when that tab is active.
+- Deferred feature translations use the application QueryClient. Their key is
+  `["feature-messages", version, locale, feature]`; do not add a second module-level cache or request
+  listener system.
+- Keep browser image data as `File`/`Blob` through compression and upload. Object URLs are UI
+  resources and must be revoked when an image is replaced, removed, reset, or unmounted.
 - Treat Infinite Query pages and detail queries as independent server-state views. Ledger mutations
   invalidate ledger-scoped resource groups; do not patch unrelated filtered windows or maintain a
   canonical client entity store.
 - Derive render state directly, use functional state updates, and avoid module barrel imports in
   client entrypoints.
+- Tabs own their query loading and error states. Statistics retain the last successful data with
+  its corresponding period while refreshing. Same-generation Stream refreshes retain loaded pages.
+- Create and retry drafts use distinct typed inputs. Retry keeps the original draft version for
+  conflict detection and shares the unsaved-changes guard for close, history navigation, and pending
+  submission. Server refreshes must not silently advance that baseline.
+- The client instrumentation entrypoint installs the history traversal listener before hydration;
+  the active ledger hook registers and releases its handler. Registering a later `popstate` listener
+  cannot reliably stop the router from unmounting a dirty editor first. Dialog exit completion uses
+  Radix's close-focus lifecycle, not CSS animation events that may never fire.
 
 ### Design baseline
 
@@ -74,3 +99,5 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
   show `Total` / `合计`; missing bill titles use `Untitled Bill` / `未命名账单`.
 
 Run `npm run check:architecture` locally. CI must reject import cycles.
+Architecture rules inspect TypeScript syntax for protected writes and structured log fields; comments
+and ordinary strings are not architectural evidence.

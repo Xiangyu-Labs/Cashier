@@ -1,16 +1,30 @@
 import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { storedFileAdapter } from "@/application/adapters/storage";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { validateStoredImageBytes } from "@/lib/storage/image-processing";
+import type { StoredFilePort } from "@/application/contracts";
 
-async function loadStoredFileForAI(ledgerId: string, storedFileId: string): Promise<string> {
+type ReadAuthorizedStoredFile = StoredFilePort["readAuthorized"];
+
+async function loadStoredFileForAI(
+  readAuthorized: ReadAuthorizedStoredFile,
+  ledgerId: string,
+  storedFileId: string
+): Promise<string> {
   try {
-    const read = await storedFileAdapter.readAuthorized(ledgerId, storedFileId);
+    const read = await readAuthorized(ledgerId, storedFileId);
     if (read == null) throw new ValidationError("Stored image is not available for this revision");
     await validateStoredImageBytes(Buffer.from(read.body), read.file.metadata.contentType);
     return `data:${read.file.metadata.contentType};base64,${Buffer.from(read.body).toString("base64")}`;
   } catch (error) {
-    logger.error({ error, ledgerId, storedFileId }, "Failed to load stored image evidence for AI");
+    logger.error(
+      {
+        error,
+        ledgerSubject: logIdentifier("ledger", ledgerId),
+        storedFileSubject: logIdentifier("stored-file", storedFileId),
+      },
+      "Failed to load stored image evidence for AI"
+    );
     throw new AppError("Failed to load stored image evidence", "IMAGE_LOAD_FAILED");
   }
 }
@@ -44,6 +58,7 @@ export function isFailedLoadImageResult(result: LoadImageResult): result is Fail
 }
 
 export async function loadStoredFilesForAI(
+  readAuthorized: ReadAuthorizedStoredFile,
   ledgerId: string,
   storedFileIds: string[]
 ): Promise<LoadImageResult[]> {
@@ -52,7 +67,7 @@ export async function loadStoredFilesForAI(
       try {
         return {
           url: storedFileId,
-          dataUrl: await loadStoredFileForAI(ledgerId, storedFileId),
+          dataUrl: await loadStoredFileForAI(readAuthorized, ledgerId, storedFileId),
           success: true as const,
         };
       } catch (error) {

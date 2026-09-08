@@ -73,6 +73,7 @@ async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledg
     ledgerId,
     created.sourceDocumentId,
     pending.revision.id,
+    "CNY",
     "Updated Title",
     [candidateEntry]
   );

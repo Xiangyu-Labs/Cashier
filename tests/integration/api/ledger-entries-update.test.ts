@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { updateLedgerEntryAction } from "@/modules/ledger/actions";
+import { updateLedgerEntryAction } from "@/modules/ledger/server-actions/entries";
 
 describe("ledger entry update transport validation", () => {
   it("rejects a malformed version target before mutation", async () => {

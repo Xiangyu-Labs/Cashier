@@ -17,32 +17,34 @@ import {
 } from "@/lib/storage/upload-policy";
 import { uploadSessionFiles, uploadSessions } from "@/persistence";
 import {
-  StoredFileAdapterBase,
+  type ResolvedStoredFileAdapterDependencies,
   requireDirectStorage,
   temporaryKey,
   tokenHash,
   validateRequests,
 } from "./shared";
 
-export class StoredFileUploadPlanAdapter extends StoredFileAdapterBase {
-  async createUploadPlan(
+export function createUploadPlanOperations(dependencies: ResolvedStoredFileAdapterDependencies) {
+  const { storage, now, uploadSessions: uploadSessionRepository } = dependencies;
+
+  async function createUploadPlan(
     ledgerId: LedgerId,
     files: readonly UploadFileRequestContract[] = []
   ): Promise<UploadPlanContract> {
     validateRequests(files);
     const sessionId = crypto.randomUUID();
     const finalizationToken = crypto.randomBytes(32).toString("base64url");
-    const now = this.now();
-    const expiresAt = new Date(now.getTime() + UPLOAD_SESSION_EXPIRY_MS);
+    const createdAt = now();
+    const expiresAt = new Date(createdAt.getTime() + UPLOAD_SESSION_EXPIRY_MS);
     const targetIds = files.map(() => crypto.randomUUID());
 
-    await this.uploadSessionRepository.create({
+    await uploadSessionRepository.create({
       id: sessionId,
       ledgerId,
       finalizationTokenHash: tokenHash(finalizationToken),
       transport: "proxy",
       expiresAt,
-      createdAt: now,
+      createdAt,
       targets: files.map((file, position) => ({
         id: targetIds[position]!,
         position,
@@ -68,7 +70,7 @@ export class StoredFileUploadPlanAdapter extends StoredFileAdapterBase {
     };
   }
 
-  async createDirectUploadPlan(
+  async function createDirectUploadPlan(
     ledgerId: LedgerId,
     files: readonly UploadFileRequestContract[]
   ): Promise<UploadPlanContract> {
@@ -82,20 +84,20 @@ export class StoredFileUploadPlanAdapter extends StoredFileAdapterBase {
       throw new ValidationError("Direct upload batch exceeds the configured total byte limit");
     }
 
-    const storage = requireDirectStorage(this.storage);
+    const directStorage = requireDirectStorage(storage);
     const sessionId = crypto.randomUUID();
     const finalizationToken = crypto.randomBytes(32).toString("base64url");
-    const now = this.now();
-    const expiresAt = new Date(now.getTime() + UPLOAD_SESSION_EXPIRY_MS);
+    const createdAt = now();
+    const expiresAt = new Date(createdAt.getTime() + UPLOAD_SESSION_EXPIRY_MS);
     const targetIds = files.map(() => crypto.randomUUID());
 
-    await this.uploadSessionRepository.create({
+    await uploadSessionRepository.create({
       id: sessionId,
       ledgerId,
       finalizationTokenHash: tokenHash(finalizationToken),
       transport: "direct",
       expiresAt,
-      createdAt: now,
+      createdAt,
       targets: files.map((file, position) => ({
         id: targetIds[position]!,
         position,
@@ -110,7 +112,7 @@ export class StoredFileUploadPlanAdapter extends StoredFileAdapterBase {
       const targets = await Promise.all(
         files.map(async (file, position) => {
           const targetId = targetIds[position]!;
-          const signed = await storage.presignUpload(
+          const signed = await directStorage.presignUpload(
             temporaryKey(ledgerId, sessionId, targetId),
             file.contentType,
             file.checksum!,
@@ -136,7 +138,7 @@ export class StoredFileUploadPlanAdapter extends StoredFileAdapterBase {
     }
   }
 
-  async abandonUploadSession(ledgerId: LedgerId, uploadSessionId: string): Promise<void> {
+  async function abandonUploadSession(ledgerId: LedgerId, uploadSessionId: string): Promise<void> {
     const targets = await db.transaction(async (tx) => {
       const cancelled = await tx
         .update(uploadSessions)
@@ -169,4 +171,6 @@ export class StoredFileUploadPlanAdapter extends StoredFileAdapterBase {
       )
     );
   }
+
+  return { createUploadPlan, createDirectUploadPlan, abandonUploadSession };
 }

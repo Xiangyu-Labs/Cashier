@@ -59,6 +59,7 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
       async claim(intentId) {
         if (!dispatched.has(intentId)) return null;
         return {
+          ledgerId: "ledger-1",
           intent: {
             id: intentId,
             sourceDocumentId: "document-1",

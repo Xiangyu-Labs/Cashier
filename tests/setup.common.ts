@@ -1,21 +1,10 @@
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 import React from "react";
 import type * as ReactModule from "react";
+import { installTestEnvironment } from "../scripts/test-environment.mjs";
+import "./setup.network";
 
-process.env.DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
-process.env.AI_MODEL = process.env.AI_MODEL ?? "test-model";
-process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";
-process.env.API_KEY_PEPPER = process.env.API_KEY_PEPPER ?? "test-pepper-for-testing-only";
-process.env.RATE_LIMIT_PEPPER = process.env.RATE_LIMIT_PEPPER ?? "test-rate-limit-pepper";
-process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-auth-secret";
-process.env.AUTH_OTP_PEPPER = process.env.AUTH_OTP_PEPPER ?? "test-auth-otp-pepper";
-process.env.AUTH_RESEND_KEY = process.env.AUTH_RESEND_KEY ?? "test-resend-key";
-process.env.APP_URL = process.env.APP_URL ?? "http://localhost:3000";
-process.env.S3_ENDPOINT = process.env.S3_ENDPOINT ?? "http://localhost:9000";
-process.env.S3_BUCKET = process.env.S3_BUCKET ?? "cashier-test-images";
-process.env.S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID ?? "test-access-key";
-process.env.S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY ?? "test-secret-key";
+installTestEnvironment();
 
 /**
  * Promises of fire-and-forget `after()` callbacks registered during tests.
@@ -23,30 +12,21 @@ process.env.S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY ?? "test-sec
  * example the per-test TRUNCATE) so request-bound work cannot deadlock with
  * the next test's table locks.
  */
-const { pendingAfterCallbacks } = vi.hoisted(() => ({
-  pendingAfterCallbacks: [] as Promise<unknown>[],
+const { afterCallbacks } = await vi.hoisted(async () => ({
+  afterCallbacks: (await import("./helpers/after-callbacks")).createAfterCallbackTracker(),
 }));
 
 /**
  * Drain pending `after()` callbacks within a bounded budget, including
  * callbacks registered by earlier callbacks (the recovery pass schedules
- * intent execution). Long-running work such as AI requests holds no database
- * locks and is left running in the background; only the quick database work
- * that could deadlock against a subsequent TRUNCATE needs to settle first.
+ * intent execution). A timeout fails the test and retains unfinished work so
+ * the next destructive setup cannot mistake it for a drained queue.
  */
 export async function flushAfterCallbacks(timeoutMs = 2500): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const pending = pendingAfterCallbacks.splice(0);
-    if (pending.length === 0) return;
-    const remaining = Math.max(1, deadline - Date.now());
-    await Promise.all(
-      pending.map((promise) =>
-        Promise.race([promise, new Promise<void>((resolve) => setTimeout(resolve, remaining))])
-      )
-    );
-  }
+  await afterCallbacks.flush(timeoutMs);
 }
+
+afterEach(() => flushAfterCallbacks());
 
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => {
@@ -154,12 +134,6 @@ vi.mock("next/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next/server")>();
   return {
     ...actual,
-    // Suppress rejections so that teardown failures don't pollute test output.
-    // Wraps fn() in try/catch for sync throws and .catch() for async rejections.
-    after: (fn: () => void) => {
-      try {
-        pendingAfterCallbacks.push(Promise.resolve(fn()).catch(() => {}));
-      } catch {}
-    },
+    after: afterCallbacks.register,
   };
 });

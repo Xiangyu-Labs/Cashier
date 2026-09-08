@@ -10,11 +10,13 @@ const { reviewActionMock, abandonActionMock, acceptActionMock } = vi.hoisted(() 
   acceptActionMock: vi.fn(),
 }));
 
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/candidates", () => ({
   getSourceDocumentCandidateReviewAction: (...args: unknown[]) => reviewActionMock(...args),
   abandonSourceDocumentCandidateAction: (...args: unknown[]) => abandonActionMock(...args),
   acceptSourceDocumentCandidateAction: (...args: unknown[]) => acceptActionMock(...args),
   cancelSourceDocumentProcessingAction: vi.fn(),
+}));
+vi.mock("@/modules/source-document/server-actions/retry", () => ({
   retrySourceDocumentAction: vi.fn(),
 }));
 

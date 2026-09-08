@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
-import { round } from "@/lib/money/decimal";
+import { compare, round } from "@/lib/money/decimal";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
@@ -47,19 +47,7 @@ interface SaveSourceDocumentChangesAdapterInput {
   entries: Array<{ ledgerEntryId: string; data: UpdateLedgerEntryInput }>;
 }
 
-type ProjectionEntrySnapshot = {
-  id: string;
-  sourceDocumentId: string | null;
-  sourceDocumentRevisionId: string | null;
-  categoryId: string | null;
-  amount: string;
-  currency: string | null;
-  itemName: string;
-  description: string | null;
-  convertedAmount: string | null;
-  exchangeRate: string | null;
-  createdAt: Date;
-};
+type ProjectionEntrySnapshot = typeof ledgerEntries.$inferSelect;
 
 interface DateReestimatePlan {
   mainCurrency: string;
@@ -136,7 +124,7 @@ function toManualProjectionEntry(
   };
 }
 
-export async function saveSourceDocumentChangesAtomically(
+export async function saveChanges(
   input: SaveSourceDocumentChangesAdapterInput
 ): Promise<
   import("@/modules/source-document/contracts").VersionedCommandResult<SaveSourceDocumentChangesResultDto>
@@ -209,7 +197,7 @@ export async function saveSourceDocumentChangesAtomically(
     return (
       (data.categoryId !== undefined && data.categoryId !== entry.categoryId) ||
       (data.amount !== undefined &&
-        roundToCurrency(String(data.amount), effectiveCurrency) !== entry.amount) ||
+        compare(roundToCurrency(String(data.amount), effectiveCurrency), entry.amount) !== 0) ||
       (data.currency !== undefined && data.currency !== entry.currency) ||
       (data.itemName !== undefined && data.itemName !== entry.itemName) ||
       (data.description !== undefined && data.description !== entry.description)
@@ -230,32 +218,59 @@ export async function saveSourceDocumentChangesAtomically(
     return {
       id: entry.id,
       categoryId: patch?.categoryId !== undefined ? patch.categoryId : entry.categoryId,
-      amount: roundToCurrency(
-        patch?.amount !== undefined ? String(patch.amount) : entry.amount,
-        normalizeCurrency(
-          patch?.currency !== undefined ? patch.currency : entry.currency,
-          ledger.mainCurrency
-        )
-      ),
+      amount:
+        patch?.amount !== undefined || patch?.currency !== undefined
+          ? roundToCurrency(
+              patch?.amount !== undefined ? String(patch.amount) : entry.amount,
+              normalizeCurrency(
+                patch?.currency !== undefined ? patch.currency : entry.currency,
+                ledger.mainCurrency
+              )
+            )
+          : entry.amount,
       currency: patch?.currency !== undefined ? patch.currency : entry.currency,
       itemName: patch?.itemName !== undefined ? patch.itemName : entry.itemName,
       description: patch?.description !== undefined ? patch.description : entry.description,
+      convertedAmount: entry.convertedAmount,
+      exchangeRate: entry.exchangeRate,
       createdAt: entry.createdAt.toISOString(),
     };
   });
-  const conversions = await postgresFxRateBook.convertBatch(
-    nextEntries.map((entry) => ({
-      amount: entry.amount,
-      from: normalizeCurrency(entry.currency, ledger.mainCurrency),
-      ...(nextEntryDate == null || nextEntryDate === "" ? {} : { date: nextEntryDate }),
-    })),
-    ledger.mainCurrency
+  const dateChanged =
+    input.sourceDocument?.entryDate !== undefined &&
+    input.sourceDocument.entryDate !== document.entryDate;
+  const financialChanges = nextEntries.filter((entry) => {
+    const previous = initialEntriesById.get(entry.id)!;
+    return (
+      dateChanged ||
+      compare(entry.amount, previous.amount) !== 0 ||
+      entry.currency !== previous.currency
+    );
+  });
+  const conversions =
+    financialChanges.length === 0
+      ? []
+      : await postgresFxRateBook.convertBatch(
+          financialChanges.map((entry) => ({
+            amount: entry.amount,
+            from: normalizeCurrency(entry.currency, ledger.mainCurrency),
+            ...(nextEntryDate == null || nextEntryDate === "" ? {} : { date: nextEntryDate }),
+          })),
+          ledger.mainCurrency
+        );
+  const conversionById = new Map(
+    financialChanges.map((entry, index) => [entry.id, conversions[index]!])
   );
-  const projection = nextEntries.map((entry, index) => ({
-    ...entry,
-    convertedAmount: roundToCurrency(conversions[index]!.convertedAmount, ledger.mainCurrency),
-    exchangeRate: round(conversions[index]!.exchangeRate, 12),
-  }));
+  const projection = nextEntries.map((entry) => {
+    const conversion = conversionById.get(entry.id);
+    return conversion == null
+      ? entry
+      : {
+          ...entry,
+          convertedAmount: roundToCurrency(conversion.convertedAmount, ledger.mainCurrency),
+          exchangeRate: round(conversion.exchangeRate, 12),
+        };
+  });
 
   const committed = await db.transaction(async (tx) => {
     const lockedLedger = await lockLedgerForUpdate(tx, input.ledgerId);
@@ -268,13 +283,17 @@ export async function saveSourceDocumentChangesAtomically(
       input.sourceDocumentId
     );
     if (lockedDocument.stateVersion !== input.expectedVersion) {
-      return false;
+      return { ok: false as const, currentVersion: lockedDocument.stateVersion };
     }
     if (!hasEditableActiveProjection(lockedDocument)) {
       throw new ConflictError("Source document is not editable");
     }
 
     await replaceActiveProjectionInTransaction(tx, {
+      document: lockedDocument,
+      previousEntries: await loadProjectionEntriesForDocuments(tx, input.ledgerId, [
+        input.sourceDocumentId,
+      ]),
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
       expectedActiveRevisionId: lockedDocument.activeRevisionId,
@@ -286,21 +305,16 @@ export async function saveSourceDocumentChangesAtomically(
         ? {}
         : { entryDate: input.sourceDocument.entryDate }),
     });
-    return true;
+    return { ok: true as const };
   });
 
-  if (!committed) {
-    const current = await db.query.sourceDocuments.findFirst({
-      where: whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId),
-      columns: { stateVersion: true },
-    });
-    if (current == null) throw new NotFoundError("Source document");
+  if (!committed.ok) {
     return {
       ok: false,
       reason: "stale",
       sourceDocumentId: input.sourceDocumentId,
       expectedVersion: input.expectedVersion,
-      currentVersion: current.stateVersion,
+      currentVersion: committed.currentVersion,
     };
   }
   return {
@@ -311,7 +325,7 @@ export async function saveSourceDocumentChangesAtomically(
   };
 }
 
-export async function batchUpdateSourceDocuments({
+export async function updateDocuments({
   ledgerId,
   targets,
   data,
@@ -504,6 +518,8 @@ export async function batchUpdateSourceDocuments({
       for (const document of changedDocuments) {
         const entries = projectionEntries.filter((entry) => entry.sourceDocumentId === document.id);
         await replaceActiveProjectionInTransaction(tx, {
+          document,
+          previousEntries: entries,
           ledgerId,
           sourceDocumentId: document.id,
           expectedActiveRevisionId: document.activeRevisionId!,
@@ -585,7 +601,7 @@ export async function batchUpdateSourceDocuments({
   };
 }
 
-export async function updateLedgerEntryDatesAtomically(input: {
+export async function updateEntryDates(input: {
   ledgerId: string;
   targets: import("@/modules/source-document/contracts").VersionedTarget[];
   ledgerEntryIds: string[];
@@ -628,7 +644,7 @@ export async function updateLedgerEntryDatesAtomically(input: {
   ) {
     throw new NotFoundError("Source document target");
   }
-  const result = await batchUpdateSourceDocuments({
+  const result = await updateDocuments({
     ledgerId: input.ledgerId,
     targets: input.targets,
     ledgerEntryIds: selectedIds,
@@ -645,19 +661,7 @@ function loadProjectionEntriesForDocuments(
   sourceDocumentIds: readonly string[]
 ) {
   return executor
-    .select({
-      id: ledgerEntries.id,
-      sourceDocumentId: ledgerEntries.sourceDocumentId,
-      sourceDocumentRevisionId: ledgerEntries.sourceDocumentRevisionId,
-      categoryId: ledgerEntries.categoryId,
-      amount: ledgerEntries.amount,
-      currency: ledgerEntries.currency,
-      itemName: ledgerEntries.itemName,
-      description: ledgerEntries.description,
-      convertedAmount: ledgerEntries.convertedAmount,
-      exchangeRate: ledgerEntries.exchangeRate,
-      createdAt: ledgerEntries.createdAt,
-    })
+    .select(getTableColumns(ledgerEntries))
     .from(ledgerEntries)
     .innerJoin(
       sourceDocuments,

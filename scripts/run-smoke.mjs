@@ -6,6 +6,7 @@ import pg from "pg";
 import bcrypt from "bcryptjs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { prepareTestPostgres } from "./prepare-test-postgres.mjs";
 
 const adminUrl = new URL(
   process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test"
@@ -16,6 +17,8 @@ if (
 ) {
   throw new Error("Smoke tests require a loopback cashier_test database with CREATEDB permission.");
 }
+const postgres = await prepareTestPostgres();
+adminUrl.href = postgres.databaseUrl;
 const databaseName = `smoke_${randomUUID().replaceAll("-", "")}`;
 const databaseUrl = new URL(adminUrl);
 databaseUrl.pathname = `/${databaseName}`;
@@ -82,7 +85,6 @@ process.on("SIGINT", interrupt);
 process.on("SIGTERM", interrupt);
 const admin = new pg.Client({ connectionString: adminUrl.toString() });
 try {
-  await run(["scripts/prepare-test-postgres.mjs"]);
   await admin.connect();
   await admin.query(`CREATE DATABASE "${databaseName}"`);
   created = true;
@@ -119,6 +121,7 @@ try {
     }
   }
   await admin.end();
+  await postgres.cleanup();
   process.off("SIGINT", interrupt);
   process.off("SIGTERM", interrupt);
 }

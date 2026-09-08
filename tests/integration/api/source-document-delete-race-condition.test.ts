@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
+import { deleteSourceDocumentAction } from "@/modules/source-document/server-actions/delete";
 import { ledgers, sourceDocuments } from "@/persistence";
 import {
   activateTestSourceDocumentProjection,

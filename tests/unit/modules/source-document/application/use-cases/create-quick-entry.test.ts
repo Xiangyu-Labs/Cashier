@@ -59,12 +59,7 @@ describe("createQuickEntry", () => {
     const result = await createQuickEntry(
       "ledger-1",
       {
-        id: "ledger-1",
-        userId: "user-1",
-        settings: { mainCurrency: "USD" },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
+        settings: { mainCurrency: "USD", timeZone: null },
       },
       {
         categoryId: "cat-1",
@@ -104,12 +99,7 @@ describe("createQuickEntry", () => {
     await createQuickEntry(
       "ledger-1",
       {
-        id: "ledger-1",
-        userId: "user-1",
-        settings: { mainCurrency: "USD" },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
+        settings: { mainCurrency: "USD", timeZone: null },
       },
       {
         categoryId: "cat-1",

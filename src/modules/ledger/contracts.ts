@@ -3,20 +3,12 @@ import type {
   SourceDocumentTypeValue as SourceDocumentReferenceType,
 } from "@/modules/source-document/types";
 
-interface LedgerSettings {
-  aiLanguage?: string;
-  currencies?: string[];
-  mainCurrency?: string;
-  collapseEntriesDefault?: boolean;
-  aiCustomPrompt?: string;
-  duplicateDetectionEnabled?: boolean;
-  timeZone?: string | null;
-}
+import type { LedgerSettingsContract } from "@/application/contracts/ledger";
 
 export type LedgerDto = {
   id: string;
   userId: string;
-  settings: LedgerSettings;
+  settings: LedgerSettingsContract;
   createdAt: string;
   updatedAt: string;
 };
@@ -109,7 +101,7 @@ export type LedgerEntryEmbeddedViewDto = Omit<LedgerEntryDto, "sourceDocument">;
 
 type LedgerSettingsDto = {
   id?: string;
-} & LedgerSettings;
+} & LedgerSettingsContract;
 export type Settings = LedgerSettingsDto;
 
 export interface LedgerSummaryDto {

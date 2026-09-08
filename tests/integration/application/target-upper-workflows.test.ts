@@ -4,7 +4,6 @@ import {
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
-import { getLedgerEntryDetail as getLedgerEntryDetailUseCase } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStatsQuery } from "@/modules/stats/application/queries/get-enhanced-stats";
@@ -20,7 +19,7 @@ import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
 const getLedgerEntryDetail = (id: string, ledgerId: string) =>
-  getLedgerEntryDetailUseCase(id, ledgerId, serverComposition.ledgerReads);
+  serverComposition.ledgerReads.getEntry(id, ledgerId);
 const listLedgerEntries = (
   ledgerId: string,
   input: Parameters<typeof listLedgerEntriesUseCase>[1]
@@ -42,6 +41,7 @@ const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPag
   listStreamPageUseCase(ledgerId, input, {
     documents: serverComposition.sourceDocumentReads,
     ledgerReads: serverComposition.ledgerReads,
+    changes: serverComposition.ledgerChanges,
   });
 
 const entry = {
@@ -325,11 +325,13 @@ describe("target upper workflows", () => {
       items: [],
     });
     await expect(
-      postgresLedgerProjectionAdapter.replaceManual({
+      serverComposition.sourceDocumentAggregate.saveChanges({
         ledgerId,
         sourceDocumentId: created.sourceDocumentId,
-        expectedActiveRevisionId: created.revisionId,
-        entries: [{ ...entry, categoryId: otherCategory!.id }],
+        expectedVersion: beforeDocument!.stateVersion,
+        entries: [
+          { ledgerEntryId: beforeEntryCount[0]!.id, data: { categoryId: otherCategory!.id } },
+        ],
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
@@ -410,6 +412,7 @@ describe("target upper workflows", () => {
     });
     await postgresLedgerProjectionAdapter.activateRevision({
       ledgerId,
+      expectedMainCurrency: "CNY",
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
       entries: [entry],

@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
+import { getSourceDocumentLightAction } from "@/modules/source-document/server-actions/get-document-light";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
 import { withQueryTimeout } from "@/lib/query-timeout";

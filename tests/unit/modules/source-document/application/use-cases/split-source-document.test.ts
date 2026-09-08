@@ -20,7 +20,7 @@ describe("splitSourceDocument", () => {
     await expect(
       splitSourceDocument("ledger-1", input, {
         documents: { get },
-        updates: { split },
+        updates: { splitEntries: split },
       })
     ).resolves.toEqual({ movedEntryCount: 1 });
     expect(get).toHaveBeenCalledWith("ledger-1", input.sourceDocumentId);
@@ -30,10 +30,16 @@ describe("splitSourceDocument", () => {
   it("rejects missing and unsupported documents without mutating", async () => {
     get.mockResolvedValueOnce(null).mockResolvedValueOnce({ supportedActions: ["delete"] });
     await expect(
-      splitSourceDocument("ledger-1", input, { documents: { get }, updates: { split } })
+      splitSourceDocument("ledger-1", input, {
+        documents: { get },
+        updates: { splitEntries: split },
+      })
     ).rejects.toThrow(/source document/i);
     await expect(
-      splitSourceDocument("ledger-1", input, { documents: { get }, updates: { split } })
+      splitSourceDocument("ledger-1", input, {
+        documents: { get },
+        updates: { splitEntries: split },
+      })
     ).rejects.toThrow(/current state/i);
     expect(split).not.toHaveBeenCalled();
   });

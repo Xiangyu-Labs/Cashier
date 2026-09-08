@@ -5,7 +5,7 @@
 
 import type { ApplicationErrorCode } from "./errors";
 
-export type { ApplicationErrorCode, ApplicationErrorContract } from "./errors";
+export type { ApplicationErrorCode } from "./errors";
 
 export type SourceDocumentId = string;
 export type RevisionId = string;
@@ -45,6 +45,7 @@ export interface SourceDocumentRevisionContract {
   finalizedAt: string | null;
 }
 
+/** @testOnly Exported for application contract suites. */
 export function supportedSourceDocumentActions(input: {
   activeRevisionId: RevisionId | null;
   pendingRevisionId?: RevisionId | null;
@@ -124,6 +125,7 @@ export interface ProcessingCompletionContract {
 }
 
 export interface ProcessingClaimContract {
+  ledgerId: LedgerId;
   intent: ProcessingIntentContract;
   claimToken: string;
   expiresAt: string;
@@ -308,7 +310,7 @@ export interface SourceDocumentSubmissionPort {
   createPendingWithIntent(
     input: SourceDocumentSubmissionInput
   ): Promise<PendingRevisionSubmissionContract>;
-  createIdempotentPendingWithIntent?(
+  createIdempotentPendingWithIntent(
     idempotency: SourceDocumentIdempotencyInput,
     prepare: () => Promise<SourceDocumentSubmissionInput>
   ): Promise<PendingRevisionSubmissionContract>;

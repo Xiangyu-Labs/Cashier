@@ -1,11 +1,10 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSourceDocumentStream } from "@/modules/source-document/hooks/useSourceDocumentStream";
-import { getStreamTotalAction } from "@/modules/source-document/actions";
+import { getStreamTotalAction } from "@/modules/source-document/server-actions/queries";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
 
 interface UseLedgerEntriesStreamDataOptions {
   ledgerId: string;
@@ -13,12 +12,11 @@ interface UseLedgerEntriesStreamDataOptions {
   filters: EntryFilters;
   startDateStr: string | undefined;
   endDateStr: string | undefined;
-  onQueryStateChange?: ((report: TabQueryStateReport) => void) | undefined;
 }
 
 /**
  * Owns the unified source-document stream query, its auxiliary totals query,
- * and reporting the combined query state up to the tab shell.
+ * and the tab's combined error state.
  */
 export function useLedgerEntriesStreamData({
   ledgerId,
@@ -26,7 +24,6 @@ export function useLedgerEntriesStreamData({
   filters,
   startDateStr,
   endDateStr,
-  onQueryStateChange,
 }: UseLedgerEntriesStreamDataOptions) {
   const streamQueryDescriptor = useMemo(
     () =>
@@ -71,53 +68,21 @@ export function useLedgerEntriesStreamData({
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
-    queryKey,
     queryStatus,
-    queryIsFetching,
+    refetch,
     queryHasData,
   } = useSourceDocumentStream(ledgerId, {
     mainCurrency,
-    dateRange: {
-      ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
-      ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
-    },
-    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
-    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
-    ...(filters.statuses != null && filters.statuses.length > 0
-      ? { statuses: filters.statuses }
-      : {}),
-    ...(filters.search != null ? { search: filters.search } : {}),
     queryDescriptor: streamQueryDescriptor,
   });
-  const streamQueryStatus =
-    queryStatus === "error" || streamTotalQuery.status === "error"
-      ? "error"
-      : queryStatus === "pending" || streamTotalQuery.status === "pending"
-        ? "pending"
-        : "success";
-  const streamQueryIsFetching = queryIsFetching || streamTotalQuery.isFetching;
-  // The total query is auxiliary; only page data counts as list data for the
-  // error-with-data versus error-empty decision.
-  const streamQueryHasData = queryHasData;
-  useEffect(() => {
-    onQueryStateChange?.({
-      ledgerId,
-      tab: "stream",
-      queryKey,
-      status: streamQueryStatus,
-      isFetching: streamQueryIsFetching,
-      hasData: streamQueryHasData,
-    });
-  }, [
-    ledgerId,
-    onQueryStateChange,
-    queryKey,
-    streamQueryHasData,
-    streamQueryIsFetching,
-    streamQueryStatus,
-  ]);
 
   return {
+    isError: queryStatus === "error" || streamTotalQuery.isError,
+    hasData: queryHasData,
+    retry: () => {
+      void refetch();
+      void streamTotalQuery.refetch();
+    },
     streamGroups,
     isLoading,
     fetchNextPage,

@@ -4,19 +4,20 @@ import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { useLedgerSettingsMutation } from "@/modules/ledger/hooks/useLedgerSettingsMutation";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { getDefaultLedger } from "@/config/default-ledger";
 
 const { updateLedgerSettingsAction, toastError } = vi.hoisted(() => ({
   updateLedgerSettingsAction: vi.fn(),
   toastError: vi.fn(),
 }));
 
-vi.mock("@/modules/ledger/actions", () => ({ updateLedgerSettingsAction }));
+vi.mock("@/modules/ledger/server-actions/update", () => ({ updateLedgerSettingsAction }));
 vi.mock("sonner", () => ({ toast: { error: toastError, success: vi.fn() } }));
 
 const ledger: Ledger = {
   id: "ledger-1",
   userId: "user-1",
-  settings: { currencies: ["USD", "CNY"] },
+  settings: { ...getDefaultLedger().settings, currencies: ["USD", "CNY"] },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
@@ -79,7 +80,7 @@ describe("useLedgerSettingsMutation", () => {
     });
   });
 
-  it("localizes action failures and invalidates queries", async () => {
+  it("localizes action failures without invalidating queries", async () => {
     updateLedgerSettingsAction.mockResolvedValueOnce({ ok: false, code: "rates_unavailable" });
     const { result, invalidate } = setup();
 
@@ -90,7 +91,7 @@ describe("useLedgerSettingsMutation", () => {
     });
 
     expect(toastError).toHaveBeenCalledWith("缺少部分交易日的历史汇率，主货币未更改");
-    expect(invalidate).toHaveBeenCalled();
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it("includes the specific missing dates when the server reports them", async () => {

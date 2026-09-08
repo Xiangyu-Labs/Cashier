@@ -130,17 +130,15 @@ describe("Processing Recovery", () => {
       selectRecoverableProcessingIntents(ledgerId, config, adapter),
     ]);
 
-    // At most one of the two calls should have recovered the intent.
-    const total = first.length + second.length;
-    expect(total).toBeLessThanOrEqual(2); // Same intent might appear in both
+    const recoveredIds = [...first, ...second].map((candidate) => candidate.id);
+    expect(recoveredIds).toEqual([intent.id]);
 
     // The intent should have been incrementally scheduled
     const db = getTestDb();
     const row = await db.query.processingOutbox.findFirst({
       where: eq(processingOutbox.id, intent.id),
     });
-    expect(row!.scheduleAttemptCount).toBeGreaterThanOrEqual(1);
-    expect(row!.scheduleAttemptCount).toBeLessThanOrEqual(2);
+    expect(row!.scheduleAttemptCount).toBe(1);
   });
 
   it("skips recovery when the source document has been deleted", async () => {
@@ -357,16 +355,13 @@ describe("Processing Recovery", () => {
       .set({ pendingRevisionId: newRevision!.id })
       .where(eq(sourceDocuments.id, intent.sourceDocumentId));
 
-    // The revision is no longer the current pending — exhaustStaleIntents won't
-    // find it (join filters by pendingRevisionId). Call markExhausted directly
-    // to test the CAS within it.
-    await adapter.markExhausted(intent.id);
+    await adapter.recoverBatch(ledgerId, config);
 
-    // The outbox should be closed (status = failed)
+    // Production recovery cancels superseded intents without changing their revision.
     const outboxRow = await db.query.processingOutbox.findFirst({
       where: eq(processingOutbox.id, intent.id),
     });
-    expect(outboxRow?.status).toBe("failed");
+    expect(outboxRow?.status).toBe("cancelled");
 
     // But the OLD revision should NOT have been modified
     const oldRevision = await db.query.sourceDocumentRevisions.findFirst({
@@ -377,12 +372,14 @@ describe("Processing Recovery", () => {
   });
 
   it("exhaustion CAS: full exhaustion when revision is still current pending", async () => {
-    const { intent } = await pendingIntent();
+    const { ledgerId, intent } = await pendingIntent();
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
     // The revision IS still the current pending — exhaustion should fully update
-    await adapter.markExhausted(intent.id);
+    await setScheduleAttemptCount(intent.id, config.maxAttempts);
+    await expireNextAvailable(intent.id);
+    await adapter.recoverBatch(ledgerId, config);
 
     const db = getTestDb();
 
@@ -411,7 +408,7 @@ describe("Processing Recovery", () => {
   });
 
   it("exhaustion CAS: does not modify completed revision's outcome", async () => {
-    const { intent } = await pendingIntent();
+    const { ledgerId, intent } = await pendingIntent();
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
@@ -422,13 +419,13 @@ describe("Processing Recovery", () => {
       .set({ outcome: "completed", finalizedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, intent.revisionId));
 
-    await adapter.markExhausted(intent.id);
+    await adapter.recoverBatch(ledgerId, config);
 
     // Outbox should be closed (stale)
     const outboxRow = await db.query.processingOutbox.findFirst({
       where: eq(processingOutbox.id, intent.id),
     });
-    expect(outboxRow?.status).toBe("failed");
+    expect(outboxRow?.status).toBe("completed");
 
     // Revision should remain "completed", NOT overwritten to "failed"
     const revisionRow = await db.query.sourceDocumentRevisions.findFirst({

@@ -17,7 +17,7 @@ import {
 import { generateOTP, getResendCooldown } from "@/modules/auth/services/otp";
 import { isRegistrationAllowed } from "./registration-policy";
 import type { EmailDeliveryPort, OtpTokenPort, UserAccountPort } from "@/application/contracts";
-import type { RateLimitPort } from "../ports";
+import type { RateLimiterPort } from "@/application/contracts";
 
 type OTPAuthEmailMessages = {
   otpSubject: string;
@@ -65,7 +65,7 @@ export async function sendOTP(
     emailDelivery: EmailDeliveryPort;
     tokens: OtpTokenPort;
     users: UserAccountPort;
-    rateLimiter: RateLimitPort;
+    rateLimiter: RateLimiterPort;
   }
 ): Promise<{
   expiresIn: number;

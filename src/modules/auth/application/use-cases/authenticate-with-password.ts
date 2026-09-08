@@ -7,7 +7,7 @@ import type { AuthenticatedPrincipal } from "@/modules/auth/contracts";
 import { AuthSignInError, AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { normalizeEmail } from "@/lib/utils/email";
 import { verifyPassword } from "@/modules/auth/services/password";
-import type { RateLimitPort } from "../ports";
+import type { RateLimiterPort } from "@/application/contracts";
 
 const PASSWORD_EMAIL_PREFIX = "auth:password:email:";
 const PASSWORD_IP_PREFIX = "auth:password:ip:";
@@ -18,7 +18,7 @@ type PasswordRateLimitReservation = { key: string; resetTime: number };
 async function reservePasswordRateLimits(
   email: string,
   ip: string,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ): Promise<PasswordRateLimitReservation[]> {
   const reservations: PasswordRateLimitReservation[] = [];
   const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
@@ -75,7 +75,7 @@ async function releasePasswordRateLimits(
   reservations: PasswordRateLimitReservation[],
   email: string,
   ip: string,
-  rateLimiter: RateLimitPort
+  rateLimiter: RateLimiterPort
 ) {
   try {
     const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
@@ -95,7 +95,7 @@ async function releasePasswordRateLimits(
 
 export async function authenticateWithPassword(
   params: { email: string; password: string; locale?: string; requestHeaders: HeadersLike },
-  dependencies: { users: UserAccountPort; rateLimiter: RateLimitPort }
+  dependencies: { users: UserAccountPort; rateLimiter: RateLimiterPort }
 ): Promise<AuthenticatedPrincipal> {
   const email = normalizeEmail(params.email);
   const ip = getClientIPFromHeaders(params.requestHeaders);

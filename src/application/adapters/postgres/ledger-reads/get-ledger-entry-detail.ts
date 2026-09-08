@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { mapLedgerEntryDto } from "./mappers";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
@@ -12,6 +12,13 @@ export async function getLedgerEntryDetail(
   ledgerId: string
 ): Promise<LedgerEntryDto | null> {
   const entry = await db.query.ledgerEntries.findFirst({
+    extras: (entry) => ({
+      hasImages: sql<boolean>`EXISTS (
+        SELECT 1 FROM ${revisionFiles} image
+        WHERE image.ledger_id = ${ledgerId}
+          AND image.revision_id = ${entry.sourceDocumentRevisionId}
+      )`.as("has_images"),
+    }),
     where: and(
       eq(ledgerEntries.id, id),
       eq(ledgerEntries.ledgerId, ledgerId),
@@ -48,15 +55,9 @@ export async function getLedgerEntryDetail(
   });
 
   if (serializedEntry.sourceDocument != null) {
-    const hasImages =
-      entry.sourceDocumentRevisionId != null &&
-      (await db.query.revisionFiles.findFirst({
-        where: eq(revisionFiles.revisionId, entry.sourceDocumentRevisionId),
-        columns: { id: true },
-      })) != null;
     serializedEntry.sourceDocument = {
       ...serializedEntry.sourceDocument,
-      hasImages,
+      hasImages: entry.hasImages,
     };
   }
 

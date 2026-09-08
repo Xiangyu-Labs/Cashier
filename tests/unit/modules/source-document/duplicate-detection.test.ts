@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   detectDuplicateBill,
-  normalizeDuplicateReason,
   type DuplicateCandidateContract,
   type DuplicateDetectionInput,
   type DuplicateEvidenceImage,
 } from "@/modules/source-document/application/duplicate-detection";
+import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 
 function candidate(
   overrides: Partial<DuplicateCandidateContract> = {}

@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { LedgerQueryErrorBanner } from "./LedgerQueryErrorBanner";
 import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { PeriodParams } from "@/lib/period-utils";
@@ -10,7 +12,6 @@ import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGroup
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import { useDetailsBatchController } from "./useDetailsBatchController";
 import { DetailsTabView } from "./DetailsTabView";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 
 interface DetailsTabProps {
@@ -27,7 +28,6 @@ interface DetailsTabProps {
     search?: string | null;
   };
   timeZone?: string;
-  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function DetailsTab({
@@ -38,7 +38,6 @@ export function DetailsTab({
   onFiltersChange,
   advancedFilters,
   timeZone,
-  onQueryStateChange,
 }: DetailsTabProps) {
   const data = useDetailsTabData({
     ledgerId,
@@ -47,23 +46,16 @@ export function DetailsTab({
     ...(timeZone != null ? { timeZone } : {}),
     ...(ledger !== undefined ? { ledger } : {}),
   });
-  useEffect(() => {
-    onQueryStateChange?.({
-      ledgerId,
-      tab: "details",
-      queryKey: data.queryKey,
-      status: data.queryStatus,
-      isFetching: data.queryIsFetching,
-      hasData: data.queryHasData,
+  const queryClient = useQueryClient();
+  const retry = () => {
+    void queryClient.refetchQueries({
+      type: "active",
+      predicate: ({ queryKey: key }) =>
+        key[0] === "ledger" &&
+        key[1] === ledgerId &&
+        (key[2] === "entries" || key[2] === "summary"),
     });
-  }, [
-    data.queryHasData,
-    data.queryIsFetching,
-    data.queryKey,
-    data.queryStatus,
-    ledgerId,
-    onQueryStateChange,
-  ]);
+  };
   const { groupedItems } = useDetailsTabGrouping(data.entries, timeZone);
   const queryFingerprint = useMemo(
     () =>
@@ -92,24 +84,31 @@ export function DetailsTab({
     []
   );
   return (
-    <DetailsTabView
-      categories={categories}
-      {...(ledger === undefined ? {} : { ledger })}
-      periodParams={periodParams}
-      filters={filters}
-      advancedFilters={advancedFilters}
-      onFiltersChange={onFiltersChange}
-      entries={data.entries}
-      groupedItems={groupedItems}
-      isLoading={data.isLoading}
-      isFetchingNextPage={data.isFetchingNextPage}
-      isFetchNextPageError={data.isFetchNextPageError}
-      onRetryNextPage={() => void data.fetchNextPage()}
-      hasNextPage={data.hasNextPage}
-      monthStats={data.monthStats}
-      sentinelRef={sentinelRef}
-      batch={batch}
-      onViewEntry={handleViewEntry}
-    />
+    <>
+      {data.queryStatus === "error" && (
+        <LedgerQueryErrorBanner empty={!data.queryHasData} onRetry={retry} />
+      )}
+      {(data.queryStatus !== "error" || data.queryHasData) && (
+        <DetailsTabView
+          categories={categories}
+          {...(ledger === undefined ? {} : { ledger })}
+          periodParams={periodParams}
+          filters={filters}
+          advancedFilters={advancedFilters}
+          onFiltersChange={onFiltersChange}
+          entries={data.entries}
+          groupedItems={groupedItems}
+          isLoading={data.isLoading}
+          isFetchingNextPage={data.isFetchingNextPage}
+          isFetchNextPageError={data.isFetchNextPageError}
+          onRetryNextPage={() => void data.fetchNextPage()}
+          hasNextPage={data.hasNextPage}
+          monthStats={data.monthStats}
+          sentinelRef={sentinelRef}
+          batch={batch}
+          onViewEntry={handleViewEntry}
+        />
+      )}
+    </>
   );
 }

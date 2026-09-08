@@ -8,6 +8,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { queryKeys } from "@/lib/query-keys";
 
 const { toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
   toastSuccessMock: vi.fn(),
@@ -44,6 +45,7 @@ describe("useLedgerMutation", () => {
     const { result } = renderHook(
       () =>
         useLedgerMutation("ledger-1", {
+          invalidates: ["credentials"],
           mutationFn: async () => "saved",
           successMessage: "Saved",
           onSuccess: async () => {
@@ -72,6 +74,7 @@ describe("useLedgerMutation", () => {
     const { result } = renderHook(
       () =>
         useLedgerMutation("ledger-1", {
+          invalidates: ["credentials"],
           mutationFn: async () => "saved",
           successMessage: null,
         }),
@@ -99,6 +102,7 @@ describe("useLedgerMutation", () => {
     const { result } = renderHook(
       () =>
         useLedgerMutation("ledger-1", {
+          invalidates: ["credentials"],
           mutationFn: async () => "saved",
           successMessage: "Saved",
           errorMessage: "Failed",
@@ -128,6 +132,7 @@ describe("useLedgerMutation", () => {
       const { result } = renderHook(
         () =>
           useLedgerMutation("ledger-1", {
+            invalidates: ["credentials"],
             mutationFn: async () => "saved",
             successMessage: null,
           }),
@@ -148,7 +153,48 @@ describe("useLedgerMutation", () => {
     }
   });
 
-  it("reports a server write failure and still invalidates the ledger root", async () => {
+  it("surfaces a real active-query refetch failure without replaying the write", async () => {
+    vi.useFakeTimers();
+    try {
+      const { wrapper } = setup();
+      let failRefresh = false;
+      const queryFn = vi.fn(async () => {
+        if (failRefresh) throw new Error("offline");
+        return { value: "cached" };
+      });
+      const mutationFn = vi.fn(async () => "saved");
+      const { result } = renderHook(
+        () => ({
+          query: useQuery({ queryKey: queryKeys.ledgerSettings("ledger-1"), queryFn }),
+          mutation: useLedgerMutation("ledger-1", {
+            invalidates: ["credentials"],
+            mutationFn,
+            successMessage: null,
+          }),
+        }),
+        { wrapper }
+      );
+      await vi.waitFor(() => expect(result.current.query.isSuccess).toBe(true));
+      failRefresh = true;
+
+      await act(async () => {
+        await expect(result.current.mutation.mutateAsync()).resolves.toBe("saved");
+      });
+
+      expect(mutationFn).toHaveBeenCalledTimes(1);
+      expect(queryFn).toHaveBeenCalledTimes(2);
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        "Saved, but the latest data could not be refreshed. Retry."
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(1_000));
+      expect(mutationFn).toHaveBeenCalledTimes(1);
+      expect(queryFn).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports a server write failure without invalidating queries", async () => {
     const { queryClient, wrapper } = setup();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     const onError = vi.fn();
@@ -156,6 +202,7 @@ describe("useLedgerMutation", () => {
     const { result } = renderHook(
       () =>
         useLedgerMutation("ledger-1", {
+          invalidates: ["documents"],
           mutationFn: async () => {
             throw new Error("write failed");
           },
@@ -172,7 +219,7 @@ describe("useLedgerMutation", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(toastErrorMock).toHaveBeenCalledWith("Failed");
     expect(onError).toHaveBeenCalledWith(expect.any(Error), undefined);
-    expect(invalidate).toHaveBeenCalled();
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it("does not refetch inactive ledger queries", async () => {
@@ -185,6 +232,7 @@ describe("useLedgerMutation", () => {
     const { result } = renderHook(
       () =>
         useLedgerMutation("ledger-1", {
+          invalidates: ["documents"],
           mutationFn: async () => "saved",
           successMessage: null,
         }),
@@ -203,8 +251,9 @@ describe("useLedgerMutation", () => {
     const queryFn = vi.fn(async () => "fresh");
     const { result } = renderHook(
       () => ({
-        query: useQuery({ queryKey: ["ledger", "ledger-1", "active"], queryFn }),
+        query: useQuery({ queryKey: ["ledger", "ledger-1", "entries", {}], queryFn }),
         mutation: useLedgerMutation("ledger-1", {
+          invalidates: ["documents"],
           mutationFn: async () => "saved",
           successMessage: null,
         }),
@@ -232,6 +281,7 @@ describe("useLedgerMutation", () => {
           getNextPageParam: (lastPage) => (lastPage < 4 ? lastPage + 1 : undefined),
         }),
         mutation: useLedgerMutation("ledger-1", {
+          invalidates: ["documents"],
           mutationFn: async () => "saved",
           successMessage: null,
         }),

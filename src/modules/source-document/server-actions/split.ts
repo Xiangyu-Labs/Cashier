@@ -18,9 +18,7 @@ export const splitSourceDocumentAction = withSourceDocumentLedgerAccess(
     const validated = splitSourceDocumentInputSchema.parse(input);
     return splitSourceDocument(ledgerId, validated, {
       documents: serverComposition.sourceDocumentReads,
-      updates: {
-        split: serverComposition.sourceDocumentAggregate.splitEntries,
-      },
+      updates: serverComposition.sourceDocumentAggregate,
     });
   }
 );

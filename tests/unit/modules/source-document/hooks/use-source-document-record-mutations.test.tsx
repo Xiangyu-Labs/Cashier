@@ -13,7 +13,7 @@ vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock },
 }));
-vi.mock("@/modules/source-document/actions", () => ({
+vi.mock("@/modules/source-document/server-actions/delete", () => ({
   deleteSourceDocumentAction: deleteSourceDocumentActionMock,
 }));
 

@@ -208,9 +208,9 @@ export async function processImage(
     // (the original bytes have been decoded by sharp and are trusted, but we
     // always store the processed version for consistency)
     if (outputBuffer.length > MAX_OUTPUT_SIZE) {
-      if (retryCount >= MAX_RETRIES) {
+      if (retryCount >= MAX_RETRIES || outputMimeType === "image/png" || opts.quality <= 60) {
         throw new ValidationError(
-          `Unable to compress image within size limit after ${MAX_RETRIES} attempts`
+          "Unable to compress image within size limit using the permitted encoding settings"
         );
       }
       logger.warn(
@@ -297,6 +297,7 @@ function formatToMimeType(format: string): string {
 /**
  * Check if a MIME type is a supported image format (Web upload policy).
  */
+/** @testOnly Exported for image-policy regression tests. */
 export function isSupportedImageFormat(mimeType: string): boolean {
   return SUPPORTED_MIME_SET.has(mimeType.toLowerCase());
 }
@@ -304,6 +305,7 @@ export function isSupportedImageFormat(mimeType: string): boolean {
 /**
  * Get image dimensions without loading the full image
  */
+/** @testOnly Exported for normalized-image regression tests. */
 export async function getImageDimensions(
   buffer: Buffer
 ): Promise<{ width: number; height: number } | null> {

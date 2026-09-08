@@ -1,6 +1,6 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { type PeriodParams } from "@/lib/period-utils";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
@@ -10,13 +10,19 @@ import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesStreamBody } from "./LedgerEntriesStreamBody";
-import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
+import {
+  LedgerEntriesOverlays,
+  preloadCandidateReviewDialog,
+  preloadDuplicateReviewDialog,
+  preloadEditRetryDialog,
+} from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { useLedgerEntriesStreamData } from "@/modules/workspace/hooks/useLedgerEntriesStreamData";
 import { useLedgerEntriesSelection } from "@/modules/workspace/hooks/useLedgerEntriesSelection";
-import type { TabQueryStateReport } from "@/components/tab-query-state";
+import { LedgerQueryErrorBanner } from "./LedgerQueryErrorBanner";
 import { previewSourceDocumentDateImpactAction } from "@/modules/workspace/server-actions/date-impact";
+import { useStreamSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useStreamSourceDocumentRecoveryMutations";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -26,7 +32,6 @@ interface LedgerEntriesTabProps {
   advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
   timeZone?: string;
-  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function LedgerEntriesTab({
@@ -37,7 +42,6 @@ export function LedgerEntriesTab({
   advancedFilters,
   collapseEntriesDefault = false,
   timeZone,
-  onQueryStateChange,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -48,12 +52,6 @@ export function LedgerEntriesTab({
     timeZone
   );
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
-  const [candidateReviewDocument, setCandidateReviewDocument] = useState<SourceDocument | null>(
-    null
-  );
-  const [duplicateReviewDocument, setDuplicateReviewDocument] = useState<SourceDocument | null>(
-    null
-  );
 
   const {
     deleteConfirm,
@@ -66,6 +64,7 @@ export function LedgerEntriesTab({
   } = useLedgerEntriesTabState();
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, closeDeleteConfirm);
+  const recovery = useStreamSourceDocumentRecoveryMutations(ledgerId);
 
   const streamData = useLedgerEntriesStreamData({
     ledgerId,
@@ -73,7 +72,6 @@ export function LedgerEntriesTab({
     filters,
     startDateStr,
     endDateStr,
-    onQueryStateChange,
   });
 
   const selection = useLedgerEntriesSelection({
@@ -85,14 +83,6 @@ export function LedgerEntriesTab({
 
   const handleViewSourceDetail = useCallback(
     (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
-      if (group.sourceDocument.status === "candidate_pending") {
-        setCandidateReviewDocument(group.sourceDocument);
-        return;
-      }
-      if (group.sourceDocument.status === "duplicate_pending") {
-        setDuplicateReviewDocument(group.sourceDocument);
-        return;
-      }
       openLedgerDetail({
         type: "source-document",
         id: group.sourceDocument.id,
@@ -215,27 +205,38 @@ export function LedgerEntriesTab({
         </div>
       ) : null}
 
-      <LedgerEntriesStreamBody
-        isLoading={streamData.isLoading}
-        streamGroups={streamData.streamGroups}
-        mainCurrency={mainCurrency}
-        filters={filters}
-        onViewLedgerEntry={handleViewLedgerEntry}
-        onViewSourceDetail={handleViewSourceDetail}
-        onEditRetry={setRetrySourceDocument}
-        onDeleteSourceConfirm={handleDeleteSourceConfirm}
-        isSelectionMode={selection.isSelectionMode}
-        selectedIds={selection.selectedIds}
-        disableUnselected={selection.isSelectionLimitReached}
-        onToggleSelection={selection.handleToggleSelection}
-        timeZone={timeZone}
-        collapseEntriesDefault={collapseEntriesDefault}
-        hasNextPage={streamData.hasNextPage}
-        isFetchingNextPage={streamData.isFetchingNextPage}
-        isFetchNextPageError={streamData.isFetchNextPageError}
-        fetchNextPage={streamData.fetchNextPage}
-        sentinelRef={sentinelRef}
-      />
+      {streamData.isError && (
+        <LedgerQueryErrorBanner empty={!streamData.hasData} onRetry={streamData.retry} />
+      )}
+      {(!streamData.isError || streamData.hasData) && (
+        <LedgerEntriesStreamBody
+          isLoading={streamData.isLoading}
+          streamGroups={streamData.streamGroups}
+          mainCurrency={mainCurrency}
+          filters={filters}
+          onViewLedgerEntry={handleViewLedgerEntry}
+          onViewSourceDetail={handleViewSourceDetail}
+          onViewSourceDetailIntent={(document) => {
+            if (document.status === "candidate_pending") preloadCandidateReviewDialog();
+            if (document.status === "duplicate_pending") preloadDuplicateReviewDialog();
+          }}
+          onEditRetry={setRetrySourceDocument}
+          onEditRetryIntent={preloadEditRetryDialog}
+          onDeleteSourceConfirm={handleDeleteSourceConfirm}
+          isSelectionMode={selection.isSelectionMode}
+          selectedIds={selection.selectedIds}
+          disableUnselected={selection.isSelectionLimitReached}
+          onToggleSelection={selection.handleToggleSelection}
+          timeZone={timeZone}
+          collapseEntriesDefault={collapseEntriesDefault}
+          recovery={recovery}
+          hasNextPage={streamData.hasNextPage}
+          isFetchingNextPage={streamData.isFetchingNextPage}
+          isFetchNextPageError={streamData.isFetchNextPageError}
+          fetchNextPage={streamData.fetchNextPage}
+          sentinelRef={sentinelRef}
+        />
+      )}
 
       <LedgerEntriesOverlays
         deleteConfirm={deleteConfirm}
@@ -245,11 +246,6 @@ export function LedgerEntriesTab({
         retrySourceDocument={retrySourceDocument}
         onRetryDialogOpenChange={(open) => !open && closeRetrySourceDocument()}
         ledgerId={ledgerId}
-        candidateReviewDocument={candidateReviewDocument}
-        onCandidateReviewOpenChange={(open) => !open && setCandidateReviewDocument(null)}
-        duplicateReviewDocument={duplicateReviewDocument}
-        onDuplicateReviewOpenChange={(open) => !open && setDuplicateReviewDocument(null)}
-        mainCurrency={mainCurrency}
       />
     </>
   );

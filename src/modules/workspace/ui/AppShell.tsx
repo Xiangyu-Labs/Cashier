@@ -18,9 +18,6 @@ export function AppShell({ navigation, children }: AppShellProps) {
       >
         {children}
       </main>
-      <div className="fixed inset-x-0 bottom-0 z-header h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
-        {navigation}
-      </div>
     </div>
   );
 }

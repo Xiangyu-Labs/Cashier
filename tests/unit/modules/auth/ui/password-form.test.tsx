@@ -14,8 +14,10 @@ const { changePassword, setPassword } = vi.hoisted(() => ({
   setPassword: vi.fn(),
 }));
 
-vi.mock("@/modules/auth/actions", () => ({
+vi.mock("@/modules/auth/server-actions/change-password", () => ({
   changePasswordAction: changePassword,
+}));
+vi.mock("@/modules/auth/server-actions/set-password", () => ({
   setPasswordAction: setPassword,
 }));
 

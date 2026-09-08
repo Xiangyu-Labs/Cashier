@@ -4,13 +4,7 @@ import type {
   splitSourceDocumentInputSchema,
 } from "./contract-schemas";
 
-export { SourceDocumentStatus, SourceDocumentType } from "./types";
-export type {
-  SourceDocMetadata,
-  SourceDocumentMetadata,
-  SourceDocumentStatusType,
-  SourceDocumentTypeValue,
-} from "./types";
+export type { SourceDocumentStatusType } from "./types";
 export type {
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
@@ -21,7 +15,6 @@ export type {
   SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentFullDto,
   SourceDocumentLedgerEntryDto,
-  SourceDocumentLightDto,
   SourceDocumentLightWithEntriesDto,
   SourceDocumentListItemDto,
   SourceDocumentStoredFileDto,

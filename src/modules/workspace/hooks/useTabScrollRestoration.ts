@@ -30,6 +30,8 @@ export function useTabScrollRestoration(ledgerId: string, activeTab: LedgerTab):
     const finish = () => {
       if (restored) return;
       restored = true;
+      if (clampTimer != null) window.clearTimeout(clampTimer);
+      clampTimer = null;
       observer?.disconnect();
       observer = null;
       frame = window.requestAnimationFrame(() => {
@@ -39,6 +41,7 @@ export function useTabScrollRestoration(ledgerId: string, activeTab: LedgerTab):
     };
 
     const tryRestore = () => {
+      if (restored) return;
       const maximum = Math.max(0, root.scrollHeight - window.innerHeight);
       window.scrollTo({ top: target, left: 0, behavior: "auto" });
       if (maximum + TAB_SCROLL_RESTORE_TOLERANCE >= target) finish();
@@ -49,11 +52,13 @@ export function useTabScrollRestoration(ledgerId: string, activeTab: LedgerTab):
       observer = new ResizeObserver(tryRestore);
       observer.observe(document.body);
     }
-    clampTimer = window.setTimeout(() => {
-      const maximum = Math.max(0, root.scrollHeight - window.innerHeight);
-      window.scrollTo({ top: Math.min(target, maximum), left: 0, behavior: "auto" });
-      finish();
-    }, 2_000);
+    if (!restored)
+      clampTimer = window.setTimeout(() => {
+        if (restored) return;
+        const maximum = Math.max(0, root.scrollHeight - window.innerHeight);
+        window.scrollTo({ top: Math.min(target, maximum), left: 0, behavior: "auto" });
+        finish();
+      }, 2_000);
 
     return () => {
       positions.set(key, restored ? window.scrollY : Math.max(window.scrollY, target));

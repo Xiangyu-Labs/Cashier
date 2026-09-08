@@ -13,8 +13,8 @@
  * Never touches soft-deleted source documents or their revisions.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { loadLocalEnvironment } from "./load-local-environment.mjs";
 import pg from "pg";
 import {
   DeleteObjectCommand,
@@ -27,18 +27,6 @@ const PRUNE_ADVISORY_LOCK = 1_381_247_120;
 const TEMPORARY_PREFIX = "temporary/";
 const DURABLE_KEY_MARKER = "/stored/";
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-function loadLocalEnvironment() {
-  for (const filename of [".env.local", ".env"]) {
-    const envPath = path.resolve(process.cwd(), filename);
-    if (!existsSync(envPath)) continue;
-    for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
-      const match = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line.trim());
-      if (!match || process.env[match[1]] !== undefined) continue;
-      process.env[match[1]] = match[2].trim().replace(/^(['"])(.*)\1$/, "$2");
-    }
-  }
-}
 
 function parseArgs(argv) {
   const options = {
@@ -173,7 +161,7 @@ async function loadValidTemporarySessions(client, pairs, now) {
   return valid;
 }
 
-async function pruneExpiredRecords(client, now, batchSize, apply) {
+export async function pruneExpiredRecords(client, now, batchSize, apply) {
   const counts = {
     rateLimitBuckets: 0,
     otpTokens: 0,
@@ -218,8 +206,8 @@ async function pruneExpiredRecords(client, now, batchSize, apply) {
 
   if (apply) {
     const idempotency = await client.query(
-      `DELETE FROM idempotency_records WHERE (credential_id, key) IN (
-        SELECT credential_id, key FROM idempotency_records
+      `DELETE FROM idempotency_records WHERE (principal_type, principal_id, key) IN (
+        SELECT principal_type, principal_id, key FROM idempotency_records
         WHERE expires_at < $1 OR (status = 'completed' AND completed_at < $2)
         LIMIT $3
       )`,
@@ -301,15 +289,23 @@ async function pruneExpiredRecords(client, now, batchSize, apply) {
   return counts;
 }
 
-async function scanUnreferencedFiles(client, s3, bucket, fileCutoff, batchSize, apply, summary) {
-  const seen = [];
+export async function scanUnreferencedFiles(
+  client,
+  s3,
+  bucket,
+  fileCutoff,
+  batchSize,
+  apply,
+  summary
+) {
+  let cursor = null;
   while (true) {
     const candidates = await client.query(
       `SELECT id, ledger_id, storage_key, byte_size, created_at
        FROM stored_files
        WHERE deleted_at IS NULL
          AND created_at < $1
-         ${seen.length > 0 ? "AND NOT (id = ANY($3::uuid[]))" : ""}
+         AND ($3::uuid IS NULL OR id > $3::uuid)
          AND NOT EXISTS (
            SELECT 1 FROM revision_files rf
            WHERE rf.ledger_id = stored_files.ledger_id
@@ -323,13 +319,14 @@ async function scanUnreferencedFiles(client, s3, bucket, fileCutoff, batchSize, 
              AND usf.stored_file_id = stored_files.id
              AND us.status IN ('open', 'finalizing')
          )
+       ORDER BY id
        LIMIT $2`,
-      seen.length > 0 ? [fileCutoff, batchSize, seen] : [fileCutoff, batchSize]
+      [fileCutoff, batchSize, cursor]
     );
     if (candidates.rows.length === 0) break;
 
     for (const file of candidates.rows) {
-      seen.push(file.id);
+      cursor = file.id;
       summary.unreferencedFiles.count += 1;
       summary.unreferencedFiles.bytes += Number(file.byte_size ?? 0);
       let head;
@@ -432,7 +429,7 @@ async function scanDurableOrphans(client, s3, bucket, fileCutoff, batchSize, app
   } while (continuationToken != null);
 }
 
-async function scanTemporaryOrphans(
+export async function scanTemporaryOrphans(
   client,
   s3,
   bucket,
@@ -454,6 +451,7 @@ async function scanTemporaryOrphans(
     });
     if (parsedPairs.length > 0) {
       const validSessions = await loadValidTemporarySessions(
+        client,
         parsedPairs.map((pair) => ({ sessionId: pair.sessionId })),
         now
       );
@@ -478,7 +476,7 @@ async function scanTemporaryOrphans(
   } while (continuationToken != null);
 }
 
-async function main() {
+export async function main() {
   loadLocalEnvironment();
   const options = parseArgs(process.argv.slice(2));
 
@@ -588,7 +586,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(`[prune] ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(`[prune] ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
+}

@@ -6,16 +6,12 @@ const {
   authenticateWithOTPMock,
   completeInteractiveSignInMock,
   getSessionUserMock,
-  handleAuthUserSignedInMock,
-  isAuthSignInAllowedMock,
   authenticateWithPasswordMock,
 } = vi.hoisted(() => ({
   nextAuthMock: vi.fn(),
   authenticateWithOTPMock: vi.fn(),
   completeInteractiveSignInMock: vi.fn(),
   getSessionUserMock: vi.fn(),
-  handleAuthUserSignedInMock: vi.fn(),
-  isAuthSignInAllowedMock: vi.fn().mockResolvedValue(true),
   authenticateWithPasswordMock: vi.fn(),
 }));
 
@@ -47,14 +43,6 @@ vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () =>
   authenticateWithPassword: authenticateWithPasswordMock,
 }));
 
-vi.mock("@/modules/auth/application/use-cases/handle-auth-user-signed-in", () => ({
-  handleAuthUserSignedIn: handleAuthUserSignedInMock,
-}));
-
-vi.mock("@/modules/auth/application/use-cases/is-auth-sign-in-allowed", () => ({
-  isAuthSignInAllowed: isAuthSignInAllowedMock,
-}));
-
 vi.mock("@/modules/auth/application/queries/get-session-user", () => ({
   getSessionUser: getSessionUserMock,
 }));
@@ -80,7 +68,6 @@ describe("auth.ts adapter wiring", () => {
       image: null,
     });
     completeInteractiveSignInMock.mockImplementation(async (principal) => principal);
-    isAuthSignInAllowedMock.mockResolvedValue(true);
     getSessionUserMock.mockResolvedValue({
       id: "db-user",
       email: "db@example.com",
@@ -168,13 +155,11 @@ describe("auth.ts adapter wiring", () => {
   it("does not register a duplicate signIn event", async () => {
     const { authOptions } = await loadAuthOptions();
     expect(authOptions?.events?.signIn).toBeUndefined();
-    expect(handleAuthUserSignedInMock).not.toHaveBeenCalled();
   });
 
   it("does not register a duplicate signIn callback", async () => {
     const { authOptions } = await loadAuthOptions();
     expect(authOptions?.callbacks?.signIn).toBeUndefined();
-    expect(isAuthSignInAllowedMock).not.toHaveBeenCalled();
   });
 
   it("hydrates session data through the auth session query", async () => {

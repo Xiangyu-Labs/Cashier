@@ -2,26 +2,33 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "tests/setup";
 import {
   createOTPToken as createOTPTokenWithPort,
-  deleteOTPToken as deleteOTPTokenWithPort,
-  cleanupExpiredOTPTokens as cleanupExpiredOTPTokensWithPort,
+  discardOTPToken,
 } from "@/modules/auth/repositories/otp-repository";
 import {
   consumeOTPClaim as consumeOTPClaimWithPort,
   findOTPRecord as findOTPRecordWithPort,
   releaseOTPClaim as releaseOTPClaimWithPort,
   verifyOTPWithPolicy as verifyOTPWithPolicyWithPort,
-  isAccountLocked as isAccountLockedWithPort,
 } from "@/modules/auth/services/otp-verification";
 import { generateOTP, verifyOTP } from "@/modules/auth/services/otp";
 import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";
 import { serverComposition } from "@/application/server-composition-root";
+import { runBoundedMaintenance } from "@/application/adapters/postgres/maintenance";
 
 const otpPort = serverComposition.otpTokens;
 const createOTPToken = (email: string, otp: string, ipAddress?: string) =>
   createOTPTokenWithPort(email, otp, otpPort, ipAddress);
-const deleteOTPToken = (email: string) => deleteOTPTokenWithPort(email, otpPort);
-const cleanupExpiredOTPTokens = () => cleanupExpiredOTPTokensWithPort(otpPort);
+const deleteOTPToken = async (email: string) => {
+  const token = await otpPort.find(email);
+  if (token != null) await discardOTPToken(email, token.tokenHash, otpPort);
+};
+const cleanupExpiredOTPTokens = async () => {
+  const db = getTestDb();
+  const before = await db.select().from(otpTokens);
+  await runBoundedMaintenance();
+  return before.length - (await db.select().from(otpTokens)).length;
+};
 const findOTPRecord = (email: string) => findOTPRecordWithPort(email, otpPort);
 const verifyOTPWithPolicy = (
   email: string,
@@ -32,7 +39,6 @@ const consumeOTPClaim = (claim: Parameters<typeof consumeOTPClaimWithPort>[0]) =
   consumeOTPClaimWithPort(claim, otpPort);
 const releaseOTPClaim = (claim: Parameters<typeof releaseOTPClaimWithPort>[0]) =>
   releaseOTPClaimWithPort(claim, otpPort);
-const isAccountLocked = (email: string) => isAccountLockedWithPort(email, otpPort);
 
 // Helper function for tests - combines data access and business logic
 async function verifyOTPToken(email: string, otp: string) {
@@ -259,18 +265,18 @@ describe("OTP Repository", () => {
     });
   });
 
-  describe("isAccountLocked", () => {
+  describe("verification lockout policy", () => {
     it("should return false when no OTP exists", async () => {
-      const result = await isAccountLocked("nonexistent@example.com");
-      expect(result.locked).toBe(false);
+      const result = await verifyOTPToken("nonexistent@example.com", "123456");
+      expect(result).toMatchObject({ success: false, reason: "not_found" });
     });
 
     it("should return false when account is not locked", async () => {
       const otp = generateOTP();
       await createOTPToken(testEmail, otp, "127.0.0.1");
 
-      const result = await isAccountLocked(testEmail);
-      expect(result.locked).toBe(false);
+      const result = await verifyOTPToken(testEmail, otp);
+      expect(result.success).toBe(true);
     });
 
     it("should return true when account is locked", async () => {
@@ -282,8 +288,8 @@ describe("OTP Repository", () => {
         await verifyOTPToken(testEmail, "000000");
       }
 
-      const result = await isAccountLocked(testEmail);
-      expect(result.locked).toBe(true);
+      const result = await verifyOTPToken(testEmail, otp);
+      expect(result).toMatchObject({ success: false, reason: "locked" });
       expect(result.lockedUntil).toBeInstanceOf(Date);
     });
 
@@ -298,8 +304,8 @@ describe("OTP Repository", () => {
         .set({ lockedUntil: new Date(Date.now() - 1000 * 60 * 60) })
         .where(eq(otpTokens.email, testEmail.toLowerCase()));
 
-      const result = await isAccountLocked(testEmail);
-      expect(result.locked).toBe(false);
+      const result = await verifyOTPToken(testEmail, otp);
+      expect(result.success).toBe(true);
     });
   });
 

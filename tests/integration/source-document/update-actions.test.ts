@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { batchUpdateSourceDocumentsAction } from "@/modules/source-document/actions";
+import { batchUpdateSourceDocumentsAction } from "@/modules/source-document/server-actions/update";
 import { getTestDb } from "../../setup";
 import { currencyRates, ledgerEntries, sourceDocuments, ledgers } from "@/persistence";
 import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";

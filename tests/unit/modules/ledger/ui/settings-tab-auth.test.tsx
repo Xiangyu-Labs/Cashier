@@ -1,6 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { getDefaultLedger } from "@/config/default-ledger";
+
+const { queryState, refetchQueries } = vi.hoisted(() => ({
+  queryState: { status: "success" },
+  refetchQueries: vi.fn(),
+}));
 
 vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
@@ -21,6 +27,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({
     invalidateQueries: vi.fn(),
+    refetchQueries,
   }),
 }));
 
@@ -36,6 +43,7 @@ vi.mock("@/modules/ledger/hooks/useLedgerSettings", () => ({
     credentials: [],
     updateLedgerMutation: { mutate: vi.fn(), mutateAsync: vi.fn() },
     isPending: false,
+    settingsQueryStatus: queryState.status,
   }),
 }));
 
@@ -78,12 +86,18 @@ vi.mock("@/modules/ledger/ui/ExportSection", () => ({
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 
 describe("SettingsTab account authentication controls", () => {
+  beforeEach(() => {
+    queryState.status = "success";
+    vi.clearAllMocks();
+  });
   it("renders email change and sign-out, but not destructive account mutations", () => {
-    const ledger = {
+    const ledger: Ledger = {
       id: "ledger-1",
       userId: "user-1",
-      settings: {},
-    } as unknown as Ledger;
+      settings: { ...getDefaultLedger().settings },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
 
     render(
       <SettingsTab
@@ -105,5 +119,31 @@ describe("SettingsTab account authentication controls", () => {
     expect(
       screen.queryByRole("button", { name: /delete account|删除账户/i })
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps loaded settings visible when a query fails and exposes a local retry", () => {
+    queryState.status = "error";
+    const ledger: Ledger = {
+      id: "ledger-1",
+      userId: "user-1",
+      settings: { ...getDefaultLedger().settings },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    render(
+      <SettingsTab
+        ledger={ledger}
+        ledgerId="ledger-1"
+        initialCategories={[]}
+        userEmail="person@example.com"
+      />
+    );
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /sign out|退出登录/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(refetchQueries).toHaveBeenCalledWith({
+      type: "active",
+      predicate: expect.any(Function),
+    });
   });
 });

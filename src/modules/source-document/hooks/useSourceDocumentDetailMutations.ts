@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { saveSourceDocumentChangesAction } from "@/modules/source-document/server-actions/update";
+import { splitSourceDocumentAction } from "@/modules/source-document/server-actions/split";
 import {
-  saveSourceDocumentChangesAction,
-  splitSourceDocumentAction,
-} from "@/modules/source-document/actions";
-import { createLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+  createLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import type {
   SaveSourceDocumentChangesResultDto,
   SplitSourceDocumentInput,
@@ -70,6 +71,7 @@ export function useSourceDocumentDetailMutations({
     SaveSourceDocumentChangesResultDto,
     SaveDetailChanges
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ expectedVersion, changes }: SaveDetailChanges) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const result = await saveSourceDocumentChangesAction(ledgerId, {
@@ -97,6 +99,7 @@ export function useSourceDocumentDetailMutations({
     SplitSourceDocumentResultDto,
     Omit<SplitSourceDocumentInput, "sourceDocumentId">
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const result = await splitSourceDocumentAction(ledgerId, { sourceDocumentId: id, ...input });
@@ -108,6 +111,7 @@ export function useSourceDocumentDetailMutations({
   });
 
   const addEntryMutation = useLedgerMutation<{ ledgerEntryId: string }, AddEntryData>(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async (data: AddEntryData) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const expectedVersion = requireSourceDocumentVersion(version, id);
@@ -127,6 +131,7 @@ export function useSourceDocumentDetailMutations({
     { ledgerEntryId: string; deleted: true },
     { entryId: string; onCommitted?: (() => void) | undefined }
   >(ledgerId, {
+    invalidates: ["documents", "stats"],
     mutationFn: async ({ entryId }) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const expectedVersion = requireSourceDocumentVersion(version, id);

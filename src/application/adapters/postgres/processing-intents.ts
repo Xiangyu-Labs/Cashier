@@ -1,9 +1,10 @@
-import { and, asc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type {
   ProcessingClaimContract,
   ProcessingCompletionContract,
   ProcessingIntentContract,
   ProcessingPort,
+  ProcessingRecoveryConfig,
   RecoverableProcessingIntentContract,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
@@ -98,16 +99,6 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
   }
 
   async claim(intentId: string): Promise<ProcessingClaimContract | null> {
-    return this.claimWhere(eq(processingOutbox.id, intentId));
-  }
-
-  async claimNext(): Promise<ProcessingClaimContract | null> {
-    return this.claimWhere(sql`TRUE`);
-  }
-
-  private async claimWhere(
-    identity: ReturnType<typeof eq>
-  ): Promise<ProcessingClaimContract | null> {
     const now = this.now();
     const claimToken = crypto.randomUUID();
     const expiresAt = new Date(now.getTime() + this.leaseMs);
@@ -115,7 +106,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       const claimed = await tx.execute<typeof processingOutbox.$inferSelect>(sql`
         WITH candidate AS (
           SELECT id FROM processing_outbox
-          WHERE ${identity}
+          WHERE id = ${intentId}
             AND available_at <= ${now}
             AND (status = 'pending' OR (status = 'claimed' AND claim_expires_at <= ${now}))
           ORDER BY available_at, created_at
@@ -134,6 +125,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           ? undefined
           : ({
               ...raw,
+              ledgerId: raw.ledger_id,
               sourceDocumentId: raw.source_document_id,
               revisionId: raw.revision_id,
               attemptNumber: raw.attempt_number,
@@ -151,7 +143,185 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             eq(processingAttempts.status, "queued")
           )
         );
-      return { intent, claimToken, expiresAt: expiresAt.toISOString() };
+      return {
+        ledgerId: row.ledgerId,
+        intent,
+        claimToken,
+        expiresAt: expiresAt.toISOString(),
+      };
+    });
+  }
+
+  async recoverBatch(
+    ledgerId: string,
+    config: ProcessingRecoveryConfig
+  ): Promise<readonly RecoverableProcessingIntentContract[]> {
+    const now = this.now();
+    const nextAvailable = new Date(now.getTime() + config.cooldownSeconds * 1000);
+
+    return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+
+      await tx.execute(sql`
+        WITH candidate AS (
+          SELECT outbox.id, outbox.revision_id, outbox.attempt_number,
+            CASE
+              WHEN document.deleted_at IS NOT NULL
+                OR document.pending_revision_id IS DISTINCT FROM outbox.revision_id
+                OR revision.outcome IN ('cancelled', 'abandoned')
+              THEN 'cancelled'
+              WHEN revision.outcome = 'failed' THEN 'failed'
+              ELSE 'completed'
+            END AS outbox_status,
+            CASE
+              WHEN document.deleted_at IS NOT NULL
+                OR document.pending_revision_id IS DISTINCT FROM outbox.revision_id
+                OR revision.outcome IN ('cancelled', 'abandoned')
+              THEN 'cancelled'
+              WHEN revision.outcome = 'failed' THEN 'failed'
+              WHEN revision.outcome = 'anomaly' THEN 'anomaly'
+              ELSE 'completed'
+            END AS attempt_status
+          FROM processing_outbox outbox
+          JOIN source_documents document
+            ON document.ledger_id = outbox.ledger_id
+           AND document.id = outbox.source_document_id
+          JOIN source_document_revisions revision
+            ON revision.ledger_id = outbox.ledger_id
+           AND revision.id = outbox.revision_id
+          WHERE outbox.ledger_id = ${ledgerId}
+            AND outbox.status IN ('pending', 'claimed')
+            AND (
+              document.deleted_at IS NOT NULL
+              OR document.pending_revision_id IS DISTINCT FROM outbox.revision_id
+              OR revision.outcome <> 'processing'
+            )
+          ORDER BY outbox.created_at, outbox.id
+          FOR UPDATE OF outbox SKIP LOCKED
+          LIMIT ${config.maxBatch}
+        ), closed AS (
+          UPDATE processing_outbox outbox
+          SET status = candidate.outbox_status::processing_outbox_status,
+              completed_at = ${now}, claim_token = NULL, claim_expires_at = NULL
+          FROM candidate
+          WHERE outbox.id = candidate.id
+            AND outbox.status IN ('pending', 'claimed')
+          RETURNING candidate.revision_id, candidate.attempt_number, candidate.attempt_status
+        ), updated_attempts AS (
+          UPDATE processing_attempts attempt
+          SET status = closed.attempt_status::processing_attempt_status, completed_at = ${now}
+          FROM closed
+          WHERE attempt.revision_id = closed.revision_id
+            AND attempt.attempt_number = closed.attempt_number
+            AND attempt.status IN ('queued', 'processing')
+          RETURNING attempt.id
+        )
+        SELECT count(*) FROM closed
+      `);
+
+      await tx.execute(sql`
+        WITH candidate AS (
+          SELECT outbox.id, outbox.revision_id, outbox.attempt_number
+          FROM processing_outbox outbox
+          JOIN source_documents document
+            ON document.ledger_id = outbox.ledger_id
+           AND document.id = outbox.source_document_id
+           AND document.pending_revision_id = outbox.revision_id
+           AND document.deleted_at IS NULL
+          JOIN source_document_revisions revision
+            ON revision.ledger_id = outbox.ledger_id
+           AND revision.id = outbox.revision_id
+           AND revision.outcome = 'processing'
+          WHERE outbox.ledger_id = ${ledgerId}
+            AND outbox.schedule_attempt_count >= ${config.maxAttempts}
+            AND outbox.next_available_at <= ${now}
+            AND (
+              outbox.status = 'pending'
+              OR (outbox.status = 'claimed' AND outbox.claim_expires_at <= ${now})
+            )
+          ORDER BY outbox.next_available_at, outbox.created_at, outbox.id
+          FOR UPDATE OF outbox SKIP LOCKED
+          LIMIT ${config.maxBatch}
+        ), closed AS (
+          UPDATE processing_outbox outbox
+          SET status = 'failed', completed_at = ${now}, claim_token = NULL, claim_expires_at = NULL
+          FROM candidate
+          WHERE outbox.id = candidate.id
+          RETURNING candidate.revision_id, candidate.attempt_number
+        ), updated_attempts AS (
+          UPDATE processing_attempts attempt
+          SET status = 'failed', completed_at = ${now}, retry_classification = 'permanent',
+              diagnostic_code = 'request_bound_retry_exhausted'
+          FROM closed
+          WHERE attempt.revision_id = closed.revision_id
+            AND attempt.attempt_number = closed.attempt_number
+          RETURNING attempt.id
+        ), updated_revisions AS (
+          UPDATE source_document_revisions revision
+          SET outcome = 'failed', failure_code = 'request_bound_retry_exhausted',
+              finalized_at = ${now}
+          FROM closed
+          WHERE revision.id = closed.revision_id AND revision.outcome = 'processing'
+          RETURNING revision.id
+        )
+        SELECT count(*) FROM closed
+      `);
+
+      const scheduled = await tx.execute<{
+        id: string;
+        sourceDocumentId: string;
+        revisionId: string;
+        requestedAt: Date | string;
+        attempt: number;
+        scheduleAttemptCount: number;
+        nextAvailableAt: Date | string;
+      }>(sql`
+        WITH candidate AS (
+          SELECT outbox.id
+          FROM processing_outbox outbox
+          JOIN source_documents document
+            ON document.ledger_id = outbox.ledger_id
+           AND document.id = outbox.source_document_id
+           AND document.pending_revision_id = outbox.revision_id
+           AND document.deleted_at IS NULL
+          JOIN source_document_revisions revision
+            ON revision.ledger_id = outbox.ledger_id
+           AND revision.id = outbox.revision_id
+           AND revision.outcome = 'processing'
+          WHERE outbox.ledger_id = ${ledgerId}
+            AND outbox.schedule_attempt_count < ${config.maxAttempts}
+            AND outbox.next_available_at <= ${now}
+            AND (
+              outbox.status = 'pending'
+              OR (outbox.status = 'claimed' AND outbox.claim_expires_at <= ${now})
+            )
+          ORDER BY outbox.next_available_at, outbox.created_at, outbox.id
+          FOR UPDATE OF outbox SKIP LOCKED
+          LIMIT ${config.maxBatch}
+        )
+        UPDATE processing_outbox outbox
+        SET schedule_attempt_count = outbox.schedule_attempt_count + 1,
+            last_scheduled_at = ${now}, next_available_at = ${nextAvailable}
+        FROM candidate
+        WHERE outbox.id = candidate.id
+        RETURNING outbox.id,
+          outbox.source_document_id AS "sourceDocumentId",
+          outbox.revision_id AS "revisionId",
+          outbox.requested_at AS "requestedAt",
+          outbox.attempt_number AS attempt,
+          outbox.schedule_attempt_count AS "scheduleAttemptCount",
+          outbox.next_available_at AS "nextAvailableAt"
+      `);
+
+      return scheduled.rows.map((row) => ({
+        ...row,
+        requestedAt:
+          typeof row.requestedAt === "string" ? row.requestedAt : row.requestedAt.toISOString(),
+        nextAvailableAt:
+          typeof row.nextAvailableAt === "string"
+            ? row.nextAvailableAt
+            : row.nextAvailableAt.toISOString(),
+      }));
     });
   }
 
@@ -215,361 +385,6 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             eq(processingAttempts.attemptNumber, row.attemptNumber)
           )
         );
-      return true;
-    });
-  }
-
-  async reconcileResidualIntents(ledgerId: string, limit: number): Promise<number> {
-    const candidates = await db
-      .select({ id: processingOutbox.id })
-      .from(processingOutbox)
-      .innerJoin(
-        sourceDocuments,
-        and(
-          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(sourceDocuments.id, processingOutbox.sourceDocumentId)
-        )
-      )
-      .innerJoin(
-        sourceDocumentRevisions,
-        and(
-          eq(sourceDocumentRevisions.ledgerId, processingOutbox.ledgerId),
-          eq(sourceDocumentRevisions.id, processingOutbox.revisionId)
-        )
-      )
-      .where(
-        and(
-          eq(processingOutbox.ledgerId, ledgerId),
-          inArray(processingOutbox.status, ["pending", "claimed"]),
-          sql`(${sourceDocuments.deletedAt} IS NOT NULL OR ${sourceDocuments.pendingRevisionId} IS DISTINCT FROM ${processingOutbox.revisionId} OR ${sourceDocumentRevisions.outcome} <> 'processing')`
-        )
-      )
-      .limit(limit);
-    let reconciled = 0;
-    for (const candidate of candidates) {
-      const changed = await db.transaction(async (tx) => {
-        await lockLedgerForUpdate(tx, ledgerId);
-        const row = await tx
-          .select({
-            revisionId: processingOutbox.revisionId,
-            attemptNumber: processingOutbox.attemptNumber,
-            documentDeletedAt: sourceDocuments.deletedAt,
-            pendingRevisionId: sourceDocuments.pendingRevisionId,
-            revisionOutcome: sourceDocumentRevisions.outcome,
-          })
-          .from(sourceDocuments)
-          .innerJoin(
-            sourceDocumentRevisions,
-            and(
-              eq(sourceDocumentRevisions.ledgerId, sourceDocuments.ledgerId),
-              eq(sourceDocumentRevisions.sourceDocumentId, sourceDocuments.id)
-            )
-          )
-          .innerJoin(processingOutbox, eq(processingOutbox.revisionId, sourceDocumentRevisions.id))
-          .where(and(eq(processingOutbox.id, candidate.id), eq(sourceDocuments.ledgerId, ledgerId)))
-          .for("update")
-          .then((rows) => rows[0]);
-        if (row == null) return false;
-        const stale = row.documentDeletedAt != null || row.pendingRevisionId !== row.revisionId;
-        const outboxStatus =
-          stale || ["cancelled", "abandoned"].includes(row.revisionOutcome)
-            ? "cancelled"
-            : row.revisionOutcome === "failed"
-              ? "failed"
-              : "completed";
-        const attemptStatus =
-          stale || row.revisionOutcome === "cancelled" || row.revisionOutcome === "abandoned"
-            ? "cancelled"
-            : row.revisionOutcome === "failed"
-              ? "failed"
-              : row.revisionOutcome === "anomaly"
-                ? "anomaly"
-                : "completed";
-        const now = this.now();
-        const updated = await tx
-          .update(processingOutbox)
-          .set({ status: outboxStatus, completedAt: now, claimToken: null, claimExpiresAt: null })
-          .where(
-            and(
-              eq(processingOutbox.id, candidate.id),
-              inArray(processingOutbox.status, ["pending", "claimed"])
-            )
-          )
-          .returning({ id: processingOutbox.id });
-        if (updated.length === 0) return false;
-        await tx
-          .update(processingAttempts)
-          .set({ status: attemptStatus, completedAt: now })
-          .where(
-            and(
-              eq(processingAttempts.revisionId, row.revisionId),
-              eq(processingAttempts.attemptNumber, row.attemptNumber),
-              inArray(processingAttempts.status, ["queued", "processing"])
-            )
-          );
-        return true;
-      });
-      if (changed) reconciled += 1;
-    }
-    return reconciled;
-  }
-
-  /**
-   * Atomically increments schedule_attempt_count, sets last_scheduled_at,
-   * and advances next_available_at for the given outbox row.
-   * Returns true if the row existed and was updated, false otherwise.
-   */
-  async scheduleRecovery(
-    revisionId: string,
-    intentId: string,
-    ledgerId: string,
-    cooldownSeconds: number
-  ): Promise<boolean> {
-    const now = this.now();
-    const nextAvailable = new Date(now.getTime() + cooldownSeconds * 1000);
-    const result = await db
-      .update(processingOutbox)
-      .set({
-        scheduleAttemptCount: sql`${processingOutbox.scheduleAttemptCount} + 1`,
-        lastScheduledAt: now,
-        nextAvailableAt: nextAvailable,
-      })
-      .where(
-        and(
-          eq(processingOutbox.id, intentId),
-          eq(processingOutbox.ledgerId, ledgerId),
-          eq(processingOutbox.revisionId, revisionId),
-          lte(processingOutbox.nextAvailableAt, now),
-          or(
-            eq(processingOutbox.status, "pending"),
-            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
-          )
-        )
-      )
-      .returning({ id: processingOutbox.id })
-      .then((rows) => rows[0]);
-    return result != null;
-  }
-
-  /**
-   * Selects recoverable processing intents for the given ledger.
-   * Returns intents that are pending or have an expired claim,
-   * whose next_available_at <= NOW, whose schedule_attempt_count
-   * is below maxAttempts, and whose revision is still the current
-   * pending revision for the source document.
-   * Ordered by next_available_at ASC, limited by `limit`.
-   */
-  async selectRecoverable(
-    ledgerId: string,
-    maxAttempts: number,
-    limit: number
-  ): Promise<readonly RecoverableProcessingIntentContract[]> {
-    const now = this.now();
-    const rows = await db
-      .select({
-        id: processingOutbox.id,
-        sourceDocumentId: processingOutbox.sourceDocumentId,
-        revisionId: processingOutbox.revisionId,
-        requestedAt: processingOutbox.requestedAt,
-        attempt: processingOutbox.attemptNumber,
-        scheduleAttemptCount: processingOutbox.scheduleAttemptCount,
-        nextAvailableAt: processingOutbox.nextAvailableAt,
-      })
-      .from(processingOutbox)
-      .innerJoin(
-        sourceDocuments,
-        and(
-          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(sourceDocuments.id, processingOutbox.sourceDocumentId),
-          eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
-          isNull(sourceDocuments.deletedAt)
-        )
-      )
-      .where(
-        and(
-          eq(processingOutbox.ledgerId, ledgerId),
-          lt(processingOutbox.scheduleAttemptCount, maxAttempts),
-          lte(processingOutbox.nextAvailableAt, now),
-          or(
-            eq(processingOutbox.status, "pending"),
-            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
-          )
-        )
-      )
-      .orderBy(asc(processingOutbox.nextAvailableAt))
-      .limit(limit);
-    return rows.map((row) => ({
-      id: row.id,
-      sourceDocumentId: row.sourceDocumentId,
-      revisionId: row.revisionId,
-      requestedAt: row.requestedAt.toISOString(),
-      attempt: row.attempt,
-      scheduleAttemptCount: row.scheduleAttemptCount,
-      nextAvailableAt: row.nextAvailableAt.toISOString(),
-    }));
-  }
-
-  /**
-   * Finds and exhausts intents whose scheduleAttemptCount >= maxAttempts
-   * but whose outbox is still non-terminal (pending or expired-claimed)
-   * and whose revision is still the current pending revision.
-   * Returns the number of intents exhausted.
-   */
-  async exhaustStaleIntents(ledgerId: string, maxAttempts: number, limit: number): Promise<number> {
-    const now = this.now();
-    const rows = await db
-      .select({
-        id: processingOutbox.id,
-      })
-      .from(processingOutbox)
-      .innerJoin(
-        sourceDocuments,
-        and(
-          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(sourceDocuments.id, processingOutbox.sourceDocumentId),
-          eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
-          isNull(sourceDocuments.deletedAt)
-        )
-      )
-      .where(
-        and(
-          eq(processingOutbox.ledgerId, ledgerId),
-          gte(processingOutbox.scheduleAttemptCount, maxAttempts),
-          lte(processingOutbox.nextAvailableAt, now),
-          or(
-            eq(processingOutbox.status, "pending"),
-            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
-          )
-        )
-      )
-      .limit(limit);
-
-    let exhausted = 0;
-    for (const row of rows) {
-      const success = await this.markExhausted(row.id);
-      if (success) exhausted++;
-    }
-    return exhausted;
-  }
-
-  /**
-   * Marks an outbox intent as exhausted (failed with request_bound_retry_exhausted).
-   *
-   * CAS verification: joins the source document to ensure the revision is still
-   * the current pending revision (document not deleted, exact pendingRevisionId,
-   * revision outcome is processing). The outbox must be pending or
-   * expired-claimed to be actionable.
-   *
-   * If CAS passes: updates the outbox, attempt record, and revision diagnostic
-   * atomically within the transaction.
-   *
-   * If CAS fails (stale revision or newer pending exists): only closes the stale
-   * outbox without touching the revision.
-   */
-  async markExhausted(intentId: string): Promise<boolean> {
-    const now = this.now();
-    return db.transaction(async (tx) => {
-      // JOIN outbox with source documents and revisions to CAS-verify
-      // that the revision is still the current pending revision
-      const row = await tx
-        .select({
-          revisionId: processingOutbox.revisionId,
-          outboxStatus: processingOutbox.status,
-          claimExpiresAt: processingOutbox.claimExpiresAt,
-          attemptNumber: processingOutbox.attemptNumber,
-          documentDeletedAt: sourceDocuments.deletedAt,
-          documentPendingRevisionId: sourceDocuments.pendingRevisionId,
-          revisionOutcome: sourceDocumentRevisions.outcome,
-        })
-        .from(processingOutbox)
-        .innerJoin(
-          sourceDocuments,
-          and(
-            eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-            eq(sourceDocuments.id, processingOutbox.sourceDocumentId)
-          )
-        )
-        .innerJoin(
-          sourceDocumentRevisions,
-          and(
-            eq(sourceDocumentRevisions.ledgerId, processingOutbox.ledgerId),
-            eq(sourceDocumentRevisions.id, processingOutbox.revisionId)
-          )
-        )
-        .where(eq(processingOutbox.id, intentId))
-        .then((rows) => rows[0]);
-      if (row == null) return false;
-
-      // Prerequisite: outbox must be pending or expired-claimed
-      const isActionable =
-        row.outboxStatus === "pending" ||
-        (row.outboxStatus === "claimed" && row.claimExpiresAt != null && row.claimExpiresAt <= now);
-
-      if (!isActionable) return false;
-
-      // CAS: verify the revision is still the current pending revision
-      const isCurrentPending =
-        row.documentDeletedAt == null &&
-        row.documentPendingRevisionId === row.revisionId &&
-        row.revisionOutcome === "processing";
-
-      // Update outbox to failed (common to both paths)
-      const updated = await tx
-        .update(processingOutbox)
-        .set({
-          status: "failed",
-          completedAt: now,
-          claimToken: null,
-          claimExpiresAt: null,
-        })
-        .where(
-          and(
-            eq(processingOutbox.id, intentId),
-            or(
-              eq(processingOutbox.status, "pending"),
-              and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
-            )
-          )
-        )
-        .returning({ id: processingOutbox.id })
-        .then((rows) => rows[0]);
-      if (updated == null) return false;
-
-      if (isCurrentPending) {
-        // CAS passed — full exhaustion: update attempt record and revision
-        await tx
-          .update(processingAttempts)
-          .set({
-            status: "failed",
-            completedAt: now,
-            retryClassification: "permanent",
-            diagnosticCode: "request_bound_retry_exhausted",
-          })
-          .where(
-            and(
-              eq(processingAttempts.revisionId, row.revisionId),
-              eq(processingAttempts.attemptNumber, row.attemptNumber)
-            )
-          );
-
-        await tx
-          .update(sourceDocumentRevisions)
-          .set({
-            outcome: "failed",
-            failureCode: "request_bound_retry_exhausted",
-            finalizedAt: now,
-          })
-          .where(
-            and(
-              eq(sourceDocumentRevisions.id, row.revisionId),
-              eq(sourceDocumentRevisions.outcome, "processing")
-            )
-          );
-
-        return true;
-      }
-
-      // CAS failed — only closed the stale outbox, did not touch the revision
       return true;
     });
   }
