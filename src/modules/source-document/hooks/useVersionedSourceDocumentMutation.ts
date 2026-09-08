@@ -10,6 +10,7 @@ import {
 } from "@/modules/source-document/command-results";
 
 interface UseVersionedSourceDocumentMutationOptions<TResult> {
+  refreshMode?: "wait" | "background";
   ledgerId: string | undefined;
   sourceDocumentId: string;
   expectedVersion: number | null;
@@ -25,6 +26,7 @@ interface UseVersionedSourceDocumentMutationOptions<TResult> {
 }
 
 export function useVersionedSourceDocumentMutation<TResult>({
+  refreshMode = "wait",
   ledgerId,
   sourceDocumentId,
   expectedVersion,
@@ -36,6 +38,7 @@ export function useVersionedSourceDocumentMutation<TResult>({
 }: UseVersionedSourceDocumentMutationOptions<TResult>) {
   const tCommon = useTranslations("Common");
   return useLedgerMutation<TResult, void | (() => void)>(ledgerId, {
+    refreshMode,
     invalidates: ["documents", "stats"],
     mutationFn: async () => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");

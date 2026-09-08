@@ -28,6 +28,7 @@ export function useSourceDocumentRecordMutations({
   // -----------------------------------------------------------------------
 
   const deleteDocumentMutation = useVersionedSourceDocumentMutation<DeleteSourceDocumentResultDto>({
+    refreshMode: "background",
     ledgerId,
     sourceDocumentId: id,
     expectedVersion: version,

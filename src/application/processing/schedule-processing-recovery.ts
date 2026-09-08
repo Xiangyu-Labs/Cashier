@@ -3,7 +3,7 @@ import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
-import { scheduleProcessingAfter } from "./schedule-processing";
+import { scheduleProcessingAfter } from "@/application/processing/schedule-processing";
 import { serverComposition } from "@/application/server-composition-root";
 
 /**

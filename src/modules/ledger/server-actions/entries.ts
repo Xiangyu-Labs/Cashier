@@ -1,6 +1,5 @@
 "use server";
 import { withLedgerAccess } from "../access";
-import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import {
   parseBatchUpdateLedgerEntriesInput,
   parseBatchUpdateLedgerEntryDatesInput,
@@ -148,9 +147,4 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
     });
     return impact;
   }
-);
-
-export const getLedgerEntriesAction = withLedgerAccess(
-  (ledgerId: string, params: Parameters<typeof listLedgerEntries>[1]) =>
-    listLedgerEntries(ledgerId, params, serverComposition.ledgerReads)
 );

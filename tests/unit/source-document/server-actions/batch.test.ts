@@ -21,7 +21,7 @@ vi.mock("@/modules/source-document/application/use-cases/retry-source-document",
   retrySourceDocument: retrySourceDocumentMock,
 }));
 
-vi.mock("@/modules/source-document/server-actions/schedule-processing", () => ({
+vi.mock("@/application/processing/schedule-processing", () => ({
   scheduleProcessingAfter: scheduleProcessingAfterMock,
 }));
 

@@ -1,4 +1,3 @@
-"use server";
 import { withLedgerAccess } from "../access";
 import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 import { serverComposition } from "@/application/server-composition-root";

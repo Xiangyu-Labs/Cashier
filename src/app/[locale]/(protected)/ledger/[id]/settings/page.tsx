@@ -5,7 +5,7 @@ import { SettingsPageClient } from "@/modules/ledger/ui/SettingsPageClient";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { auth } from "@/auth";
 import { getLedgerSettingsBootstrap } from "@/modules/workspace/application/queries/get-ledger-settings-bootstrap";
-import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
+import { scheduleProcessingRecoveryAfter } from "@/application/processing/schedule-processing-recovery";
 import { serverComposition } from "@/application/server-composition-root";
 import { notFound } from "next/navigation";
 import { z } from "zod";

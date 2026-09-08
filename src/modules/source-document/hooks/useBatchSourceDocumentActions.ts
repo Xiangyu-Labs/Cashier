@@ -46,6 +46,7 @@ export function useBatchSourceDocumentActions(
     void,
     string | { id: string; onCommitted: () => void }
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: async (input) => {
       const id = typeof input === "string" ? input : input.id;
@@ -65,6 +66,7 @@ export function useBatchSourceDocumentActions(
     BatchUpdateSourceDocumentsResultDto,
     { ids: string[]; entryDate: string }
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: async ({ ids, entryDate }) => {
       const result = await batchUpdateSourceDocumentsAction(ledgerId, {
@@ -121,6 +123,7 @@ export function useBatchSourceDocumentActions(
     PartialBatchCommandResult,
     string[] | { ids: string[]; onCommitted: () => void }
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: (input) =>
       batchDeleteSourceDocumentsAction(
@@ -137,6 +140,7 @@ export function useBatchSourceDocumentActions(
   });
 
   const batchRetry = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, targetsFor(ids)),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
@@ -148,6 +152,7 @@ export function useBatchSourceDocumentActions(
   const batchKeepDuplicates = useLedgerMutation<PartialBatchCommandResult, DuplicateBatchVariables>(
     ledgerId,
     {
+      refreshMode: "background",
       invalidates: ["documents", "stats"],
       mutationFn: (variables) =>
         batchResolveDuplicateReviewsAction(
@@ -170,6 +175,7 @@ export function useBatchSourceDocumentActions(
     PartialBatchCommandResult,
     DuplicateBatchVariables
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: (variables) =>
       batchResolveDuplicateReviewsAction(

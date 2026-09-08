@@ -48,7 +48,7 @@ describe("useLedgerEntriesMutations", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps update pending until derived queries settle", async () => {
+  it("finishes update before derived queries settle", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -72,7 +72,7 @@ describe("useLedgerEntriesMutations", () => {
     });
 
     await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled());
-    expect(result.current.updateEntry.isPending).toBe(true);
+    expect(result.current.updateEntry.isPending).toBe(false);
 
     await act(async () => {
       refreshGate.resolve();
@@ -80,7 +80,7 @@ describe("useLedgerEntriesMutations", () => {
     });
   });
 
-  it("shows delete success before derived queries settle but remains pending", async () => {
+  it("shows delete success and finishes before derived queries settle", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -101,7 +101,7 @@ describe("useLedgerEntriesMutations", () => {
     });
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess"));
-    expect(result.current.deleteEntry.isPending).toBe(true);
+    expect(result.current.deleteEntry.isPending).toBe(false);
 
     await act(async () => {
       refreshGate.resolve();

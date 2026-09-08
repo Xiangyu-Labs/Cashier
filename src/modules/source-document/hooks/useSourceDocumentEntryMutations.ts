@@ -5,6 +5,7 @@ import {
   batchUpdateLedgerEntriesAction,
 } from "@/modules/ledger/server-actions/entries";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { queryKeys } from "@/lib/query-keys";
 import type { PartialBatchCommandResult } from "@/modules/source-document/contracts";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
 import {
@@ -29,6 +30,8 @@ export function useSourceDocumentEntryMutations({
     { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
   >(ledgerId, {
+    refreshMode: "background",
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", sourceDocumentId),
     invalidates: ["documents", "stats"],
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
@@ -57,6 +60,8 @@ export function useSourceDocumentEntryMutations({
         onCommitted?: ((result: PartialBatchCommandResult) => void) | undefined;
       }
   >(ledgerId, {
+    refreshMode: "background",
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", sourceDocumentId),
     invalidates: ["documents", "stats"],
     mutationFn: async (input) => {
       const entryIds = Array.isArray(input) ? input : input.entryIds;

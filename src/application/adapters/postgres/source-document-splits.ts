@@ -9,6 +9,10 @@ import type {
   VersionedCommandResult,
 } from "@/modules/source-document/contracts";
 import { postgresFxRateBook } from "./exchange-rate";
+import { getSourceDocumentInTransaction } from "./source-document-reads/list";
+import { getSourceDocumentLightForLedger } from "@/modules/source-document/application/queries/get-source-document-light";
+import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { copyRevisionFiles, createCompletedRevision } from "./ledger-projections";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 
@@ -48,6 +52,8 @@ export async function splitSourceDocumentAtomically(input: {
   ledgerEntryIds: string[];
   entryDate: string;
 }): Promise<VersionedCommandResult<SplitSourceDocumentResultDto>> {
+  const startedAt = performance.now();
+  const requestId = crypto.randomUUID();
   const [ledger, document] = await Promise.all([
     db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)),
@@ -95,15 +101,20 @@ export async function splitSourceDocumentAtomically(input: {
   if (movedEntries.length >= initialEntries.length) {
     throw new ConflictError("The source document must retain at least one entry");
   }
-  const conversions = await postgresFxRateBook.convertBatch(
-    movedEntries.map((entry) => ({
-      amount: entry.amount,
-      from: normalizeCurrency(entry.currency),
-      date: input.entryDate,
-    })),
-    ledger.mainCurrency
-  );
+  const preparedAt = performance.now();
+  const conversions =
+    document.entryDate === input.entryDate
+      ? null
+      : await postgresFxRateBook.convertBatch(
+          movedEntries.map((entry) => ({
+            amount: entry.amount,
+            from: normalizeCurrency(entry.currency),
+            date: input.entryDate,
+          })),
+          ledger.mainCurrency
+        );
   const movedIndexById = new Map(movedEntries.map((entry, index) => [entry.id, index]));
+  const convertedAt = performance.now();
 
   const splitSourceDocumentId = crypto.randomUUID();
   const outcome = await db.transaction(async (tx) => {
@@ -187,12 +198,14 @@ export async function splitSourceDocumentAtomically(input: {
         source_document_id: isMoved ? splitSourceDocumentId : input.sourceDocumentId,
         source_document_revision_id: isMoved ? splitRevision.id : sourceRevision.id,
         position: isMoved ? splitPosition++ : sourcePosition++,
-        converted_amount: isMoved
-          ? roundToCurrency(conversions[movedIndex]!.convertedAmount, lockedLedger.mainCurrency)
-          : entry.convertedAmount,
-        exchange_rate: isMoved
-          ? round(conversions[movedIndex]!.exchangeRate, 12)
-          : entry.exchangeRate,
+        converted_amount:
+          isMoved && conversions != null
+            ? roundToCurrency(conversions[movedIndex]!.convertedAmount, lockedLedger.mainCurrency)
+            : entry.convertedAmount,
+        exchange_rate:
+          isMoved && conversions != null
+            ? round(conversions[movedIndex]!.exchangeRate, 12)
+            : entry.exchangeRate,
       };
     });
     const updatedEntries = await tx.execute(sql`
@@ -257,8 +270,28 @@ export async function splitSourceDocumentAtomically(input: {
           eq(sourceDocuments.id, splitSourceDocumentId)
         )
       );
-    return { movedEntryCount: movedEntries.length } as const;
+    const sourceDocument = await getSourceDocumentLightForLedger(
+      input.ledgerId,
+      input.sourceDocumentId,
+      {
+        get: (ledgerId, id) => getSourceDocumentInTransaction(tx, ledgerId, id),
+      }
+    );
+    if (sourceDocument == null) throw new NotFoundError("Source document");
+    return { movedEntryCount: movedEntries.length, sourceDocument } as const;
   });
+  logger.debug(
+    {
+      requestId,
+      sourceDocumentSubject: logIdentifier("source-document", input.sourceDocumentId),
+      entryCount: initialEntries.length,
+      movedEntryCount: movedEntries.length,
+      preparationMs: Math.round(preparedAt - startedAt),
+      conversionMs: Math.round(convertedAt - preparedAt),
+      transactionMs: Math.round(performance.now() - convertedAt),
+    },
+    "Source document split timing"
+  );
 
   if ("staleVersion" in outcome) {
     return {
@@ -274,6 +307,7 @@ export async function splitSourceDocumentAtomically(input: {
     sourceDocumentId: input.sourceDocumentId,
     version: input.expectedVersion + 1,
     data: {
+      sourceDocument: outcome.sourceDocument,
       splitSourceDocumentId,
       splitVersion: 1,
       movedEntryCount: outcome.movedEntryCount,

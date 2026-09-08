@@ -108,6 +108,7 @@ export interface SaveSourceDocumentChangesResultDto {
 export type SplitSourceDocumentInput = z.infer<typeof splitSourceDocumentInputSchema>;
 
 export interface SplitSourceDocumentResultDto {
+  sourceDocument: import("./document-contracts").SourceDocumentLightWithEntriesDto;
   splitSourceDocumentId: string;
   splitVersion: 1;
   movedEntryCount: number;

@@ -11,8 +11,8 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
-import { scheduleProcessingAfter } from "./schedule-processing";
+import { scheduleProcessingRecoveryAfter } from "@/application/processing/schedule-processing-recovery";
+import { scheduleProcessingAfter } from "@/application/processing/schedule-processing";
 import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
 import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 

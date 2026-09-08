@@ -696,12 +696,17 @@ export async function getTargetSourceDocument(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<SourceDocumentDto | null> {
-  return db.transaction(
-    async (tx) => {
-      const snapshot = await loadSourceDocumentDetailSnapshot(tx, ledgerId, sourceDocumentId);
-      if (snapshot == null) return null;
-      return mapSourceDocumentDetail(snapshot.row, snapshot.hydration);
-    },
-    { isolationLevel: "repeatable read", accessMode: "read only" }
-  );
+  return db.transaction((tx) => getSourceDocumentInTransaction(tx, ledgerId, sourceDocumentId), {
+    isolationLevel: "repeatable read",
+    accessMode: "read only",
+  });
+}
+
+export async function getSourceDocumentInTransaction(
+  tx: PostgresTransaction,
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<SourceDocumentDto | null> {
+  const snapshot = await loadSourceDocumentDetailSnapshot(tx, ledgerId, sourceDocumentId);
+  return snapshot == null ? null : mapSourceDocumentDetail(snapshot.row, snapshot.hydration);
 }

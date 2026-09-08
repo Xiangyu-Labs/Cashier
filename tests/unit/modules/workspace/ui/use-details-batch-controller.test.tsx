@@ -85,7 +85,7 @@ describe("useDetailsBatchController", () => {
     vi.clearAllMocks();
   });
 
-  it("closes delete confirmation before refresh settles and stays pending", async () => {
+  it("closes delete confirmation and finishes before refresh settles", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -109,7 +109,7 @@ describe("useDetailsBatchController", () => {
     });
 
     await act(async () => Promise.resolve());
-    expect(result.current.remove.isPending).toBe(true);
+    expect(result.current.remove.isPending).toBe(false);
     expect(result.current.deleteDialogOpen).toBe(false);
     expect(result.current.selectedIds).toEqual([]);
 
@@ -119,7 +119,7 @@ describe("useDetailsBatchController", () => {
     });
   });
 
-  it("closes the date dialog before refresh settles and stays pending", async () => {
+  it("closes the date dialog and finishes before refresh settles", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -149,7 +149,7 @@ describe("useDetailsBatchController", () => {
     });
 
     await act(async () => Promise.resolve());
-    expect(result.current.updateDates.isPending).toBe(true);
+    expect(result.current.updateDates.isPending).toBe(false);
     expect(result.current.dateDialogOpen).toBe(false);
     expect(result.current.selectedIds).toEqual([]);
 
@@ -159,7 +159,7 @@ describe("useDetailsBatchController", () => {
     });
   });
 
-  it("clears selection before refresh and keeps the batch update pending", async () => {
+  it("clears selection and finishes the batch update before refresh", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -180,7 +180,7 @@ describe("useDetailsBatchController", () => {
     });
 
     await act(async () => Promise.resolve());
-    expect(result.current.update.isPending).toBe(true);
+    expect(result.current.update.isPending).toBe(false);
     expect(result.current.selectedIds).toEqual([]);
 
     await act(async () => {

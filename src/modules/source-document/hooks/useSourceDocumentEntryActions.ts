@@ -62,6 +62,7 @@ export function useSourceDocumentEntryActions({
   t,
   tCommon,
 }: UseSourceDocumentEntryActionsOptions) {
+  const feedbackToastId = `source-document-entry:${ledgerId}:${sourceDocument?.id ?? ""}`;
   const handleOpenSplit = useCallback(() => {
     if (busy || selectedIds.length === 0) return;
     if (selectedIds.length >= ledgerEntries.length) {
@@ -73,6 +74,7 @@ export function useSourceDocumentEntryActions({
 
   const handleSplit = useCallback(
     async (entryDate: string) => {
+      if (busy) return;
       const expectedVersion = sourceDocument?.version;
       if (expectedVersion == null || onSplit == null) {
         toast.error(t("splitFailed"));
@@ -88,6 +90,7 @@ export function useSourceDocumentEntryActions({
         setShowSplitDialog(false);
         clearSelection();
         toast.success(t("splitSuccess", { count: result.movedEntryCount }), {
+          id: feedbackToastId,
           action: {
             label: t("viewSplitBill"),
             onClick: () =>
@@ -109,6 +112,8 @@ export function useSourceDocumentEntryActions({
       }
     },
     [
+      busy,
+      feedbackToastId,
       sourceDocument?.version,
       onSplit,
       t,
@@ -131,7 +136,7 @@ export function useSourceDocumentEntryActions({
       setIsSaving(true);
       try {
         await onAddEntry(data);
-        toast.success(t("addEntrySuccess"));
+        toast.success(t("addEntrySuccess"), { id: feedbackToastId, action: null });
         return true;
       } catch (error) {
         toast.error(
@@ -144,7 +149,7 @@ export function useSourceDocumentEntryActions({
         setIsSaving(false);
       }
     },
-    [onAddEntry, busy, setIsSaving, t]
+    [onAddEntry, busy, feedbackToastId, setIsSaving, t]
   );
 
   const handleDeleteEntry = useCallback(
@@ -153,7 +158,7 @@ export function useSourceDocumentEntryActions({
       setIsSaving(true);
       try {
         await onDeleteEntry(entryId, () => setPendingDeleteEntryId(null));
-        toast.success(tCommon("deleteSuccess"));
+        toast.success(tCommon("deleteSuccess"), { id: feedbackToastId, action: null });
         return true;
       } catch (error) {
         toast.error(
@@ -166,7 +171,7 @@ export function useSourceDocumentEntryActions({
         setIsSaving(false);
       }
     },
-    [onDeleteEntry, busy, setIsSaving, setPendingDeleteEntryId, t, tCommon]
+    [onDeleteEntry, busy, feedbackToastId, setIsSaving, setPendingDeleteEntryId, t, tCommon]
   );
 
   const handleRequestDeleteEntry = useCallback(

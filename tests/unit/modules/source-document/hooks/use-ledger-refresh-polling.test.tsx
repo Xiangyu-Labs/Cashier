@@ -13,7 +13,7 @@ const { getStreamRefreshActionMock, applyStreamRefreshToCacheMock } = vi.hoisted
   applyStreamRefreshToCacheMock: vi.fn(),
 }));
 
-vi.mock("@/modules/source-document/server-actions/refresh", () => ({
+vi.mock("@/lib/queries/ledger-query-client", () => ({
   getStreamRefreshAction: getStreamRefreshActionMock,
 }));
 vi.mock("@/modules/source-document/hooks/stream-refresh-cache", () => ({

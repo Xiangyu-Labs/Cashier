@@ -81,7 +81,8 @@ function projectionEntriesChanged(
 async function prepareDateReestimate(
   ledgerId: string,
   sourceDocumentIds: readonly string[],
-  entryDate: string
+  entryDate: string,
+  changedDateIds: ReadonlySet<string>
 ): Promise<DateReestimatePlan> {
   const ledger = await db.query.ledgers.findFirst({
     where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
@@ -90,13 +91,26 @@ async function prepareDateReestimate(
   if (ledger == null) throw new ConflictError("Ledger changed before the date update");
   const initialEntries = await loadProjectionEntriesForDocuments(db, ledgerId, sourceDocumentIds);
 
-  const conversions = await postgresFxRateBook.convertBatch(
-    initialEntries.map((entry) => ({
+  const affectedEntries = initialEntries.filter((entry) =>
+    changedDateIds.has(entry.sourceDocumentId!)
+  );
+  const changedConversions = await postgresFxRateBook.convertBatch(
+    affectedEntries.map((entry) => ({
       amount: entry.amount,
       from: normalizeCurrency(entry.currency, ledger.mainCurrency),
       date: entryDate,
     })),
     ledger.mainCurrency
+  );
+  const conversionsById = new Map(
+    affectedEntries.map((entry, index) => [entry.id, changedConversions[index]!])
+  );
+  const conversions = initialEntries.map(
+    (entry) =>
+      conversionsById.get(entry.id) ?? {
+        convertedAmount: entry.convertedAmount!,
+        exchangeRate: entry.exchangeRate!,
+      }
   );
 
   return {
@@ -375,10 +389,15 @@ export async function updateDocuments({
   ) {
     throw new ConflictError("Source document is not editable");
   }
+  const changedDateIds = new Set(
+    initialDocuments
+      .filter((document) => data.entryDate !== undefined && document.entryDate !== data.entryDate)
+      .map((document) => document.id)
+  );
   const plan =
-    data.entryDate === undefined
+    data.entryDate === undefined || changedDateIds.size === 0
       ? null
-      : await prepareDateReestimate(ledgerId, requestedIds, data.entryDate);
+      : await prepareDateReestimate(ledgerId, requestedIds, data.entryDate, changedDateIds);
 
   const transactionResult = await db.transaction(async (tx) => {
     if (plan != null) {
@@ -528,6 +547,19 @@ export async function updateDocuments({
           entryDate: data.entryDate!,
           ...(data.title === undefined ? {} : { title: data.title }),
           entries: entries.map((entry) => {
+            if (!changedDateIds.has(document.id)) {
+              return {
+                id: entry.id,
+                categoryId: entry.categoryId,
+                amount: entry.amount,
+                currency: entry.currency,
+                itemName: entry.itemName,
+                description: entry.description,
+                convertedAmount: entry.convertedAmount,
+                exchangeRate: entry.exchangeRate,
+                createdAt: entry.createdAt.toISOString(),
+              };
+            }
             const conversion = conversionByEntryId.get(entry.id);
             if (conversion == null) {
               throw new ConflictError("Ledger entries changed before the date update");

@@ -1,6 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import type { SourceDocumentLightWithEntriesDto } from "../contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { saveSourceDocumentChangesAction } from "@/modules/source-document/server-actions/update";
 import { splitSourceDocumentAction } from "@/modules/source-document/server-actions/split";
@@ -53,6 +56,7 @@ export function useSourceDocumentDetailMutations({
   onClose,
 }: UseSourceDocumentDetailMutationsOptions) {
   const tCommon = useTranslations("Common");
+  const queryClient = useQueryClient();
 
   const { deleteDocumentMutation } = useSourceDocumentRecordMutations({
     id,
@@ -91,6 +95,8 @@ export function useSourceDocumentDetailMutations({
     },
     successMessage: null,
     errorMessage: null,
+    refreshMode: "background",
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", id),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (_result, input) => input.onCommitted?.(),
   });
@@ -99,6 +105,7 @@ export function useSourceDocumentDetailMutations({
     SplitSourceDocumentResultDto,
     Omit<SplitSourceDocumentInput, "sourceDocumentId">
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: async (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
@@ -108,9 +115,25 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    onSuccess: async (result) => {
+      const key = queryKeys.sourceDocument(ledgerId!, id);
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      const document = result.sourceDocument;
+      queryClient.setQueryData<SourceDocumentLightWithEntriesDto>(key, (previous) =>
+        previous != null && previous.version > document.version
+          ? previous
+          : {
+              ...document,
+              hasImages: document.hasImages ?? false,
+              ledgerEntries: document.ledgerEntries ?? [],
+            }
+      );
+    },
   });
 
   const addEntryMutation = useLedgerMutation<{ ledgerEntryId: string }, AddEntryData>(ledgerId, {
+    refreshMode: "background",
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", id),
     invalidates: ["documents", "stats"],
     mutationFn: async (data: AddEntryData) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
@@ -144,6 +167,8 @@ export function useSourceDocumentDetailMutations({
     },
     successMessage: null,
     errorMessage: null,
+    refreshMode: "background",
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", id),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (_result, input) => input.onCommitted?.(),
   });

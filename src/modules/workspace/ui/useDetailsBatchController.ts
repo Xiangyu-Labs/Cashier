@@ -79,6 +79,7 @@ export function useDetailsBatchController(
     { ledgerEntryIds: string[]; affectedCount: number },
     { categoryId?: string | null; currency?: string | null }
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: async (data: { categoryId?: string | null; currency?: string | null }) => {
       const result = await batchUpdateLedgerEntriesAction(
@@ -101,6 +102,7 @@ export function useDetailsBatchController(
     Awaited<ReturnType<typeof batchDeleteLedgerEntriesAction>>,
     void
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: () =>
       batchDeleteLedgerEntriesAction(
@@ -134,6 +136,7 @@ export function useDetailsBatchController(
     onError: () => toast.error(tCommon("error")),
   });
   const updateDates = useLedgerMutation<{ impact: BatchDateImpact }, void>(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: async () => {
       const snapshot = dateSelectionSnapshot;

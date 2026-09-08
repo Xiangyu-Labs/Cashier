@@ -26,10 +26,10 @@ vi.mock("@/application/server-composition-root", () => ({
   },
 }));
 
-vi.mock("@/modules/source-document/server-actions/schedule-processing", () => ({
+vi.mock("@/application/processing/schedule-processing", () => ({
   scheduleProcessingAfter: vi.fn(),
 }));
-vi.mock("@/modules/source-document/server-actions/schedule-processing-recovery", () => ({
+vi.mock("@/application/processing/schedule-processing-recovery", () => ({
   scheduleProcessingRecoveryAfter: vi.fn(),
 }));
 vi.mock("@/lib/storage/image-processing", () => ({ processImage: vi.fn() }));

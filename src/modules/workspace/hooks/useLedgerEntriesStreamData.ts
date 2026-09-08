@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSourceDocumentStream } from "@/modules/source-document/hooks/useSourceDocumentStream";
-import { getStreamTotalAction } from "@/modules/source-document/server-actions/queries";
+import { getStreamTotalAction } from "@/lib/queries/ledger-query-client";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 

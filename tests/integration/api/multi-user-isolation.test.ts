@@ -9,7 +9,7 @@ import { getTestDb } from "../../setup";
 import { TEST_USER_ID, createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getLedgerAction } from "@/modules/ledger/server-actions/get";
 import { updateLedgerSettingsAction } from "@/modules/ledger/server-actions/update";
-import { getLedgerEntriesAction } from "@/modules/ledger/server-actions/entries";
+import { getLedgerEntriesAction } from "@/modules/ledger/server/list-entries";
 import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/categories";
 import { getServiceCredentialsAction } from "@/modules/ledger/server-actions/credentials";
 

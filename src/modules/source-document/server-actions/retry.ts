@@ -13,8 +13,8 @@ import {
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
-import { scheduleProcessingAfter } from "./schedule-processing";
+import { scheduleProcessingRecoveryAfter } from "@/application/processing/schedule-processing-recovery";
+import { scheduleProcessingAfter } from "@/application/processing/schedule-processing";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.

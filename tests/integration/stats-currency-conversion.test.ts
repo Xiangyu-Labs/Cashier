@@ -6,7 +6,7 @@ import {
   TEST_USER_ID,
 } from "../helpers/schema-setup";
 import { ledgerEntries, ledgers, currencyRates, sourceDocuments } from "@/persistence";
-import { getLedgerStatsAction } from "@/modules/ledger/server-actions/stats";
+import { getLedgerStatsAction } from "@/modules/ledger/server/stats";
 import { eq } from "drizzle-orm";
 
 describe("Stats Currency Conversion", () => {

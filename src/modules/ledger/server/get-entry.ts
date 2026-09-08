@@ -1,4 +1,3 @@
-"use server";
 import { withLedgerAccess } from "../access";
 import { serverComposition } from "@/application/server-composition-root";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";

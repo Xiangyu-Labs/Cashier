@@ -85,21 +85,79 @@ test("selection alignment, discard confirmation and one-tap split navigation", a
   await add.getByLabel("Amount", { exact: true }).fill("2.00");
   await add.getByRole("button", { name: "Add entry", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(dialog.getByRole("button", { name: "Select", exact: true })).toBeEnabled();
+  await dialog.getByRole("button", { name: "Add entry", exact: true }).click();
+  await add.getByLabel("Name", { exact: true }).fill("Third item");
+  await add.getByLabel("Amount", { exact: true }).fill("3.00");
+  await add.getByRole("button", { name: "Add entry", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(dialog.getByRole("button", { name: "Select", exact: true })).toBeEnabled();
+  await expect(dialog.getByText("Third item", { exact: true })).toBeVisible();
+  let releaseRefresh!: () => void;
+  let heldReads = 0;
+  const refreshGate = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  await page.route("**/api/ledger-queries", async (route) => {
+    const query = route.request().postDataJSON().query;
+    if (["detail", "stream", "total", "summary", "stats"].includes(query)) {
+      heldReads++;
+      await refreshGate;
+    }
+    await route.continue();
+  });
   await dialog.getByRole("button", { name: "Select", exact: true }).click();
   await dialog.getByRole("checkbox", { name: "Select Second item", exact: true }).click();
   await dialog.getByRole("button", { name: "Split", exact: true }).click();
+  const firstSplitStarted = Date.now();
   await page
     .getByRole("dialog")
     .last()
     .getByRole("button", { name: "Split bill", exact: true })
     .click();
+  await expect(dialog.getByRole("checkbox", { name: `Select ${name}`, exact: true })).toBeEnabled({
+    timeout: 5_000,
+  });
+  const firstSplitMs = Date.now() - firstSplitStarted;
+  await expect(
+    dialog.getByRole("checkbox", { name: "Select Second item", exact: true })
+  ).toHaveCount(0);
+  await expect.poll(() => heldReads).toBeGreaterThan(0);
+  // The next split must not wait for any list, stats, or detail read to finish.
+  await dialog.getByRole("checkbox", { name: "Select Third item", exact: true }).click();
+  await dialog.getByRole("button", { name: "Split", exact: true }).click();
+  const secondSplitStarted = Date.now();
+  await page
+    .getByRole("dialog")
+    .last()
+    .getByRole("button", { name: "Split bill", exact: true })
+    .click();
+  await expect(dialog.getByRole("checkbox", { name: `Select ${name}`, exact: true })).toBeEnabled({
+    timeout: 5_000,
+  });
+  await expect(
+    dialog.getByRole("checkbox", { name: "Select Third item", exact: true })
+  ).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("continuous-split.png"), fullPage: true });
+  await testInfo.attach("split-timing", {
+    body: JSON.stringify({
+      firstSplitMs,
+      secondSplitMs: Date.now() - secondSplitStarted,
+      heldReads,
+    }),
+    contentType: "application/json",
+  });
+  releaseRefresh();
   const originalUrl = page.url();
-  const jump = page.getByRole("button", { name: "View new bill", exact: true });
+  await expect(page.getByRole("button", { name: "View new bill", exact: true })).toHaveCount(1);
+  const jump = page.getByRole("button", { name: "View new bill", exact: true }).first();
   await expect(jump).toBeVisible();
   const jumpBox = await jump.boundingBox();
   expect(jumpBox!.height + 0.001).toBeGreaterThanOrEqual(44);
   await activate(jump);
   await expect(page).not.toHaveURL(originalUrl);
-  await expect(page.getByRole("dialog")).toContainText("Second item");
+  await expect(page.getByRole("dialog")).toContainText("Third item");
   await page.screenshot({ path: testInfo.outputPath("split-navigation.png"), fullPage: true });
+  await page.reload();
+  await expect(page.getByRole("dialog")).toContainText("Third item");
 });

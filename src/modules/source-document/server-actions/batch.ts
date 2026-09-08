@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 import { versionedTargetsSchema } from "@/modules/source-document/contract-schemas";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { scheduleProcessingAfter } from "./schedule-processing";
+import { scheduleProcessingAfter } from "@/application/processing/schedule-processing";
 
 const PROCESSING_UNAVAILABLE_CODES = new Set([
   "AI_JSON_REPAIR_FAILED",

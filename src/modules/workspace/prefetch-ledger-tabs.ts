@@ -15,7 +15,7 @@ import {
 } from "./ledger-tab-query-descriptors";
 
 type LedgerEntriesPage = Awaited<
-  ReturnType<(typeof import("@/modules/ledger/server-actions/entries"))["getLedgerEntriesAction"]>
+  ReturnType<(typeof import("@/lib/queries/ledger-query-client"))["getLedgerEntriesAction"]>
 >;
 
 export async function prefetchDetailsTabQuery(
@@ -24,10 +24,8 @@ export async function prefetchDetailsTabQuery(
   periodParams: PeriodParams,
   advancedFilters: LedgerAdvancedFilters
 ) {
-  const [{ getLedgerEntriesAction }, { getLedgerStatsAction }] = await Promise.all([
-    import("@/modules/ledger/server-actions/entries"),
-    import("@/modules/ledger/server-actions/stats"),
-  ]);
+  const { getLedgerEntriesAction, getLedgerStatsAction } =
+    await import("@/lib/queries/ledger-query-client");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const descriptor = buildDetailsQueryDescriptor({
@@ -69,7 +67,7 @@ export async function prefetchStatsTabQuery(
   ledgerId: string,
   statsState: StatsUrlState = { range: "month", offset: 0, view: "heatmap" }
 ) {
-  const { getEnhancedStats } = await import("@/modules/stats/server-actions/get-enhanced-stats");
+  const { getEnhancedStats } = await import("@/lib/queries/ledger-query-client");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const fixedTimeZone = ledger?.settings.timeZone ?? runtimeEnv.timeZone;

@@ -29,14 +29,14 @@ describe("getLedgerEntryAction", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("throws UnauthorizedError for unauthorized ledger", async () => {
-    const { getLedgerEntryAction } = await import("@/modules/ledger/server-actions/get-entry");
+    const { getLedgerEntryAction } = await import("@/modules/ledger/server/get-entry");
     await expect(getLedgerEntryAction("unauthorized-ledger", "entry-1")).rejects.toBeInstanceOf(
       UnauthorizedError
     );
   }, 30_000);
 
   it("returns entry for authorized ledger", async () => {
-    const { getLedgerEntryAction } = await import("@/modules/ledger/server-actions/get-entry");
+    const { getLedgerEntryAction } = await import("@/modules/ledger/server/get-entry");
     const result = await getLedgerEntryAction("valid-ledger", ENTRY_ID);
     expect(result).toEqual({ id: ENTRY_ID, title: "Test" });
     expect(getEntry).toHaveBeenCalledWith(ENTRY_ID, "valid-ledger");

@@ -65,6 +65,11 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
 - Treat Infinite Query pages and detail queries as independent server-state views. Ledger mutations
   invalidate ledger-scoped resource groups; do not patch unrelated filtered windows or maintain a
   canonical client entity store.
+- A committed aggregate snapshot may replace its exact detail query, with older responses prevented
+  from rolling back its version. Continuous splitting uses this snapshot for the next command.
+  Background list/statistics refreshes must not keep a successful command pending; editors without
+  a committed snapshot wait only for their target detail. Browser ledger reads use the session query
+  route rather than the Server Action queue, including tab prefetches.
 - Derive render state directly, use functional state updates, and avoid module barrel imports in
   client entrypoints.
 - Tabs own their query loading and error states. Statistics retain the last successful data with

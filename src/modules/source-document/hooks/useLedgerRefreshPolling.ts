@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getStreamRefreshAction } from "@/modules/source-document/server-actions/refresh";
+import { getStreamRefreshAction } from "@/lib/queries/ledger-query-client";
 import type { LedgerRefreshResult } from "@/modules/source-document/contract-refresh";
 import { queryKeys } from "@/lib/query-keys";
 import { withQueryTimeout } from "@/lib/query-timeout";

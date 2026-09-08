@@ -7,6 +7,9 @@ import {
 
 export interface UseLedgerMutationOptions<TData, TVariables> {
   mutationFn: (variables: TVariables) => Promise<TData>;
+  refreshMode?: "wait" | "background";
+  /** In background mode, only this detail view must be ready before the next edit. */
+  refreshQueryKey?: readonly unknown[];
   invalidates:
     | readonly LedgerInvalidationGroup[]
     | ((data: TData, variables: TVariables) => readonly LedgerInvalidationGroup[]);
@@ -29,6 +32,8 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
   const queryClient = useQueryClient();
   const {
     mutationFn,
+    refreshMode = "wait",
+    refreshQueryKey,
     invalidates,
     successMessage,
     errorMessage,
@@ -52,20 +57,33 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
       if (ledgerId != null && ledgerId !== "") {
         const groups =
           typeof invalidates === "function" ? invalidates(data, variables) : invalidates;
-        try {
-          await invalidateLedgerQueries(queryClient, ledgerId, groups);
-        } catch (invalidationError) {
-          console.error("[useLedgerMutation] resource invalidation failed", {
-            error: invalidationError,
-          });
-          if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
-          globalThis.setTimeout(() => {
-            void invalidateLedgerQueries(queryClient, ledgerId, groups).catch((retryError) => {
-              console.error("[useLedgerMutation] resource invalidation retry failed", {
-                error: retryError,
-              });
+        const refresh = async () => {
+          try {
+            await invalidateLedgerQueries(queryClient, ledgerId, groups);
+          } catch (invalidationError) {
+            console.error("[useLedgerMutation] resource invalidation failed", {
+              error: invalidationError,
             });
-          }, 1_000);
+            if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
+            globalThis.setTimeout(() => {
+              void invalidateLedgerQueries(queryClient, ledgerId, groups).catch((retryError) => {
+                console.error("[useLedgerMutation] resource invalidation retry failed", {
+                  error: retryError,
+                });
+              });
+            }, 1_000);
+          }
+        };
+        if (refreshMode === "background") {
+          void refresh();
+          if (refreshQueryKey != null) {
+            await queryClient.refetchQueries(
+              { queryKey: refreshQueryKey, exact: true, type: "active" },
+              { cancelRefetch: false }
+            );
+          }
+        } else {
+          await refresh();
         }
       }
     },

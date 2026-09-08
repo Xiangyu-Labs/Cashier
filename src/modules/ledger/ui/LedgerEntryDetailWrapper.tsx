@@ -2,7 +2,7 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerEntryAction } from "@/modules/ledger/server-actions/get-entry";
+import { getLedgerEntryAction } from "@/lib/queries/ledger-query-client";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
@@ -60,6 +60,8 @@ export function LedgerEntryDetailWrapper({
       onCommitted: () => void;
     }
   >(ledgerId, {
+    refreshMode: "background",
+    refreshQueryKey: queryKeys.ledgerEntry(ledgerId, id),
     invalidates: ["documents", "stats"],
     mutationFn: async ({ data, expectedVersion }) => {
       if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
@@ -85,6 +87,7 @@ export function LedgerEntryDetailWrapper({
     { ledgerEntryId: string; deleted: true },
     void | (() => void)
   >(ledgerId, {
+    refreshMode: "background",
     invalidates: ["documents", "stats"],
     mutationFn: async () => {
       if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");

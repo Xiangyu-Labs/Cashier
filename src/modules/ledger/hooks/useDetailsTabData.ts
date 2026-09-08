@@ -2,8 +2,7 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getLedgerEntriesAction } from "@/modules/ledger/server-actions/entries";
-import { getLedgerStatsAction } from "@/modules/ledger/server-actions/stats";
+import { getLedgerEntriesAction, getLedgerStatsAction } from "@/lib/queries/ledger-query-client";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";

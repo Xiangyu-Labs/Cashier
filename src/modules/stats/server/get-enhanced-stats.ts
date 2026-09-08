@@ -1,4 +1,3 @@
-"use server";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import { getEnhancedStatsQuery } from "../application/queries/get-enhanced-stats";
 import { parseEnhancedStatsInput, type GetEnhancedStatsInput } from "../contract-schemas";

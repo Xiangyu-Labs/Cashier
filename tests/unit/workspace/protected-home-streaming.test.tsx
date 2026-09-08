@@ -28,7 +28,7 @@ vi.mock("@/modules/workspace/application/queries/get-ledger-page-bootstrap", () 
   getLedgerPageBootstrap: getLedgerPageBootstrapMock,
 }));
 
-vi.mock("@/modules/source-document/server-actions/schedule-processing-recovery", () => ({
+vi.mock("@/application/processing/schedule-processing-recovery", () => ({
   scheduleProcessingRecoveryAfter: scheduleProcessingRecoveryAfterMock,
 }));
 

@@ -119,7 +119,7 @@ describe("source document mutation toast ownership", () => {
     expect(toastErrorMock).toHaveBeenCalledTimes(1);
   });
 
-  it("applies deletion feedback before refresh settles and remains pending", async () => {
+  it("applies deletion feedback and finishes before refresh settles", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
@@ -150,7 +150,7 @@ describe("source document mutation toast ownership", () => {
     });
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess"));
-    expect(result.current.deleteSourceDocument.isPending).toBe(true);
+    expect(result.current.deleteSourceDocument.isPending).toBe(false);
     expect(onCommitted).toHaveBeenCalledOnce();
     expect(onCommitted.mock.invocationCallOrder[0]).toBeLessThan(
       toastSuccessMock.mock.invocationCallOrder[0]!

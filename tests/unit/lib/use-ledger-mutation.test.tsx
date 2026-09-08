@@ -30,6 +30,86 @@ function setup() {
 }
 
 describe("useLedgerMutation", () => {
+  it("waits only for the required detail and joins its existing refresh", async () => {
+    const { queryClient, wrapper } = setup();
+    const key = queryKeys.sourceDocument("ledger-1", "document-1");
+    let resolveDetail!: () => void;
+    let resolveList!: () => void;
+    let refreshing = false;
+    const detailGate = new Promise<void>((resolve) => {
+      resolveDetail = resolve;
+    });
+    const listGate = new Promise<void>((resolve) => {
+      resolveList = resolve;
+    });
+    const detailFn = vi.fn(async () => {
+      if (refreshing) await detailGate;
+      return "detail";
+    });
+    const listFn = vi.fn(async () => {
+      if (refreshing) await listGate;
+      return "list";
+    });
+    const { result } = renderHook(
+      () => ({
+        detail: useQuery({ queryKey: key, queryFn: detailFn }),
+        list: useQuery({ queryKey: queryKeys.ledgerEntriesPrefix("ledger-1"), queryFn: listFn }),
+        mutation: useLedgerMutation("ledger-1", {
+          refreshMode: "background",
+          refreshQueryKey: key,
+          invalidates: ["documents"],
+          mutationFn: async () => "saved",
+        }),
+      }),
+      { wrapper }
+    );
+    await waitFor(() =>
+      expect(result.current.detail.isSuccess && result.current.list.isSuccess).toBe(true)
+    );
+    refreshing = true;
+    let committed!: Promise<string>;
+    act(() => {
+      committed = result.current.mutation.mutateAsync();
+    });
+    await waitFor(() => expect(detailFn).toHaveBeenCalledTimes(2));
+    expect(result.current.mutation.isPending).toBe(true);
+    await act(async () => {
+      resolveDetail();
+      await committed;
+    });
+    await waitFor(() => expect(result.current.mutation.isPending).toBe(false));
+    expect(result.current.list.isFetching).toBe(true);
+    expect(detailFn).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      resolveList();
+    });
+    queryClient.clear();
+  });
+  it("background refresh does not prolong a committed mutation", async () => {
+    const { queryClient, wrapper } = setup();
+    let finish!: () => void;
+    vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const { result } = renderHook(
+      () =>
+        useLedgerMutation("ledger-1", {
+          refreshMode: "background",
+          invalidates: ["documents"],
+          mutationFn: async () => "saved",
+        }),
+      { wrapper }
+    );
+    await act(async () => {
+      await expect(result.current.mutateAsync()).resolves.toBe("saved");
+    });
+    expect(result.current.isPending).toBe(false);
+    await act(async () => {
+      finish();
+    });
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

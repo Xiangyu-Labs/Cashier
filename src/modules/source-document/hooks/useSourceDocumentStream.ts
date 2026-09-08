@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useCallback } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { listStreamPageAction } from "@/modules/source-document/server-actions/queries";
+import { listStreamPageAction } from "@/lib/queries/ledger-query-client";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { ListStreamPageInput } from "../application/queries/list-stream-page";
 import { queryKeys } from "@/lib/query-keys";

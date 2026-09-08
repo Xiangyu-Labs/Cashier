@@ -26,7 +26,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/modules/ledger/server-actions/get-entry", () => ({
+vi.mock("@/lib/queries/ledger-query-client", () => ({
   getLedgerEntryAction: (...args: unknown[]) => getLedgerEntryAction(...args),
 }));
 

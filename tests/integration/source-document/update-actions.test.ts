@@ -5,6 +5,7 @@ import { currencyRates, ledgerEntries, sourceDocuments, ledgers } from "@/persis
 import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";
 import { eq } from "drizzle-orm";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
+import { postgresFxRateBook } from "@/application/adapters/postgres/exchange-rate";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -29,6 +30,77 @@ describe("Source Document Update Actions", () => {
   });
 
   describe("batchUpdateSourceDocumentsAction", () => {
+    it("converts only changed dates in a mixed batch and preserves metadata-only FX", async () => {
+      const db = getTestDb();
+      const ledger = createLedgerData({ userId: testUserId, mainCurrency: "USD" });
+      await db.insert(ledgers).values(ledger);
+      const documents = ["2024-03-14", "2024-03-15"].map((entryDate) =>
+        createSourceDocumentData(ledger.id, { status: "completed", entryDate })
+      );
+      await db.insert(sourceDocuments).values(documents);
+      const ids = documents.map(() => crypto.randomUUID());
+      for (const [index, document] of documents.entries()) {
+        await db.insert(ledgerEntries).values({
+          id: ids[index]!,
+          ledgerId: ledger.id,
+          sourceDocumentId: document.id,
+          amount: "100",
+          currency: "MYR",
+          itemName: "Fictional item",
+          convertedAmount: "23",
+          exchangeRate: "0.23",
+        });
+        await activateTestSourceDocumentProjection(db, document.id);
+      }
+      const convert = vi
+        .spyOn(postgresFxRateBook, "convertBatch")
+        .mockResolvedValue([{ convertedAmount: "24", exchangeRate: "0.24" }]);
+      try {
+        await batchUpdateSourceDocumentsAction(ledger.id, {
+          targets: documents.map((document) => ({
+            sourceDocumentId: document.id,
+            expectedVersion: 1,
+          })),
+          data: { entryDate: "2024-03-15", title: "Updated title" },
+        });
+        expect(convert).toHaveBeenCalledExactlyOnceWith(
+          [{ amount: "100.000", from: "MYR", date: "2024-03-15" }],
+          "USD"
+        );
+        expect(
+          await db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, ids[0]!) })
+        ).toMatchObject({ convertedAmount: "24.000" });
+        expect(
+          await db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, ids[1]!) })
+        ).toMatchObject({ convertedAmount: "23.000", exchangeRate: "0.230000000000" });
+      } finally {
+        convert.mockRestore();
+      }
+    });
+    it("does not prepare FX or advance the version when the date is unchanged", async () => {
+      const db = getTestDb();
+      const ledger = createLedgerData({ userId: testUserId, mainCurrency: "USD" });
+      await db.insert(ledgers).values(ledger);
+      const document = createSourceDocumentData(ledger.id, {
+        status: "completed",
+        entryDate: "2024-03-14",
+      });
+      await db.insert(sourceDocuments).values(document);
+      await activateTestSourceDocumentProjection(db, document.id);
+      const convert = vi.spyOn(postgresFxRateBook, "convertBatch");
+      try {
+        await batchUpdateSourceDocumentsAction(ledger.id, {
+          targets: [{ sourceDocumentId: document.id, expectedVersion: 1 }],
+          data: { entryDate: "2024-03-14" },
+        });
+        expect(convert).not.toHaveBeenCalled();
+        expect(
+          await db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, document.id) })
+        ).toMatchObject({ stateVersion: 1 });
+      } finally {
+        convert.mockRestore();
+      }
+    });
     it("should batch update multiple source documents", async () => {
       const db = getTestDb();
       const ledgerData = createLedgerData({ userId: testUserId });

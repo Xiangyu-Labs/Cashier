@@ -10,7 +10,7 @@ const listStreamPageActionMock = vi.hoisted(() => vi.fn());
 const refreshRefetchMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data: undefined }));
 const useLedgerRefreshPollingMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/source-document/server-actions/queries", () => ({
+vi.mock("@/lib/queries/ledger-query-client", () => ({
   listStreamPageAction: listStreamPageActionMock,
 }));
 

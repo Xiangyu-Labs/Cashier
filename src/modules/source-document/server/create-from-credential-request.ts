@@ -5,8 +5,8 @@ import { scheduleRequestMaintenance } from "@/application/transport/request-main
 import type { SourceDocumentSubmissionContract } from "@/application/contracts";
 import type { PreparedApiV1SourceDocumentInput } from "@/modules/source-document/api-v1-policy";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
-import { scheduleProcessingAfter } from "../server-actions/schedule-processing";
-import { scheduleProcessingRecoveryAfter } from "../server-actions/schedule-processing-recovery";
+import { scheduleProcessingAfter } from "@/application/processing/schedule-processing";
+import { scheduleProcessingRecoveryAfter } from "@/application/processing/schedule-processing-recovery";
 
 /**
  * Server-only facade for POST /api/v1/source-documents.

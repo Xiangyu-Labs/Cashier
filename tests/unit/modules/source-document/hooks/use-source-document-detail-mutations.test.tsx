@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
+import { queryKeys } from "@/lib/query-keys";
 
 const { saveMock, splitMock, createEntryMock, deleteEntryMock } = vi.hoisted(() => ({
   saveMock: vi.fn(),
@@ -85,7 +86,12 @@ describe("useSourceDocumentDetailMutations", () => {
       ok: true,
       sourceDocumentId: "source-1",
       version: 8,
-      data: { splitSourceDocumentId: "source-2", splitVersion: 1, movedEntryCount: 1 },
+      data: {
+        splitSourceDocumentId: "source-2",
+        splitVersion: 1,
+        movedEntryCount: 1,
+        sourceDocument: { id: "source-1", version: 8, ledgerEntries: [] },
+      },
     });
     const { result } = renderHook(
       () =>
@@ -117,9 +123,63 @@ describe("useSourceDocumentDetailMutations", () => {
         entryDate: "2026-08-16",
       })
     ).resolves.toEqual({
+      sourceDocument: { id: "source-1", version: 8, ledgerEntries: [] },
       splitSourceDocumentId: "source-2",
       splitVersion: 1,
       movedEntryCount: 1,
+    });
+  });
+
+  it("installs each committed snapshot and permits another split before list refresh finishes", async () => {
+    const { client, wrapper } = setup();
+    let finishRefresh!: () => void;
+    vi.spyOn(client, "invalidateQueries").mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishRefresh = resolve;
+      })
+    );
+    splitMock.mockImplementation(async (_ledgerId, input) => ({
+      ok: true,
+      sourceDocumentId: "source-1",
+      version: input.expectedVersion + 1,
+      data: {
+        splitSourceDocumentId: "source-2",
+        splitVersion: 1,
+        movedEntryCount: 1,
+        sourceDocument: {
+          id: "source-1",
+          version: input.expectedVersion + 1,
+          ledgerEntries: [{ id: "remaining" }],
+        },
+      },
+    }));
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentDetailMutations({
+          id: "source-1",
+          ledgerId: "ledger-1",
+          version: 7,
+          onClose: vi.fn(),
+        }),
+      { wrapper }
+    );
+    const key = queryKeys.sourceDocument("ledger-1", "source-1");
+    for (const version of [7, 8]) {
+      await act(async () => {
+        await result.current.splitEntries({
+          expectedVersion: version,
+          ledgerEntryIds: ["entry-1"],
+          entryDate: "2026-08-16",
+        });
+      });
+      expect(client.getQueryData(key)).toMatchObject({
+        version: version + 1,
+        ledgerEntries: [{ id: "remaining" }],
+      });
+    }
+    expect(splitMock).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      finishRefresh();
     });
   });
 

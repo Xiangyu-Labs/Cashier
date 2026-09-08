@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
@@ -7,11 +7,40 @@ import { queryKeys } from "@/lib/query-keys";
 
 const getSourceDocumentLightAction = vi.fn();
 
-vi.mock("@/modules/source-document/server-actions/get-document-light", () => ({
+vi.mock("@/lib/queries/ledger-query-client", () => ({
   getSourceDocumentLightAction: (...args: unknown[]) => getSourceDocumentLightAction(...args),
 }));
 
 describe("useSourceDocumentDetailData", () => {
+  it("does not let an earlier read overwrite a committed split snapshot", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const key = queryKeys.sourceDocument("ledger-1", "source-1");
+    let resolve!: (value: unknown) => void;
+    getSourceDocumentLightAction.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    const { result } = renderHook(
+      () => useSourceDocumentDetailData({ ledgerId: "ledger-1", id: "source-1", open: true }),
+      { wrapper }
+    );
+    await waitFor(() => expect(getSourceDocumentLightAction).toHaveBeenCalled());
+    await act(async () => {
+      queryClient.setQueryData(key, {
+        id: "source-1",
+        version: 3,
+        title: "Committed",
+        ledgerEntries: [],
+      });
+      resolve({ id: "source-1", version: 2, title: "Old", ledgerEntries: [] });
+    });
+    await waitFor(() => expect(result.current.sourceDocument?.title).toBe("Committed"));
+    expect(queryClient.getQueryData(key)).toMatchObject({ version: 3 });
+  });
   beforeEach(() => {
     getSourceDocumentLightAction.mockReset().mockResolvedValue({
       id: "11111111-1111-4111-8111-111111111111",
