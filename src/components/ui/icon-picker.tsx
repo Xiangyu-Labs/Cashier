@@ -63,7 +63,6 @@ export function IconPicker({
             "flex h-11 w-11 items-center justify-center rounded",
             "hover:bg-surface transition-colors",
             "border border-transparent hover:border-border/50",
-            "focus:outline-none focus:ring-2 focus:ring-ring",
             className
           )}
         >

@@ -41,7 +41,7 @@ export function DayCellSmall({
           onClick={onClick}
           className={cn(
             "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
-            "hover:ring-1 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            "hover:ring-1 hover:ring-primary/50"
           )}
         >
           <span

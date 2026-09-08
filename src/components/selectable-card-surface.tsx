@@ -65,14 +65,14 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
           aria-label={selectionLabel}
           disabled={disabled}
           onClick={onToggleSelection}
-          className="absolute inset-0 cursor-pointer touch-manipulation rounded-[var(--radius-xl)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+          className="group absolute inset-0 cursor-pointer touch-manipulation rounded-[var(--radius-xl)] text-left focus-visible:outline-none disabled:cursor-not-allowed"
         >
           <span
             aria-hidden="true"
             className={cn(
-              "absolute left-3 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary-foreground",
+              "absolute left-3 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary-foreground group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring",
               indicatorPositionClass[indicatorPlacement],
-              selected && "bg-primary"
+              selected && "bg-primary group-focus-visible:outline-bg"
             )}
           >
             {selected ? <Check className="size-4" /> : null}
@@ -86,7 +86,7 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
           aria-expanded={expandable.isExpanded}
           aria-controls={expandable.contentId}
           onClick={expandable.onToggleExpanded}
-          className="absolute left-11 top-[calc(var(--selectable-card-header-height)/2)] z-[1] flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] hover:bg-surface2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute left-11 top-[calc(var(--selectable-card-header-height)/2)] z-[1] flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] hover:bg-surface2"
         >
           <ChevronDown
             className={cn(

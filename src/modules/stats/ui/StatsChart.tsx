@@ -195,7 +195,7 @@ export function StatsChart({
                     ${
                       isCapped
                         ? 'border-2 border-danger after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-danger'
-                        : "border-2 border-primary hover:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/50"
+                        : "border-2 border-primary hover:border-primary/70"
                     }
                   `}
               />

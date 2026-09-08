@@ -70,6 +70,7 @@ const DialogContent = React.forwardRef<
       hideCloseButton = false,
       onExitComplete,
       onInteractOutside,
+      onOpenAutoFocus,
       onCloseAutoFocus,
       style,
       ...props
@@ -84,11 +85,22 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed grid gap-4 border border-border bg-surface p-6 shadow-modal duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "fixed grid gap-4 border border-border bg-surface p-6 shadow-modal duration-200 focus-visible:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             dialogLayoutClasses[variant],
             className
           )}
           style={{ ...style, zIndex: 110 + depth * 20 }}
+          onOpenAutoFocus={(event) => {
+            onOpenAutoFocus?.(event);
+            if (event.defaultPrevented) return;
+            event.preventDefault();
+            if (event.currentTarget instanceof HTMLElement) {
+              const initialFocus =
+                event.currentTarget.querySelector<HTMLElement>("[data-dialog-initial-focus]") ??
+                event.currentTarget;
+              initialFocus.focus({ preventScroll: true });
+            }
+          }}
           onCloseAutoFocus={(event) => {
             onCloseAutoFocus?.(event);
             onExitComplete?.();
@@ -104,7 +116,7 @@ const DialogContent = React.forwardRef<
         >
           {children}
           {hideCloseButton ? null : (
-            <DialogPrimitive.Close className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-4 sm:top-4 sm:size-8">
+            <DialogPrimitive.Close className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-4 sm:top-4 sm:size-8">
               <X className="h-4 w-4" />
               <span className="sr-only">{tCommon("close")}</span>
             </DialogPrimitive.Close>
@@ -142,7 +154,12 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight focus-visible:outline-none",
+      className
+    )}
+    data-dialog-initial-focus=""
+    tabIndex={-1}
     {...props}
   />
 ));

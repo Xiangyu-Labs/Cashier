@@ -40,6 +40,10 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 `docker compose -f docker-compose.yml -f docker-compose.local.yml down` 只停止并移除容器，
 不会删除这些卷。增加 `-v` 会永久删除数据库、图片和内部密钥，执行前务必确认备份。
 
+本地模板中的四个内部密钥是公开的固定开发值，只用于让 loopback 环境复制后立即启动。
+任何可被外部访问的部署都必须替换它们；也可以将它们留空，让 Docker 在
+`cashier_config` 卷中生成并持久化随机值。
+
 ## 外部 PostgreSQL 与对象存储
 
 复制外部服务模板：
@@ -70,7 +74,7 @@ docker compose -f docker-compose.yml up -d
 容器入口会按以下顺序执行：
 
 1. 如果没有显式提供内部密钥，在 `cashier_config` 卷中生成并持久化
-   `AUTH_SECRET`、`API_KEY_PEPPER` 和 `AUTH_OTP_PEPPER`。
+   `AUTH_SECRET`、`API_KEY_PEPPER`、`RATE_LIMIT_PEPPER` 和 `AUTH_OTP_PEPPER`。
 2. 等待 PostgreSQL 并应用 `src/persistence/postgres-migrations/` 中的迁移。
 3. 当数据库中没有用户时，根据 `INITIAL_USER_EMAIL` 和 `INITIAL_USER_PASSWORD` 创建初始用户。
 4. 启动 Cashier。
@@ -110,7 +114,7 @@ npm run db:migrate:credentials -- <backfill|verify|clear-plaintext>
 
 - PostgreSQL 数据库。
 - S3/R2/MinIO 桶中的对象。
-- `cashier_config` 卷，或者你自行保存的三个内部密钥。
+- `cashier_config` 卷，或者你自行保存的四个内部密钥。
 - 当前 `.env` 的非敏感配置记录；密钥应放在专用密码或密钥管理系统中。
 
 恢复时应使用彼此对应的数据库和对象存储快照。只恢复其中一项可能留下数据库记录存在但

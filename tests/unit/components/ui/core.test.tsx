@@ -1,9 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const { currentLocale } = vi.hoisted(() => {
   const ref: { value: string } = { value: "zh" };
@@ -126,6 +126,24 @@ describe("UI Core Components", () => {
         const expected = locale === "en" ? "Close" : "关闭";
         const closeButton = screen.getByRole("button", { name: expected });
         expect(closeButton).toBeDefined();
+      });
+
+      it("focuses the dialog title before its close control", async () => {
+        render(
+          <Dialog open>
+            <DialogContent variant="modal">
+              <DialogTitle>Dialog title</DialogTitle>
+              <p>Dialog body</p>
+            </DialogContent>
+          </Dialog>
+        );
+
+        await waitFor(() =>
+          expect(screen.getByRole("heading", { name: "Dialog title" })).toHaveFocus()
+        );
+        expect(
+          screen.getByRole("button", { name: locale === "en" ? "Close" : "关闭" })
+        ).not.toHaveFocus();
       });
 
       it("increments the layer for a nested task dialog", () => {

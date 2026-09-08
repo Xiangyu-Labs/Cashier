@@ -155,7 +155,7 @@ export function CalculatorInput({
   };
 
   const buttonBase =
-    "h-12 rounded-lg font-medium transition-[color,background-color,border-color,opacity,transform] duration-[var(--motion-press)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+    "h-12 rounded-lg font-medium transition-[color,background-color,border-color,opacity,transform] duration-[var(--motion-press)] active:scale-[0.97]";
   const numberBtn = cn(buttonBase, "bg-surface2 hover:bg-surface2/80 text-text");
   const operatorBtn = cn(
     buttonBase,
@@ -202,7 +202,7 @@ export function CalculatorInput({
             aria-invalid={inputError !== null}
             aria-describedby={inputError === null ? undefined : "calculator-input-error"}
             className={cn(
-              "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none outline-none focus-visible:ring-0",
+              "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none",
               displayClassName
             )}
           />

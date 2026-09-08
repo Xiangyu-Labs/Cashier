@@ -74,7 +74,7 @@ export function TabNavigation({
         onPointerEnter={onInputIntent}
         onPointerDown={onInputIntent}
         onFocus={onInputIntent}
-        className="m-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]"
+        className="m-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-bg active:scale-[0.98]"
         aria-label={t("newRecord")}
       >
         <Plus className="h-5 w-5" aria-hidden="true" />
@@ -129,7 +129,6 @@ function NavButton({
       aria-current={active ? "page" : undefined}
       className={cn(
         "relative inline-flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent md:flex-row md:gap-1 md:px-2 md:text-sm",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         disabled
           ? "cursor-not-allowed text-muted-foreground/45"
           : active

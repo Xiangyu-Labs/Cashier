@@ -64,7 +64,7 @@ export function SourceDocumentRawEvidence({
                     <button
                       type="button"
                       data-testid="source-document-image-stage"
-                      className="group relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md border border-border/60 bg-surface2/70 transition-[border-color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-h-[52dvh]"
+                      className="group relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md border border-border/60 bg-surface2/70 transition-[border-color,background-color] duration-[var(--motion-feedback)] sm:max-h-[52dvh]"
                       onClick={() => setViewerIndex(selectedImageIndex)}
                       aria-label={tCard("imageAlt", { index: selectedImageIndex + 1 })}
                     >
@@ -89,7 +89,7 @@ export function SourceDocumentRawEvidence({
                               key={file.id}
                               type="button"
                               className={cn(
-                                "relative h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-surface2 transition-[border-color,opacity] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                "relative h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-surface2 transition-[border-color,opacity] duration-[var(--motion-feedback)]",
                                 selectedImageIndex === index
                                   ? "border-primary ring-1 ring-primary"
                                   : "border-border opacity-75"

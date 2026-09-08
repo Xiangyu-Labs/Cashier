@@ -39,7 +39,7 @@ function PasswordField(props: {
           type="button"
           disabled={props.disabled}
           onClick={() => setVisible((value) => !value)}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-text"
           aria-label={visible ? t("hidePassword") : t("showPassword")}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

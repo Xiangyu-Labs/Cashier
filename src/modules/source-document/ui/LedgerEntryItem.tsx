@@ -10,7 +10,7 @@ import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
  * The source document container determines the variant, and entries inherit the theme.
  */
 const itemVariants = cva(
-  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
+  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)] disabled:cursor-default",
   {
     variants: {
       variant: {

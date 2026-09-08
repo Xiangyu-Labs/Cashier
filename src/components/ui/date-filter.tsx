@@ -112,7 +112,7 @@ export function DateFilter({
             onClick={handleClear}
             aria-label={t("clear")}
             className={cn(
-              "absolute right-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-sm opacity-60 hover:bg-accent hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "absolute right-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-sm opacity-60 hover:bg-accent hover:opacity-100",
               isSmall ? "size-7" : "size-8"
             )}
           >

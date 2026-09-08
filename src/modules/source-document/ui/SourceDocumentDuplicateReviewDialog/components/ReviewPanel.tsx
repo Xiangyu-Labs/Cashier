@@ -90,7 +90,7 @@ export function ReviewPanel({
             <button
               key={file.id}
               type="button"
-              className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border"
               onClick={() => setImageViewer({ open: true, index })}
               aria-label={t("viewImage", {
                 filename: file.originalFilename ?? t("image"),

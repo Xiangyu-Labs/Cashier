@@ -42,7 +42,7 @@ export function DayCellLarge({
             className={cn(
               "aspect-square w-full min-w-0 overflow-hidden rounded-lg transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
               "flex flex-col items-center justify-center gap-0.5",
-              "hover:ring-1 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              "hover:ring-1 hover:ring-primary/40"
             )}
             style={{
               backgroundColor: getHeatmapColor(level),

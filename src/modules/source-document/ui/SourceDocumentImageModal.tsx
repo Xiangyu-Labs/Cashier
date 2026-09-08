@@ -288,7 +288,7 @@ export function SourceDocumentImageModal({
                   type="button"
                   onClick={() => setCurrentIndex(index)}
                   className={cn(
-                    "relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-surface",
                     currentIndex === index ? "border-primary" : "border-transparent"
                   )}
                   aria-label={t("imageAlt", { index: index + 1 })}

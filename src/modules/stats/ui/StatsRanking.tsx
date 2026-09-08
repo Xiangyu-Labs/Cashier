@@ -92,7 +92,7 @@ export function StatsRanking({
               disabled={onCategoryClick == null}
               aria-label={`${displayName}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${percent.toFixed(0)}%`}
               className={cn(
-                "flex w-full items-center gap-3 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "group flex w-full items-center gap-3 text-left",
                 onCategoryClick &&
                   "cursor-pointer hover:bg-surface2/50 rounded-lg -mx-2 px-2 py-1 transition-colors"
               )}

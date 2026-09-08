@@ -164,7 +164,6 @@ export function EditableField({
                 // Remove default styling that causes shifts
                 "border-0 bg-transparent shadow-none",
                 "p-0 m-0 w-full",
-                "focus-visible:ring-0 focus-visible:ring-offset-0",
                 // Inherit typography from display mode
                 "text-inherit font-inherit leading-inherit",
                 // Textarea specific
@@ -191,7 +190,6 @@ export function EditableField({
                 // Remove default styling that causes shifts
                 "border-0 bg-transparent shadow-none",
                 "p-0 m-0 w-full",
-                "focus-visible:ring-0 focus-visible:ring-offset-0",
                 // Inherit typography from display mode
                 "text-inherit font-inherit leading-inherit",
                 // Compact height for non-textarea inputs

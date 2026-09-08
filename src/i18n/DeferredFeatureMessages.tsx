@@ -50,7 +50,7 @@ export function DeferredFeatureMessages({
         <span>{tCommon("error")}</span>
         <button
           type="button"
-          className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface2"
           onClick={featureState.retry}
         >
           {tCommon("retry")}

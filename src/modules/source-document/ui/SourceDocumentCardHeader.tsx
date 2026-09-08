@@ -143,7 +143,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         <button
           type="button"
           onClick={onToggleExpanded}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)]"
           aria-label={isExpanded ? t("collapse") : t("expand")}
           aria-expanded={isExpanded}
           aria-controls={contentId}
@@ -166,16 +166,18 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         onPointerDown={onViewDetailsIntent}
         onFocus={onViewDetailsIntent}
         disabled={onViewDetails == null}
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:min-h-9"
+        className="group flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none disabled:cursor-default sm:min-h-9"
       >
-        <span className="truncate text-sm font-semibold text-text">
-          {sourceDocument.title?.trim() || t("untitled")}
-        </span>
-        {sourceDocument.type === "manual" && (
-          <span className="text-xs text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded shrink-0">
-            {t("quickEntry")}
+        <span className="flex min-w-0 items-center gap-2 rounded-sm group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring">
+          <span className="truncate text-sm font-semibold text-text">
+            {sourceDocument.title?.trim() || t("untitled")}
           </span>
-        )}
+          {sourceDocument.type === "manual" && (
+            <span className="shrink-0 rounded bg-surface2 px-1.5 py-0.5 text-xs text-muted-foreground">
+              {t("quickEntry")}
+            </span>
+          )}
+        </span>
       </button>
 
       <div className="flex items-center gap-2 shrink-0">

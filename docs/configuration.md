@@ -42,18 +42,19 @@
 
 | 变量                   | 必需   | 默认值                          | 说明                                                             |
 | ---------------------- | ------ | ------------------------------- | ---------------------------------------------------------------- |
-| `AUTH_SECRET`          | 运行时 | Docker 自动生成                 | Auth.js 会话签名密钥。                                           |
-| `API_KEY_PEPPER`       | 运行时 | Docker 自动生成                 | 服务凭证哈希使用的 pepper。                                      |
-| `RATE_LIMIT_PEPPER`    | 运行时 | Docker 自动生成                 | 限流键匿名化哈希使用的 pepper。                                  |
-| `AUTH_OTP_PEPPER`      | 运行时 | Docker 自动生成                 | 邮箱验证码哈希使用的 pepper。                                    |
+| `AUTH_SECRET`          | 运行时 | 本地模板提供；Docker 可自动生成 | Auth.js 会话签名密钥。                                           |
+| `API_KEY_PEPPER`       | 运行时 | 本地模板提供；Docker 可自动生成 | 服务凭证哈希使用的 pepper。                                      |
+| `RATE_LIMIT_PEPPER`    | 运行时 | 本地模板提供；Docker 可自动生成 | 限流键匿名化哈希使用的 pepper。                                  |
+| `AUTH_OTP_PEPPER`      | 运行时 | 本地模板提供；Docker 可自动生成 | 邮箱验证码哈希使用的 pepper。                                    |
 | `AUTH_RESEND_KEY`      | 否     | 无                              | 配置后启用 Resend 邮箱验证码登录和注册。                         |
 | `AUTH_EMAIL_FROM`      | 否     | `Cashier <noreply@example.com>` | 验证码和登录通知的发件人。                                       |
 | `DISABLE_REGISTRATION` | 否     | `false`                         | 设为 `true` 后禁止新邮箱注册。                                   |
 | `SESSION_MAX_AGE_DAYS` | 否     | `14`                            | 登录会话最长天数。                                               |
 | `DEV_AUTH_BYPASS`      | 否     | `false`                         | 仅测试环境，或 `APP_URL` 指向 loopback 的 development 环境可用。 |
 
-Docker 容器会把自动生成的内部密钥保存在 `cashier_config` 卷。非 Docker 部署必须自行
-提供这些值，并保证重启和多实例之间保持一致。
+`.env.local.example` 内置公开的固定开发值，复制后可直接运行源码或本地全家桶；这些值
+不能用于可被外部访问的部署。删除或留空这些值时，Docker 容器会生成随机内部密钥并保存到
+`cashier_config` 卷。外部部署必须自行提供安全随机值，并保证重启和多实例之间保持一致。
 
 ## AI、图片与缓存
 

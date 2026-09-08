@@ -138,7 +138,7 @@ export function OTPInput({
           className={cn(
             "h-12 min-w-0 w-full px-0 text-center text-xl font-bold sm:h-14 sm:text-2xl",
             "transition-[color,background-color,border-color,opacity] duration-[var(--motion-state)]",
-            focusedIndex === index && "ring-2 ring-ring ring-offset-2",
+            focusedIndex === index && "ring-2 ring-inset ring-ring",
             digit !== "" && "border-primary"
           )}
           aria-label={getDigitLabel(index + 1, length)}
