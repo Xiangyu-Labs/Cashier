@@ -72,9 +72,6 @@ function AnimatedInteractiveGroups(props: ControlledRendererProps) {
     .join(",");
   const motion = useStreamListMotion(motionItems, expansionLayoutKey);
   const children: ReactNode[] = [];
-  const pendingExits = [...motion.exiting].sort((a, b) => a.index - b.index);
-  let exitCursor = 0;
-  let renderedSlotCount = 0;
 
   for (const dateGroup of props.streamGroups) {
     children.push(
@@ -86,21 +83,12 @@ function AnimatedInteractiveGroups(props: ControlledRendererProps) {
       />
     );
     for (const item of dateGroup.items) {
-      let nextExit = pendingExits[exitCursor];
-      while (nextExit != null && nextExit.index <= renderedSlotCount) {
-        children.push(<StreamExitCard key={`exit:${nextExit.id}`} id={nextExit.id} />);
-        exitCursor += 1;
-        renderedSlotCount += 1;
-        nextExit = pendingExits[exitCursor];
-      }
-      renderedSlotCount += 1;
       children.push(
         <StreamCardMotion
           key={item.sourceDocument.id}
           id={item.sourceDocument.id}
           registerNode={motion.registerNode}
           isEntering={!motion.reducedMotion && motion.entering.has(item.sourceDocument.id)}
-          isHighlighted={!motion.reducedMotion && motion.updated.has(item.sourceDocument.id)}
         >
           <StreamItemRow
             item={item}
@@ -112,10 +100,6 @@ function AnimatedInteractiveGroups(props: ControlledRendererProps) {
         </StreamCardMotion>
       );
     }
-  }
-  for (; exitCursor < pendingExits.length; exitCursor += 1) {
-    const exit = pendingExits[exitCursor];
-    if (exit != null) children.push(<StreamExitCard key={`exit:${exit.id}`} id={exit.id} />);
   }
 
   return <div className="space-y-4 pt-2">{children}</div>;
@@ -230,13 +214,11 @@ function StreamCardMotion({
   id,
   registerNode,
   isEntering,
-  isHighlighted,
   children,
 }: {
   id: string;
   registerNode: StreamListMotionApi["registerNode"];
   isEntering: boolean;
-  isHighlighted: boolean;
   children: ReactNode;
 }) {
   const setNodeRef = useCallback(
@@ -247,21 +229,9 @@ function StreamCardMotion({
     <div
       ref={setNodeRef}
       data-stream-card-id={id}
-      className={cn(
-        "px-2",
-        isEntering && "stream-card-enter",
-        isHighlighted && "stream-card-highlight"
-      )}
+      className={cn("px-2", isEntering && "stream-card-enter")}
     >
       {children}
-    </div>
-  );
-}
-
-function StreamExitCard({ id }: { id: string }) {
-  return (
-    <div className="pointer-events-none px-2" aria-hidden data-stream-exit-card={id}>
-      <div className="stream-card-exit min-h-[68px] rounded-[var(--radius-xl)] border border-border bg-surface text-text" />
     </div>
   );
 }

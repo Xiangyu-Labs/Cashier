@@ -20,7 +20,7 @@ export interface StreamListMotionApi extends StreamListMotionDiff {
 }
 
 /**
- * Tracks the previous card list, entrance/exit/highlight phases, and FLIP
+ * Tracks the previous card list, transition phases, and FLIP
  * baseline rects for the interactive stream list. Reduced-motion users get
  * the final layout immediately with no timers or transforms.
  */
@@ -83,7 +83,7 @@ export function useStreamListMotion(
     setDiff(EMPTY_STREAM_LIST_MOTION_DIFF);
   }
 
-  // Phase cleanup timers (entrance, highlight, exit copies).
+  // Phase cleanup timers keep old diffs from affecting later FLIP passes.
   useEffect(() => {
     if (reducedMotion) return;
     for (const id of diff.entering) {

@@ -20,6 +20,25 @@ describe("settings primitives", () => {
     );
   });
 
+  it("updates the main-currency draft without opening a confirmation", () => {
+    const onUpdateSettings = vi.fn();
+    render(
+      <CurrencySection
+        settings={{ mainCurrency: "CNY", currencies: ["CNY"] }}
+        onUpdateSettings={onUpdateSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "主货币" }));
+    fireEvent.click(screen.getByRole("option", { name: "USD" }));
+
+    expect(onUpdateSettings).toHaveBeenCalledWith({
+      mainCurrency: "USD",
+      currencies: ["CNY", "USD"],
+    });
+    expect(screen.queryByText("更改主货币？")).not.toBeInTheDocument();
+  });
+
   it("applies one splitter rule to every direct setting after the first", () => {
     render(
       <SettingsSection title="Account">

@@ -346,7 +346,13 @@ describe("useSourceDocumentStream", () => {
     });
   });
 
-  it("resets the exact stream query once for a generation mismatch", async () => {
+  it("keeps the current list until a fresh first page replaces a mismatched generation", async () => {
+    let resolveFreshPage!: (value: {
+      items: ReturnType<typeof makeItem>[];
+      nextCursor: null;
+      generation: string;
+      hasTransitionalWork: boolean;
+    }) => void;
     listStreamPageActionMock
       .mockResolvedValueOnce({
         items: [
@@ -361,11 +367,15 @@ describe("useSourceDocumentStream", () => {
         nextCursor: null,
         generation: "2",
         restartRequired: true,
-      });
+      })
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFreshPage = resolve;
+        })
+      );
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     });
-    const reset = vi.spyOn(queryClient, "resetQueries").mockResolvedValue();
 
     const { result } = renderHook(() => useTestSourceDocumentStream("ledger-1"), {
       wrapper: createWrapper(queryClient),
@@ -377,15 +387,24 @@ describe("useSourceDocumentStream", () => {
 
     await result.current.fetchNextPage();
     await waitFor(() => {
-      expect(reset).toHaveBeenCalledTimes(1);
+      expect(listStreamPageActionMock).toHaveBeenCalledTimes(3);
     });
 
-    expect(reset).toHaveBeenCalledWith({
-      queryKey: result.current.queryKey,
-      exact: true,
+    expect(
+      result.current.streamGroups.flatMap((group) =>
+        group.items.map((item) => item.sourceDocument.id)
+      )
+    ).toEqual(["doc-1", "doc-2"]);
+
+    resolveFreshPage({
+      items: [makeItem("doc-fresh")],
+      nextCursor: null,
+      generation: "3",
+      hasTransitionalWork: false,
     });
-    await act(async () => Promise.resolve());
-    expect(reset).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(result.current.streamGroups[0]?.items[0]?.sourceDocument.id).toBe("doc-fresh");
+    });
   });
 
   it("retains two freshly refetched pages in the same new generation", async () => {

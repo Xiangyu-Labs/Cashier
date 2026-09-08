@@ -3,7 +3,6 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import type { Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -129,7 +128,16 @@ export function CurrencySection({
   const t = useTranslations("Settings");
   const settingsCurrencies = settings.currencies;
   const mainCurrency = settings.mainCurrency;
-  const [pendingMainCurrency, setPendingMainCurrency] = useState<string | null>(null);
+
+  const updateMainCurrency = (currency: string) => {
+    if (currency === mainCurrency) return;
+    onUpdateSettings({
+      mainCurrency: currency,
+      currencies: settingsCurrencies.includes(currency)
+        ? settingsCurrencies
+        : [...settingsCurrencies, currency],
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -138,7 +146,7 @@ export function CurrencySection({
           <h3 className="text-sm font-medium text-text">{t("mainCurrency")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("mainCurrencyDesc")}</p>
         </div>
-        <Select value={mainCurrency} onValueChange={setPendingMainCurrency} disabled={disabled}>
+        <Select value={mainCurrency} onValueChange={updateMainCurrency} disabled={disabled}>
           <SelectTrigger aria-label={t("mainCurrency")} className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
@@ -151,27 +159,6 @@ export function CurrencySection({
           </SelectContent>
         </Select>
       </div>
-
-      <ConfirmDialog
-        open={pendingMainCurrency != null}
-        onOpenChange={(open) => !open && setPendingMainCurrency(null)}
-        title={t("mainCurrencyChangeTitle")}
-        description={t("mainCurrencyChangeDescription", {
-          currency: pendingMainCurrency ?? mainCurrency,
-        })}
-        confirmLabel={t("mainCurrencyChangeConfirm", {
-          currency: pendingMainCurrency ?? mainCurrency,
-        })}
-        onConfirm={async () => {
-          if (pendingMainCurrency == null || pendingMainCurrency === mainCurrency) return;
-          onUpdateSettings({
-            mainCurrency: pendingMainCurrency,
-            currencies: settingsCurrencies.includes(pendingMainCurrency)
-              ? settingsCurrencies
-              : [...settingsCurrencies, pendingMainCurrency],
-          });
-        }}
-      />
 
       <div className="h-px bg-border" />
 

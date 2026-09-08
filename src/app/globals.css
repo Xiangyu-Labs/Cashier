@@ -391,34 +391,6 @@ body {
   animation: stream-card-enter 200ms ease-out;
 }
 
-@keyframes stream-card-exit {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
-
-.stream-card-exit {
-  animation: stream-card-exit 200ms var(--motion-exit) forwards;
-}
-
-@keyframes stream-card-highlight {
-  0% {
-    opacity: 0.45;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.stream-card-highlight {
-  animation: stream-card-highlight 400ms ease-out;
-}
-
 [data-slot="collapsible-content"] {
   overflow: hidden;
 }

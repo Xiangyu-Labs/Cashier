@@ -2,9 +2,9 @@
  * Dependency-free stream list motion helpers.
  *
  * Cards are tracked by their stable source-document ID across renders. The
- * diff below drives entrance fades, exit copies, FLIP reordering, and a
- * subtle crossfade for content updates. All animation work happens in the
- * hook/component layer and only touches `transform` and `opacity`.
+ * diff below drives entrance fades and FLIP reordering. Content updates are
+ * tracked so cards below a resized card can move to their new positions
+ * without fading the updated content.
  */
 
 export const STREAM_CARD_ENTER_MS = 200;
@@ -32,7 +32,7 @@ export interface StreamListMotionDiff {
   exiting: StreamListMotionExit[];
   /** Cards that changed position or date group (FLIP candidates). */
   moving: Set<string>;
-  /** Cards whose content changed in place (crossfade/highlight). */
+  /** Cards whose content changed in place and may affect following layout. */
   updated: Set<string>;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useCallback } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { listStreamPageAction } from "@/lib/queries/ledger-query-client";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { ListStreamPageInput } from "../application/queries/list-stream-page";
@@ -15,6 +15,8 @@ import type {
   StreamRefreshResult,
 } from "@/modules/source-document/contract-refresh";
 import { useLedgerRefreshPolling } from "./useLedgerRefreshPolling";
+
+type StreamPage = Awaited<ReturnType<typeof listStreamPageAction>>;
 
 export interface UseSourceDocumentStreamOptions {
   mainCurrency?: string;
@@ -93,10 +95,9 @@ export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocu
     observedRestartFingerprintRef.current = null;
   }, [filterSignature, ledgerId]);
 
-  // Check generation consistency across pages (Fix 3).
-  // If a subsequent page has a different generation than the first page,
-  // or the server signals restartRequired (invalid cursor / stale data),
-  // reset the current window. React Query then fetches a fresh first page.
+  // Replace an invalid paginated window only after its fresh first page is
+  // ready. Resetting the query first would briefly replace the loaded list
+  // with its skeleton during background refreshes.
   useEffect(() => {
     const pages = data?.pages;
     if (!pages || pages.length === 0) return;
@@ -113,8 +114,27 @@ export function useSourceDocumentStream(ledgerId: string, options: UseSourceDocu
       .join("|");
     if (observedRestartFingerprintRef.current === fingerprint) return;
     observedRestartFingerprintRef.current = fingerprint;
-    void queryClient.resetQueries({ queryKey: streamPageKey, exact: true });
-  }, [data, queryClient, streamPageKey]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const firstPageInput = queryDescriptor.getPageInput(undefined);
+        let page = await listStreamPageAction(ledgerId, firstPageInput);
+        if (page.restartRequired) page = await listStreamPageAction(ledgerId, firstPageInput);
+        if (page.restartRequired || cancelled) return;
+        seedRefreshBaseline(queryClient, ledgerId, page);
+        queryClient.setQueryData<InfiniteData<StreamPage, string | undefined>>(streamPageKey, {
+          pages: [page],
+          pageParams: [undefined],
+        });
+      } catch {
+        // Keep the last rendered window. A later refresh can provide a new
+        // fingerprint and retry without blanking the list.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, ledgerId, queryClient, queryDescriptor, streamPageKey]);
 
   const firstPageAvailable = data?.pages[0] != null;
   const refreshQuery = useLedgerRefreshPolling(ledgerId, enableRefresh && firstPageAvailable);
