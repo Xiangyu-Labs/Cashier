@@ -136,7 +136,6 @@ export function useSourceDocumentDetailController(
       isSplitting: session.isSplitting,
       isReloading: session.isReloading,
       reloadError: session.reloadError,
-      hasVersionConflict: session.revision.hasVersionConflict,
       setIsRetrying: session.setIsRetrying,
     },
     dialogs: {
@@ -149,7 +148,6 @@ export function useSourceDocumentDetailController(
       handleEnterEditMode: () => !selection.isSelectionMode && session.handleEnterEditMode(),
       handleCancelEditMode: session.handleCancelEditMode,
       handleEditSave: session.handleEditSave,
-      handleSaveAllAndClose: session.handleSaveAllAndClose,
       handleDiscardAndClose: session.handleDiscardAndClose,
       handleReload: session.handleReload,
       handleSaveAndEnterBatchMode: batchActions.handleSaveAndEnterBatchMode,

@@ -42,15 +42,20 @@ export function useBatchSourceDocumentActions(
   const tBatch = useTranslations("BatchActions");
   const versionFor = (sourceDocumentId: string) =>
     requireSourceDocumentVersion(versions.get(sourceDocumentId), sourceDocumentId);
-  const deleteSourceDocument = useLedgerMutation<void, string>(ledgerId, {
-    mutationFn: async (id: string) => {
+  const deleteSourceDocument = useLedgerMutation<
+    void,
+    string | { id: string; onCommitted: () => void }
+  >(ledgerId, {
+    mutationFn: async (input) => {
+      const id = typeof input === "string" ? input : input.id;
       const result = await deleteSourceDocumentAction(ledgerId, id, versionFor(id));
       unwrapVersionedCommandResult(result);
     },
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    onSuccess: () => {
+    onSuccess: (_result, input) => {
+      if (typeof input !== "string") input.onCommitted();
       clearSelection();
     },
   });
@@ -110,11 +115,21 @@ export function useBatchSourceDocumentActions(
       expectedVersion: versionFor(sourceDocumentId),
     }));
 
-  const batchDelete = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
-    mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, targetsFor(ids)),
+  const batchDelete = useLedgerMutation<
+    PartialBatchCommandResult,
+    string[] | { ids: string[]; onCommitted: () => void }
+  >(ledgerId, {
+    mutationFn: (input) =>
+      batchDeleteSourceDocumentsAction(
+        ledgerId,
+        targetsFor(Array.isArray(input) ? input : input.ids)
+      ),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    onSuccess: (result) =>
-      settleBatchResult(result, tBatch("deleted", { count: result.succeeded.length })),
+    onSuccess: (result, input) => {
+      if (!Array.isArray(input) && result.stale.length + result.failed.length === 0)
+        input.onCommitted();
+      settleBatchResult(result, tBatch("deleted", { count: result.succeeded.length }));
+    },
     onError: () => toast.error(tCommon("deleteFailed")),
   });
 

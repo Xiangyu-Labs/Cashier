@@ -24,6 +24,7 @@ import { SourceDocumentDetailConfirmDialogs } from "./SourceDocumentDetailConfir
 import { SourceDocumentDetailOverlays } from "./SourceDocumentDetailOverlays";
 
 interface SourceDocumentDetailModalProps {
+  sourceDocumentId?: string;
   ledgerId: string;
   sourceDocument: SourceDocument | SourceDocumentLight | null;
   isLoading?: boolean;
@@ -38,7 +39,10 @@ interface SourceDocumentDetailModalProps {
   onClose: () => void;
   onBack?: () => void;
   onExitComplete?: () => void;
-  onSaveAll?: (input: { expectedVersion: number; changes: PendingChanges }) => Promise<void>;
+  onSaveAll?: (
+    input: { expectedVersion: number; changes: PendingChanges },
+    onCommitted?: () => void
+  ) => Promise<void>;
   onSplit?: (
     input: Omit<SplitSourceDocumentInput, "sourceDocumentId">
   ) => Promise<SplitSourceDocumentResultDto>;
@@ -51,10 +55,13 @@ interface SourceDocumentDetailModalProps {
       description?: string;
     }
   ) => Promise<{ affectedCount: number } | undefined>;
-  onBatchDeleteEntries: (ids: string[]) => Promise<PartialBatchCommandResult>;
+  onBatchDeleteEntries: (
+    ids: string[],
+    onCommitted?: (result: PartialBatchCommandResult) => void
+  ) => Promise<PartialBatchCommandResult>;
   onAddEntry?: (data: AddEntryData) => Promise<void>;
-  onDeleteEntry?: (entryId: string) => Promise<void>;
-  onDelete?: () => void | Promise<void>;
+  onDeleteEntry?: (entryId: string, onCommitted?: () => void) => Promise<void>;
+  onDelete?: (onCommitted?: () => void) => void | Promise<void>;
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
   onAbandonCandidate?: () => Promise<void>;
@@ -174,7 +181,6 @@ function SourceDocumentDetailEditor({
               isLoading={isLoading}
               isReloading={status.isReloading}
               reloadError={status.reloadError}
-              hasVersionConflict={status.hasVersionConflict}
               onClose={onClose}
               onReload={() => void actions.handleReload()}
             />
@@ -233,7 +239,6 @@ function SourceDocumentDetailEditor({
             busy={status.busy}
             interactionDisabled={status.interactionDisabled}
             hasPendingChanges={editor.hasPendingChanges}
-            hasVersionConflict={status.hasVersionConflict}
             pendingChangesCount={editor.pendingChangesCount}
             isAccepting={isAccepting}
             isAbandoning={isAbandoning}
@@ -273,7 +278,6 @@ function SourceDocumentDetailEditor({
           setShowDeleteConfirm={dialogs.setShowDeleteConfirm}
           handleDeleteDocument={actions.handleDeleteDocument}
           saveAndContinueGate={dialogs.saveAndContinueGate}
-          handleSaveAllAndClose={actions.handleSaveAllAndClose}
           unsavedGuard={dialogs.unsavedGuard}
           handleDiscardAndClose={actions.handleDiscardAndClose}
         />
@@ -311,6 +315,6 @@ function SourceDocumentDetailEditor({
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal(
   props: SourceDocumentDetailModalProps
 ) {
-  const editorKey = props.sourceDocument?.id ?? "empty";
+  const editorKey = props.sourceDocumentId ?? props.sourceDocument?.id ?? "empty";
   return <SourceDocumentDetailEditor key={editorKey} {...props} />;
 });

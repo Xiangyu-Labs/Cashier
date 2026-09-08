@@ -29,7 +29,7 @@ describe("PWA policy", () => {
     expect(globals).toContain('"Microsoft YaHei", sans-serif');
   });
 
-  it("precaches only immutable static assets and keeps the update prompt", () => {
+  it("precaches only immutable static assets and guards automatic activation", () => {
     const config = read("next.config.ts");
     const worker = read("src/service-worker.ts");
     expect(config).toContain('withSerwistInit from "@serwist/next"');
@@ -41,14 +41,15 @@ describe("PWA policy", () => {
     expect(worker).toContain("new Serwist");
     expect(worker).toContain("precacheEntries: self.__SW_MANIFEST");
     expect(worker).toContain("skipWaiting: false");
-    expect(worker).toContain('type === "SKIP_WAITING"');
+    expect(worker).toContain('type === "ACTIVATE_SINGLE_WINDOW"');
     expect(worker).toContain("clientsClaim: true");
     expect(worker).not.toContain("navigate");
     expect(worker).not.toContain("offline");
     expect(worker).not.toContain("fetchNavigation");
     expect(worker).not.toContain("caches.match");
     expect(read("src/components/ServiceWorkerUpdate.tsx")).toContain("controllerchange");
-    expect(read("src/components/ServiceWorkerUpdate.tsx")).not.toContain("document.activeElement");
+    expect(worker).toContain('type === "GET_WINDOW_COUNT"');
+    expect(worker).toContain("count === 1");
   });
 
   it("removes the offline mode, offline route, health probe, and connection UI", () => {

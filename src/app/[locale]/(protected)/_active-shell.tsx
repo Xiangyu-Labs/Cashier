@@ -36,12 +36,13 @@ interface ActiveShellProps {
  * Client-side shell that renders the AppShell, tab navigation, and the
  * active tab content. The shell renders immediately (outside the bootstrap
  * Suspense boundary) so the user sees the header and tabs while the tab
- * content loads behind a nested Suspense.
+ * content loads behind a nested Suspense. Navigation stays disabled until
+ * the inner content mounts, so early clicks cannot race its hydration.
  *
  * ShellControllerProvider is placed here so both the AppShell (child of
  * the provider) and the LedgerPageClient (deep in children) can access
  * the same context. The header's "+" button and status-preset buttons
- * start as no-ops; LedgerPageClient registers the real handlers via
+ * become available when LedgerPageClient registers the real handlers via
  * setOpenInput once it mounts.
  */
 export function ActiveShell({ ledgerId, children }: ActiveShellProps) {
@@ -58,7 +59,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const locale = useLocale();
   const t = useTranslations("Common");
   const queryClient = useQueryClient();
-  const { onInputIntent, onOpenInput } = useShellController();
+  const { ready, onInputIntent, onOpenInput } = useShellController();
   const { leaveConfirmOpen, attemptLeave, confirmLeave, cancelLeave } = useSettingsLeaveGuard();
 
   // Derive the active tab from the URL — keeps the shell and the inner
@@ -72,10 +73,10 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
 
   const guardedTabChange = useCallback(
     (tab: LedgerTab) => {
-      if (tab === activeTab) return;
+      if (!ready || tab === activeTab) return;
       attemptLeave(() => handleTabChange(tab));
     },
-    [activeTab, attemptLeave, handleTabChange]
+    [activeTab, attemptLeave, handleTabChange, ready]
   );
 
   const preloadTabCode = useCallback(
@@ -116,6 +117,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
     <AppShell
       navigation={
         <TabNavigation
+          disabled={!ready}
           activeTab={activeTab}
           onTabChange={guardedTabChange}
           onOpenInput={onOpenInput}

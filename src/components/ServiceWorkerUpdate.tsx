@@ -1,93 +1,137 @@
 "use client";
 
 import { useEffect } from "react";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 export function ServiceWorkerUpdate() {
-  const t = useTranslations("ServiceWorkerUpdate");
-
+  const queryClient = useQueryClient();
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     let disposed = false;
-    let reloadRequested = false;
-    let observedRegistration: ServiceWorkerRegistration | null = null;
-    let observedInstalling: ServiceWorker | null = null;
-
-    const showUpdate = (worker: ServiceWorker) => {
-      toast(t("title"), {
-        id: "service-worker-update",
-        description: t("description"),
-        duration: Infinity,
-        action: {
-          label: t("updateNow"),
-          onClick: () => {
-            if (useUnsavedChangesStore.getState().hasDirtyChanges()) {
-              toast.error(t("dirtyBlocked"));
-              showUpdate(worker);
-              return;
-            }
-            reloadRequested = true;
-            worker.postMessage({ type: "SKIP_WAITING" });
-            // Replace the prompt with visible feedback while the page reloads.
-            toast(t("updating"), { id: "service-worker-update" });
-          },
-        },
-        cancel: {
-          label: t("later"),
-          onClick: () => toast.dismiss("service-worker-update"),
-        },
-      });
+    let activating = false;
+    let activationRequested = false;
+    let reloaded = false;
+    let controllerChanged = false;
+    let checking = false;
+    let registration: ServiceWorkerRegistration | null = null;
+    let installing: ServiceWorker | null = null;
+    let port: MessagePort | null = null;
+    let requestTimeout: ReturnType<typeof setTimeout> | undefined;
+    const safeToUpdate = () =>
+      !disposed &&
+      document.visibilityState === "visible" &&
+      navigator.onLine &&
+      !useUnsavedChangesStore.getState().hasDirtyChanges() &&
+      queryClient.isMutating() === 0 &&
+      queryClient.isFetching() === 0 &&
+      document.documentElement.dataset.batchSelection !== "true" &&
+      document.querySelector('[role="dialog"][data-state="open"], [data-update-blocked="true"]') ==
+        null &&
+      !(
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.matches("input, textarea, [contenteditable=true]")
+      );
+    const releaseRequest = () => {
+      clearTimeout(requestTimeout);
+      port?.close();
+      port = null;
+      activating = false;
     };
-
-    const handleInstallingStateChange = () => {
-      const installing = observedInstalling;
-      if (
-        installing?.state === "installed" &&
-        navigator.serviceWorker.controller != null &&
-        !disposed
-      ) {
-        showUpdate(installing);
+    const tryUpdate = () => {
+      if (!safeToUpdate() || reloaded) return;
+      if (controllerChanged) {
+        reloaded = true;
+        window.location.reload();
+        return;
+      }
+      const worker = registration?.waiting;
+      if (worker == null || navigator.serviceWorker.controller == null || activating) return;
+      activating = true;
+      const channel = new MessageChannel();
+      port = channel.port1;
+      requestTimeout = setTimeout(releaseRequest, 5_000);
+      channel.port1.onmessage = (event: MessageEvent<unknown>) => {
+        if (event.data !== 1 || !safeToUpdate() || registration?.waiting !== worker) {
+          releaseRequest();
+          return;
+        }
+        channel.port1.close();
+        port = null;
+        activationRequested = true;
+        worker.postMessage({ type: "ACTIVATE_SINGLE_WINDOW" });
+      };
+      // The waiting worker supports this even when the active app predates the protocol.
+      worker.postMessage({ type: "GET_WINDOW_COUNT" }, [channel.port2]);
+    };
+    const checkUpdate = async () => {
+      if (registration == null || checking || disposed || !navigator.onLine) return;
+      checking = true;
+      try {
+        await registration.update();
+      } catch {
+        // An unavailable update must not prevent using the current application.
+      } finally {
+        checking = false;
+        tryUpdate();
       }
     };
-
-    const handleUpdateFound = () => {
-      observedInstalling?.removeEventListener("statechange", handleInstallingStateChange);
-      observedInstalling = observedRegistration?.installing ?? null;
-      observedInstalling?.addEventListener("statechange", handleInstallingStateChange);
+    const onForeground = () => {
+      if (document.visibilityState === "visible") void checkUpdate();
     };
-
-    const observeRegistration = (registration: ServiceWorkerRegistration) => {
-      observedRegistration = registration;
-      if (registration.waiting != null) showUpdate(registration.waiting);
-      registration.addEventListener("updatefound", handleUpdateFound);
-      if (registration.installing != null) handleUpdateFound();
+    const onUpdateFound = () => {
+      installing?.removeEventListener("statechange", tryUpdate);
+      installing = registration?.installing ?? null;
+      installing?.addEventListener("statechange", tryUpdate);
     };
-
+    const onControllerChange = () => {
+      if (!activationRequested) return;
+      controllerChanged = true;
+      releaseRequest();
+      tryUpdate();
+    };
     void navigator.serviceWorker.ready
-      .then((registration) => {
-        if (!disposed) observeRegistration(registration);
+      .then((ready) => {
+        if (disposed) return;
+        registration = ready;
+        registration.addEventListener("updatefound", onUpdateFound);
+        onUpdateFound();
+        tryUpdate();
+        void checkUpdate();
       })
-      .catch((error) => {
-        if (!disposed) console.error("[ServiceWorkerUpdate] registration readiness failed", error);
-      });
-
-    const handleControllerChange = () => {
-      if (reloadRequested) {
-        location.reload();
-      }
-    };
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange, {
-      once: false,
+      .catch(() => undefined);
+    const unsubscribeDirty = useUnsavedChangesStore.subscribe(tryUpdate);
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe(tryUpdate);
+    const unsubscribeQueries = queryClient.getQueryCache().subscribe(tryUpdate);
+    const observer = new MutationObserver(tryUpdate);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state", "data-update-blocked"],
     });
+    const interval = setInterval(tryUpdate, 5_000);
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    window.addEventListener("online", onForeground);
+    window.addEventListener("focus", onForeground);
+    document.addEventListener("visibilitychange", onForeground);
+    document.addEventListener("focusout", tryUpdate);
     return () => {
       disposed = true;
-      observedInstalling?.removeEventListener("statechange", handleInstallingStateChange);
-      observedRegistration?.removeEventListener("updatefound", handleUpdateFound);
-      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      releaseRequest();
+      clearInterval(interval);
+      observer.disconnect();
+      unsubscribeDirty();
+      unsubscribeMutations();
+      unsubscribeQueries();
+      installing?.removeEventListener("statechange", tryUpdate);
+      registration?.removeEventListener("updatefound", onUpdateFound);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      window.removeEventListener("online", onForeground);
+      window.removeEventListener("focus", onForeground);
+      document.removeEventListener("visibilitychange", onForeground);
+      document.removeEventListener("focusout", tryUpdate);
     };
-  }, [t]);
-
+  }, [queryClient]);
   return null;
 }

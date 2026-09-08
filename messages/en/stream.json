@@ -263,7 +263,8 @@
     "unsavedChanges": "Unsaved Changes",
     "unsavedChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
     "discardAndClose": "Discard & Close",
-    "loadError": "This entry could not be loaded. The dialog remains open so you can retry."
+    "loadError": "This entry could not be loaded. The dialog remains open so you can retry.",
+    "saveConflict": "Not saved. This data has changed. Cancel editing and make your changes again."
   },
   "LedgerPage": {
     "notFound": "Ledger not found",
@@ -390,7 +391,7 @@
     "ratesUnavailableDates": "Historical rates are missing for these dates, so the main currency was not changed: {dates}",
     "unsupportedCurrency": "The selected currency is not supported by the exchange-rate data.",
     "validationFailed": "The settings are invalid. Check them and try again.",
-    "updateConflict": "The settings changed elsewhere. Refresh and try again.",
+    "updateConflict": "Not saved. The settings have changed. Cancel editing and make your changes again.",
     "save": "Save",
     "saving": "(Saving...)",
     "serverChangedWhileEditing": "Server settings changed. Saving will apply this draft to the latest version.",
@@ -622,6 +623,7 @@
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "saveAllError": "Failed to save changes",
     "saveAllFailed": "Nothing was saved. Fix the issue and try again.",
+    "saveConflict": "Not saved: the data has changed. Cancel editing and edit the latest version.",
     "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing.",
     "activeResultTitle": "Active entries retained",
     "activeResultDescription": "The entries below are the active result and remain in use while the pending retry is resolved.",

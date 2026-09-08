@@ -35,7 +35,7 @@ export function useVersionedSourceDocumentMutation<TResult>({
   onError,
 }: UseVersionedSourceDocumentMutationOptions<TResult>) {
   const tCommon = useTranslations("Common");
-  return useLedgerMutation<TResult, void>(ledgerId, {
+  return useLedgerMutation<TResult, void | (() => void)>(ledgerId, {
     mutationFn: async () => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const version = requireSourceDocumentVersion(expectedVersion, sourceDocumentId);
@@ -45,7 +45,10 @@ export function useVersionedSourceDocumentMutation<TResult>({
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage,
     errorMessage,
-    ...(onSuccess === undefined ? {} : { onSuccess }),
-    ...(onError === undefined ? {} : { onError }),
+    onSuccess: (result, onCommitted) => {
+      onCommitted?.();
+      return onSuccess?.(result, undefined);
+    },
+    ...(onError === undefined ? {} : { onError: (error: Error) => onError(error, undefined) }),
   });
 }

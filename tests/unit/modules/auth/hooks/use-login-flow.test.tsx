@@ -254,4 +254,23 @@ describe("useLoginFlow OTP sending", () => {
     expect(result.current.email).toBe("autofill@example.com");
     expect(result.current.password).toBe("");
   });
+
+  it("treats an HTTP-success authentication error as a rejected login", async () => {
+    signInMock.mockResolvedValue({
+      ok: true,
+      error: "CredentialsSignin",
+      code: "invalid_credentials",
+    });
+    const { result } = renderHook(() => useLoginFlow(t));
+    await act(() =>
+      result.current.handlePasswordLogin(
+        createPasswordSubmitEvent("smoke@example.com", "Wrong-password9")
+      )
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(result.current.error).toBe("invalidCredentials");
+    expect(result.current.email).toBe("smoke@example.com");
+    expect(result.current.isLoading).toBe(false);
+  });
 });

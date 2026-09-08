@@ -64,9 +64,29 @@ jobs:
           S3_SECRET_ACCESS_KEY: build-placeholder
         run: npm run check
 
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:smoke
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-failure
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
   build-and-push:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test-main
+    needs: [test-main, smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: read

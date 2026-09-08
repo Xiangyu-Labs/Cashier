@@ -63,6 +63,27 @@ This runs formatting, architecture checks, lint, type checking, tests, coverage,
 and translation validation. Coverage thresholds are 70% for lines, 68% for statements, 65% for
 functions, and 60% for branches.
 
+## Browser smoke tests
+
+With Node.js 24 and Docker available:
+
+```bash
+npx playwright install chromium
+npm run test:smoke
+```
+
+The runner creates a uniquely named database on the loopback `cashier_test` PostgreSQL service,
+applies real migrations, seeds a fictional password account, builds production assets, and runs
+desktop and mobile Chromium tests. It does not use an authentication bypass, real email, AI, or
+object storage. `TEST_DATABASE_URL` may override the test connection, but must still point to a
+loopback database named `cashier_test` with `CREATEDB` permission. Never point it at production.
+
+The suite covers password rejection/login, automatic initial ledger creation, manual entry,
+editing, persistence after reload, deletion, logout, and protected-page redirects. Failures retain
+screenshots and traces in `test-results/` and an HTML report in `playwright-report/`. Normal exit,
+failure, and handled interruptions stop the test server and remove only this run's database.
+CI runs this separately from the Vitest gate and requires it before publishing an image.
+
 ## Commits and pull requests
 
 Use Conventional Commit subjects such as:

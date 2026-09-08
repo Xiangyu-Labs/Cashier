@@ -48,8 +48,16 @@ export function useSourceDocumentEntryMutations({
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
-  const batchDeleteMutation = useLedgerMutation<PartialBatchCommandResult, string[]>(ledgerId, {
-    mutationFn: async (entryIds) => {
+  const batchDeleteMutation = useLedgerMutation<
+    PartialBatchCommandResult,
+    | string[]
+    | {
+        entryIds: string[];
+        onCommitted?: ((result: PartialBatchCommandResult) => void) | undefined;
+      }
+  >(ledgerId, {
+    mutationFn: async (input) => {
+      const entryIds = Array.isArray(input) ? input : input.entryIds;
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const expectedVersion = requireSourceDocumentVersion(version, sourceDocumentId);
       return batchDeleteLedgerEntriesAction(
@@ -61,6 +69,9 @@ export function useSourceDocumentEntryMutations({
     successMessage: null,
     errorMessage: null,
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    onSuccess: (result, input) => {
+      if (!Array.isArray(input)) input.onCommitted?.(result);
+    },
   });
 
   return {

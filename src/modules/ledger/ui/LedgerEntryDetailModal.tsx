@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { LedgerEntryViewDetails, type EntryPendingChanges } from "./LedgerEntryViewDetails";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import { cn } from "@/lib/utils";
+import { SourceDocumentStaleCommandError } from "@/modules/source-document/command-results";
 
 interface LedgerEntryDetailModalProps {
+  entryId?: string;
   ledgerEntry: LedgerEntry | null;
   isLoading?: boolean;
   loadError?: boolean;
@@ -25,14 +27,17 @@ interface LedgerEntryDetailModalProps {
   onClose: () => void;
   onBack?: () => void;
   onExitComplete?: () => void;
-  onUpdate: (data: {
-    categoryId?: string | null;
-    itemName?: string;
-    amount?: number;
-    currency?: string | null;
-    description?: string | null;
-  }) => Promise<void>;
-  onDelete: () => Promise<void>;
+  onUpdate: (
+    data: {
+      categoryId?: string | null;
+      itemName?: string;
+      amount?: number;
+      currency?: string | null;
+      description?: string | null;
+    },
+    context: { expectedVersion: number | undefined; onCommitted: () => void }
+  ) => Promise<void>;
+  onDelete: (onCommitted?: () => void) => Promise<void>;
   onViewSourceDocument?: () => void;
 }
 
@@ -65,6 +70,7 @@ function LedgerEntryDetailEditor({
   const [isReloading, setIsReloading] = useState(false);
   const busy = isSaving || isDeleting || isReloading;
   const continueNavigationRef = useRef<(() => void) | null>(null);
+  const editVersionRef = useRef<number | undefined>(undefined);
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const detailId = ledgerEntry?.id;
@@ -163,28 +169,55 @@ function LedgerEntryDetailEditor({
     const changeCount = Object.keys(updateData).length;
     setIsSaving(true);
     try {
-      await onUpdate(updateData);
+      const onCommitted = () => {
+        setPendingChanges({});
+        setIsEditMode(false);
+      };
+      await onUpdate(updateData, { expectedVersion: editVersionRef.current, onCommitted });
+      onCommitted();
       toast.success(tCommon("saveAllSuccess", { count: changeCount }));
       setPendingChanges({});
       return true;
-    } catch {
-      toast.error(tCommon("saveFailed"));
+    } catch (error) {
+      toast.error(
+        error instanceof SourceDocumentStaleCommandError ? t("saveConflict") : tCommon("saveFailed")
+      );
       return false;
     } finally {
       setIsSaving(false);
     }
-  }, [busy, ledgerEntry, pendingChanges, onUpdate, tCommon]);
+  }, [busy, ledgerEntry, pendingChanges, onUpdate, tCommon, t]);
 
   const handleEnterEditMode = useCallback(() => {
     if (busy) return;
+    if (!hasPendingChanges) editVersionRef.current = ledgerEntry?.sourceDocument?.version;
     setIsEditMode(true);
-  }, [busy]);
+  }, [busy, hasPendingChanges, ledgerEntry?.sourceDocument?.version]);
+
+  const handleReload = useCallback(async () => {
+    if (onReload == null || isReloading) return;
+    setIsReloading(true);
+    try {
+      await onReload();
+    } catch {
+      // The query state keeps the load error visible for another retry.
+    } finally {
+      setIsReloading(false);
+    }
+  }, [isReloading, onReload]);
 
   const handleCancelEditMode = useCallback(() => {
     if (busy) return;
-    setPendingChanges({});
-    setIsEditMode(false);
-  }, [busy]);
+    const cancel = () => {
+      setPendingChanges({});
+      setIsEditMode(false);
+      void handleReload();
+    };
+    if (hasPendingChanges) {
+      continueNavigationRef.current = cancel;
+      setShowUnsavedConfirm(true);
+    } else cancel();
+  }, [busy, hasPendingChanges, handleReload]);
 
   const handleEditSave = useCallback(async (): Promise<boolean> => {
     const saved = await handleSave();
@@ -202,18 +235,6 @@ function LedgerEntryDetailEditor({
     }
   }, [busy, hasPendingChanges, onClose]);
 
-  const handleSaveAndClose = useCallback(async () => {
-    const saved = await handleSave();
-    if (!saved) return false;
-
-    setShowUnsavedConfirm(false);
-    const continueNavigation = continueNavigationRef.current;
-    continueNavigationRef.current = null;
-    if (continueNavigation != null) continueNavigation();
-    else onClose();
-    return true;
-  }, [handleSave, onClose]);
-
   const handleDiscardAndClose = useCallback(() => {
     setPendingChanges({});
     setShowUnsavedConfirm(false);
@@ -224,30 +245,26 @@ function LedgerEntryDetailEditor({
   }, [onClose]);
 
   const handleDelete = useCallback(async () => {
-    if (busy) return;
+    if (busy) return false;
     setIsDeleting(true);
     try {
-      await onDelete();
-      setShowDeleteConfirm(false);
-      onClose();
+      let closed = false;
+      const committed = () => {
+        if (closed) return;
+        closed = true;
+        setShowDeleteConfirm(false);
+        onClose();
+      };
+      await onDelete(committed);
+      committed();
+      return true;
     } catch {
       // The mutation owns delete failure feedback.
+      return false;
     } finally {
       setIsDeleting(false);
     }
   }, [busy, onDelete, onClose]);
-
-  const handleReload = useCallback(async () => {
-    if (onReload == null || isReloading) return;
-    setIsReloading(true);
-    try {
-      await onReload();
-    } catch {
-      // The query state keeps the load error visible for another retry.
-    } finally {
-      setIsReloading(false);
-    }
-  }, [isReloading, onReload]);
 
   return (
     <>
@@ -358,12 +375,10 @@ function LedgerEntryDetailEditor({
           }}
           title={t("unsavedChanges")}
           description={t("unsavedChangesDesc")}
-          onConfirm={() => setShowUnsavedConfirm(false)}
-          cancelLabel={tCommon("cancel")}
-          onSave={handleSaveAndClose}
-          saveLabel={tCommon("save")}
-          onDiscard={handleDiscardAndClose}
-          discardLabel={t("discardChanges")}
+          onConfirm={handleDiscardAndClose}
+          cancelLabel={tCommon("continueEditing")}
+          confirmLabel={t("discardChanges")}
+          variant="destructive"
         />
       </Dialog>
     </>
@@ -373,6 +388,6 @@ function LedgerEntryDetailEditor({
 export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal(
   props: LedgerEntryDetailModalProps
 ) {
-  const editorKey = props.ledgerEntry?.id ?? "empty";
+  const editorKey = props.entryId ?? props.ledgerEntry?.id ?? "empty";
   return <LedgerEntryDetailEditor key={editorKey} {...props} />;
 });

@@ -27,5 +27,5 @@ export function Toaster(props: ToasterProps) {
   const { theme = "system" } = useTheme();
   const toasterTheme = theme as NonNullable<ToasterProps["theme"]>;
 
-  return <Sonner theme={toasterTheme} className="toaster" style={toasterStyle} {...props} />;
+  return <Sonner theme={toasterTheme} className="toaster" style={toasterStyle} expand {...props} />;
 }

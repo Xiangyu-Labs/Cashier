@@ -16,7 +16,6 @@ interface SourceDocumentDetailStatusPanelsProps {
   isLoading: boolean;
   isReloading: boolean;
   reloadError: boolean;
-  hasVersionConflict: boolean;
   onClose: () => void;
   onReload: () => void;
 }
@@ -31,7 +30,6 @@ export function SourceDocumentDetailStatusPanels({
   isLoading,
   isReloading,
   reloadError,
-  hasVersionConflict,
   onClose,
   onReload,
 }: SourceDocumentDetailStatusPanelsProps) {
@@ -41,6 +39,17 @@ export function SourceDocumentDetailStatusPanels({
 
   return (
     <>
+      {sourceDocument && reloadError ? (
+        <div
+          role="alert"
+          className="mb-3 flex items-center justify-between gap-2 text-sm text-danger"
+        >
+          <span>{t("reloadFailed")}</span>
+          <Button variant="outline" onClick={onReload} disabled={isReloading}>
+            {tCommon("retry")}
+          </Button>
+        </div>
+      ) : null}
       {loadError && !sourceDocument ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
           <p className="text-sm font-medium text-text">{t("loadError")}</p>
@@ -85,31 +94,6 @@ export function SourceDocumentDetailStatusPanels({
 
       {sourceDocument && (
         <>
-          {hasVersionConflict ? (
-            <div
-              className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-3"
-              role="alert"
-            >
-              <p className="text-sm font-medium text-text">{t("revisionConflict")}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("revisionConflictDescription")}
-              </p>
-              {reloadError ? (
-                <p className="mt-2 text-xs text-destructive">{t("reloadFailed")}</p>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={onReload}
-                disabled={isReloading}
-              >
-                <RefreshCw className={cn("size-4", isReloading && "animate-spin")} />
-                {t("reloadServerData")}
-              </Button>
-            </div>
-          ) : null}
           {/* Diagnostic code display for anomaly/failed states */}
           {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && (
             <div className="mb-3 px-1">

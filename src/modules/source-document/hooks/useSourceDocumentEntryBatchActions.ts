@@ -37,7 +37,10 @@ interface UseSourceDocumentEntryBatchActionsOptions {
       description?: string;
     }
   ) => Promise<{ affectedCount: number } | undefined>;
-  onBatchDeleteEntries: (ids: string[]) => Promise<PartialBatchCommandResult>;
+  onBatchDeleteEntries: (
+    ids: string[],
+    onCommitted?: (result: PartialBatchCommandResult) => void
+  ) => Promise<PartialBatchCommandResult>;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -139,10 +142,12 @@ export function useSourceDocumentEntryBatchActions({
   );
 
   const handleBatchDelete = useCallback(async () => {
-    if (busy) return;
+    if (busy) return false;
     setIsSaving(true);
     try {
-      const result = await onBatchDeleteEntries(selectedIds);
+      const result = await onBatchDeleteEntries(selectedIds, (result) => {
+        if (result.stale.length + result.failed.length === 0) setShowBatchDeleteConfirm(false);
+      });
       const unresolved = [...result.stale, ...result.failed].map((item) => item.id);
       if (unresolved.length === 0) clearSelection();
       else retainSelection(unresolved);
@@ -152,9 +157,11 @@ export function useSourceDocumentEntryBatchActions({
       if (unresolved.length > 0) {
         toast.error(t("batchDeletePartial", { count: unresolved.length }));
       }
-      setShowBatchDeleteConfirm(false);
+      if (unresolved.length === 0) setShowBatchDeleteConfirm(false);
+      return unresolved.length === 0;
     } catch {
       toast.error(t("batchDeleteError"));
+      return false;
     } finally {
       setIsSaving(false);
     }

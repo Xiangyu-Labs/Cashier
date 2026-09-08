@@ -39,22 +39,24 @@ describe("SelectableCardSurface", () => {
     expect(onToggleSelection).toHaveBeenCalledTimes(3);
   });
 
-  it("places the indicator at the top without a vertical transform", () => {
+  it("centers the indicator within the shared header height", () => {
     render(
       <SelectableCardSurface
         selectionMode
         selected={false}
         selectionLabel="Select lunch"
         onToggleSelection={vi.fn()}
-        indicatorPlacement="top"
+        indicatorPlacement="header"
       >
         <div>Lunch</div>
       </SelectableCardSurface>
     );
 
     const indicator = screen.getByRole("checkbox", { name: "Select lunch" }).querySelector("span");
-    expect(indicator).toHaveClass("top-3");
-    expect(indicator).not.toHaveClass("-translate-y-1/2");
+    expect(indicator).toHaveClass(
+      "top-[calc(var(--selectable-card-header-height)/2)]",
+      "-translate-y-1/2"
+    );
   });
 
   it("restores the original content interaction after selection mode exits", async () => {

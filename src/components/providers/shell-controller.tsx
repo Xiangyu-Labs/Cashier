@@ -2,6 +2,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 interface ShellControllerValue {
+  ready: boolean;
   onOpenInput: () => void;
   setOpenInput: (fn: () => void) => void;
   onInputIntent: () => void;
@@ -11,12 +12,13 @@ interface ShellControllerValue {
 const ShellControllerContext = createContext<ShellControllerValue | null>(null);
 
 export function ShellControllerProvider({ children }: { children: ReactNode }) {
-  const [onOpenInput, setOpenInput] = useState<() => void>(() => {});
+  const [onOpenInput, setOpenInput] = useState<() => void>();
   const [onInputIntent, setInputIntent] = useState<() => void>(() => {});
 
   const value = useMemo(
     () => ({
-      onOpenInput,
+      ready: onOpenInput != null,
+      onOpenInput: onOpenInput ?? (() => {}),
       setOpenInput,
       onInputIntent,
       setInputIntent,

@@ -70,6 +70,7 @@ const DialogContent = React.forwardRef<
       hideCloseButton = false,
       onExitComplete,
       onAnimationEnd,
+      onInteractOutside,
       style,
       ...props
     },
@@ -98,6 +99,13 @@ const DialogContent = React.forwardRef<
             }
           }}
           {...props}
+          onInteractOutside={(event) => {
+            if (event.target instanceof Element && event.target.closest("[data-sonner-toast]")) {
+              event.preventDefault();
+              return;
+            }
+            onInteractOutside?.(event);
+          }}
         >
           {children}
           {hideCloseButton ? null : (

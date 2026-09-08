@@ -34,7 +34,7 @@ interface LedgerEntriesToolbarProps {
   ) => Promise<BatchEntryDateImpact>;
   isUpdatingDates?: boolean;
   onRetry?: () => Promise<void> | void;
-  onDelete?: () => Promise<void> | void;
+  onDelete?: (onCommitted: () => void) => Promise<void | boolean> | void;
   isRetrying?: boolean;
   isDeleting?: boolean;
   onKeepDuplicates?: () => Promise<void> | void;

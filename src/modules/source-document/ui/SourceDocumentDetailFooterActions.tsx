@@ -13,7 +13,6 @@ interface SourceDocumentDetailFooterActionsProps {
   busy: boolean;
   interactionDisabled: boolean;
   hasPendingChanges: boolean;
-  hasVersionConflict: boolean;
   pendingChangesCount: number;
   isAccepting: boolean;
   isAbandoning: boolean;
@@ -36,7 +35,6 @@ export function SourceDocumentDetailFooterActions({
   busy,
   interactionDisabled,
   hasPendingChanges,
-  hasVersionConflict,
   pendingChangesCount,
   isAccepting,
   isAbandoning,
@@ -133,8 +131,9 @@ export function SourceDocumentDetailFooterActions({
         <Button
           variant="outline"
           size="sm"
-          className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+          className="h-11 px-3 gap-1.5 text-danger border-danger/40 hover:bg-danger/10 hover:text-danger"
           onClick={onRequestDelete}
+          aria-label={tCommon("delete")}
           disabled={interactionDisabled}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -161,7 +160,7 @@ export function SourceDocumentDetailFooterActions({
               size="sm"
               className="h-9 gap-1.5 shadow-lg shadow-primary/20"
               onClick={onEditSave}
-              disabled={busy || hasVersionConflict || !hasPendingChanges}
+              disabled={busy || !hasPendingChanges}
             >
               <Save className="h-3.5 w-3.5" />
               {hasPendingChanges

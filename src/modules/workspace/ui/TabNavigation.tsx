@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { LedgerTab } from "@/lib/ledger-tabs";
 
 interface TabNavigationProps {
+  disabled?: boolean;
   activeTab: LedgerTab;
   onTabChange: (tab: LedgerTab) => void;
   onOpenInput: () => void;
@@ -24,6 +25,7 @@ const TAB_CONFIG: Array<{
 ];
 
 export function TabNavigation({
+  disabled = false,
   activeTab,
   onTabChange,
   onOpenInput,
@@ -31,6 +33,7 @@ export function TabNavigation({
   onTabIntent,
 }: TabNavigationProps) {
   const t = useTranslations("LedgerPage");
+  const tCommon = useTranslations("Common");
   const labelFor = (tab: LedgerTab) => {
     switch (tab) {
       case "stream":
@@ -52,10 +55,11 @@ export function TabNavigation({
       {TAB_CONFIG.slice(0, 2).map(({ value, icon: Icon }) => (
         <NavButton
           key={value}
+          disabled={disabled}
           active={activeTab === value}
           icon={Icon}
           label={labelFor(value)}
-          disabledTitle={t("requiresNetwork")}
+          disabledTitle={tCommon("loading")}
           onClick={() => onTabChange(value)}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
@@ -65,6 +69,7 @@ export function TabNavigation({
 
       <button
         type="button"
+        disabled={disabled}
         onClick={onOpenInput}
         onPointerEnter={onInputIntent}
         onPointerDown={onInputIntent}
@@ -78,10 +83,11 @@ export function TabNavigation({
       {TAB_CONFIG.slice(2).map(({ value, icon: Icon }) => (
         <NavButton
           key={value}
+          disabled={disabled}
           active={activeTab === value}
           icon={Icon}
           label={labelFor(value)}
-          disabledTitle={t("requiresNetwork")}
+          disabledTitle={tCommon("loading")}
           onClick={() => onTabChange(value)}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined

@@ -46,8 +46,9 @@ export function EntryActions({
           variant="outline"
           disabled={disabled}
           onClick={onDelete}
+          aria-label={tCommon("delete")}
           size="sm"
-          className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5"
+          className="h-11 px-3 gap-1.5 text-danger border-danger/40 hover:bg-danger/10 hover:text-danger"
         >
           <Trash2 className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{tCommon("delete")}</span>

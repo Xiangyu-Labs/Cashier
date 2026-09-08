@@ -114,6 +114,7 @@ export function SourceDocumentDetailWrapper({
 
   return (
     <SourceDocumentDetailModal
+      sourceDocumentId={id}
       ledgerId={detailLedgerId}
       sourceDocument={sourceDocument}
       isLoading={isLoading}

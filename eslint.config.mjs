@@ -13,6 +13,8 @@ export default defineConfig([
     "build/**",
     "next-env.d.ts",
     "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
     "public/sw.js",
     "public/workbox-*.js",
     "public/worker-*.js",

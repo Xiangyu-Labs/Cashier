@@ -131,15 +131,15 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   return (
     <div
       className={cn(
-        "flex min-h-[68px] items-center gap-1 py-2 pr-2 sm:pr-3",
+        "flex h-[var(--selectable-card-header-height,68px)] items-center gap-1 py-2 pr-2 sm:pr-3",
         selectionMode ? "pl-11" : "pl-2 sm:pl-3"
       )}
     >
-      {hasExpandableContent ? (
+      {hasExpandableContent && !selectionMode ? (
         <button
           type="button"
           onClick={onToggleExpanded}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-9 sm:w-9"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={isExpanded ? t("collapse") : t("expand")}
           aria-expanded={isExpanded}
           aria-controls={contentId}
@@ -152,10 +152,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         </button>
       ) : (
-        <span
-          aria-hidden="true"
-          className="flex h-11 w-11 shrink-0 items-center justify-center sm:h-9 sm:w-9"
-        />
+        <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center" />
       )}
 
       <button

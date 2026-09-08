@@ -8,6 +8,12 @@ function renderNavigation(element: React.ReactNode) {
 }
 
 describe("TabNavigation", () => {
+  it("disables every action until the ledger content is ready", () => {
+    renderNavigation(
+      <TabNavigation disabled activeTab="stream" onTabChange={vi.fn()} onOpenInput={vi.fn()} />
+    );
+    for (const button of screen.getAllByRole("button")) expect(button).toBeDisabled();
+  });
   it("renders the four destinations with the new-record action in the middle", async () => {
     const user = userEvent.setup();
     const onTabChange = vi.fn();

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -53,7 +53,7 @@ vi.mock("@/components/ui/confirm-dialog", () => ({
       <div>
         <span>{title}</span>
         <button onClick={() => void (onSave ?? onConfirm)?.()}>confirm-save</button>
-        <button onClick={() => void onDiscard?.()}>confirm-discard</button>
+        <button onClick={() => void (onDiscard ?? onConfirm)?.()}>confirm-discard</button>
         <button onClick={() => onOpenChange?.(false)}>confirm-cancel</button>
       </div>
     ) : null,
@@ -171,8 +171,9 @@ const sourceDocument: SourceDocumentLight = {
 
 function modal(
   onSaveAll = vi.fn(async () => undefined),
-  document: SourceDocumentLight = sourceDocument,
+  document: SourceDocumentLight | null = sourceDocument,
   overrides: {
+    sourceDocumentId?: string;
     ledgerEntries?: LedgerEntry[];
     onClose?: () => void;
     onReload?: () => Promise<void>;
@@ -190,6 +191,9 @@ function modal(
 ) {
   return (
     <SourceDocumentDetailModal
+      {...(overrides.sourceDocumentId != null
+        ? { sourceDocumentId: overrides.sourceDocumentId }
+        : {})}
       ledgerId="ledger-1"
       sourceDocument={document}
       ledgerEntries={overrides.ledgerEntries ?? [entry]}
@@ -222,6 +226,34 @@ function renderModal(onSaveAll = vi.fn(async () => undefined)) {
 
 describe("SourceDocumentDetailModal batch mode", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("keeps the editor mounted when deletion refreshes its data to null", () => {
+    const save = vi.fn(async () => undefined);
+    const { rerender } = render(modal(save, sourceDocument, { sourceDocumentId: "doc-1" }));
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+    rerender(modal(save, null, { sourceDocumentId: "doc-1" }));
+    expect(screen.getByText("saveChanges")).toBeInTheDocument();
+  });
+
+  it("clears committed edits before the refreshed server version arrives", async () => {
+    let finish!: () => void;
+    const onSaveAll = vi.fn().mockImplementation((_input, onCommitted: () => void) => {
+      onCommitted();
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const { rerender } = renderModal(onSaveAll);
+    fireEvent.click(screen.getByText("edit"));
+    fireEvent.click(screen.getByText("change-draft"));
+    fireEvent.click(screen.getByText("saveChanges"));
+    expect(screen.getByText("viewing")).toBeInTheDocument();
+    rerender(modal(onSaveAll, { ...sourceDocument, title: "Changed", version: 2 }));
+    expect(screen.queryByText("revisionConflict")).not.toBeInTheDocument();
+    await act(async () => finish());
+    expect(toastErrorMock).not.toHaveBeenCalled();
+  });
 
   it("enters batch mode directly outside edit mode", () => {
     renderModal();
@@ -287,7 +319,7 @@ describe("SourceDocumentDetailModal batch mode", () => {
     expect(screen.queryByText("unsavedChanges")).not.toBeInTheDocument();
   });
 
-  it("shows a revision conflict and reloads server data before saving", async () => {
+  it("reports a real conflict only on save and reloads after confirmed cancellation", async () => {
     const onSaveAll = vi.fn(async () => undefined);
     const onReload = vi.fn(async () => undefined);
     const { rerender } = render(modal(onSaveAll, sourceDocument, { onReload }));
@@ -296,16 +328,20 @@ describe("SourceDocumentDetailModal batch mode", () => {
 
     rerender(modal(onSaveAll, { ...sourceDocument, version: 2 }, { onReload }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("revisionConflict");
-    expect(screen.getByText("saveChanges")).toBeDisabled();
-    fireEvent.click(screen.getByText("reloadServerData"));
+    expect(screen.queryByText("reloadServerData")).not.toBeInTheDocument();
+    expect(screen.getByText("saveChanges")).toBeEnabled();
+    fireEvent.click(screen.getByText("saveChanges"));
+    expect(toastErrorMock).toHaveBeenCalledWith("saveConflict");
+    fireEvent.click(screen.getByText("cancelEdit"));
+    expect(onReload).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("confirm-discard"));
 
     await waitFor(() => expect(onReload).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
     expect(onSaveAll).not.toHaveBeenCalled();
   });
 
-  it("preserves the draft when conflict reload fails", async () => {
+  it("keeps edits when cancellation is declined", async () => {
     const onReload = vi.fn(async () => {
       throw new Error("reload failed");
     });
@@ -314,11 +350,11 @@ describe("SourceDocumentDetailModal batch mode", () => {
     fireEvent.click(screen.getByText("change-draft"));
     rerender(modal(undefined, { ...sourceDocument, version: 2 }, { onReload }));
 
-    fireEvent.click(screen.getByText("reloadServerData"));
-    await waitFor(() => expect(onReload).toHaveBeenCalledOnce());
-
-    expect(screen.getByText("reloadFailed")).toBeInTheDocument();
-    expect(screen.getByText("saveChanges")).toBeDisabled();
+    fireEvent.click(screen.getByText("cancelEdit"));
+    fireEvent.click(screen.getByText("confirm-cancel"));
+    expect(onReload).not.toHaveBeenCalled();
+    expect(screen.getByText("editing")).toBeInTheDocument();
+    expect(screen.getByText("saveChanges")).toBeEnabled();
   });
 
   it("saves pending changes before continuing to another action", async () => {

@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AiSettings } from "@/modules/ledger/ui/settings/AiSettings";
 import { BookkeepingSettings } from "@/modules/ledger/ui/settings/BookkeepingSettings";
+import { toast } from "sonner";
+
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -44,7 +47,7 @@ describe("explicit settings section drafts", () => {
     );
   });
 
-  it("restores the AI server snapshot on Cancel", () => {
+  it("confirms before restoring the AI server snapshot on Cancel", async () => {
     render(
       <AiSettings
         settings={{
@@ -60,8 +63,13 @@ describe("explicit settings section drafts", () => {
       target: { value: "Discard me" },
     });
     fireEvent.click(screen.getByRole("button", { name: "cancel" }));
-
-    expect(screen.getByRole("textbox", { name: "aiPrompt" })).toHaveValue("Server prompt");
+    fireEvent.click(screen.getByRole("button", { name: "continueEditing" }));
+    expect(screen.getByRole("textbox", { name: "aiPrompt" })).toHaveValue("Discard me");
+    fireEvent.click(screen.getByRole("button", { name: "cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "discard" }));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "aiPrompt" })).toHaveValue("Server prompt")
+    );
   });
 
   it("keeps bookkeeping switches as a draft until Save", async () => {
@@ -93,5 +101,30 @@ describe("explicit settings section drafts", () => {
     await waitFor(() =>
       expect(onUpdateSettings).toHaveBeenCalledWith({ collapseEntriesDefault: true })
     );
+  });
+
+  it("keeps edits without a server-update banner and reports conflict only on Save", () => {
+    const onUpdateSettings = vi.fn();
+    const { rerender } = render(
+      <AiSettings
+        settings={{ aiCustomPrompt: "Server prompt" }}
+        onUpdateSettings={onUpdateSettings}
+      />
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "aiPrompt" }), {
+      target: { value: "Draft prompt" },
+    });
+    rerender(
+      <AiSettings
+        settings={{ aiCustomPrompt: "New server prompt" }}
+        onUpdateSettings={onUpdateSettings}
+      />
+    );
+    expect(screen.getByRole("textbox", { name: "aiPrompt" })).toHaveValue("Draft prompt");
+    expect(screen.queryByText("serverChangedWhileEditing")).not.toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(toast.error).toHaveBeenCalledWith("updateConflict");
+    expect(onUpdateSettings).not.toHaveBeenCalled();
   });
 });

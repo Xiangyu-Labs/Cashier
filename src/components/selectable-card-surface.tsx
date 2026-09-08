@@ -8,7 +8,7 @@ export interface SelectableCardSurfaceProps {
   disabled?: boolean;
   selectionLabel: string;
   onToggleSelection: () => void;
-  indicatorPlacement?: "center" | "top" | "header";
+  indicatorPlacement?: "center" | "header";
   /**
    * When set, an expand/collapse control is rendered above the selection
    * overlay while in selection mode so cards with an expandable body keep
@@ -19,6 +19,7 @@ export interface SelectableCardSurfaceProps {
         isExpanded: boolean;
         onToggleExpanded: () => void;
         expandLabel: string;
+        contentId?: string;
       }
     | undefined;
   children: ReactNode;
@@ -30,11 +31,8 @@ const indicatorPositionClass: Record<
 > = {
   // Centered on the whole card — correct for single-row (non-expandable) cards.
   center: "top-1/2 -translate-y-1/2",
-  // Aligned near the top edge — used for per-entry selection in detail views.
-  top: "top-3",
-  // Aligned with the header row (68px header => center at 34px). Keeps the
-  // checkbox on the title line whether the card is expanded or collapsed.
-  header: "top-[24px] -translate-y-1/2",
+  // Share the title row's height so expansion never shifts the selection indicator.
+  header: "top-[calc(var(--selectable-card-header-height)/2)] -translate-y-1/2",
 };
 
 export const SelectableCardSurface = memo(function SelectableCardSurface({
@@ -50,7 +48,7 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
   return (
     <div
       className={cn(
-        "relative rounded-[var(--radius-xl)]",
+        "relative rounded-[var(--radius-xl)] [--selectable-card-header-height:68px]",
         selectionMode && "isolate",
         selectionMode && selected && "ring-1 ring-primary",
         selectionMode && disabled && "opacity-60"
@@ -86,8 +84,9 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
           type="button"
           aria-label={expandable.expandLabel}
           aria-expanded={expandable.isExpanded}
+          aria-controls={expandable.contentId}
           onClick={expandable.onToggleExpanded}
-          className="absolute left-[44px] top-[12px] z-[1] flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] hover:bg-surface2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:top-[16px] sm:h-9 sm:w-9"
+          className="absolute left-11 top-[calc(var(--selectable-card-header-height)/2)] z-[1] flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] hover:bg-surface2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronDown
             className={cn(

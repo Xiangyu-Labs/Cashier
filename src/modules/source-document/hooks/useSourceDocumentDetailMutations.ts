@@ -11,6 +11,7 @@ import type {
   SaveSourceDocumentChangesResultDto,
   SplitSourceDocumentInput,
   SplitSourceDocumentResultDto,
+  PartialBatchCommandResult,
 } from "@/modules/source-document/contracts";
 import {
   requireSourceDocumentVersion,
@@ -32,6 +33,7 @@ interface UseSourceDocumentDetailMutationsOptions {
 interface SaveDetailChanges {
   expectedVersion: number;
   changes: PendingChanges;
+  onCommitted?: (() => void) | undefined;
 }
 
 /** Fields collected by the "add entry" dialog for a new ledger entry. */
@@ -88,6 +90,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    onSuccess: (_result, input) => input.onCommitted?.(),
   });
 
   const splitMutation = useLedgerMutation<
@@ -120,42 +123,46 @@ export function useSourceDocumentDetailMutations({
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
-  const deleteEntryMutation = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, string>(
-    ledgerId,
-    {
-      mutationFn: async (entryId: string) => {
-        if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-        const expectedVersion = requireSourceDocumentVersion(version, id);
-        const result = await deleteLedgerEntryAction(
-          ledgerId,
-          { sourceDocumentId: id, expectedVersion },
-          entryId
-        );
-        return unwrapVersionedCommandResult(result);
-      },
-      successMessage: null,
-      errorMessage: null,
-      invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    }
-  );
+  const deleteEntryMutation = useLedgerMutation<
+    { ledgerEntryId: string; deleted: true },
+    { entryId: string; onCommitted?: (() => void) | undefined }
+  >(ledgerId, {
+    mutationFn: async ({ entryId }) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const expectedVersion = requireSourceDocumentVersion(version, id);
+      const result = await deleteLedgerEntryAction(
+        ledgerId,
+        { sourceDocumentId: id, expectedVersion },
+        entryId
+      );
+      return unwrapVersionedCommandResult(result);
+    },
+    successMessage: null,
+    errorMessage: null,
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    onSuccess: (_result, input) => input.onCommitted?.(),
+  });
 
   return {
-    saveChanges: async (input: SaveDetailChanges) => {
-      await saveChangesMutation.mutateAsync(input);
+    saveChanges: async (input: SaveDetailChanges, onCommitted?: () => void) => {
+      await saveChangesMutation.mutateAsync({ ...input, onCommitted });
     },
     splitEntries: (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) =>
       splitMutation.mutateAsync(input),
     addEntry: async (data: AddEntryData) => {
       await addEntryMutation.mutateAsync(data);
     },
-    deleteEntry: async (entryId: string) => {
-      await deleteEntryMutation.mutateAsync(entryId);
+    deleteEntry: async (entryId: string, onCommitted?: () => void) => {
+      await deleteEntryMutation.mutateAsync({ entryId, onCommitted });
     },
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
-    batchDeleteEntries: (entryIds: string[]) => batchDeleteMutation.mutateAsync(entryIds),
-    deleteDocument: async () => {
-      await deleteDocumentMutation.mutateAsync();
+    batchDeleteEntries: (
+      entryIds: string[],
+      onCommitted?: (result: PartialBatchCommandResult) => void
+    ) => batchDeleteMutation.mutateAsync({ entryIds, onCommitted }),
+    deleteDocument: async (onCommitted?: () => void) => {
+      await deleteDocumentMutation.mutateAsync(onCommitted);
     },
     isSavingChanges: saveChangesMutation.isPending,
     isSplitting: splitMutation.isPending,

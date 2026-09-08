@@ -21,7 +21,11 @@ interface UseSourceDocumentDetailSessionOptions {
   onClose: () => void;
   onReload?: (() => Promise<void>) | undefined;
   onSaveAll?:
-    ((input: { expectedVersion: number; changes: PendingChanges }) => Promise<void>) | undefined;
+    | ((
+        input: { expectedVersion: number; changes: PendingChanges },
+        onCommitted?: () => void
+      ) => Promise<void>)
+    | undefined;
   clearSelection: () => void;
   t: ReturnType<typeof useTranslations>;
 }
@@ -39,8 +43,10 @@ export function useSourceDocumentDetailSession({
   t,
 }: UseSourceDocumentDetailSessionOptions) {
   const pending = usePendingChanges({ sourceDocument, ledgerEntries });
+  const [isEditMode, setIsEditMode] = useState(false);
   const revision = useSourceDocumentRevisionGuard({
     hasPendingChanges: pending.hasPendingChanges,
+    isEditing: isEditMode,
     version: sourceDocument?.version,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -49,7 +55,6 @@ export function useSourceDocumentDetailSession({
   const [isSplitting, setIsSplitting] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
   const [reloadError, setReloadError] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -73,17 +78,28 @@ export function useSourceDocumentDetailSession({
   const handleSaveAll = useCallback(async (): Promise<boolean> => {
     if (busy) return false;
     const expectedVersion = revision.baseVersionRef.current ?? sourceDocument?.version;
-    if (expectedVersion == null || onSaveAll == null || revision.hasVersionConflict) {
+    if (revision.hasVersionConflict) {
+      toast.error(t("saveConflict"));
+      return false;
+    }
+    if (expectedVersion == null || onSaveAll == null) {
       toast.error(t("saveAllFailed"));
       return false;
     }
     setIsSaving(true);
     try {
-      await onSaveAll({
-        expectedVersion,
-        changes: pending.pendingChanges,
-      });
-      pending.discardAllChanges();
+      const committed = () => {
+        pending.discardAllChanges();
+        setIsEditMode(false);
+      };
+      await onSaveAll(
+        {
+          expectedVersion,
+          changes: pending.pendingChanges,
+        },
+        committed
+      );
+      committed();
       toast.success(t("saveAllSuccess", { count: pending.pendingChangesCount }));
       return true;
     } catch (error) {
@@ -92,9 +108,7 @@ export function useSourceDocumentDetailSession({
       // message tells the user their edits are based on outdated data rather
       // than implying the save itself failed.
       toast.error(
-        error instanceof SourceDocumentStaleCommandError
-          ? t("actionContextChanged")
-          : t("saveAllFailed")
+        error instanceof SourceDocumentStaleCommandError ? t("saveConflict") : t("saveAllFailed")
       );
       return false;
     } finally {
@@ -124,22 +138,19 @@ export function useSourceDocumentDetailSession({
   }, [interactionDisabled]);
   const handleCancelEditMode = useCallback(() => {
     if (busy) return;
-    pending.discardAllChanges();
-    setIsEditMode(false);
-  }, [busy, pending]);
+    const cancel = () => {
+      pending.discardAllChanges();
+      setIsEditMode(false);
+      void handleReload();
+    };
+    if (pending.hasPendingChanges) unsavedGuard.requestLeave(cancel);
+    else cancel();
+  }, [busy, pending, unsavedGuard, handleReload]);
   const handleEditSave = useCallback(async () => {
     const saved = await handleSaveAll();
     if (saved) setIsEditMode(false);
     return saved;
   }, [handleSaveAll]);
-  const handleSaveAllAndClose = useCallback(async () => {
-    const saved = await handleSaveAll();
-    if (!saved) return false;
-    const continueNavigation = unsavedGuard.resolveLeave();
-    if (continueNavigation != null) continueNavigation();
-    else onClose();
-    return true;
-  }, [handleSaveAll, onClose, unsavedGuard]);
   const handleDiscardAndClose = useCallback(() => {
     pending.discardAllChanges();
     const continueNavigation = unsavedGuard.resolveLeave();
@@ -171,7 +182,6 @@ export function useSourceDocumentDetailSession({
     handleEnterEditMode,
     handleCancelEditMode,
     handleEditSave,
-    handleSaveAllAndClose,
     handleDiscardAndClose,
   };
 }

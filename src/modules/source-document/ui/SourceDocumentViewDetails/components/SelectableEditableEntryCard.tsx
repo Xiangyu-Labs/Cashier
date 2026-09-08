@@ -48,7 +48,7 @@ export const SelectableEditableEntryCard = memo(function SelectableEditableEntry
       selected={selected}
       selectionLabel={selectionLabel}
       onToggleSelection={() => onSelectEntry(entry.id, !selected)}
-      indicatorPlacement="top"
+      indicatorPlacement="center"
     >
       <Card
         className={cn(

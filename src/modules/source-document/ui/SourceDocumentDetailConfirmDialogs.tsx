@@ -20,15 +20,14 @@ interface SourceDocumentDetailConfirmDialogsProps {
   showBatchDeleteConfirm: boolean;
   setShowBatchDeleteConfirm: (open: boolean) => void;
   selectedCount: number;
-  handleBatchDelete: () => Promise<void>;
+  handleBatchDelete: () => Promise<void | boolean>;
   pendingDeleteEntryId: string | null;
   setPendingDeleteEntryId: (id: string | null) => void;
   handleDeleteEntry: (entryId: string) => Promise<boolean>;
   showDeleteConfirm: boolean;
   setShowDeleteConfirm: (open: boolean) => void;
-  handleDeleteDocument: () => Promise<void>;
+  handleDeleteDocument: (onCommitted?: () => void) => Promise<void>;
   saveAndContinueGate: SaveAndContinueGate;
-  handleSaveAllAndClose: () => Promise<boolean>;
   unsavedGuard: ReturnType<typeof useUnsavedChangesGuard>;
   handleDiscardAndClose: () => void;
 }
@@ -52,7 +51,6 @@ export function SourceDocumentDetailConfirmDialogs({
   setShowDeleteConfirm,
   handleDeleteDocument,
   saveAndContinueGate,
-  handleSaveAllAndClose,
   unsavedGuard,
   handleDiscardAndClose,
 }: SourceDocumentDetailConfirmDialogsProps) {
@@ -123,12 +121,10 @@ export function SourceDocumentDetailConfirmDialogs({
         onOpenChange={unsavedGuard.setConfirmOpen}
         title={t("unsavedChanges")}
         description={t("unsavedChangesDesc")}
-        onConfirm={() => unsavedGuard.setConfirmOpen(false)}
-        cancelLabel={tCommon("cancel")}
-        onSave={handleSaveAllAndClose}
-        saveLabel={tCommon("save")}
-        onDiscard={handleDiscardAndClose}
-        discardLabel={t("discardChanges")}
+        onConfirm={handleDiscardAndClose}
+        cancelLabel={tCommon("continueEditing")}
+        confirmLabel={t("discardChanges")}
+        variant="destructive"
       />
     </>
   );

@@ -132,12 +132,14 @@ function SourceDocumentCardBody({
               isExpanded,
               onToggleExpanded: toggleExpanded,
               expandLabel: isExpanded ? tCard("collapse") : tCard("expand"),
+              contentId,
             }
           : undefined
       }
     >
       <EntryCardShell
         data-testid="source-document-card-root"
+        data-source-document-id={sourceDocument.id}
         selected={selectionMode && isSelected}
         interactive={selectionMode}
         className={className}

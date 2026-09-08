@@ -213,7 +213,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           variant="destructive"
           confirmLabel={tCommon("delete")}
           onConfirm={async () => {
-            await batch.remove.mutateAsync();
+            const result = await batch.remove.mutateAsync();
+            return result.stale.length + result.failed.length === 0;
           }}
         />
         <Dialog

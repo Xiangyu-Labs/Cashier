@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { useCategoryManagementDraft } from "@/modules/ledger/hooks/useCategoryManagementDraft";
 import { CategoryEditDialog } from "./CategoryEditDialog";
+import { toast } from "sonner";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
@@ -207,14 +208,6 @@ export function CategorySection({
           </div>
           <div aria-live="polite" className="text-sm">
             {saveError == null ? null : <p className="text-destructive">{saveError}</p>}
-            {saveError == null && serverChanged ? (
-              <p className="text-warning">{t("serverChangedWhileEditing")}</p>
-            ) : null}
-            {revisionConflict && onReloadCategories != null ? (
-              <Button type="button" variant="ghost" size="sm" onClick={() => void handleReload()}>
-                {common("reloadServerData")}
-              </Button>
-            ) : null}
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" disabled={isSaving} onClick={cancelManagement}>
@@ -222,8 +215,11 @@ export function CategorySection({
             </Button>
             <Button
               type="button"
-              disabled={!dirty || isSaving || revisionConflict || serverChanged}
-              onClick={() => void handleSave()}
+              disabled={!dirty || isSaving}
+              onClick={() => {
+                if (revisionConflict || serverChanged) toast.error(t("updateConflict"));
+                else void handleSave();
+              }}
             >
               {isSaving ? t("saving") : common("save")}
             </Button>
@@ -254,7 +250,10 @@ export function CategorySection({
         description={t("discardCategoryChangesDescription")}
         variant="destructive"
         confirmLabel={common("discard")}
-        onConfirm={confirmDiscardManagement}
+        onConfirm={async () => {
+          confirmDiscardManagement();
+          await handleReload();
+        }}
       />
 
       <ConfirmDialog

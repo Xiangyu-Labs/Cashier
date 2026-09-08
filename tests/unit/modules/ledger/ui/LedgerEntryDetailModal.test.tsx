@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -122,6 +122,57 @@ describe("LedgerEntryDetailModal feedback", () => {
     vi.clearAllMocks();
   });
 
+  it("submits the edit-start version and clears edits before refresh finishes", async () => {
+    let finish!: () => void;
+    let committed!: () => void;
+    const onUpdate = vi.fn((_data, context) => {
+      committed = context.onCommitted;
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const sourceDocument = {
+      id: "document-1",
+      ledgerId: "ledger-1",
+      version: 1,
+      title: null,
+      status: "completed" as const,
+      type: "manual" as const,
+      entryDate: null,
+      createdAt: ledgerEntry.createdAt,
+      updatedAt: ledgerEntry.updatedAt,
+    };
+    const props = {
+      categories: [],
+      mainCurrency: "CNY",
+      preferredCurrencies: [],
+      open: true,
+      onClose: vi.fn(),
+      onUpdate,
+      onDelete: vi.fn(async () => undefined),
+    };
+    const { rerender } = render(
+      <LedgerEntryDetailModal {...props} ledgerEntry={{ ...ledgerEntry, sourceDocument }} />
+    );
+    fireEvent.click(screen.getByText("edit-entry"));
+    rerender(
+      <LedgerEntryDetailModal
+        {...props}
+        ledgerEntry={{ ...ledgerEntry, sourceDocument: { ...sourceDocument, version: 2 } }}
+      />
+    );
+    fireEvent.click(screen.getByText("change-name"));
+    fireEvent.click(screen.getByText("save-entry"));
+    expect(onUpdate).toHaveBeenCalledWith(
+      { itemName: "Updated" },
+      expect.objectContaining({ expectedVersion: 1 })
+    );
+    await act(async () => committed());
+    expect(screen.getByText("change-name")).toBeDisabled();
+    await act(async () => finish());
+    expect(screen.getByText("change-name")).toBeDisabled();
+  });
+
   it("shows success only after the save mutation resolves", async () => {
     let resolveSave!: () => void;
     const onUpdate = vi.fn(
@@ -136,7 +187,10 @@ describe("LedgerEntryDetailModal feedback", () => {
     fireEvent.click(screen.getByText("change-name"));
     fireEvent.click(screen.getByText("save-entry"));
 
-    expect(onUpdate).toHaveBeenCalledWith({ itemName: "Updated" });
+    expect(onUpdate).toHaveBeenCalledWith(
+      { itemName: "Updated" },
+      expect.objectContaining({ onCommitted: expect.any(Function) })
+    );
     expect(toastSuccessMock).not.toHaveBeenCalled();
 
     resolveSave();
@@ -186,7 +240,10 @@ describe("LedgerEntryDetailModal feedback", () => {
 
     fireEvent.click(screen.getByText("save-entry"));
     await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
-    expect(onUpdate).toHaveBeenLastCalledWith({ itemName: "Updated" });
+    expect(onUpdate).toHaveBeenLastCalledWith(
+      { itemName: "Updated" },
+      expect.objectContaining({ onCommitted: expect.any(Function) })
+    );
   });
 
   it("leaves delete feedback to the mutation and closes only after success", async () => {

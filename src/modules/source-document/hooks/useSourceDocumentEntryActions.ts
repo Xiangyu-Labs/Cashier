@@ -34,8 +34,8 @@ interface UseSourceDocumentEntryActionsOptions {
       ) => Promise<SplitSourceDocumentResultDto>)
     | undefined;
   onAddEntry?: ((data: AddEntryData) => Promise<void>) | undefined;
-  onDeleteEntry?: ((entryId: string) => Promise<void>) | undefined;
-  onDelete?: (() => void | Promise<void>) | undefined;
+  onDeleteEntry?: ((entryId: string, onCommitted?: () => void) => Promise<void>) | undefined;
+  onDelete?: ((onCommitted?: () => void) => void | Promise<void>) | undefined;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
 }
@@ -152,7 +152,7 @@ export function useSourceDocumentEntryActions({
       if (onDeleteEntry == null || busy) return false;
       setIsSaving(true);
       try {
-        await onDeleteEntry(entryId);
+        await onDeleteEntry(entryId, () => setPendingDeleteEntryId(null));
         toast.success(tCommon("deleteSuccess"));
         return true;
       } catch (error) {
@@ -166,7 +166,7 @@ export function useSourceDocumentEntryActions({
         setIsSaving(false);
       }
     },
-    [onDeleteEntry, busy, setIsSaving, t, tCommon]
+    [onDeleteEntry, busy, setIsSaving, setPendingDeleteEntryId, t, tCommon]
   );
 
   const handleRequestDeleteEntry = useCallback(
@@ -174,15 +174,18 @@ export function useSourceDocumentEntryActions({
     [setPendingDeleteEntryId]
   );
 
-  const handleDeleteDocument = useCallback(async () => {
-    if (interactionDisabled) return;
-    setIsDeleting(true);
-    try {
-      await onDelete?.();
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [interactionDisabled, setIsDeleting, onDelete]);
+  const handleDeleteDocument = useCallback(
+    async (onCommitted?: () => void) => {
+      if (interactionDisabled) return;
+      setIsDeleting(true);
+      try {
+        await onDelete?.(onCommitted);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [interactionDisabled, setIsDeleting, onDelete]
+  );
 
   return {
     handleOpenSplit,

@@ -9,7 +9,7 @@ type UpdateVariables = {
   entry: LedgerEntryDto;
   data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number };
 };
-export function useLedgerEntriesMutations(ledgerId: string) {
+export function useLedgerEntriesMutations(ledgerId: string, onDeleted?: () => void) {
   const tCommon = useTranslations("Common");
   const updateEntry = useLedgerMutation<{ ledgerEntryId: string }, UpdateVariables>(ledgerId, {
     mutationFn: async ({ entry, data }) => {
@@ -47,6 +47,7 @@ export function useLedgerEntriesMutations(ledgerId: string) {
       },
       invalidationErrorMessage: tCommon("savedRefreshFailed"),
       successMessage: tCommon("deleteSuccess"),
+      onSuccess: () => onDeleted?.(),
       errorMessage: tCommon("deleteFailed"),
     }
   );

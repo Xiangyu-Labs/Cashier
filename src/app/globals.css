@@ -146,6 +146,7 @@
 }
 
 .dark {
+  --destructive-foreground: #181a1b;
   color-scheme: dark;
   --primary: #69cdb3;
   --ring: #69cdb3;
@@ -311,6 +312,7 @@ body {
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -460,4 +462,17 @@ body {
  */
 [data-sonner-toast] {
   pointer-events: auto;
+}
+
+[data-sonner-toast][data-visible="false"],
+[data-sonner-toast][data-removed="true"] {
+  pointer-events: none;
+}
+
+.toaster [data-sonner-toast] [data-button] {
+  min-height: 44px;
+  min-width: 44px;
+  height: auto;
+  padding: 8px 12px;
+  touch-action: manipulation;
 }

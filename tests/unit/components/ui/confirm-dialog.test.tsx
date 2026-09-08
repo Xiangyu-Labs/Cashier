@@ -36,6 +36,51 @@ vi.mock("@/components/ui/dialog", () => ({
 }));
 
 describe("ConfirmDialog", () => {
+  it("closes on commit before refresh finishes and ignores a duplicate click", async () => {
+    let finish!: () => void;
+    const onOpenChange = vi.fn();
+    const onConfirm = vi.fn((onCommitted: () => void) => {
+      onCommitted();
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    });
+    render(
+      <ConfirmDialog
+        title="Delete"
+        description="Delete item"
+        open
+        onConfirm={onConfirm}
+        onOpenChange={onOpenChange}
+      />
+    );
+    const button = screen.getByRole("button", { name: "confirm" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+    expect(onConfirm).toHaveBeenCalledOnce();
+    finish();
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(onOpenChange).toHaveBeenCalledOnce();
+  });
+
+  it("retains the confirmation on mutation failure", async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <ConfirmDialog
+        title="Delete"
+        description="Delete item"
+        open
+        onConfirm={async () => {
+          throw new Error("failed");
+        }}
+        onOpenChange={onOpenChange}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "confirm" })).toBeEnabled());
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     dialogFooterSpy.mockClear();
   });

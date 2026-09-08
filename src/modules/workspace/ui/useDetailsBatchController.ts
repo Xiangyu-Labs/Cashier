@@ -110,12 +110,12 @@ export function useDetailsBatchController(
     errorMessage: tCommon("deleteFailed"),
     onSuccess: (result) => {
       const unresolved = [...result.stale, ...result.failed].map((item) => item.id);
+      if (unresolved.length === 0) setDeleteDialogOpen(false);
       if (unresolved.length > 0) selection.retainSelection(unresolved);
       else selection.clearSelection();
       if (result.succeeded.length > 0)
         toast.success(t("batchDeleted", { count: result.succeeded.length }));
       if (unresolved.length > 0) toast.warning(t("batchUnresolved", { count: unresolved.length }));
-      setDeleteDialogOpen(false);
     },
   });
   const previewDate = useMutation({

@@ -49,7 +49,6 @@ function SourceDocumentDialogHarness({ onConfirm }: { onConfirm: () => Promise<b
             confirmSaveAndContinue: onConfirm,
             confirmDiscardAndContinue: async () => true,
           }}
-          handleSaveAllAndClose={async () => true}
           unsavedGuard={
             {
               confirmOpen: false,

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 interface UseSourceDocumentRevisionGuardOptions {
   hasPendingChanges: boolean;
+  isEditing: boolean;
   version: number | undefined;
 }
 
@@ -13,17 +14,18 @@ interface UseSourceDocumentRevisionGuardOptions {
  */
 export function useSourceDocumentRevisionGuard({
   hasPendingChanges,
+  isEditing,
   version,
 }: UseSourceDocumentRevisionGuardOptions) {
   const baseVersionRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (hasPendingChanges) {
+    if (isEditing || hasPendingChanges) {
       baseVersionRef.current ??= version ?? null;
     } else {
       baseVersionRef.current = null;
     }
-  }, [hasPendingChanges, version]);
+  }, [hasPendingChanges, isEditing, version]);
 
   const hasVersionConflict =
     hasPendingChanges &&

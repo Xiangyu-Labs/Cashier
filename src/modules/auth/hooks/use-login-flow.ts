@@ -125,7 +125,7 @@ export function useLoginFlow(
   };
 
   const finishSignIn = (result: SignInResponse | undefined) => {
-    if (result?.ok) {
+    if (result?.ok && result.error == null) {
       clearOtpContext();
       setPassword("");
       resetDraft();

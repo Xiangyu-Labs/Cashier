@@ -51,16 +51,21 @@ export function LedgerEntryDetailWrapper({
 
   const updateMutation = useLedgerMutation<
     { ledgerEntryId: string },
-    Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
+    {
+      data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number };
+      expectedVersion: number | undefined;
+      onCommitted: () => void;
+    }
   >(ledgerId, {
-    mutationFn: async (data) => {
+    mutationFn: async ({ data, expectedVersion }) => {
       if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
+      if (expectedVersion == null) throw new Error("Entry has no edit version");
       const { amount, ...rest } = data;
       const result = await updateLedgerEntryAction(
         ledgerId,
         {
           sourceDocumentId: ledgerEntry.sourceDocument.id,
-          expectedVersion: ledgerEntry.sourceDocument.version,
+          expectedVersion,
         },
         id,
         { ...rest, ...(amount == null ? {} : { amount: String(amount) }) }
@@ -68,29 +73,31 @@ export function LedgerEntryDetailWrapper({
       return unwrapVersionedCommandResult(result);
     },
     errorMessage: null,
+    onSuccess: (_result, { onCommitted }) => onCommitted(),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
-  const deleteMutation = useLedgerMutation<{ ledgerEntryId: string; deleted: true }, void>(
-    ledgerId,
-    {
-      mutationFn: async () => {
-        if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
-        const result = await deleteLedgerEntryAction(
-          ledgerId,
-          {
-            sourceDocumentId: ledgerEntry.sourceDocument.id,
-            expectedVersion: ledgerEntry.sourceDocument.version,
-          },
-          id
-        );
-        return unwrapVersionedCommandResult(result);
-      },
-      successMessage: tCommon("deleteSuccess"),
-      errorMessage: tCommon("deleteFailed"),
-      invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    }
-  );
+  const deleteMutation = useLedgerMutation<
+    { ledgerEntryId: string; deleted: true },
+    void | (() => void)
+  >(ledgerId, {
+    mutationFn: async () => {
+      if (ledgerEntry?.sourceDocument == null) throw new Error("Entry has no source document");
+      const result = await deleteLedgerEntryAction(
+        ledgerId,
+        {
+          sourceDocumentId: ledgerEntry.sourceDocument.id,
+          expectedVersion: ledgerEntry.sourceDocument.version,
+        },
+        id
+      );
+      return unwrapVersionedCommandResult(result);
+    },
+    successMessage: tCommon("deleteSuccess"),
+    onSuccess: (_result, onCommitted) => onCommitted?.(),
+    errorMessage: tCommon("deleteFailed"),
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
+  });
 
   const handleReload = useCallback(async () => {
     const result = await query.refetch();
@@ -102,6 +109,7 @@ export function LedgerEntryDetailWrapper({
   // Always render Modal - pass isLoading for skeleton state
   return (
     <LedgerEntryDetailModal
+      entryId={id}
       ledgerEntry={ledgerEntry ?? null}
       isLoading={isLoading}
       loadError={loadError}
@@ -113,11 +121,11 @@ export function LedgerEntryDetailWrapper({
       onClose={onClose}
       {...(onBack !== undefined ? { onBack } : {})}
       {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-      onUpdate={async (data) => {
-        await updateMutation.mutateAsync(data);
+      onUpdate={async (data, context) => {
+        await updateMutation.mutateAsync({ data, ...context });
       }}
-      onDelete={async () => {
-        await deleteMutation.mutateAsync();
+      onDelete={async (onCommitted) => {
+        await deleteMutation.mutateAsync(onCommitted);
       }}
       {...(sourceDocumentId != null && sourceDocumentId !== ""
         ? {

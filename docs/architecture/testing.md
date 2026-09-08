@@ -13,6 +13,12 @@ Cashier keeps fast, deterministic unit tests separate from database-backed integ
 
 ## Isolation
 
+Browser smoke tests live in `tests/smoke/` and run with Playwright against a production build.
+They exercise actual browser, authentication, server-action, and PostgreSQL boundaries. Each run
+owns a separate `smoke_<uuid>` database; desktop/mobile scenarios run serially with fresh browser
+contexts. The application creates the account's default ledger through its normal login flow.
+No existing user database is migrated, seeded, or truncated. See `CONTRIBUTING.md` for the command.
+
 Database-backed Vitest runs set `CASHIER_TEST_RUN_ID`. Each isolated Vitest worker uses a schema
 named `test_<run-id>_w<worker-id>`; the pool slot and isolated worker identity both participate in
 the actual identifier. Separate runs never share schemas. The runner removes only schemas belonging

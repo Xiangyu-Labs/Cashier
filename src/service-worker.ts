@@ -20,7 +20,16 @@ const serwist = new Serwist({
 serwist.addEventListeners();
 
 self.addEventListener("message", (event) => {
-  if ((event.data as { type?: string } | null)?.type === "SKIP_WAITING") {
-    void self.skipWaiting();
-  }
+  const type = (event.data as { type?: string } | null)?.type;
+  if (type !== "GET_WINDOW_COUNT" && type !== "ACTIVATE_SINGLE_WINDOW") return;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const count = windows.filter((client) =>
+        client.url.startsWith(self.registration.scope)
+      ).length;
+      if (type === "GET_WINDOW_COUNT") event.ports[0]?.postMessage(count);
+      if (type === "ACTIVATE_SINGLE_WINDOW" && count === 1) await self.skipWaiting();
+    })()
+  );
 });

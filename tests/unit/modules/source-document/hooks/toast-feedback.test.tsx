@@ -134,12 +134,17 @@ describe("source document mutation toast ownership", () => {
     );
 
     let mutation!: Promise<void>;
+    const onCommitted = vi.fn();
     act(() => {
-      mutation = result.current.deleteSourceDocument.mutateAsync("document-1");
+      mutation = result.current.deleteSourceDocument.mutateAsync({ id: "document-1", onCommitted });
     });
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess"));
     expect(result.current.deleteSourceDocument.isPending).toBe(true);
+    expect(onCommitted).toHaveBeenCalledOnce();
+    expect(onCommitted.mock.invocationCallOrder[0]).toBeLessThan(
+      toastSuccessMock.mock.invocationCallOrder[0]!
+    );
     expect(clearSelection).toHaveBeenCalledTimes(1);
     expect(toastWarningMock).not.toHaveBeenCalled();
 

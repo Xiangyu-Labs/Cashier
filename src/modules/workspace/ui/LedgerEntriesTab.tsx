@@ -58,13 +58,14 @@ export function LedgerEntriesTab({
   const {
     deleteConfirm,
     setDeleteConfirm,
+    closeDeleteConfirm,
     retrySourceDocument,
     setRetrySourceDocument,
     openSourceDocumentDeleteConfirm,
     closeRetrySourceDocument,
   } = useLedgerEntriesTabState();
 
-  const { deleteEntry } = useLedgerEntriesMutations(ledgerId);
+  const { deleteEntry } = useLedgerEntriesMutations(ledgerId, closeDeleteConfirm);
 
   const streamData = useLedgerEntriesStreamData({
     ledgerId,
@@ -114,7 +115,10 @@ export function LedgerEntriesTab({
   const handleDeleteConfirmAction = useCallback(async () => {
     if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
     if (deleteConfirm.type === "sourceDocument") {
-      await selection.deleteSourceDocument.mutateAsync(deleteConfirm.id);
+      await selection.deleteSourceDocument.mutateAsync({
+        id: deleteConfirm.id,
+        onCommitted: closeDeleteConfirm,
+      });
     } else if (deleteConfirm.type === "ledgerEntry") {
       const entry = streamData.streamGroups
         .flatMap((group) => group.items)
@@ -123,7 +127,13 @@ export function LedgerEntriesTab({
       if (entry == null) throw new Error("Ledger entry is no longer available");
       await deleteEntry.mutateAsync(entry);
     }
-  }, [deleteConfirm, selection.deleteSourceDocument, deleteEntry, streamData.streamGroups]);
+  }, [
+    deleteConfirm,
+    selection.deleteSourceDocument,
+    deleteEntry,
+    streamData.streamGroups,
+    closeDeleteConfirm,
+  ]);
 
   const sentinelRef = useInfiniteScroll({
     hasNextPage: streamData.hasNextPage,
@@ -161,8 +171,12 @@ export function LedgerEntriesTab({
         onRetry={async () => {
           await selection.batchRetry.mutateAsync(selection.selectedIds);
         }}
-        onDelete={async () => {
-          await selection.batchDelete.mutateAsync(selection.selectedIds);
+        onDelete={async (onCommitted) => {
+          const result = await selection.batchDelete.mutateAsync({
+            ids: selection.selectedIds,
+            onCommitted,
+          });
+          return result.stale.length + result.failed.length === 0;
         }}
         isRetrying={selection.batchRetry.isPending}
         isDeleting={selection.batchDelete.isPending}

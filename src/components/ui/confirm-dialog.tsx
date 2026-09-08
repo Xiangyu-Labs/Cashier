@@ -1,5 +1,5 @@
 "use client";
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import {
 interface ConfirmDialogProps {
   title: string;
   description: string;
-  onConfirm: () => void | boolean | Promise<void | boolean>;
+  onConfirm: (onCommitted: () => void) => void | boolean | Promise<void | boolean>;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -48,6 +48,12 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 }: ConfirmDialogProps) {
   const t = useTranslations("Common");
   const [isPending, setIsPending] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const pendingRef = useRef(false);
+  const setOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const displayConfirmLabel = confirmLabel ?? t("confirm");
   const displayCancelLabel = cancelLabel ?? t("cancel");
   const displaySaveLabel = saveLabel ?? t("save");
@@ -56,10 +62,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
   // Check if we're using the three-button layout (for unsaved changes dialog)
   const hasThreeButtonLayout = onSave != null || onDiscard != null;
   const dialogProps = {
-    ...(open !== undefined ? { open } : {}),
-    ...(onOpenChange !== undefined
-      ? { onOpenChange: (nextOpen: boolean) => !isPending && onOpenChange(nextOpen) }
-      : {}),
+    open: open ?? internalOpen,
+    onOpenChange: (nextOpen: boolean) => !pendingRef.current && setOpen(nextOpen),
   };
   const footerProps = hasThreeButtonLayout
     ? { className: "justify-between sm:justify-between" }
@@ -85,13 +89,16 @@ export const ConfirmDialog = memo(function ConfirmDialog({
               disabled={isPending}
               onClick={async (e) => {
                 e.stopPropagation();
+                if (pendingRef.current) return;
+                pendingRef.current = true;
                 setIsPending(true);
                 try {
                   const shouldClose = await onDiscard();
-                  if (shouldClose !== false) onOpenChange?.(false);
+                  if (shouldClose !== false) setOpen(false);
                 } catch {
                   // The owning mutation reports the error; keep this dialog open.
                 } finally {
+                  pendingRef.current = false;
                   setIsPending(false);
                 }
               }}
@@ -112,13 +119,16 @@ export const ConfirmDialog = memo(function ConfirmDialog({
                 disabled={isPending}
                 onClick={async (e) => {
                   e.stopPropagation();
+                  if (pendingRef.current) return;
+                  pendingRef.current = true;
                   setIsPending(true);
                   try {
                     const shouldClose = await onSave();
-                    if (shouldClose !== false) onOpenChange?.(false);
+                    if (shouldClose !== false) setOpen(false);
                   } catch {
                     // The owning mutation reports the error; keep this dialog open.
                   } finally {
+                    pendingRef.current = false;
                     setIsPending(false);
                   }
                 }}
@@ -133,13 +143,22 @@ export const ConfirmDialog = memo(function ConfirmDialog({
                 disabled={isPending}
                 onClick={async (e) => {
                   e.stopPropagation();
+                  if (pendingRef.current) return;
+                  pendingRef.current = true;
                   setIsPending(true);
                   try {
-                    const shouldClose = await onConfirm();
-                    if (shouldClose !== false) onOpenChange?.(false);
+                    let closed = false;
+                    const close = () => {
+                      if (closed) return;
+                      closed = true;
+                      setOpen(false);
+                    };
+                    const shouldClose = await onConfirm(close);
+                    if (shouldClose !== false) close();
                   } catch {
                     // The owning mutation reports the error; keep this dialog open.
                   } finally {
+                    pendingRef.current = false;
                     setIsPending(false);
                   }
                 }}

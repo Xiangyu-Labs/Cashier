@@ -196,6 +196,16 @@ describe("SourceDocumentCard interactions", () => {
     await user.click(selectionControl);
     expect(onToggleSelect).toHaveBeenCalledTimes(1);
     expect(onViewDetails).not.toHaveBeenCalled();
+    const expand = screen.getAllByRole("button", { name: /折叠|collapse/i });
+    expect(expand).toHaveLength(1);
+    expect(expand[0]).toHaveAttribute(
+      "aria-controls",
+      screen.getByTestId("source-document-card-body").id
+    );
+    await user.click(expand[0]!);
+    expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument();
+    expect(onToggleSelect).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: /展开|expand/i }));
 
     rerender(
       <SourceDocumentCard
@@ -258,7 +268,7 @@ describe("SourceDocumentCard interactions", () => {
       screen.queryByRole("button", { name: /展开|expand|折叠|collapse/i })
     ).not.toBeInTheDocument();
     const spacer = container.querySelector('span[aria-hidden="true"].h-11.w-11');
-    expect(spacer).toHaveClass("shrink-0", "sm:h-9", "sm:w-9");
+    expect(spacer).toHaveClass("shrink-0", "h-11", "w-11");
     expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument();
   });
 
