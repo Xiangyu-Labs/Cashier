@@ -29,8 +29,8 @@ describe("StatsHeader", () => {
     expect(baseProps.setRangeType).toHaveBeenCalledWith("year");
   });
 
-  it("labels the previous/next navigation buttons and disables next on the current period", () => {
-    render(<StatsHeader {...baseProps} />);
+  it("navigates backward and only enables forward navigation for historical periods", () => {
+    const { rerender } = render(<StatsHeader {...baseProps} />);
 
     const previousButton = screen.getByRole("button", { name: "上一周期" });
     const nextButton = screen.getByRole("button", { name: "下一周期" });
@@ -38,12 +38,8 @@ describe("StatsHeader", () => {
 
     fireEvent.click(previousButton);
     expect(baseProps.setPeriodOffset).toHaveBeenCalledWith(-1);
-  });
 
-  it("enables next navigation for historical periods", () => {
-    render(<StatsHeader {...baseProps} periodOffset={-2} />);
-
-    const nextButton = screen.getByRole("button", { name: "下一周期" });
+    rerender(<StatsHeader {...baseProps} periodOffset={-2} />);
     expect(nextButton).toBeEnabled();
     fireEvent.click(nextButton);
     expect(baseProps.setPeriodOffset).toHaveBeenCalledWith(-1);

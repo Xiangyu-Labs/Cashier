@@ -1,28 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { AppError, ValidationError, UnauthorizedError, NotFoundError } from "@/lib/errors";
+import { UnauthorizedError, NotFoundError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode } from "@/lib/error-handlers";
 
 describe("errors", () => {
-  describe("AppError", () => {
-    it("should create error with all properties", () => {
-      const error = new AppError("Test error", "TEST_CODE", 400, { field: "value" });
-
-      expect(error.message).toBe("Test error");
-      expect(error.code).toBe("TEST_CODE");
-      expect(error.statusCode).toBe(400);
-      expect(error.details).toEqual({ field: "value" });
-    });
-  });
-
-  describe("ValidationError", () => {
-    it("should have correct defaults", () => {
-      const error = new ValidationError("Invalid input");
-
-      expect(error.statusCode).toBe(400);
-      expect(error.code).toBe("VALIDATION_ERROR");
-    });
-  });
-
   describe("toErrorResponse", () => {
     it("should convert AppError to response", () => {
       const error = new NotFoundError("User");

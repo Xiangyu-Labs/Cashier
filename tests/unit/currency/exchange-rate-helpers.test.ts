@@ -5,15 +5,9 @@ import {
 } from "@/application/adapters/postgres/exchange-rate";
 
 describe("formatExchangeRateDate", () => {
-  it("returns date-only value from ISO datetime strings", () => {
+  it("normalizes supported date inputs to date-only values", () => {
     expect(formatExchangeRateDate("2026-03-20T12:34:56.789Z")).toBe("2026-03-20");
-  });
-
-  it("returns original string for date-only values", () => {
     expect(formatExchangeRateDate("2026-03-20")).toBe("2026-03-20");
-  });
-
-  it("formats Date values as yyyy-MM-dd", () => {
     expect(formatExchangeRateDate(new Date("2026-03-20T08:00:00.000Z"))).toBe("2026-03-20");
   });
 });
@@ -57,9 +51,8 @@ describe("fetchWithRetry", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 
-  it.each([408, 429, 500, 502, 503])(
-    "retries HTTP %i and succeeds on a later attempt",
-    async (status) => {
+  it("retries each transient HTTP status", async () => {
+    for (const status of [408, 429, 500, 502, 503]) {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
         .mockResolvedValueOnce(new Response(null, { status }))
@@ -70,8 +63,9 @@ describe("fetchWithRetry", () => {
 
       expect(result.status).toBe(200);
       expect(fetchSpy).toHaveBeenCalledTimes(3);
+      fetchSpy.mockRestore();
     }
-  );
+  });
 
   it("throws when a retryable status persists across all attempts", async () => {
     const fetchSpy = vi
@@ -82,13 +76,16 @@ describe("fetchWithRetry", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 
-  it.each([400, 404, 422])("returns HTTP %i immediately without retrying", async (status) => {
-    const response = new Response(null, { status });
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+  it("returns permanent HTTP failures without retrying", async () => {
+    for (const status of [400, 404, 422]) {
+      const response = new Response(null, { status });
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
 
-    const result = await fetchWithRetry("https://example.com/rates", 3, 1);
+      const result = await fetchWithRetry("https://example.com/rates", 3, 1);
 
-    expect(result).toBe(response);
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toBe(response);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      fetchSpy.mockRestore();
+    }
   });
 });

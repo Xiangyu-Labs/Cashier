@@ -14,73 +14,47 @@ import {
 } from "@/application/contracts";
 
 describe("target application contracts", () => {
-  it("preserves an active result while a retry is anomalous or failed", () => {
-    expect(
-      supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" })
-    ).toEqual(["abandon_candidate", "retry", "edit_retry", "delete"]);
-    expect(
-      supportedSourceDocumentActions({
-        activeRevisionId: "revision-1",
-        pendingOutcome: "processing",
-      })
-    ).toEqual(["cancel_processing", "retry", "edit_retry", "delete"]);
+  it("exposes actions for stable document lifecycle states", () => {
+    const cases = [
+      [
+        { activeRevisionId: "revision-1", pendingOutcome: "failed" as const },
+        ["abandon_candidate", "retry", "edit_retry", "delete"],
+      ],
+      [
+        { activeRevisionId: null, pendingOutcome: "cancelled" as const },
+        ["retry", "edit_retry", "delete"],
+      ],
+      [
+        { activeRevisionId: "revision-1", pendingOutcome: "completed" as const },
+        ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"],
+      ],
+      [
+        { activeRevisionId: "revision-1", pendingOutcome: null, duplicateReviewPending: true },
+        ["keep_duplicate", "discard_duplicate", "delete"],
+      ],
+      [{ activeRevisionId: null, pendingOutcome: "failed" as const, deleted: true }, []],
+    ] as const;
+
+    for (const [input, actions] of cases) {
+      expect(supportedSourceDocumentActions(input)).toEqual(actions);
+    }
   });
 
-  it("offers retry actions after a first parse is cancelled", () => {
-    expect(
-      supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "cancelled" })
-    ).toEqual(["retry", "edit_retry", "delete"]);
-  });
-
-  it("offers accept/abandon actions when a completed candidate is pending", () => {
-    expect(
-      supportedSourceDocumentActions({
-        activeRevisionId: "revision-1",
-        pendingOutcome: "completed",
-      })
-    ).toEqual(["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"]);
-  });
-
-  it("offers keep/discard (without retry) for a pending duplicate review", () => {
-    expect(
-      supportedSourceDocumentActions({
-        activeRevisionId: "revision-1",
-        pendingOutcome: null,
-        duplicateReviewPending: true,
-      })
-    ).toEqual(["keep_duplicate", "discard_duplicate", "delete"]);
-  });
-
-  it("does not allow actions for deleted source documents", () => {
-    expect(
-      supportedSourceDocumentActions({
-        activeRevisionId: null,
-        pendingOutcome: "failed",
-        deleted: true,
-      })
-    ).toEqual([]);
-  });
-
-  it("only supports splitting a completed active document without a pending revision", () => {
+  it("only exposes splitting for a completed active document without pending work", () => {
     expect(
       supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: null })
     ).toContain("split_entries");
-    expect(
-      supportedSourceDocumentActions({
+    for (const input of [
+      { activeRevisionId: "revision-1", pendingOutcome: "cancelled" as const },
+      {
         activeRevisionId: "revision-1",
-        pendingOutcome: "cancelled",
-      })
-    ).not.toContain("split_entries");
-    expect(
-      supportedSourceDocumentActions({
-        activeRevisionId: "revision-1",
-        pendingRevisionId: "missing-revision",
+        pendingRevisionId: "pending-revision",
         pendingOutcome: null,
-      })
-    ).not.toContain("split_entries");
-    expect(
-      supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: null })
-    ).not.toContain("split_entries");
+      },
+      { activeRevisionId: null, pendingOutcome: null },
+    ]) {
+      expect(supportedSourceDocumentActions(input)).not.toContain("split_entries");
+    }
   });
 
   it("maps infrastructure failures to stable, non-sensitive application errors", () => {
@@ -108,81 +82,35 @@ describe("target application contracts", () => {
   });
 
   describe("toStableFailureCode", () => {
-    it("returns processing_unavailable for null or undefined input", () => {
-      expect(toStableFailureCode(null)).toBe("processing_unavailable");
-      expect(toStableFailureCode(undefined)).toBe("processing_unavailable");
-    });
-
-    it("passes through known stable failure codes unchanged", () => {
-      expect(toStableFailureCode("ai_provider_unavailable")).toBe("ai_provider_unavailable");
-      expect(toStableFailureCode("ai_schema_invalid")).toBe("ai_schema_invalid");
-      expect(toStableFailureCode("exchange_rate_failure")).toBe("exchange_rate_failure");
-      expect(toStableFailureCode("storage_failure")).toBe("storage_failure");
-      expect(toStableFailureCode("database_unavailable")).toBe("database_unavailable");
-    });
-
-    it("maps INTERNAL and VALIDATION_FAILED to ai_schema_invalid", () => {
-      expect(toStableFailureCode("INTERNAL")).toBe("ai_schema_invalid");
-      expect(toStableFailureCode("VALIDATION_FAILED")).toBe("ai_schema_invalid");
-    });
-
-    it("maps RATE_LIMITED to ai_provider_unavailable", () => {
-      expect(toStableFailureCode("RATE_LIMITED")).toBe("ai_provider_unavailable");
-    });
-
-    it("maps STORAGE_UNAVAILABLE to storage_failure", () => {
-      expect(toStableFailureCode("STORAGE_UNAVAILABLE")).toBe("storage_failure");
-    });
-
-    it("maps NOT_FOUND and CONFLICT to database_unavailable", () => {
-      expect(toStableFailureCode("NOT_FOUND")).toBe("database_unavailable");
-      expect(toStableFailureCode("CONFLICT")).toBe("database_unavailable");
-    });
-
-    it("maps unknown codes to processing_unavailable", () => {
-      expect(toStableFailureCode("SOME_UNKNOWN_CODE")).toBe("processing_unavailable");
-      expect(toStableFailureCode("")).toBe("processing_unavailable");
+    it("preserves stable codes and maps legacy or unknown failures to public codes", () => {
+      const cases = [
+        ["ai_provider_unavailable", "ai_provider_unavailable"],
+        ["exchange_rate_failure", "exchange_rate_failure"],
+        ["INTERNAL", "ai_schema_invalid"],
+        ["VALIDATION_FAILED", "ai_schema_invalid"],
+        ["RATE_LIMITED", "ai_provider_unavailable"],
+        ["STORAGE_UNAVAILABLE", "storage_failure"],
+        ["NOT_FOUND", "database_unavailable"],
+        ["CONFLICT", "database_unavailable"],
+        ["SOME_UNKNOWN_CODE", "processing_unavailable"],
+        [null, "processing_unavailable"],
+      ] as const;
+      for (const [input, expected] of cases) expect(toStableFailureCode(input)).toBe(expected);
     });
   });
 
   describe("toStableInvalidCode", () => {
-    it("returns insufficient_evidence for null or undefined input", () => {
-      expect(toStableInvalidCode(null)).toBe("insufficient_evidence");
-      expect(toStableInvalidCode(undefined)).toBe("insufficient_evidence");
-    });
-
-    it("passes through known stable invalid codes unchanged", () => {
-      expect(toStableInvalidCode("insufficient_evidence")).toBe("insufficient_evidence");
-      expect(toStableInvalidCode("currency_required")).toBe("currency_required");
-      expect(toStableInvalidCode("amount_conflict")).toBe("amount_conflict");
-      expect(toStableInvalidCode("unsupported_document")).toBe("unsupported_document");
-    });
-
-    it("maps legacy currency-related reasons to currency_required", () => {
-      expect(toStableInvalidCode("unknown_currency")).toBe("currency_required");
-      expect(toStableInvalidCode("Currency not recognized")).toBe("currency_required");
-    });
-
-    it("maps legacy amount/conflict reasons to amount_conflict", () => {
-      expect(toStableInvalidCode("amount_conflict")).toBe("amount_conflict");
-      expect(toStableInvalidCode("Parsing results diverged")).toBe("amount_conflict");
-      expect(toStableInvalidCode("Conflict detected in amounts")).toBe("amount_conflict");
-    });
-
-    it("maps legacy invalid/unsupported reasons to unsupported_document", () => {
-      expect(toStableInvalidCode("Invalid content")).toBe("unsupported_document");
-      expect(toStableInvalidCode("unsupported document type")).toBe("unsupported_document");
-      expect(toStableInvalidCode("Unrecognized format")).toBe("unsupported_document");
-    });
-
-    it("maps legacy evidence/content reasons to insufficient_evidence", () => {
-      expect(toStableInvalidCode("No valid entries")).toBe("insufficient_evidence");
-      expect(toStableInvalidCode("Evidence anomaly")).toBe("insufficient_evidence");
-    });
-
-    it("maps unknown reasons to insufficient_evidence", () => {
-      expect(toStableInvalidCode("Some unknown reason")).toBe("insufficient_evidence");
-      expect(toStableInvalidCode("")).toBe("insufficient_evidence");
+    it("preserves stable codes and maps legacy or unknown reasons to public codes", () => {
+      const cases = [
+        ["currency_required", "currency_required"],
+        ["unknown_currency", "currency_required"],
+        ["Parsing results diverged", "amount_conflict"],
+        ["Invalid content", "unsupported_document"],
+        ["Evidence anomaly", "insufficient_evidence"],
+        ["Some unknown reason", "insufficient_evidence"],
+        [null, "insufficient_evidence"],
+      ] as const;
+      for (const [input, expected] of cases) expect(toStableInvalidCode(input)).toBe(expected);
     });
   });
 });

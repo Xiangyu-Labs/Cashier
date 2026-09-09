@@ -1,17 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock dependencies
 const { mockIntlMiddleware } = vi.hoisted(() => ({
   mockIntlMiddleware: vi.fn(),
 }));
 
-// Mock next-intl/middleware
 vi.mock("next-intl/middleware", () => ({
   default: () => mockIntlMiddleware,
 }));
 
-// Mock next-auth
 vi.mock("next-auth", () => ({
   default: () => ({
     auth: (
@@ -20,12 +17,10 @@ vi.mock("next-auth", () => ({
   }),
 }));
 
-// Mock auth.config
 vi.mock("../../src/auth.config", () => ({
   authConfig: {},
 }));
 
-// Mock i18n/routing
 vi.mock("../../src/i18n/routing", () => ({
   routing: {
     locales: ["zh", "en"],
@@ -33,17 +28,14 @@ vi.mock("../../src/i18n/routing", () => ({
   },
 }));
 
-// Import the proxy (this executes the mocked NextAuth and exports the callback)
 import proxy from "@/proxy";
 
 describe("Proxy Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default intl middleware response
     mockIntlMiddleware.mockReturnValue(new NextResponse(null, { status: 200 }));
   });
 
-  // Helper to create a request with optional auth session
   function createRequest(path: string, auth: unknown = null) {
     const url = new URL(path, "http://localhost:3000");
     const req = new NextRequest(url) as NextRequest & { auth?: unknown };
@@ -55,30 +47,17 @@ describe("Proxy Logic", () => {
     (proxy as unknown as (req: NextRequest) => Promise<NextResponse>)(req);
 
   describe("Public Routes", () => {
-    it("should allow access to /login without authentication", async () => {
-      const req = createRequest("/login");
-      await invokeProxy(req);
-      // /login is a public page, so it should call intlMiddleware
-      expect(mockIntlMiddleware).toHaveBeenCalled();
-    });
-
-    it("should allow access to localized /zh/login without authentication", async () => {
-      const req = createRequest("/zh/login");
-      await invokeProxy(req);
-      // /zh/login is a public page (locale stripped), so it should call intlMiddleware
-      expect(mockIntlMiddleware).toHaveBeenCalled();
-    });
-
-    it("should allow access to /s/share-id without authentication", async () => {
-      const req = createRequest("/s/some-share-id");
-      await invokeProxy(req);
-      expect(mockIntlMiddleware).toHaveBeenCalled();
+    it("sends public pages through locale routing without authentication", async () => {
+      for (const path of ["/login", "/zh/login", "/s/some-share-id"]) {
+        mockIntlMiddleware.mockClear();
+        await invokeProxy(createRequest(path));
+        expect(mockIntlMiddleware).toHaveBeenCalledOnce();
+      }
     });
 
     it("should allow access to /api/auth/* without authentication", async () => {
       const req = createRequest("/api/auth/session");
       const res = await invokeProxy(req);
-      // Returns NextResponse.next() for /api/auth paths, which in Vitest mock might not have headers
       expect(res.status).toBe(200);
     });
 
@@ -90,27 +69,16 @@ describe("Proxy Logic", () => {
   });
 
   describe("Protected Page Routes", () => {
-    it("should redirect unauthenticated user to login from /dashboard", async () => {
-      const req = createRequest("/dashboard");
-      const res = await invokeProxy(req);
-
-      // Pages are no longer protected by proxy, so it should call intlMiddleware and return 200
-      expect(res.status).toBe(200);
-      expect(mockIntlMiddleware).toHaveBeenCalled();
-    });
-
-    it("should redirect unauthenticated user to login from /en/dashboard", async () => {
-      const req = createRequest("/en/dashboard");
-      const res = await invokeProxy(req);
-
-      expect(res.status).toBe(200);
-      expect(mockIntlMiddleware).toHaveBeenCalled();
-    });
-
-    it("should allow authenticated user to access /dashboard", async () => {
-      const req = createRequest("/dashboard", { user: { id: "user1" } });
-      await invokeProxy(req);
-      expect(mockIntlMiddleware).toHaveBeenCalled();
+    it("leaves page authorization to protected layouts while preserving locale routing", async () => {
+      for (const request of [
+        createRequest("/dashboard"),
+        createRequest("/en/dashboard"),
+        createRequest("/dashboard", { user: { id: "user1" } }),
+      ]) {
+        mockIntlMiddleware.mockClear();
+        expect((await invokeProxy(request)).status).toBe(200);
+        expect(mockIntlMiddleware).toHaveBeenCalledOnce();
+      }
     });
   });
 
@@ -137,7 +105,6 @@ describe("Proxy Logic", () => {
       const req = createRequest("/api/protected", { user: { id: "user1" } });
       const res = await invokeProxy(req);
 
-      // API routes should return next() (status 200)
       expect(res.status).toBe(200);
       expect(mockIntlMiddleware).not.toHaveBeenCalled();
     });
@@ -153,7 +120,6 @@ describe("Proxy Logic", () => {
     it("should skip proxy for _next paths", async () => {
       const req = createRequest("/_next/static/chunk.js");
       const res = await invokeProxy(req);
-      // Returns NextResponse.next() (status 200)
       expect(res.status).toBe(200);
       expect(mockIntlMiddleware).not.toHaveBeenCalled();
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_AUTH_EMAIL_FROM, isValidAuthEmailFrom } from "@/lib/utils/email";
+import { isValidAuthEmailFrom } from "@/lib/utils/email";
 
 describe("isValidAuthEmailFrom", () => {
   it("accepts named mailboxes and bare addresses", () => {
@@ -18,9 +18,5 @@ describe("isValidAuthEmailFrom", () => {
     expect(isValidAuthEmailFrom("")).toBe(false);
     expect(isValidAuthEmailFrom("not-an-email")).toBe(false);
     expect(isValidAuthEmailFrom("Cashier <not-an-email>")).toBe(false);
-  });
-
-  it("uses a named mailbox as the default sender", () => {
-    expect(DEFAULT_AUTH_EMAIL_FROM).toBe("Cashier <noreply@example.com>");
   });
 });

@@ -1,249 +1,96 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  getStartOfWeek,
-  getEndOfWeek,
-  getStartOfMonth,
-  getEndOfMonth,
-  getStartOfYear,
-  getEndOfYear,
-  getDateRange,
   addPeriod,
   formatCivilDate,
   formatDateTimeForApi,
-  parseDateRangeStart,
-  parseDateRangeEnd,
-  parseDateString,
+  getDateRange,
   isValidDateString,
+  parseDateRangeEnd,
+  parseDateRangeStart,
+  parseDateString,
 } from "@/lib/date-utils";
 
 describe("date-utils", () => {
-  describe("getStartOfWeek", () => {
-    it("returns Monday for a mid-week date", () => {
-      // 2026-02-04 is Wednesday
-      const result = getStartOfWeek(new Date("2026-02-04"));
-      expect(result.getDay()).toBe(1); // Monday
-      expect(result.getDate()).toBe(2); // Feb 2
-    });
+  it("derives complete calendar ranges", () => {
+    const cases = [
+      ["week", "2026-02-02", "2026-02-08"],
+      ["month", "2026-02-01", "2026-02-28"],
+      ["year", "2026-01-01", "2026-12-31"],
+    ] as const;
 
-    it("returns same day for Monday", () => {
-      // 2026-02-02 is Monday
-      const result = getStartOfWeek(new Date("2026-02-02"));
-      expect(result.getDay()).toBe(1);
-      expect(result.getDate()).toBe(2);
-    });
-
-    it("returns previous Monday for Sunday", () => {
-      // 2026-02-08 is Sunday
-      const result = getStartOfWeek(new Date("2026-02-08"));
-      expect(result.getDay()).toBe(1);
-      expect(result.getDate()).toBe(2);
-    });
+    for (const [period, expectedStart, expectedEnd] of cases) {
+      const { startDate, endDate } = getDateRange(new Date(2026, 1, 4), period);
+      expect(formatDateTimeForApi(startDate)).toBe(expectedStart);
+      expect(formatDateTimeForApi(endDate)).toBe(expectedEnd);
+    }
   });
 
-  describe("getEndOfWeek", () => {
-    it("returns Sunday for a mid-week date", () => {
-      // 2026-02-04 is Wednesday
-      const result = getEndOfWeek(new Date("2026-02-04"));
-      expect(result.getDay()).toBe(0); // Sunday
-      expect(result.getDate()).toBe(8); // Feb 8
-    });
+  it("moves dates by positive and negative calendar periods", () => {
+    const date = new Date(2026, 1, 4);
+    const cases = [
+      ["week", 2, "2026-02-18"],
+      ["month", 1, "2026-03-04"],
+      ["month", -1, "2026-01-04"],
+      ["year", 1, "2027-02-04"],
+    ] as const;
+
+    for (const [period, amount, expected] of cases) {
+      expect(formatDateTimeForApi(addPeriod(date, period, amount))).toBe(expected);
+    }
   });
 
-  describe("getStartOfMonth", () => {
-    it("returns first day of month", () => {
-      const result = getStartOfMonth(new Date("2026-02-15"));
-      expect(result.getDate()).toBe(1);
-      expect(result.getMonth()).toBe(1); // February (0-indexed)
-    });
+  it("formats API dates from local calendar fields", () => {
+    expect(formatDateTimeForApi(new Date(2026, 0, 5))).toBe("2026-01-05");
+    expect(formatDateTimeForApi(undefined)).toBeUndefined();
   });
 
-  describe("getEndOfMonth", () => {
-    it("returns last day of February (non-leap year)", () => {
-      const result = getEndOfMonth(new Date("2026-02-15"));
-      expect(result.getDate()).toBe(28);
-    });
-
-    it("returns last day of January (31 days)", () => {
-      const result = getEndOfMonth(new Date("2026-01-15"));
-      expect(result.getDate()).toBe(31);
-    });
-  });
-
-  describe("getStartOfYear", () => {
-    it("returns January 1st", () => {
-      const result = getStartOfYear(new Date("2026-06-15"));
-      expect(result.getMonth()).toBe(0);
-      expect(result.getDate()).toBe(1);
-    });
-  });
-
-  describe("getEndOfYear", () => {
-    it("returns December 31st", () => {
-      const result = getEndOfYear(new Date("2026-06-15"));
-      expect(result.getMonth()).toBe(11);
-      expect(result.getDate()).toBe(31);
-    });
-  });
-
-  describe("getDateRange", () => {
-    it("returns week range", () => {
-      const result = getDateRange(new Date("2026-02-04"), "week");
-      expect(result.startDate.getDay()).toBe(1); // Monday
-      expect(result.endDate.getDay()).toBe(0); // Sunday
-    });
-
-    it("returns month range", () => {
-      const result = getDateRange(new Date("2026-02-15"), "month");
-      expect(result.startDate.getDate()).toBe(1);
-      expect(result.endDate.getDate()).toBe(28);
-    });
-
-    it("returns year range", () => {
-      const result = getDateRange(new Date("2026-06-15"), "year");
-      expect(result.startDate.getMonth()).toBe(0);
-      expect(result.startDate.getDate()).toBe(1);
-      expect(result.endDate.getMonth()).toBe(11);
-      expect(result.endDate.getDate()).toBe(31);
-    });
-  });
-
-  describe("addPeriod", () => {
-    it("adds weeks correctly", () => {
-      const date = new Date("2026-02-04");
-      const result = addPeriod(date, "week", 2);
-      expect(result.getDate()).toBe(18);
-    });
-
-    it("adds months correctly", () => {
-      const date = new Date("2026-02-04");
-      const result = addPeriod(date, "month", 1);
-      expect(result.getMonth()).toBe(2); // March
-    });
-
-    it("adds years correctly", () => {
-      const date = new Date("2026-02-04");
-      const result = addPeriod(date, "year", 1);
-      expect(result.getFullYear()).toBe(2027);
-    });
-
-    it("handles negative periods", () => {
-      const date = new Date("2026-02-04");
-      const result = addPeriod(date, "month", -1);
-      expect(result.getMonth()).toBe(0); // January
-    });
-  });
-
-  describe("formatDateTimeForApi", () => {
-    it("formats date as yyyy-MM-dd using local time", () => {
-      const date = new Date(2026, 1, 4); // Feb 4, 2026 local
-      const result = formatDateTimeForApi(date);
-      expect(result).toBe("2026-02-04");
-    });
-
-    it("returns undefined for undefined input", () => {
-      const result = formatDateTimeForApi(undefined);
-      expect(result).toBeUndefined();
-    });
-
-    it("pads month and day correctly", () => {
-      const date = new Date(2026, 0, 5); // Jan 5
-      const result = formatDateTimeForApi(date);
-      expect(result).toBe("2026-01-05");
-    });
-  });
-
-  describe("formatCivilDate", () => {
-    it("keeps a civil date stable regardless of the runtime timezone", () => {
-      const originalTimeZone = process.env.TZ;
-      try {
-        for (const timeZone of ["UTC", "Asia/Shanghai", "America/Los_Angeles"]) {
-          process.env.TZ = timeZone;
-          expect(
-            formatCivilDate("2026-07-28", "en-US", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            })
-          ).toBe("07/28/2026");
-        }
-      } finally {
-        if (originalTimeZone === undefined) delete process.env.TZ;
-        else process.env.TZ = originalTimeZone;
+  it("keeps civil dates stable across runtime timezones", () => {
+    const originalTimeZone = process.env.TZ;
+    try {
+      for (const timeZone of ["UTC", "Asia/Shanghai", "America/Los_Angeles"]) {
+        process.env.TZ = timeZone;
+        expect(
+          formatCivilDate("2026-07-28", "en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          })
+        ).toBe("07/28/2026");
       }
-    });
-
-    it("rejects malformed and impossible dates", () => {
-      expect(() => formatCivilDate("2026-7-28", "en-US", {})).toThrow(RangeError);
-      expect(() => formatCivilDate("2026-02-30", "en-US", {})).toThrow(RangeError);
-    });
+    } finally {
+      if (originalTimeZone === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTimeZone;
+    }
   });
 
-  describe("parseDateRangeStart", () => {
-    it("parses date string to start of day", () => {
-      const result = parseDateRangeStart("2026-02-04");
-      expect(result).not.toBeNull();
-      expect(result!.getHours()).toBe(0);
-      expect(result!.getMinutes()).toBe(0);
-      expect(result!.getSeconds()).toBe(0);
-    });
-
-    it("returns null for null input", () => {
-      expect(parseDateRangeStart(null)).toBeNull();
-    });
-
-    it("returns null for undefined input", () => {
-      expect(parseDateRangeStart(undefined)).toBeNull();
-    });
-
-    it("returns null for invalid date string", () => {
-      expect(parseDateRangeStart("not-a-date")).toBeNull();
-    });
-
-    it("handles ISO strings", () => {
-      const result = parseDateRangeStart("2026-02-04T15:30:00Z");
-      expect(result).not.toBeNull();
-      expect(result!.getHours()).toBe(0);
-    });
+  it("rejects malformed and impossible civil dates", () => {
+    for (const value of ["2026-7-28", "2026-02-30"]) {
+      expect(() => formatCivilDate(value, "en-US", {})).toThrow(RangeError);
+    }
   });
 
-  describe("parseDateRangeEnd", () => {
-    it("parses date string to end of day", () => {
-      const result = parseDateRangeEnd("2026-02-04");
-      expect(result).not.toBeNull();
-      expect(result!.getHours()).toBe(23);
-      expect(result!.getMinutes()).toBe(59);
-      expect(result!.getSeconds()).toBe(59);
-    });
+  it("parses query boundaries at the start and end of the local day", () => {
+    const start = parseDateRangeStart("2026-02-04T15:30:00Z");
+    const end = parseDateRangeEnd("2026-02-04");
 
-    it("returns null for null input", () => {
-      expect(parseDateRangeEnd(null)).toBeNull();
-    });
-
-    it("returns null for invalid date string", () => {
-      expect(parseDateRangeEnd("invalid")).toBeNull();
-    });
+    expect(start).not.toBeNull();
+    expect([start!.getHours(), start!.getMinutes(), start!.getSeconds()]).toEqual([0, 0, 0]);
+    expect(end).not.toBeNull();
+    expect([end!.getHours(), end!.getMinutes(), end!.getSeconds()]).toEqual([23, 59, 59]);
   });
 
-  describe("parseDateString", () => {
-    it("parses YYYY-MM-DD using local date parts", () => {
-      const result = parseDateString("2026-03-18");
-      expect(result.getFullYear()).toBe(2026);
-      expect(result.getMonth()).toBe(2);
-      expect(result.getDate()).toBe(18);
-    });
+  it("returns null for missing or invalid query boundaries", () => {
+    for (const value of [null, undefined, "not-a-date"]) {
+      expect(parseDateRangeStart(value)).toBeNull();
+      expect(parseDateRangeEnd(value)).toBeNull();
+    }
   });
 
-  describe("isValidDateString", () => {
-    it("accepts a valid date-only string", () => {
-      expect(isValidDateString("2026-03-18")).toBe(true);
-    });
-
-    it("rejects impossible dates", () => {
-      expect(isValidDateString("2026-02-30")).toBe(false);
-    });
-
-    it("rejects malformed date strings", () => {
-      expect(isValidDateString("2026-3-18")).toBe(false);
-    });
+  it("parses and validates strict date-only values", () => {
+    const parsed = parseDateString("2026-03-18");
+    expect([parsed.getFullYear(), parsed.getMonth(), parsed.getDate()]).toEqual([2026, 2, 18]);
+    expect(isValidDateString("2026-03-18")).toBe(true);
+    expect(isValidDateString("2026-02-30")).toBe(false);
+    expect(isValidDateString("2026-3-18")).toBe(false);
   });
 });

@@ -53,7 +53,7 @@ describe("CalculatorInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("34.50");
   });
 
-  it("commits a valid inline value on Enter and outside click", () => {
+  it("commits valid inline values on Enter and blur", () => {
     const onChange = vi.fn();
     render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
 
@@ -63,21 +63,11 @@ describe("CalculatorInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(18.25);
 
     fireEvent.click(screen.getByRole("button", { name: "amount" }));
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "21.50" } });
-    fireEvent.mouseDown(document.body);
-    expect(onChange).toHaveBeenLastCalledWith(21.5);
-  });
-
-  it("commits a valid inline value when Tab moves focus away", () => {
-    const onChange = vi.fn();
-    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "amount" }));
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "19.75" } });
     fireEvent.blur(input);
 
-    expect(onChange).toHaveBeenCalledWith(19.75);
+    expect(onChange).toHaveBeenLastCalledWith(19.75);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
@@ -155,28 +145,7 @@ describe("CalculatorInput", () => {
       currentLocale.value = locale;
     });
 
-    it("uses the localized amountAriaLabel for the amount button", () => {
-      render(<CalculatorInput value={42} onChange={() => {}} />);
-
-      const expected = locale === "en" ? "Amount" : "金额";
-      const button = screen.getByRole("button", { name: expected });
-      expect(button).toBeDefined();
-    });
-
-    it("uses the localized openCalculator aria-label on the calculator opener", () => {
-      currentLocale.value = locale;
-      render(<CalculatorInput value={42} onChange={() => {}} />);
-
-      const amountLabel = locale === "en" ? "Amount" : "金额";
-      fireEvent.click(screen.getByRole("button", { name: amountLabel }));
-
-      const expected = locale === "en" ? "Open calculator" : "打开计算器";
-      const openBtn = screen.getByRole("button", { name: expected });
-      expect(openBtn).toBeDefined();
-    });
-
-    it("uses the localized title in the calculator dialog", () => {
-      currentLocale.value = locale;
+    it("labels the amount, opener, and dialog in the active locale", () => {
       render(<CalculatorInput value={42} onChange={() => {}} />);
 
       const amountLabel = locale === "en" ? "Amount" : "金额";
@@ -185,8 +154,7 @@ describe("CalculatorInput", () => {
       const openLabel = locale === "en" ? "Open calculator" : "打开计算器";
       fireEvent.click(screen.getByRole("button", { name: openLabel }));
 
-      const expected = locale === "en" ? "Calculator" : "计算器";
-      expect(screen.getByText(expected)).toBeDefined();
+      expect(screen.getByText(locale === "en" ? "Calculator" : "计算器")).toBeInTheDocument();
     });
   });
 });

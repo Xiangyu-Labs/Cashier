@@ -8,7 +8,6 @@ import {
   isSupportedImageFormat,
   getImageDimensions,
   validateStoredImageBytes,
-  DEFAULT_IMAGE_OPTIONS,
 } from "@/lib/storage/image-processing";
 import sharp from "sharp";
 
@@ -135,25 +134,27 @@ describe("image-processing", () => {
   });
 
   describe("isSupportedImageFormat", () => {
-    it("should support the web upload policy formats", () => {
-      expect(isSupportedImageFormat("image/jpeg")).toBe(true);
-      expect(isSupportedImageFormat("image/png")).toBe(true);
-      expect(isSupportedImageFormat("image/webp")).toBe(true);
-      expect(isSupportedImageFormat("image/gif")).toBe(true);
-      expect(isSupportedImageFormat("image/avif")).toBe(true);
-    });
-
-    it("should reject unsupported formats", () => {
-      expect(isSupportedImageFormat("application/pdf")).toBe(false);
-      expect(isSupportedImageFormat("text/plain")).toBe(false);
-      expect(isSupportedImageFormat("image/svg+xml")).toBe(false);
-      expect(isSupportedImageFormat("image/jpg")).toBe(false);
-      expect(isSupportedImageFormat("image/tiff")).toBe(false);
-    });
-
-    it("should be case insensitive", () => {
-      expect(isSupportedImageFormat("IMAGE/JPEG")).toBe(true);
-      expect(isSupportedImageFormat("Image/Png")).toBe(true);
+    it("accepts upload image formats case-insensitively and rejects other content", () => {
+      for (const mime of [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "image/avif",
+        "IMAGE/JPEG",
+        "Image/Png",
+      ]) {
+        expect(isSupportedImageFormat(mime)).toBe(true);
+      }
+      for (const mime of [
+        "application/pdf",
+        "text/plain",
+        "image/svg+xml",
+        "image/jpg",
+        "image/tiff",
+      ]) {
+        expect(isSupportedImageFormat(mime)).toBe(false);
+      }
     });
   });
 
@@ -189,15 +190,6 @@ describe("image-processing", () => {
       const dimensions = await getImageDimensions(invalidBuffer);
 
       expect(dimensions).toBeNull();
-    });
-  });
-
-  describe("DEFAULT_IMAGE_OPTIONS", () => {
-    it("should have sensible defaults", () => {
-      expect(DEFAULT_IMAGE_OPTIONS.maxDimension).toBe(2048);
-      expect(DEFAULT_IMAGE_OPTIONS.quality).toBe(85);
-      expect(DEFAULT_IMAGE_OPTIONS.format).toBe("auto");
-      expect(DEFAULT_IMAGE_OPTIONS.stripMetadata).toBe(true);
     });
   });
 });

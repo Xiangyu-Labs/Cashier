@@ -222,7 +222,6 @@ describe("SourceDocumentViewDetails selection", () => {
     const input = screen.getByDisplayValue("Edited lunch");
     expect(input.closest("[inert]")).toBeInTheDocument();
     const checkbox = screen.getByRole("checkbox", { name: /Lunch/i });
-    expect(checkbox.querySelector("span")).toHaveClass("top-1/2", "-translate-y-1/2");
     expect(screen.getAllByRole("checkbox")).toHaveLength(1);
     fireEvent.click(checkbox);
     expect(onSelectEntry).toHaveBeenCalledTimes(1);

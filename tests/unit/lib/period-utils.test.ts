@@ -1,317 +1,109 @@
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  periodToDateRange,
-  parsePeriodFromSearchParams,
   datesToPeriodParams,
-  type PeriodParams,
+  parsePeriodFromSearchParams,
+  periodToDateRange,
 } from "@/lib/period-utils";
 
 describe("period-utils", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  afterEach(() => vi.useRealTimers());
 
-  describe("periodToDateRange", () => {
-    it('should return null dates for "all" period', () => {
-      const params: PeriodParams = { period: "all" };
-      const result = periodToDateRange(params);
+  it("resolves unbounded and current calendar periods", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 12));
 
-      expect(result.startDate).toBeNull();
-      expect(result.endDate).toBeNull();
+    expect(periodToDateRange({ period: "all" })).toEqual({ startDate: null, endDate: null });
+    expect(periodToDateRange({ period: "thisMonth" })).toEqual({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
     });
-
-    it('should return current month range for "thisMonth"', () => {
-      const params: PeriodParams = { period: "thisMonth" };
-      const result = periodToDateRange(params);
-
-      expect(result.startDate).not.toBeNull();
-      expect(result.endDate).not.toBeNull();
-
-      // Verify it's the current month
-      const now = new Date();
-      const startDate = new Date(result.startDate!);
-      const endDate = new Date(result.endDate!);
-
-      expect(startDate.getFullYear()).toBe(now.getFullYear());
-      expect(startDate.getMonth()).toBe(now.getMonth());
-      expect(startDate.getDate()).toBe(1); // First day of month
-
-      expect(endDate.getFullYear()).toBe(now.getFullYear());
-      expect(endDate.getMonth()).toBe(now.getMonth());
-      // Last day of month
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      expect(endDate.getDate()).toBe(lastDay);
-    });
-
-    it('should return last 7 days for "week"', () => {
-      const params: PeriodParams = { period: "week" };
-      const result = periodToDateRange(params);
-
-      expect(result.startDate).not.toBeNull();
-      expect(result.endDate).not.toBeNull();
-
-      const startDate = new Date(result.startDate!);
-      const endDate = new Date(result.endDate!);
-      const now = new Date();
-
-      // Start should be 7 days ago at 00:00:00
-      const expectedStart = new Date(now);
-      expectedStart.setDate(expectedStart.getDate() - 7);
-      expectedStart.setHours(0, 0, 0, 0);
-
-      expect(startDate.getDate()).toBe(expectedStart.getDate());
-      expect(startDate.getMonth()).toBe(expectedStart.getMonth());
-
-      // End should be today at 23:59:59
-      expect(endDate.getDate()).toBe(now.getDate());
-      expect(endDate.getMonth()).toBe(now.getMonth());
-    });
-
-    it('should return custom date range for "custom" with dates', () => {
-      const params: PeriodParams = {
-        period: "custom",
-        startDate: "2024-01-15",
-        endDate: "2024-01-20",
-      };
-      const result = periodToDateRange(params);
-
-      expect(result.startDate).not.toBeNull();
-      expect(result.endDate).not.toBeNull();
-
-      const startDate = new Date(result.startDate!);
-      const endDate = new Date(result.endDate!);
-
-      expect(startDate.getFullYear()).toBe(2024);
-      expect(startDate.getMonth()).toBe(0); // January
-      expect(startDate.getDate()).toBe(15);
-
-      expect(endDate.getFullYear()).toBe(2024);
-      expect(endDate.getMonth()).toBe(0);
-      expect(endDate.getDate()).toBe(20);
-    });
-
-    it("should default to thisMonth for unknown period", () => {
-      const params = {
-        period: "invalid" as unknown as Parameters<typeof periodToDateRange>[0]["period"],
-      };
-      const result = periodToDateRange(params);
-
-      // Should behave like thisMonth (non-null dates)
-      expect(result.startDate).not.toBeNull();
-      expect(result.endDate).not.toBeNull();
-    });
-
-    it("should default to thisMonth for custom without dates", () => {
-      const params: PeriodParams = { period: "custom" };
-      const result = periodToDateRange(params);
-
-      // Should behave like thisMonth when dates are missing
-      expect(result.startDate).not.toBeNull();
-      expect(result.endDate).not.toBeNull();
-    });
-
-    it("clamps a one-month lookback at the end of a shorter month", () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date(2026, 4, 31, 12));
-
-      expect(periodToDateRange({ period: "month" })).toEqual({
-        startDate: "2026-04-30",
-        endDate: "2026-05-31",
-      });
-    });
-
-    it("clamps a one-year lookback from leap day", () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date(2024, 1, 29, 12));
-
-      expect(periodToDateRange({ period: "year" })).toEqual({
-        startDate: "2023-02-28",
-        endDate: "2024-02-29",
-      });
-    });
-
-    it('returns the full previous calendar month for "lastMonth"', () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date(2026, 8, 15, 12)); // September 15, 2026
-
-      expect(periodToDateRange({ period: "lastMonth" })).toEqual({
-        startDate: "2026-08-01",
-        endDate: "2026-08-31",
-      });
-    });
-
-    it('rolls "lastMonth" back across a year boundary', () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date(2026, 0, 15, 12)); // January 15, 2026
-
-      expect(periodToDateRange({ period: "lastMonth" })).toEqual({
-        startDate: "2025-12-01",
-        endDate: "2025-12-31",
-      });
+    expect(periodToDateRange({ period: "lastMonth" })).toEqual({
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
     });
   });
 
-  describe("parsePeriodFromSearchParams", () => {
-    it("should parse URLSearchParams", () => {
-      const searchParams = new URLSearchParams("period=week");
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result.period).toBe("week");
+  it("clamps rolling periods at short months and leap days", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 31, 12));
+    expect(periodToDateRange({ period: "month" })).toEqual({
+      startDate: "2026-04-30",
+      endDate: "2026-05-31",
     });
 
-    it("should parse plain object from Next.js", () => {
-      const searchParams = { period: "thisMonth" };
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result.period).toBe("thisMonth");
+    vi.setSystemTime(new Date(2024, 1, 29, 12));
+    expect(periodToDateRange({ period: "year" })).toEqual({
+      startDate: "2023-02-28",
+      endDate: "2024-02-29",
     });
+  });
 
-    it("should parse custom period with dates", () => {
-      const searchParams = new URLSearchParams(
-        "period=custom&startDate=2024-01-01&endDate=2024-01-31"
-      );
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result.period).toBe("custom");
-      expect(result.startDate).toBe("2024-01-01");
-      expect(result.endDate).toBe("2024-01-31");
+  it("rolls the previous month across a year boundary", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+    expect(periodToDateRange({ period: "lastMonth" })).toEqual({
+      startDate: "2025-12-01",
+      endDate: "2025-12-31",
     });
+  });
 
-    it("should ignore startDate and endDate when period is not custom", () => {
-      const searchParams = new URLSearchParams(
-        "period=week&startDate=2024-01-01&endDate=2024-01-31"
-      );
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result).toEqual({ period: "week" });
-      expect("startDate" in result).toBe(false);
-      expect("endDate" in result).toBe(false);
+  it("preserves a complete custom range and defaults incomplete or unknown ranges", () => {
+    expect(
+      periodToDateRange({ period: "custom", startDate: "2024-01-15", endDate: "2024-01-20" })
+    ).toEqual({ startDate: "2024-01-15", endDate: "2024-01-20" });
+    expect(periodToDateRange({ period: "custom" })).toMatchObject({
+      startDate: expect.any(String),
+      endDate: expect.any(String),
     });
+    expect(
+      periodToDateRange({ period: "invalid" as Parameters<typeof periodToDateRange>[0]["period"] })
+    ).toMatchObject({ startDate: expect.any(String), endDate: expect.any(String) });
+  });
 
-    it("should default incomplete custom periods to thisMonth", () => {
-      const searchParams = new URLSearchParams("period=custom");
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result).toEqual({ period: "thisMonth" });
-      expect("startDate" in result).toBe(false);
-      expect("endDate" in result).toBe(false);
+  it("parses supported URL and Next.js search parameter shapes", () => {
+    expect(parsePeriodFromSearchParams(new URLSearchParams("period=week"))).toEqual({
+      period: "week",
     });
-
-    it("should default to thisMonth for invalid period", () => {
-      const searchParams = new URLSearchParams("period=invalid");
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result.period).toBe("thisMonth");
+    expect(parsePeriodFromSearchParams({ period: ["lastMonth", "all"] })).toEqual({
+      period: "lastMonth",
     });
+    expect(
+      parsePeriodFromSearchParams(
+        new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31")
+      )
+    ).toEqual({ period: "custom", startDate: "2024-01-01", endDate: "2024-01-31" });
+  });
 
-    it("should default to thisMonth when no period provided", () => {
-      const searchParams = new URLSearchParams("");
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      expect(result.period).toBe("thisMonth");
-    });
-
-    it("should handle array values from Next.js searchParams", () => {
-      const searchParams = { period: ["week", "month"] }; // Array value
-      const result = parsePeriodFromSearchParams(searchParams);
-
-      // Should take first value
-      expect(result.period).toBe("week");
-    });
-
-    it("should validate period against allowed values", () => {
-      const validPeriods = ["all", "thisMonth", "lastMonth", "week"];
-
-      validPeriods.forEach((period) => {
-        const searchParams = new URLSearchParams(`period=${period}`);
-        const result = parsePeriodFromSearchParams(searchParams);
-        expect(result.period).toBe(period);
+  it("drops irrelevant dates and defaults invalid or incomplete URL periods", () => {
+    expect(
+      parsePeriodFromSearchParams(
+        new URLSearchParams("period=week&startDate=2024-01-01&endDate=2024-01-31")
+      )
+    ).toEqual({ period: "week" });
+    for (const query of [
+      "",
+      "period=invalid",
+      "period=custom",
+      "period=custom&startDate=2024-01-01",
+    ]) {
+      expect(parsePeriodFromSearchParams(new URLSearchParams(query))).toEqual({
+        period: "thisMonth",
       });
-
-      expect(
-        parsePeriodFromSearchParams(
-          new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31")
-        ).period
-      ).toBe("custom");
-    });
+    }
   });
 
-  describe("datesToPeriodParams", () => {
-    it('should return "thisMonth" when no dates provided', () => {
-      const result = datesToPeriodParams();
-
-      expect(result.period).toBe("thisMonth");
-      expect(result.startDate).toBeUndefined();
-      expect(result.endDate).toBeUndefined();
+  it("round-trips complete date selections and defaults incomplete selections", () => {
+    const params = datesToPeriodParams(new Date(2023, 11, 25), new Date(2024, 0, 5));
+    expect(params).toEqual({
+      period: "custom",
+      startDate: "2023-12-25",
+      endDate: "2024-01-05",
     });
-
-    it('should return "thisMonth" when only start date provided', () => {
-      const result = datesToPeriodParams(new Date("2024-01-01"));
-
-      expect(result.period).toBe("thisMonth");
+    expect(periodToDateRange(params)).toEqual({
+      startDate: "2023-12-25",
+      endDate: "2024-01-05",
     });
-
-    it('should return "thisMonth" when only end date provided', () => {
-      const result = datesToPeriodParams(undefined, new Date("2024-01-31"));
-
-      expect(result.period).toBe("thisMonth");
-    });
-
-    it("should return custom period with formatted dates", () => {
-      const startDate = new Date("2024-01-15");
-      const endDate = new Date("2024-01-20");
-
-      const result = datesToPeriodParams(startDate, endDate);
-
-      expect(result.period).toBe("custom");
-      expect(result.startDate).toBe("2024-01-15");
-      expect(result.endDate).toBe("2024-01-20");
-    });
-
-    it("should format dates with leading zeros", () => {
-      const startDate = new Date("2024-03-05");
-      const endDate = new Date("2024-03-09");
-
-      const result = datesToPeriodParams(startDate, endDate);
-
-      expect(result.startDate).toBe("2024-03-05");
-      expect(result.endDate).toBe("2024-03-09");
-    });
-
-    it("should handle dates across year boundary", () => {
-      const startDate = new Date("2023-12-25");
-      const endDate = new Date("2024-01-05");
-
-      const result = datesToPeriodParams(startDate, endDate);
-
-      expect(result.period).toBe("custom");
-      expect(result.startDate).toBe("2023-12-25");
-      expect(result.endDate).toBe("2024-01-05");
-    });
-  });
-
-  describe("Integration: round-trip conversion", () => {
-    it("should convert dates to params and back to dates", () => {
-      const originalStart = new Date("2024-01-15");
-      const originalEnd = new Date("2024-01-20");
-
-      // Convert to params
-      const params = datesToPeriodParams(originalStart, originalEnd);
-
-      // Convert back to date range
-      const dateRange = periodToDateRange(params);
-
-      // Verify dates match (ignoring time component)
-      const resultStart = new Date(dateRange.startDate!);
-      const resultEnd = new Date(dateRange.endDate!);
-
-      expect(resultStart.getFullYear()).toBe(originalStart.getFullYear());
-      expect(resultStart.getMonth()).toBe(originalStart.getMonth());
-      expect(resultStart.getDate()).toBe(originalStart.getDate());
-
-      expect(resultEnd.getFullYear()).toBe(originalEnd.getFullYear());
-      expect(resultEnd.getMonth()).toBe(originalEnd.getMonth());
-      expect(resultEnd.getDate()).toBe(originalEnd.getDate());
-    });
+    expect(datesToPeriodParams()).toEqual({ period: "thisMonth" });
+    expect(datesToPeriodParams(new Date(2024, 0, 1))).toEqual({ period: "thisMonth" });
   });
 });

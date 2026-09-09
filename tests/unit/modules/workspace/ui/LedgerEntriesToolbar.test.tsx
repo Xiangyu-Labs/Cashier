@@ -23,24 +23,19 @@ const defaultProps = {
 };
 
 describe("LedgerEntriesToolbar", () => {
-  it("renders without crashing with default props", () => {
+  it("shows the unfiltered total with its label", () => {
     render(<LedgerEntriesToolbar {...defaultProps} />);
 
-    // Should render the selection toggle button (select mode, not cancel)
-    expect(screen.getByTitle("选择")).toBeDefined();
-
-    // Should render the total
-    expect(screen.getByText("Total ¥123.45")).toBeDefined();
+    expect(screen.getByText("Total ¥123.45")).toBeInTheDocument();
   });
 
-  it("renders in selection mode with checkbox and clear button", () => {
+  it("shows selection controls instead of totals and filters while selecting", () => {
     render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={3} />);
 
-    // Should render the selection checkbox area
-    expect(screen.getByText(/已选择 3 项/)).toBeDefined();
-    // Cancel button title in selection mode
-    expect(screen.getByTitle("取消")).toBeDefined();
+    expect(screen.getByText(/已选择 3 项/)).toBeInTheDocument();
+    expect(screen.getByTitle("取消")).toBeInTheDocument();
     expect(screen.queryByText("Total ¥123.45")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "筛选" })).not.toBeInTheDocument();
   });
 
   it("keeps active status details inside the filter panel", () => {
@@ -48,13 +43,6 @@ describe("LedgerEntriesToolbar", () => {
 
     expect(screen.queryByText(/状态：/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
-  });
-
-  it("does not render EntryFilterPanel in selection mode", () => {
-    render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={1} />);
-
-    // EntryFilterPanel should not be rendered in selection mode
-    expect(screen.queryByRole("button", { name: "筛选" })).not.toBeInTheDocument();
   });
 
   it("renders only the amount when a filtered result omits the prefix", () => {
