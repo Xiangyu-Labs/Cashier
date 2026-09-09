@@ -33,20 +33,12 @@ const DEFAULT_OPTIONS: Required<OpenAIMockOptions> = {
   ],
 };
 
-/** Mock only the current parser and arbitration protocols. */
+/** Mock the current parser protocol. */
 export function createOpenAIMock(options: OpenAIMockOptions = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   return {
-    generateContent: vi.fn().mockImplementation((prompt: string) => {
-      const normalizedPrompt = prompt.toLowerCase();
-      if (normalizedPrompt.includes("arbitration")) {
-        return Promise.resolve({
-          content: JSON.stringify({ choice: 1, reason: "result 1 is more accurate" }),
-          usage: { promptTokens: 100, completionTokens: 50 },
-        });
-      }
-
+    generateContent: vi.fn().mockImplementation((_prompt: string) => {
       const entries = opts.entries.map((entry, index) => ({
         receipt_index: 0,
         item_name: entry.item_name,

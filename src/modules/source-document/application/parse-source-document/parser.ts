@@ -5,7 +5,6 @@
  * order adjustments directly from images and/or text. No separate OCR stage.
  *
  * Uses a vision model when images are present, a text model for text-only input.
- * Downstream can run a second pass (dual-run) for complex documents.
  */
 
 import { logger } from "@/lib/logger";
@@ -106,54 +105,50 @@ Return a single JSON object:
 }
 \`\`\`
 
-### Important: Amount Formatting
-- All amount fields must be **quoted decimal strings** (e.g. "45.00", "-5.00", "0.10").
-- Never output unquoted JSON numbers for amounts — the system will reject them.
-- Use the currency's ISO minor-unit precision: 0 decimals for zero-decimal currencies such as JPY, 3 decimals for currencies such as KWD, and 2 decimals for most currencies.
-- Use standard minus sign - for negative values.
+### Amount Formatting
+- All amounts are **quoted decimal strings** (e.g. "45.00", "-5.00", "0.10") — never unquoted JSON numbers, the system will reject them.
+- Use the currency's ISO minor-unit precision: 0 decimals for zero-decimal currencies (e.g. JPY), 3 decimals for currencies like KWD, 2 decimals otherwise.
+- Use a standard minus sign \`-\` for negative values.
+- **\`currency\` is always the ISO 4217 three-letter code** (e.g. "MYR", "CNY", "USD") — never a local symbol, abbreviation, or prefix as shown on the document (e.g. "RM", "¥", "S$"). Convert the document's local currency marker to its ISO code even though the amount itself stays in that local currency.
+- **Every ledger_entry.amount must be strictly greater than 0.** A line with no price of its own (see "Informational / no-price lines" below) must never appear as a ledger_entry, even at "0.00" — a zero-amount ledger_entry is always rejected by the system as invalid.
+- **When an amount is shown twice — an original/local-currency figure plus a "≈" converted estimate in another currency — record the original local-currency figure and its own currency, never the "≈" estimate.** For example "RM 1,713.00 ≈ ¥2,847.90" or "RM ▾ 9.18 ≈ ¥15.23" means the real amount and currency is MYR 1,713.00 / MYR 9.18; the ¥ figure is only a reference conversion, not the recorded currency.
 
 ### Rules
-- Valid evidence is not limited to completed receipts or invoices. It also includes an application or service screen that clearly identifies one expense and its exact payable, fixed, or estimated price. Record that price when it is clearly associated with the user's selected or ongoing transaction.
-- Do not infer an expense from a balance, available credit, coupon value, price range, comparison list, advertisement, or an unrelated number on a status screen. If the screen does not clearly connect one price to one transaction or service, set outcome to "invalid".
-- A displayed minus sign can be a visual convention for a debit, payment, spending, or charge. When it means money leaving the user, record the expense amount and receipt total as positive values. Do not treat the visual sign alone as a refund.
-- Set outcome to "invalid" if the document contains no usable expense evidence.
-- Set outcome to "invalid" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include invalid_reason.
-- Core accounting rule:
-  - The receipt total should satisfy: sum(ledger_entries.amount) + sum(order_adjustments.amount) = receipt total.
-  - Every monetary effect must appear exactly once.
-  - Never represent the same discount, fee, tax, shipping charge, packaging fee, service fee, subsidy, or rounding adjustment in both ledger_entries and order_adjustments.
-- ledger_entries:
-  - ledger_entries are only the products or services the customer actually purchased.
-  - The amount of each ledger_entry must be the final net amount for that specific item only.
-  - If a discount or surcharge clearly applies to one specific item, fold it into that item's amount.
-  - ledger_entry amounts must always be strictly positive (> 0); zero and negative values are invalid.
-- order_adjustments:
-  - order_adjustments are bill-level adjustments that modify the overall receipt total rather than one specific item.
-  - Put bill-level discounts, coupons, spend-threshold promotions, shipping fees, packaging fees, service fees, taxes, tips, platform-wide subsidies, and rounding adjustments here.
-  - If an adjustment cannot be confidently attributed to exactly one item, put it in order_adjustments instead of guessing how to distribute it across items.
-  - Do not omit real bill-level charges just because they are not attached to a specific item.
-  - Shipping fees, packaging fees, service fees, delivery fees, bag fees, taxes, tips, and other merchant/platform charges must be preserved when they affect the receipt total.
-  - If the receipt explicitly shows one of these bill-level charges and it is not already included inside a specific item's amount, include it in order_adjustments rather than dropping it.
-- Arithmetic / reconciliation rule:
-  - Some receipts show a bill-level-looking discount line that is actually only the summary total of item-level discounts already reflected in the item prices.
-  - Use simple arithmetic and receipt-total reconciliation to judge whether a displayed discount line is a true additional bill-level adjustment or merely a summary of item-level discounts.
-  - If the displayed discount line is just the sum or recap of item-specific discounts already folded into ledger_entries, do not repeat it in order_adjustments.
-  - Only include a discount in order_adjustments when it is an additional bill-level effect that is not already represented inside ledger_entries.
-  - Conversely, for bill-level fees and charges such as shipping or packaging, do not ignore them during reconciliation: if they affect the final receipt total and are not already inside item amounts, they should appear in order_adjustments.
-- Important special case:
-  - Even if there is only one purchased item on the receipt, bill-level adjustments must still stay in order_adjustments.
-  - Do not fold a bill-level discount or fee into the single item's amount just because there is only one item.
-- This system only handles expenses. If the document is a refund or credit note, set outcome to "invalid".
-- Each receipt in a multi-receipt image gets its own receipt_index starting from 0.
+- Valid evidence isn't limited to completed receipts/invoices — it also includes an app/service screen that clearly ties one expense to its exact payable, fixed, or estimated price. Do not infer an expense from a balance, available credit, coupon value, price range, comparison list, ad, or unrelated number — if no screen clearly connects one price to one transaction, set outcome "invalid".
+  - Ride-hailing / delivery booking screens: a **confirmed, single selected ride/order** showing one estimated or fixed fare is valid evidence — record it even if the trip is still in progress. But a screen where the user is still **choosing among several vehicle types or waiting to be matched**, showing a price range across multiple options (e.g. "已选24种车型，预估11-12元" or "预估11.4-14元起"), is not yet a transaction — treat it like a price range/comparison list and set outcome "invalid".
+  - **A bank/payment debit notification (SMS alert, push notification banner, "consumption reminder") is valid, completed evidence on its own — even when it's shown layered on top of, or alongside, a different app screen that is itself still mid-process** (e.g. a ride-hailing screen still "matching"/"confirming driver" behind the notification). The notification reports money that has already left the account; the state of whatever screen is behind it doesn't retroactively make that charge unconfirmed. Read the amount and currency from the notification banner and record it — don't reject the whole image just because the underlying app screen looks incomplete.
+- A displayed minus sign on a debit/payment/charge is a visual convention, not a refund — when it means money leaving the user, record the amount (and receipt total) as positive.
+- outcome "invalid": no usable expense evidence at all, OR it's a receipt but can't be reliably parsed (blurry, torn, missing totals), OR it's a refund/credit note (this system only handles expenses) — include invalid_reason.
+- Prefer computing a receipt_total yourself (sum of visible item prices + visible fees) over rejecting the document — see "No final-total line" below. Only fall back to invalid when you genuinely cannot determine a usable amount.
+- Core accounting rule: sum(ledger_entries.amount) + sum(order_adjustments.amount) = receipt total. Every monetary effect (discount, fee, tax, shipping, packaging, service charge, subsidy, rounding) appears exactly once — never in both arrays.
+- **receipt_total must match the item list you actually parsed for that receipt_index** — it's the sum of the visible item prices and fees you extracted, not some other total-like figure that happens to appear elsewhere on the same screen (e.g. an account's cumulative/running balance, a different day's subtotal, an unrelated summary number). If a screen shows more than one total-like number, use the one arithmetically consistent with the line items you're recording; a total that doesn't match your own item list is a sign you picked the wrong number, not a sign the items are incomplete.
+- ledger_entries are only the products/services actually purchased. Each amount is that item's own final net price (fold item-specific discounts/surcharges into it). Always strictly positive (> 0) — see the Amount Formatting note above.
+- order_adjustments are bill-level effects that don't attach to one specific item: discounts, coupons, spend-threshold promos, shipping/packaging/service/delivery fees, taxes, tips, platform subsidies, rounding. If an adjustment can't be confidently attributed to exactly one item, put it here rather than guessing a distribution. Don't drop a real bill-level charge just because it isn't attached to an item. This still applies with only one item on the receipt — a bill-level fee/discount never gets folded into that single item's amount.
+  - **Delivery, packaging, and platform/service fees on a food or goods order are order_adjustments, never their own ledger_entry or category, whenever there's at least one product/service item on the receipt to attach them to** — despite "delivery" sounding transport-related, don't give it a transportation category_index.
+  - **Exception: if a delivery/errand/service fee is the *only* charge on the receipt — there is no separate product or service item at all, just the fee itself (e.g. a standalone Grab/跑腿 errand-running charge, a delivery-only order with no goods listed) — record it as a normal ledger_entry instead**, with whatever category best fits the service (e.g. errand/life category), not as an order_adjustment. An order_adjustment with nothing to attach to has no item to distribute onto and the amount is lost — never leave order_adjustments as the only place a receipt's money appears.
+- Reconciliation: some receipts show a discount line that is only a recap/summary of item-level discounts already reflected in the item prices — don't re-add that as another order_adjustment. Use simple arithmetic against the receipt total to tell a true additional bill-level adjustment apart from a mere recap. Conversely, don't drop genuine bill-level fees/charges (shipping, packaging, etc.) that affect the total and aren't already inside an item amount.
+  - **Multi-tier discount checkout summaries** (e.g. "商品总价 ¥79.7" → "店铺优惠 -¥14.6" → "平台优惠 -¥6.77" → "实付款 ¥58.33"), where each item row already shows its own final "实付价"/paid price: use those per-item paid prices and the final paid total directly as your ledger_entries and receipt_total. Do not also try to re-derive or sanity-check against the pre-discount "商品总价" — the per-tier discounts are usually not evenly splittable per item, and re-checking against the subtotal will produce a false amount_conflict.
+- Each receipt in a multi-receipt image gets its own receipt_index starting at 0. A screenshot can contain several independent things stacked together — multiple bank SMS payment alerts, several app "payment successful" cards, or **several distinct e-commerce orders in an order-list screen (each with its own merchant, item, and a clearly visible paid price)** — treat each as its own receipt/receipt_index rather than rejecting the whole screenshot. If one of several items is truncated or unclear (e.g. the bottom order is cut off and its price isn't visible), just skip that one and still parse the other, complete ones normally — one incomplete entry among several does not invalidate the rest.
+- No separate final-total line is normal, not a reason for invalid: many documents show only item price(s) and visible fees with no distinct "final total" line — compute receipt_total yourself as their sum. Only treat it as unparseable when the item price(s) themselves are also illegible or absent.
+- Undisclosed / not-fully-itemized purchases — **only when the document itself explicitly signals there's more you can't see** (e.g. "还有7种商品未展开", "共10件商品" with a collapsed list, an order summary showing only a subtotal for extra items): don't set invalid just because the visible items don't sum to the total.
+  - If some items are individually visible: list them as their own ledger_entries, then add exactly one rollup ledger_entry for the remainder (item_name like "其他N种商品（未显示明细）" / "Other N items (not itemized)"), amount = receipt total − sum of visible items, with notes explaining the derivation.
+  - If nothing is itemized and only one merged total is shown for multiple products (e.g. "5件商品 合计¥46.40"): record one ledger_entry for that whole merged amount, named after the merchant/order.
+  - Skip this backfill only when the remainder would be implausible (negative, or wildly disproportionate to the visible items) — treat that instead as a genuine reconciliation problem under the normal invalid rule.
+  - **Never invent this rollup line just because your own sum doesn't match a total you picked** — if there's no explicit "more items exist" signal on the document, a mismatch means you likely misread the total (see the receipt_total rule above) or an item's price, not that hidden items exist. Fabricating a placeholder entry to force balance is worse than leaving a smaller, honest mismatch.
+- Informational / no-price lines (allergen or ingredient notices, free/gift items with no charge, item options/customizations attached to another item, disclaimers): **never their own ledger_entry, not even at "0.00"**. If unsure whether a line is a priced item or descriptive text, fold it into the notes of the item it describes rather than emitting a zero-amount entry. Example: a menu shows "铂金精品美式 ¥0.00 (赠品)" — do not add a ledger_entry for it; mention it in the notes of a nearby paid item instead, or omit it if it has nothing to attach to.
+- Personal share vs. full group/total: if a document shows a full payment total for a shared/group expense (deposit, group purchase, split bill) alongside text that explicitly states the amount owed by or attributable to the ledger's own user (a per-person split, "my share is X"), record that explicit personal share, not the full total. Use the full total only when no personal share is explicitly stated.
 - Examples:
-  - Two items + order-level coupon: keep the item prices in ledger_entries, put the coupon in order_adjustments.
-  - Two items + each item has its own discount: return the already-discounted item prices in ledger_entries, with no order_adjustments for those item-specific discounts.
-  - Two items + item discounts of -10 and -20, plus a separate displayed "Discount -30" summary line: treat -30 as a summary only, not an extra order_adjustment.
-  - One item + shipping fee + order-level coupon: keep only the item's own final price in ledger_entries, and put shipping fee / order-level coupon in order_adjustments.
-  - Two items + packaging fee + delivery fee shown separately on the receipt: keep the item prices in ledger_entries, and include packaging fee / delivery fee in order_adjustments.
-  - A service screen with a selected ride and an explicitly labelled estimated, fixed, or payable price: record one expense for that service, even if the service is still in progress.
-  - A screen showing a debit of -10.00 for a completed payment: record a 10.00 expense, not a negative ledger entry.
-- Return only the JSON block, no other text.`;
+  - Item + shipping fee + order-level coupon: item's own final price in ledger_entries; shipping fee and coupon both in order_adjustments.
+  - Two items with item-level discounts of -10 and -20, plus a displayed "Discount -30" summary line: -30 is just their recap — don't add it as a third order_adjustment.
+  - Food delivery order: item prices + packaging fee + delivery fee, no separate final-total screen: receipt_total = sum of all three; packaging/delivery fee as order_adjustments, not a transportation entry.
+  - A standalone Grab/跑腿 errand-running fee with no goods or product listed — just "配送费 RM 13.00": record it as one ledger_entry ("配送费"/"跑腿"), not an order_adjustment — there's nothing else on the receipt for the fee to attach to.
+  - Receipt total ¥77.09 but only 3 of 7 items individually listed (summing ¥25.94), and the screen says "还有4种商品未展开": keep the 3 visible items, add one "其他4种商品（未显示明细）" entry for ¥51.15.
+  - Group deposit receipt shows RM 500.00, chat text says "每人是166.66RM": record 166.66 MYR, not 500.00 MYR.
+  - An app detail screen shows "合计金额: ¥2,847.90" at the top but the line item itself reads "RM ▾ 1,713.00 ≈ ¥2,847.90": record 1,713.00 MYR, not 2,847.90 CNY.
+  - Three separate Taobao orders in an order list, each with its own visible "实付款" (¥21.42, ¥14.26, ¥22.65) and a combined "实付款 共减¥21.37 ¥58.33" summary: record the three items at their own paid prices (summing to 58.33); do not also subtract the ¥21.37 discount again or reconcile against the pre-discount ¥79.7 subtotal.
+  - A bank SMS "消费提醒：您尾号1234的信用卡于XX日消费18.98元" banner sits on top of a ride-hailing "司机正在确认中" (driver confirming) screen: record 18.98 CNY from the notification — the ride app's in-progress state behind it doesn't invalidate the already-completed bank charge.
+- Return only the JSON block, no other text.
+`;
 }
 
 export async function executeParser(

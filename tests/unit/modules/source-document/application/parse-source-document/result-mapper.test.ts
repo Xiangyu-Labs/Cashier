@@ -229,7 +229,6 @@ describe("toParseSourceDocumentOutput", () => {
       kind: "success",
       title: "Receipt",
       ledgerEntries: [],
-      wasArbitrated: false,
     };
 
     expect(toParseSourceDocumentOutput(result)).toEqual({

@@ -35,9 +35,9 @@ describe("title-policy", () => {
   });
 
   it("exposes a prompt that states the default style and instruction priority", () => {
-    expect(TITLE_POLICY_PROMPT).toContain("merchant- or service-first");
+    expect(TITLE_POLICY_PROMPT).toContain("merchant/service-first");
     expect(TITLE_POLICY_PROMPT).toContain("at most 200 Unicode characters");
-    expect(TITLE_POLICY_PROMPT).toContain("Additional Instructions from the ledger owner");
-    expect(TITLE_POLICY_PROMPT).toContain("The mandatory output locale below");
+    expect(TITLE_POLICY_PROMPT).toContain("ledger owner's Additional Instructions");
+    expect(TITLE_POLICY_PROMPT).toContain("mandatory output locale below");
   });
 });

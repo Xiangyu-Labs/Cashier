@@ -1,5 +1,3 @@
-import { logger } from "@/lib/logger";
-import { logIdentifier } from "@/lib/security/log-identifier";
 import {
   ProcessingCancelledError,
   ProcessingFailure,
@@ -11,8 +9,6 @@ import {
 export type { ParsePipelineResult } from "./contracts";
 import { executeParser } from "./parser";
 import type { ParserInput } from "./parser";
-import { arbitrateResults } from "./arbitration";
-import { shouldDualRun, compareResults } from "./parser-schema";
 import { convertToParsedEntries } from "./result-mapper";
 import { reconcileParseOutput } from "./reconciliation";
 import type { NormalizedParseOutput } from "./parser-schema";
@@ -23,17 +19,6 @@ import { runtimeEnv } from "@/lib/env/runtime";
 export interface StageContext {
   signal: AbortSignal;
   ai: AiContextContract;
-  docId: string;
-  ledgerId: string;
-}
-
-export function buildStageContext(params: {
-  signal: AbortSignal;
-  ai: AiContextContract;
-  docId: string;
-  ledgerId: string;
-}): StageContext {
-  return { ...params };
 }
 
 // ===== Result contract =====
@@ -61,8 +46,7 @@ export function buildParserInput(input: ParseSourceDocumentInput): ParserInput {
 // ===== Outcome helpers =====
 
 function resolveSuccess(
-  result: NormalizedParseOutput,
-  wasArbitrated: boolean
+  result: NormalizedParseOutput
 ): Extract<ParsePipelineResult, { kind: "success" }> {
   return {
     kind: "success",
@@ -71,18 +55,15 @@ function resolveSuccess(
       ledgerEntries: result.ledger_entries,
       orderAdjustments: result.order_adjustments,
     }),
-    wasArbitrated,
   };
 }
 
 async function persistAndResolveSuccess({
   aiLanguage,
   result,
-  wasArbitrated,
 }: {
   aiLanguage: string | undefined;
   result: NormalizedParseOutput;
-  wasArbitrated: boolean;
 }): Promise<ParsePipelineResult> {
   const reconciled =
     aiLanguage === undefined
@@ -96,7 +77,7 @@ async function persistAndResolveSuccess({
     };
   }
 
-  return resolveSuccess(reconciled.result, wasArbitrated);
+  return resolveSuccess(reconciled.result);
 }
 
 function resolveOutcome(
@@ -122,75 +103,16 @@ async function executeParsePipeline(
     throwIfProcessingCancelled(ctx.signal);
 
     const parserInput = buildParserInput(input);
-    const first = await executeParser(parserInput, ctx.ai, ctx.signal);
+    const result = await executeParser(parserInput, ctx.ai, ctx.signal);
 
     throwIfProcessingCancelled(ctx.signal);
 
-    // Invalid documents do not benefit from a second parse pass.
-    const firstDecision = resolveOutcome(first);
-    if (firstDecision.kind !== "continue") return firstDecision;
-
-    // Simple document: single pass is sufficient
-    if (!shouldDualRun(first)) {
-      return persistAndResolveSuccess({
-        aiLanguage: input.aiLanguage,
-        result: first,
-        wasArbitrated: false,
-      });
-    }
-
-    // Complex document: run a second pass
-    throwIfProcessingCancelled(ctx.signal);
-
-    const second = await executeParser(parserInput, ctx.ai, ctx.signal);
-    throwIfProcessingCancelled(ctx.signal);
-
-    // Both passes agree: use first result
-    if (compareResults(first, second)) {
-      logger.info(
-        {
-          revisionSubject: logIdentifier("revision", ctx.docId),
-          entries: first.ledger_entries.length,
-        },
-        "parser: dual-run results agree"
-      );
-      return persistAndResolveSuccess({
-        aiLanguage: input.aiLanguage,
-        result: first,
-        wasArbitrated: false,
-      });
-    }
-
-    // Results disagree: arbitrate
-    throwIfProcessingCancelled(ctx.signal);
-
-    logger.info(
-      { revisionSubject: logIdentifier("revision", ctx.docId) },
-      "parser: dual-run disagrees, arbitrating"
-    );
-    const arbitration = await arbitrateResults(
-      { input: parserInput, result1: first, result2: second },
-      ctx.ai,
-      ctx.signal
-    );
-
-    throwIfProcessingCancelled(ctx.signal);
-
-    if (arbitration.kind === "invalid") {
-      return {
-        kind: "invalid",
-        title: first.title,
-        invalidReason: arbitration.reason,
-      };
-    }
-
-    const arbitrationDecision = resolveOutcome(arbitration.result);
-    if (arbitrationDecision.kind !== "continue") return arbitrationDecision;
+    const decision = resolveOutcome(result);
+    if (decision.kind !== "continue") return decision;
 
     return persistAndResolveSuccess({
       aiLanguage: input.aiLanguage,
-      result: arbitrationDecision.result,
-      wasArbitrated: true,
+      result: decision.result,
     });
   } catch (error) {
     if (error instanceof ProcessingCancelledError) {

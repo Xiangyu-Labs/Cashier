@@ -19,10 +19,7 @@ import {
   getEntryFallbackDate,
   validateEntries,
 } from "@/modules/source-document/application/parse-source-document/entry-builder";
-import {
-  buildStageContext,
-  runParsePipeline,
-} from "@/modules/source-document/application/parse-source-document/pipeline";
+import { runParsePipeline } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { toParseSourceDocumentOutput } from "@/modules/source-document/application/parse-source-document/result-mapper";
 import {
   ProcessingCancelledError,
@@ -150,12 +147,10 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           ? { preferredCurrencies: ledgerSettings.currencies }
           : {}),
       },
-      buildStageContext({
+      {
         signal,
         ai,
-        docId: request.revisionId,
-        ledgerId: request.ledgerId,
-      })
+      }
     );
     throwIfProcessingCancelled(signal);
     const output = toParseSourceDocumentOutput(pipeline);

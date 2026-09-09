@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/tasks/types";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/parse-source-document/contracts";
 import {
-  buildStageContext,
   runParsePipeline,
   buildParserInput,
 } from "@/modules/source-document/application/parse-source-document/pipeline";
@@ -83,62 +82,20 @@ const COMPLEX_FIRST_PARSE_RESULT = {
   ledger_entries: COMPLEX_ENTRIES,
 };
 
-function isArbitrationPrompt(prompt: string | undefined): boolean {
-  return prompt?.includes("arbitration AI") ?? false;
-}
-
-function isParserPrompt(prompt: string | undefined): boolean {
-  return (
-    prompt?.includes('"receipt_totals"') === true &&
-    prompt.includes('"order_adjustments"') &&
-    !isArbitrationPrompt(prompt)
-  );
-}
-
-/**
- * Creates a mock AI that routes parser and arbitration calls by their output protocols.
- */
 function createMockAI(
   options: {
     firstParseResult?: object;
-    secondParseResult?: object; // if set, 2nd call returns this (for disagreement)
-    arbitrationChoice?: number;
     firstParseOutcome?: "success" | "invalid";
   } = {}
 ): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
-  const {
-    firstParseResult = SIMPLE_FIRST_PARSE_RESULT,
-    secondParseResult,
-    arbitrationChoice = 1,
-    firstParseOutcome,
-  } = options;
+  const { firstParseResult = SIMPLE_FIRST_PARSE_RESULT, firstParseOutcome } = options;
 
-  let firstParseCallCount = 0;
-
-  const generate = vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
-    const prompt = opts.prompt ?? "";
-
-    // Arbitration call
-    if (isArbitrationPrompt(prompt)) {
-      return {
-        content: JSON.stringify({ choice: arbitrationChoice, reason: "result 1 is correct" }),
-      };
-    }
-
-    // Single-pass parser
-    if (isParserPrompt(prompt)) {
-      firstParseCallCount++;
-      const base =
-        firstParseOutcome != null
-          ? { ...firstParseResult, outcome: firstParseOutcome }
-          : firstParseResult;
-      if (secondParseResult && firstParseCallCount >= 2) {
-        return { content: JSON.stringify(secondParseResult) };
-      }
-      return { content: JSON.stringify(base) };
-    }
-
-    throw new Error(`Unexpected AI call with prompt: ${prompt.slice(0, 80)}`);
+  const generate = vi.fn(async (_opts: AIGenerateOptions): Promise<AIResponse> => {
+    const result =
+      firstParseOutcome != null
+        ? { ...firstParseResult, outcome: firstParseOutcome }
+        : firstParseResult;
+    return { content: JSON.stringify(result) };
   });
 
   return { ai: { generate }, generate };
@@ -176,77 +133,35 @@ function createInput(overrides: ParseSourceDocumentInputOverrides = {}): ParseSo
 }
 
 function buildCtx(ai: AIContext) {
-  return buildStageContext({
+  return {
     signal: new AbortController().signal,
     ai,
-    docId: "source-doc-1",
-    ledgerId: "ledger-1",
-  });
+  };
 }
 
-describe("runParsePipeline — new single-pass flow", () => {
+describe("runParsePipeline — single-pass flow", () => {
   it("returns success for simple document with one AI call", async () => {
     const { ai, generate } = createMockAI({ firstParseResult: SIMPLE_FIRST_PARSE_RESULT });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const firstParseCalls = generate.mock.calls.filter((c) =>
-      isParserPrompt((c[0] as AIGenerateOptions).prompt)
-    );
-    expect(firstParseCalls).toHaveLength(1);
+    expect(generate).toHaveBeenCalledTimes(1);
   });
 
-  it("runs two parse calls for complex documents (>3 entries)", async () => {
+  it("uses one AI call for complex documents", async () => {
     const { ai, generate } = createMockAI({ firstParseResult: COMPLEX_FIRST_PARSE_RESULT });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const firstParseCalls = generate.mock.calls.filter((c) =>
-      isParserPrompt((c[0] as AIGenerateOptions).prompt)
-    );
-    expect(firstParseCalls).toHaveLength(2);
+    expect(generate).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts agreeing complex results without arbitration", async () => {
-    const { ai, generate } = createMockAI({ firstParseResult: COMPLEX_FIRST_PARSE_RESULT });
-    await runParsePipeline(createInput(), buildCtx(ai));
-
-    const arbitrationCalls = generate.mock.calls.filter((c) =>
-      isArbitrationPrompt((c[0] as AIGenerateOptions).prompt)
-    );
-    expect(arbitrationCalls).toHaveLength(0);
-  });
-
-  it("triggers arbitration when complex results disagree", async () => {
-    const differentResult = {
-      ...COMPLEX_FIRST_PARSE_RESULT,
-      ledger_entries: COMPLEX_ENTRIES.map((e) => ({
-        ...e,
-        amount: String(Number.parseFloat(e.amount) + 5),
-      })),
-    };
-    const { ai, generate } = createMockAI({
-      firstParseResult: COMPLEX_FIRST_PARSE_RESULT,
-      secondParseResult: differentResult,
-    });
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
-
-    expect(result.kind).toBe("success");
-    const arbitrationCalls = generate.mock.calls.filter((c) =>
-      isArbitrationPrompt((c[0] as AIGenerateOptions).prompt)
-    );
-    expect(arbitrationCalls).toHaveLength(1);
-  });
-
-  it("invalid outcome short-circuits without dual-run", async () => {
+  it("returns an invalid outcome after one AI call", async () => {
     const { ai, generate } = createMockAI({ firstParseOutcome: "invalid" });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("invalid");
-    const firstParseCalls = generate.mock.calls.filter((c) =>
-      isParserPrompt((c[0] as AIGenerateOptions).prompt)
-    );
-    expect(firstParseCalls).toHaveLength(1);
+    expect(generate).toHaveBeenCalledTimes(1);
   });
 
   it("returns invalid with a fallback title when AI sends title null", async () => {
@@ -465,12 +380,10 @@ describe("runParsePipeline — new single-pass flow", () => {
         return { content: JSON.stringify(SIMPLE_FIRST_PARSE_RESULT) };
       },
     };
-    const ctx = buildStageContext({
+    const ctx = {
       signal: controller.signal,
       ai: abortingAi,
-      docId: "source-doc-1",
-      ledgerId: "ledger-1",
-    });
+    };
 
     const result = await runParsePipeline(createInput(), ctx);
     expect(result.kind).toBe("cancelled");

@@ -15,7 +15,6 @@ vi.mock("@/modules/source-document/application/duplicate-detection", () => ({
 }));
 
 vi.mock("@/modules/source-document/application/parse-source-document/pipeline", () => ({
-  buildStageContext: vi.fn(() => ({})),
   runParsePipeline: runParsePipelineMock,
 }));
 vi.mock("@/modules/source-document/application/parse-source-document/result-mapper", () => ({

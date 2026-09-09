@@ -1,10 +1,8 @@
 /**
  * Shared AI title policy.
  *
- * Every stage that can produce a persisted title — main parse, second pass,
- * and arbitration — applies the same default style and the same normalization
- * rules, so the arbitration stage cannot bypass the ledger prompt or the hard
- * non-empty/length constraints.
+ * The parser applies the same default style and normalization rules so ledger
+ * prompts cannot bypass the hard non-empty/length constraints.
  */
 
 /** Hard maximum length for a persisted title, in Unicode code points. */
@@ -29,13 +27,6 @@ export function normalizeTitle(raw: string | null | undefined, fallback: string)
  * mandatory output locale comes second, the ledger owner's Additional
  * Instructions third, and the default merchant/service-first style last.
  */
-export const TITLE_POLICY_PROMPT = `### Title Policy
-- Default to a concise merchant- or service-first title (for example "Starbucks", "Didi ride", or "Alipay — Utility bill").
-- Add a short qualifier (store branch, service type, or item category) only when it is needed to distinguish the document from other documents.
-- Do not add amounts, dates, or payment status to the title by default.
-- The title must be non-empty and at most 200 Unicode characters.
-- Instruction priority (highest first):
-  1. Facts and structure of the source document; the title must be non-empty and at most 200 Unicode characters.
-  2. The mandatory output locale below.
-  3. Additional Instructions from the ledger owner.
-  4. The default merchant-/service-first style above.`;
+export const TITLE_POLICY_PROMPT = `### Title
+Concise merchant/service-first title (e.g. "Starbucks", "Didi ride"). Add a qualifier only if needed to disambiguate from other documents. No amounts, dates, or payment status. Non-empty, at most 200 Unicode characters.
+Priority (highest first): 1) facts/structure of the source document (title still non-empty, ≤200 chars) 2) the mandatory output locale below 3) ledger owner's Additional Instructions 4) the default style above.`;

@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  compareResults,
   normalizeResult,
   parserOutputSchema,
-  shouldDualRun,
 } from "@/modules/source-document/application/parse-source-document/parser-schema";
 
 const simpleSuccess = {
@@ -80,98 +78,6 @@ describe("parser-schema", () => {
     expect(parsed.title).toBe("名称未設定の明細");
   });
 
-  it("treats <=3 entries with one currency and no adjustments as simple", () => {
-    const parsed = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    expect(shouldDualRun(parsed)).toBe(false);
-  });
-
-  it("requires dual-run when multiple currencies are present", () => {
-    const multiCurrency = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        ledger_entries: [
-          simpleSuccess.ledger_entries[0]!,
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Tea", currency: "GBP" },
-        ],
-      })
-    );
-    expect(shouldDualRun(multiCurrency)).toBe(true);
-  });
-
-  it("requires dual-run when >3 entries are present", () => {
-    const complex = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        ledger_entries: [
-          ...simpleSuccess.ledger_entries,
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Tea" },
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Cake" },
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Tip" },
-        ],
-      })
-    );
-    expect(shouldDualRun(complex)).toBe(true);
-  });
-
-  it("does not require dual-run for invalid outcomes", () => {
-    const invalid = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        outcome: "invalid",
-        ledger_entries: [
-          ...simpleSuccess.ledger_entries,
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Tea" },
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Cake" },
-          { ...simpleSuccess.ledger_entries[0]!, item_name: "Tip" },
-        ],
-      })
-    );
-    expect(shouldDualRun(invalid)).toBe(false);
-  });
-
-  it("compares receipt totals, entries, and adjustments instead of only grouped sums", () => {
-    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    const right = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        order_adjustments: [
-          { receipt_index: 0, item_name: "Discount", amount: "-2", currency: "USD" },
-        ],
-      })
-    );
-    expect(compareResults(left, right)).toBe(false);
-  });
-
-  it("treats different receipt totals as non-matching even when item and adjustment groupings match", () => {
-    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    const right = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        receipt_totals: [{ receipt_index: 0, amount: "99.99", currency: "USD" }],
-      })
-    );
-
-    expect(compareResults(left, right)).toBe(false);
-  });
-
-  it("treats identical results as matching", () => {
-    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    const right = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    expect(compareResults(left, right)).toBe(true);
-  });
-
-  it("detects different entry amounts as non-matching", () => {
-    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    const right = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "15.00" }],
-        receipt_totals: [{ receipt_index: 0, amount: "15.00", currency: "USD" }],
-      })
-    );
-    expect(compareResults(left, right)).toBe(false);
-  });
-
   it("normalizeResult returns invalid when a ledger_entry has a non-positive amount", () => {
     const withZeroEntry = parserOutputSchema.parse({
       ...simpleSuccess,
@@ -191,43 +97,6 @@ describe("parser-schema", () => {
     expect(result.outcome).toBe("success");
     expect(result.receipt_totals[0]?.amount).toBe("5");
     expect(result.ledger_entries[0]?.amount).toBe("5");
-  });
-
-  it("requires exact canonical amounts in dual-run signatures", () => {
-    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
-    const right = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "12.505" }],
-        receipt_totals: [{ receipt_index: 0, amount: "12.505", currency: "USD" }],
-      })
-    );
-    expect(compareResults(left, right)).toBe(false);
-  });
-
-  it("normalizes item names and notes before comparing dual-run signatures", () => {
-    const left = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        ledger_entries: [
-          { ...simpleSuccess.ledger_entries[0]!, item_name: " Cafe Latte ", notes: "NO  SUGAR" },
-        ],
-      })
-    );
-    const right = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        ledger_entries: [
-          {
-            ...simpleSuccess.ledger_entries[0]!,
-            item_name: "Ｃａｆｅ   Ｌａｔｔｅ",
-            notes: "no sugar",
-          },
-        ],
-      })
-    );
-
-    expect(compareResults(left, right)).toBe(true);
   });
 
   it("rejects unquoted numeric amounts (schema-invalid outcome)", () => {

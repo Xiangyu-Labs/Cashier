@@ -100,8 +100,8 @@ describe("executeParser — single-pass receipt parser", () => {
     await executeParser({ originalCategories: [] }, mockAI);
 
     const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt;
-    expect(prompt).toContain("Valid evidence is not limited to completed receipts or invoices");
-    expect(prompt).toContain("A displayed minus sign can be a visual convention for a debit");
+    expect(prompt).toContain("Valid evidence isn't limited to completed receipts/invoices");
+    expect(prompt).toContain("A displayed minus sign on a debit/payment/charge");
     expect(prompt).toContain("balance, available credit, coupon value, price range");
   });
 
@@ -276,14 +276,13 @@ describe("executeParser — single-pass receipt parser", () => {
     );
 
     const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt ?? "";
-    expect(prompt).toContain("### Title Policy");
-    expect(prompt).toContain("merchant- or service-first");
-    expect(prompt).toContain("Do not add amounts, dates, or payment status");
+    expect(prompt).toContain("### Title");
+    expect(prompt).toContain("merchant/service-first");
+    expect(prompt).toContain("No amounts, dates, or payment status");
     expect(prompt).toContain("at most 200 Unicode characters");
-    expect(prompt).toContain("1. Facts and structure of the source document");
-    expect(prompt).toContain("2. The mandatory output locale below");
-    expect(prompt).toContain("3. Additional Instructions from the ledger owner");
-    expect(prompt).toContain("4. The default merchant-/service-first style above");
+    expect(prompt).toContain("facts/structure of the source document");
+    expect(prompt).toContain("mandatory output locale below");
+    expect(prompt).toContain("ledger owner's Additional Instructions");
     // The ledger prompt cannot override the output language or hard constraints.
     expect(prompt.indexOf("Mandatory Output Locale")).toBeGreaterThan(
       prompt.indexOf("Always include the amount in the title.")

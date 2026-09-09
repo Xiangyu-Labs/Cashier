@@ -58,7 +58,7 @@ export interface ParseSourceDocumentOutput {
 }
 
 export type ParsePipelineResult =
-  | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[]; wasArbitrated: boolean }
+  | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[] }
   | { kind: "invalid"; title: string; invalidReason: string }
   | { kind: "cancelled" };
 
