@@ -221,6 +221,40 @@ describe("executeParser — single-pass receipt parser", () => {
     );
   });
 
+  it("uses the v11 rules for mixed refund cards and bookkeeping totals", async () => {
+    await executeParser({ text: "payment feed", originalCategories: [] }, mockAI);
+
+    const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt;
+    expect(prompt).toContain("refund/credit note is the only thing on it");
+    expect(prompt).toContain("skip the refund card entirely");
+    expect(prompt).toContain("ignore all of them for receipt_total");
+    expect(prompt).toContain("set receipt_total by literally re-adding those exact amounts");
+  });
+
+  it("keeps the v11 rules in a stable prefix before per-request context", async () => {
+    await executeParser(
+      {
+        text: "Coffee 10 USD",
+        originalCategories: [{ name: "Food" }],
+        aiLanguage: "en-US",
+        aiCustomPrompt: "Use my preferred wording.",
+        preferredCurrencies: ["USD"],
+      },
+      mockAI
+    );
+
+    const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt ?? "";
+    const fixedRuleIndex = prompt.indexOf("skip the refund card entirely");
+    const dynamicContextIndex = prompt.indexOf("### Expense Categories");
+
+    expect(fixedRuleIndex).toBeGreaterThan(-1);
+    expect(dynamicContextIndex).toBeGreaterThan(fixedRuleIndex);
+    expect(prompt.indexOf("### Preferred Currencies")).toBeGreaterThan(fixedRuleIndex);
+    expect(prompt.indexOf("### Additional Instructions")).toBeGreaterThan(fixedRuleIndex);
+    expect(prompt.indexOf("### Document Text")).toBeGreaterThan(fixedRuleIndex);
+    expect(prompt.indexOf("### Mandatory Output Locale")).toBeGreaterThan(fixedRuleIndex);
+  });
+
   it("makes the Japanese native-user locale override a conflicting custom prompt", async () => {
     await executeParser(
       {
