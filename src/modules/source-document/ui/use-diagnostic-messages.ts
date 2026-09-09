@@ -1,9 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
+import type { InvalidCode, ProcessingFailureCode } from "@/application/contracts";
 
-type DiagnosticCode = AnomalyCode | ProcessingFailureCode;
+type DiagnosticCode = InvalidCode | ProcessingFailureCode;
 
 export function useDiagnosticMessages() {
   const t = useTranslations("DiagnosticCode");

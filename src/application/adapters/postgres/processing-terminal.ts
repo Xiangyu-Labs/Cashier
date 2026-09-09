@@ -3,7 +3,7 @@ import type { ProcessingLeaseContract } from "@/application/contracts";
 import { processingAttempts, processingOutbox } from "@/persistence";
 import type { PostgresTransaction } from "./transaction-locks";
 
-export type ProcessingTerminalOutcome = "completed" | "anomaly" | "failed";
+export type ProcessingTerminalOutcome = "completed" | "invalid" | "failed";
 
 export async function completeProcessingLeaseInTransaction(
   tx: PostgresTransaction,
@@ -42,7 +42,7 @@ export async function completeProcessingLeaseInTransaction(
       status: outcome,
       completedAt: now,
       retryClassification:
-        outcome === "anomaly" ? "anomaly" : outcome === "failed" ? "retryable" : null,
+        outcome === "invalid" ? "invalid" : outcome === "failed" ? "retryable" : null,
       diagnosticCode: diagnostic?.code ?? null,
       correlationId: diagnostic?.correlationId ?? null,
     })

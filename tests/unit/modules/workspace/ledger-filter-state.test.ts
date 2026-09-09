@@ -21,10 +21,10 @@ describe("ledger-filter-state", () => {
   it("includes statuses from advanced filters in entry filters", () => {
     const filters = buildLedgerEntryFilters(
       { period: "thisMonth" },
-      { statuses: ["failed", "anomaly"] }
+      { statuses: ["failed", "invalid"] }
     );
 
-    expect(filters.statuses).toEqual(["failed", "anomaly"]);
+    expect(filters.statuses).toEqual(["failed", "invalid"]);
   });
 
   it("omits statuses from entry filters when advanced filters has no statuses", () => {
@@ -134,11 +134,11 @@ describe("ledger-filter-state", () => {
       ]);
     });
 
-    it("needs_attention includes candidate_pending, duplicate_pending, anomaly, and failed", () => {
+    it("needs_attention includes candidate_pending, duplicate_pending, invalid, and failed", () => {
       expect(STREAM_STATUS_PRESET_VALUES.needs_attention).toEqual([
         "candidate_pending",
         "duplicate_pending",
-        "anomaly",
+        "invalid",
         "failed",
       ]);
     });

@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { db } from "@/persistence/db";
 import { ledgers, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
-import { toStableAnomalyCode, toStableFailureCode } from "@/application/contracts";
+import { toStableInvalidCode, toStableFailureCode } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import type {
@@ -108,8 +108,8 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
     const error =
       status === "failed"
         ? { code: toStableFailureCode(revision.failureCode) }
-        : status === "anomaly"
-          ? { code: toStableAnomalyCode(revision.anomalyReason) }
+        : status === "invalid"
+          ? { code: toStableInvalidCode(revision.invalidReason) }
           : null;
     return {
       sourceDocumentId: document.id,

@@ -10,7 +10,7 @@ export type SourceDocumentStateEvent =
   | { type: "install_retry" }
   | { type: "processing_succeeded"; duplicate: boolean }
   | { type: "processing_candidate_succeeded" }
-  | { type: "processing_failed"; outcome: "anomaly" | "failed" }
+  | { type: "processing_failed"; outcome: "invalid" | "failed" }
   | { type: "cancel_processing"; activeDuplicateReviewPending: boolean }
   | { type: "accept_candidate"; duplicate: boolean }
   | { type: "abandon_candidate"; activeDuplicateReviewPending: boolean }
@@ -62,7 +62,7 @@ export function deriveSourceDocumentCapabilities(input: SourceDocumentState): {
         canEdit: false,
         supportedActions: ["keep_duplicate", "discard_duplicate", "delete"],
       };
-    case "anomaly":
+    case "invalid":
     case "failed":
       return {
         canEdit: false,
@@ -139,7 +139,7 @@ export function transitionSourceDocument(
     case "abandon_candidate":
       if (
         !current.hasActiveResult ||
-        !["candidate_pending", "anomaly", "failed"].includes(current.status)
+        !["candidate_pending", "invalid", "failed"].includes(current.status)
       ) {
         return invalidTransition(current, event);
       }

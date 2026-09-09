@@ -70,7 +70,7 @@ function makeItem(id: string, overrides: Record<string, unknown> = {}) {
     files: [],
     status: "completed",
     type: "ai_parsed",
-    anomalyReason: null,
+    invalidReason: null,
     entryDate: "2026-07-01",
     metadata: {},
     createdAt: "2026-07-01T10:00:00.000Z",

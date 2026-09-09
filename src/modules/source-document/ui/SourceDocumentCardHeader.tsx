@@ -30,13 +30,13 @@ import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
 import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
-import { toStableFailureCode, toStableAnomalyCode } from "@/application/contracts";
+import { toStableFailureCode, toStableInvalidCode } from "@/application/contracts";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight | SourceDocumentListItemDto;
   status: SourceDocumentStatusType;
-  anomalyReason?: string | null | undefined;
+  invalidReason?: string | null | undefined;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
@@ -61,7 +61,7 @@ interface SourceDocumentCardHeaderProps {
 }
 
 function getProcessingStatus(status: SourceDocumentStatusType) {
-  if (status === "anomaly" || status === "failed") {
+  if (status === "invalid" || status === "failed") {
     return "error" as const;
   }
 
@@ -81,7 +81,7 @@ function getProcessingStatus(status: SourceDocumentStatusType) {
 export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   sourceDocument,
   status,
-  anomalyReason,
+  invalidReason,
   errorCode,
   ledgerEntries,
   mainCurrency,
@@ -115,7 +115,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
     processingStatus != null &&
     processingStatus !== "completed" &&
     (ledgerEntries.length === 0 ||
-      status === "anomaly" ||
+      status === "invalid" ||
       status === "failed" ||
       status === "processing" ||
       status === "cancelled" ||
@@ -124,8 +124,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
   // Derive stable error code for display
   const stableErrorCode =
-    status === "anomaly"
-      ? toStableAnomalyCode(anomalyReason)
+    status === "invalid"
+      ? toStableInvalidCode(invalidReason)
       : status === "failed"
         ? toStableFailureCode(errorCode)
         : null;
@@ -186,13 +186,13 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             status={processingStatus}
             {...(stableErrorCode != null
               ? { label: diagnosticMessages.label(stableErrorCode) }
-              : status === "anomaly" && anomalyReason != null && anomalyReason !== ""
-                ? { label: anomalyReason }
+              : status === "invalid" && invalidReason != null && invalidReason !== ""
+                ? { label: invalidReason }
                 : {})}
           />
         )}
 
-        {!["processing", "anomaly", "failed", "candidate_pending", "cancelled"].includes(
+        {!["processing", "invalid", "failed", "candidate_pending", "cancelled"].includes(
           status
         ) && (
           <div className="text-right">
@@ -225,7 +225,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                   menuTriggerRef.current?.focus();
                 }}
               >
-                {/* Recovery actions for anomaly/failed */}
+                {/* Recovery actions for invalid/failed */}
                 {hasAction("retry") && onDirectRetry != null && (
                   <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />

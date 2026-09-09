@@ -50,7 +50,7 @@ describe("source-document-queries", () => {
 
   it("walks all cursor pages through 40+ interleaved status records", async () => {
     const db = getTestDb();
-    const statuses = ["processing", "processing", "completed", "anomaly", "failed"] as const;
+    const statuses = ["processing", "processing", "completed", "invalid", "failed"] as const;
     const docs: Array<{ id: string; status: string }> = [];
 
     // Insert 45 documents (9 per status) with descending entry dates
@@ -241,8 +241,8 @@ describe("source-document-queries", () => {
         },
         {
           ledgerId,
-          title: "anomaly-in-range",
-          currentStatus: "anomaly",
+          title: "invalid-in-range",
+          currentStatus: "invalid",
           entryDate: "2026-03-14",
         },
       ])

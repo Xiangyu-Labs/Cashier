@@ -253,7 +253,7 @@ describe("cancel source-document processing", () => {
     }
   });
 
-  it.each(["failed", "anomaly"] as const)("abandons a %s retry candidate", async (outcome) => {
+  it.each(["failed", "invalid"] as const)("abandons a %s retry candidate", async (outcome) => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const active = await createActiveDocument(ledgerId);

@@ -1,7 +1,7 @@
 const SOURCE_DOCUMENT_STATUSES = [
   "processing",
   "completed",
-  "anomaly",
+  "invalid",
   "failed",
   "cancelled",
   "candidate_pending",
@@ -11,7 +11,7 @@ const SOURCE_DOCUMENT_STATUSES = [
 export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
   "processing",
   "completed",
-  "anomaly",
+  "invalid",
   "failed",
   "cancelled",
   "candidate_pending",
@@ -21,7 +21,7 @@ export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
 export const SourceDocumentStatus = {
   Processing: SOURCE_DOCUMENT_STATUSES[0],
   Completed: SOURCE_DOCUMENT_STATUSES[1],
-  Anomaly: SOURCE_DOCUMENT_STATUSES[2],
+  Invalid: SOURCE_DOCUMENT_STATUSES[2],
   Failed: SOURCE_DOCUMENT_STATUSES[3],
   Cancelled: SOURCE_DOCUMENT_STATUSES[4],
   CandidatePending: SOURCE_DOCUMENT_STATUSES[5],

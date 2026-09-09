@@ -25,7 +25,7 @@ same `Idempotency-Key` when retrying a create request.
 
 ## Unified Stream
 
-The ledger home shows one Stream containing queued, processing, anomaly, duplicate-review, failed,
+The ledger home shows one Stream containing queued, processing, invalid, duplicate-review, failed,
 and completed source documents. Server-side keyset pagination orders records by
 `entryDate DESC, createdAt DESC, id DESC`; the browser preserves server order.
 

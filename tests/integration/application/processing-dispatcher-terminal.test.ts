@@ -98,7 +98,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     releaseGeneration({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -137,7 +137,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],

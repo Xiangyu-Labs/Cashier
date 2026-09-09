@@ -400,7 +400,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         .update(sourceDocumentRevisions)
         .set({
           outcome: input.outcome,
-          anomalyReason: input.anomalyReason ?? null,
+          invalidReason: input.invalidReason ?? null,
           failureCode: input.failureCode ?? null,
           finalizedAt: new Date(),
         })

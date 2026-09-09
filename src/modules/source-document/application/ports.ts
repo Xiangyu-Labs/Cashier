@@ -207,7 +207,7 @@ export interface ProcessingRecoveryPort {
 export interface CredentialSourceDocumentStatusResult {
   sourceDocumentId: string;
   revisionId: string;
-  status: "processing" | "completed" | "anomaly" | "failed" | "cancelled";
+  status: "processing" | "completed" | "invalid" | "failed" | "cancelled";
   submittedAt: string;
   finalizedAt: string | null;
   entryDate: string | null;

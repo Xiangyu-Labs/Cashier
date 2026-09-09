@@ -158,7 +158,7 @@ describe("EntryFilterPanel", () => {
     // "处理中" appears as a checkbox label, and "进行中" as a preset button
     expect(screen.getByText("处理中")).toBeDefined(); // checkbox label
     expect(screen.getByText("已完成")).toBeDefined();
-    expect(screen.getByText("异常")).toBeDefined();
+    expect(screen.getByText("无效")).toBeDefined();
     expect(screen.getByText("失败")).toBeDefined();
     expect(screen.getByText("待核准")).toBeDefined();
   });
@@ -202,7 +202,7 @@ describe("EntryFilterPanel", () => {
     expect(onFiltersChange.mock.calls[0]?.[0].statuses).toEqual([
       "candidate_pending",
       "duplicate_pending",
-      "anomaly",
+      "invalid",
       "failed",
     ]);
   });

@@ -148,7 +148,7 @@ describe("reconcileParseOutput", () => {
     }
   });
 
-  it("returns anomaly when a successful parse has no usable receipt total for a receipt", () => {
+  it("returns invalid when a successful parse has no usable receipt total for a receipt", () => {
     const result = reconcileParseOutput({
       aiLanguage: "en-US",
       result: successResult({
@@ -159,12 +159,12 @@ describe("reconcileParseOutput", () => {
     });
 
     expect(result).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("receipt total"),
     });
   });
 
-  it("returns anomaly when the same receipt_index has conflicting receipt totals", () => {
+  it("returns invalid when the same receipt_index has conflicting receipt totals", () => {
     const result = reconcileParseOutput({
       aiLanguage: "en-US",
       result: successResult({
@@ -180,7 +180,7 @@ describe("reconcileParseOutput", () => {
     });
 
     expect(result).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("conflicting receipt totals"),
     });
   });
@@ -221,11 +221,11 @@ describe("reconcileParseOutput", () => {
     });
 
     expect(absoluteConflict).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("amount_conflict"),
     });
     expect(relativeConflict).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("amount_conflict"),
     });
   });
@@ -239,12 +239,12 @@ describe("reconcileParseOutput", () => {
     });
 
     expect(result).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("amount_conflict"),
     });
   });
 
-  it("returns anomaly instead of summing ledger entries across currencies", () => {
+  it("returns invalid instead of summing ledger entries across currencies", () => {
     const result = reconcileParseOutput({
       aiLanguage: "en-US",
       result: successResult({
@@ -257,12 +257,12 @@ describe("reconcileParseOutput", () => {
     });
 
     expect(result).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("mixed currencies"),
     });
   });
 
-  it("returns anomaly instead of summing adjustments across currencies", () => {
+  it("returns invalid instead of summing adjustments across currencies", () => {
     const result = reconcileParseOutput({
       aiLanguage: "en-US",
       result: successResult({
@@ -273,7 +273,7 @@ describe("reconcileParseOutput", () => {
     });
 
     expect(result).toEqual({
-      kind: "anomaly",
+      kind: "invalid",
       reason: expect.stringContaining("mixed currencies"),
     });
   });

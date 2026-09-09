@@ -84,7 +84,7 @@ export async function storeCandidateRevision(
         title: title ?? null,
         outcome: "completed",
         finalizedAt: now,
-        anomalyReason: null,
+        invalidReason: null,
         failureCode: null,
       })
       .where(eq(sourceDocumentRevisions.id, revisionId));
@@ -294,7 +294,7 @@ export async function abandonCandidateRevision(
       .where(
         and(
           ledgerScopedRevisionWhere(ledgerId, sourceDocumentId, candidateRevisionId),
-          inArray(sourceDocumentRevisions.outcome, ["completed", "anomaly", "failed"])
+          inArray(sourceDocumentRevisions.outcome, ["completed", "invalid", "failed"])
         )
       )
       .then((rows) => rows[0]);
@@ -327,7 +327,7 @@ export async function abandonCandidateRevision(
       .where(
         and(
           eq(sourceDocumentRevisions.id, candidateRevisionId),
-          inArray(sourceDocumentRevisions.outcome, ["completed", "anomaly", "failed"])
+          inArray(sourceDocumentRevisions.outcome, ["completed", "invalid", "failed"])
         )
       )
       .returning({ id: sourceDocumentRevisions.id })
@@ -350,7 +350,7 @@ export async function abandonCandidateRevision(
     // outside the normal terminal-outcome write path.
     const preAbandonStatus = (
       revision.outcome === "completed" ? "candidate_pending" : revision.outcome
-    ) as "candidate_pending" | "anomaly" | "failed";
+    ) as "candidate_pending" | "invalid" | "failed";
     const { state: abandonedState } = transitionSourceDocument(
       { status: preAbandonStatus, hasActiveResult: true },
       { type: "abandon_candidate", activeDuplicateReviewPending }

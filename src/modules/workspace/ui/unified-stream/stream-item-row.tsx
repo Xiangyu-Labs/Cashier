@@ -140,7 +140,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         {...(onEditRetryIntent != null ? { onEditRetryIntent } : {})}
         onDelete={() => onDeleteSourceConfirm(sourceDocument)}
         status={item.sourceDocument.status as SourceDocumentStatusType}
-        anomalyReason={item.sourceDocument.anomalyReason}
+        invalidReason={item.sourceDocument.invalidReason}
         errorCode={item.sourceDocument.errorCode}
         selectionMode={selectionMode}
         isSelected={selected}

@@ -116,7 +116,7 @@ async function createTestSourceDocument(
   const doc = createSourceDocumentData(ledgerId);
   await db.insert(sourceDocuments).values({
     ...doc,
-    currentStatus: status as "processing" | "processing" | "completed" | "anomaly",
+    currentStatus: status as "processing" | "processing" | "completed" | "invalid",
   });
   await activateTestSourceDocumentProjection(db, doc.id);
   return doc;

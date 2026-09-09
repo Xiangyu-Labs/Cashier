@@ -38,7 +38,7 @@ describe("usePeriodFilter", () => {
   });
 
   it("includes statuses in filters built from URL state", () => {
-    const searchParams = createSearchParams("streamStatuses=anomaly,failed");
+    const searchParams = createSearchParams("streamStatuses=invalid,failed");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: "/ledger/test",
@@ -47,7 +47,7 @@ describe("usePeriodFilter", () => {
       })
     );
 
-    expect(result.current.filters.statuses).toEqual(["anomaly", "failed"]);
+    expect(result.current.filters.statuses).toEqual(["invalid", "failed"]);
   });
 
   describe("applyStreamStatusPreset", () => {
@@ -77,9 +77,9 @@ describe("usePeriodFilter", () => {
       expect(params.get("streamMinAmount")).toBeNull();
       expect(params.get("streamMaxAmount")).toBeNull();
       expect(params.get("tab")).toBe("stream");
-      // Canonical order: anomaly, failed, candidate_pending, duplicate_pending
+      // Canonical order: invalid, failed, candidate_pending, duplicate_pending
       expect(params.get("streamStatuses")).toBe(
-        "anomaly,failed,candidate_pending,duplicate_pending"
+        "invalid,failed,candidate_pending,duplicate_pending"
       );
     });
 

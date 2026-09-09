@@ -24,7 +24,7 @@ function makeItem(
     text: null,
     status: "completed",
     type: "ai_parsed",
-    anomalyReason: null,
+    invalidReason: null,
     entryDate: "2026-07-01",
     createdAt: "2026-07-01T10:00:00.000Z",
     updatedAt: "2026-07-01T10:00:00.000Z",
@@ -194,8 +194,8 @@ describe("buildUnifiedStreamGroups", () => {
       entryDate: "2026-07-01",
       createdAt: "2026-07-01T12:00:00.000Z",
     });
-    const anomaly = makeItem("anom", {
-      status: "anomaly",
+    const invalid = makeItem("anom", {
+      status: "invalid",
       entryDate: "2026-07-01",
       createdAt: "2026-07-01T11:00:00.000Z",
     });
@@ -212,10 +212,10 @@ describe("buildUnifiedStreamGroups", () => {
     });
 
     // Server order: createdAt descending
-    const groups = buildUnifiedStreamGroups([candidate, anomaly, failed, completed]);
+    const groups = buildUnifiedStreamGroups([candidate, invalid, failed, completed]);
     const statuses = groups[0]!.items.map((i) => i.sourceDocument.status);
     // Server order preserved
-    expect(statuses).toEqual(["candidate_pending", "anomaly", "failed", "completed"]);
+    expect(statuses).toEqual(["candidate_pending", "invalid", "failed", "completed"]);
   });
 
   it("groups items with same effective date together", () => {

@@ -741,7 +741,7 @@ describe("source document aggregate — version invariants", () => {
     "processing",
     "candidate_pending",
     "duplicate_pending",
-    "anomaly",
+    "invalid",
     "failed",
     "cancelled",
   ] as const)(
@@ -753,7 +753,7 @@ describe("source document aggregate — version invariants", () => {
       if (
         status === "processing" ||
         status === "candidate_pending" ||
-        status === "anomaly" ||
+        status === "invalid" ||
         status === "failed"
       ) {
         const pending = await db.transaction((tx) =>

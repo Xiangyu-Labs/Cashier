@@ -15,7 +15,7 @@ export type UploadSessionId = string;
 export type ProcessingIntentId = string;
 
 export type RevisionOutcome =
-  "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "abandoned";
+  "processing" | "completed" | "invalid" | "failed" | "cancelled" | "abandoned";
 
 export type SupportedSourceDocumentAction =
   | "retry"
@@ -65,7 +65,7 @@ export function supportedSourceDocumentActions(input: {
     return ["cancel_processing", "retry", "edit_retry", "delete"];
   }
 
-  if (input.pendingOutcome === "anomaly" || input.pendingOutcome === "failed") {
+  if (input.pendingOutcome === "invalid" || input.pendingOutcome === "failed") {
     if (input.activeRevisionId != null) {
       return ["abandon_candidate", "retry", "edit_retry", "delete"];
     }
@@ -114,13 +114,13 @@ export interface ProcessingLeaseContract {
 interface ProcessingDiagnostic {
   correlationId: string;
   code: ApplicationErrorCode;
-  stableCode?: AnomalyCode | ProcessingFailureCode;
+  stableCode?: InvalidCode | ProcessingFailureCode;
 }
 
 export interface ProcessingCompletionContract {
   intentId: ProcessingIntentId;
   claimToken: string;
-  outcome: Extract<RevisionOutcome, "completed" | "anomaly" | "failed">;
+  outcome: Extract<RevisionOutcome, "completed" | "invalid" | "failed">;
   diagnostic?: ProcessingDiagnostic;
 }
 
@@ -132,16 +132,16 @@ export interface ProcessingClaimContract {
 }
 
 /**
- * Stable, user-facing anomaly codes for documents that parsed but need user attention.
+ * Stable, user-facing invalid codes for documents that parsed but need user attention.
  * These are localized and sanitized before being shown in the UI.
  */
-const ANOMALY_CODES = [
+const INVALID_CODES = [
   "insufficient_evidence",
   "currency_required",
   "amount_conflict",
   "unsupported_document",
 ] as const;
-export type AnomalyCode = (typeof ANOMALY_CODES)[number];
+export type InvalidCode = (typeof INVALID_CODES)[number];
 
 /**
  * Stable, user-facing processing failure codes for documents that failed to parse.
@@ -190,16 +190,16 @@ export function toStableFailureCode(legacyCode: string | null | undefined): Proc
 }
 
 /**
- * Map a legacy anomaly reason string to a stable AnomalyCode.
+ * Map a legacy invalid reason string to a stable InvalidCode.
  * Falls back to "insufficient_evidence" for unknown values.
  */
-export function toStableAnomalyCode(reason: string | null | undefined): AnomalyCode {
+export function toStableInvalidCode(reason: string | null | undefined): InvalidCode {
   if (reason == null) return "insufficient_evidence";
 
   const normalized = reason.toLowerCase().replace(/\s+/g, "_");
 
-  if ((ANOMALY_CODES as readonly string[]).includes(normalized)) {
-    return normalized as AnomalyCode;
+  if ((INVALID_CODES as readonly string[]).includes(normalized)) {
+    return normalized as InvalidCode;
   }
 
   // Map common legacy values
@@ -271,8 +271,8 @@ export interface SourceDocumentPort {
     ledgerId: LedgerId;
     sourceDocumentId: SourceDocumentId;
     revisionId: RevisionId;
-    outcome: "anomaly" | "failed";
-    anomalyReason?: string | null;
+    outcome: "invalid" | "failed";
+    invalidReason?: string | null;
     failureCode?: string | null;
     lease?: ProcessingLeaseContract;
   }): Promise<boolean>;

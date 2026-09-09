@@ -122,25 +122,25 @@ describe("arbitrateResults", () => {
     }
   });
 
-  it("returns anomaly when corrected result has anomaly outcome", async () => {
+  it("returns invalid when corrected result has invalid outcome", async () => {
     const result1 = makeResult();
     const result2 = makeResult();
-    const anomalyCorrected = {
-      outcome: "anomaly",
-      anomaly_reason: "Cannot resolve conflict",
+    const invalidCorrected = {
+      outcome: "invalid",
+      invalid_reason: "Cannot resolve conflict",
       title: "",
       receipt_count: 0,
       receipt_totals: [],
       ledger_entries: [],
       order_adjustments: [],
-      reasoning: "anomaly",
+      reasoning: "invalid",
     };
-    const ai = createArbitrationAI(0, anomalyCorrected);
+    const ai = createArbitrationAI(0, invalidCorrected);
 
     const outcome = await arbitrateResultsUnderTest({ input: INPUT, result1, result2 }, ai);
 
-    expect(outcome.kind).toBe("anomaly");
-    if (outcome.kind === "anomaly") {
+    expect(outcome.kind).toBe("invalid");
+    if (outcome.kind === "invalid") {
       expect(outcome.reason).toBe("Cannot resolve conflict");
     }
   });

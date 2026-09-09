@@ -27,7 +27,7 @@ const getSourceDocumentFullQuery = (ledgerId: string, sourceDocumentId: string) 
   getSourceDocumentFullQueryUseCase(ledgerId, sourceDocumentId, queryPorts.documents);
 
 const SOURCE_LIST_KEYS = [
-  "anomalyReason",
+  "invalidReason",
   "canEdit",
   "createdAt",
   "entryDate",

@@ -98,7 +98,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     });
   }, [displayEntriesById, ledgerEntries]);
 
-  const isAnomaly = sourceDocument.status === "anomaly";
+  const isInvalid = sourceDocument.status === "invalid";
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -106,7 +106,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         displayEntryDate={displayEntryDate}
         onSourceDocChange={onSourceDocChange}
         fieldsDisabled={fieldsDisabled}
-        isAnomaly={isAnomaly}
+        isInvalid={isInvalid}
         createdAt={sourceDocument.createdAt}
         totalInMainCurrency={totalInMainCurrency}
         mainCurrency={mainCurrency}

@@ -24,7 +24,7 @@ const activeEntry = {
 async function setupDocumentWithFailedRetry(
   db: ReturnType<typeof getTestDb>,
   ledgerId: string,
-  outcome: "anomaly" | "failed"
+  outcome: "invalid" | "failed"
 ) {
   // Step 1: Create a document with an active revision and entries
   const created = await postgresLedgerProjectionAdapter.createManual({
@@ -45,13 +45,13 @@ async function setupDocumentWithFailedRetry(
     });
   });
 
-  // Step 3: Set the pending revision outcome to anomaly/failed
+  // Step 3: Set the pending revision outcome to invalid/failed
   await postgresRevisionAdapter.preserveTerminalOutcome({
     ledgerId,
     sourceDocumentId: created.sourceDocumentId,
     revisionId: pending.revision.id,
     outcome,
-    ...(outcome === "anomaly" ? { anomalyReason: "Validation anomaly" } : {}),
+    ...(outcome === "invalid" ? { invalidReason: "Validation invalid" } : {}),
   });
 
   return {
@@ -68,7 +68,7 @@ async function setupDocumentWithFailedRetry(
 async function setupDocumentWithFirstParseFailure(
   db: ReturnType<typeof getTestDb>,
   ledgerId: string,
-  outcome: "anomaly" | "failed"
+  outcome: "invalid" | "failed"
 ) {
   const pending = await db.transaction((tx) =>
     createPendingRevisionInTransaction(tx, { ledgerId })
@@ -78,7 +78,7 @@ async function setupDocumentWithFirstParseFailure(
     sourceDocumentId: pending.document.id,
     revisionId: pending.revision.id,
     outcome,
-    ...(outcome === "anomaly" ? { anomalyReason: "First parse anomaly" } : {}),
+    ...(outcome === "invalid" ? { invalidReason: "First parse invalid" } : {}),
   });
   return { sourceDocumentId: pending.document.id, pendingRevisionId: pending.revision.id };
 }
@@ -86,13 +86,13 @@ async function setupDocumentWithFirstParseFailure(
 describe("retry active result summary", () => {
   it("anomalous retry with active revision includes activeResultSummary in detail", async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-anomaly-detail");
+    const { ledgerId } = await createTestUserWithLedger(db, "retry-invalid-detail");
 
-    const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, "anomaly");
+    const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, "invalid");
 
     const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
     expect(detail).not.toBeNull();
-    expect(detail?.status).toBe("anomaly");
+    expect(detail?.status).toBe("invalid");
 
     expect(detail?.activeResultSummary).toBeDefined();
     expect(detail?.activeResultSummary?.entryCount).toBe(1);
@@ -114,11 +114,11 @@ describe("retry active result summary", () => {
     expect(detail?.activeResultSummary?.total).toBe("12.50");
   });
 
-  it("first-parse anomaly (no active revision) does NOT include activeResultSummary", async () => {
+  it("first-parse invalid (no active revision) does NOT include activeResultSummary", async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-first-anomaly");
+    const { ledgerId } = await createTestUserWithLedger(db, "retry-first-invalid");
 
-    const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, "anomaly");
+    const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, "invalid");
 
     const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
     if (detail != null) {

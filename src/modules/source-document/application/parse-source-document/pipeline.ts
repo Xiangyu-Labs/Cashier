@@ -88,11 +88,11 @@ async function persistAndResolveSuccess({
     aiLanguage === undefined
       ? reconcileParseOutput({ result })
       : reconcileParseOutput({ aiLanguage, result });
-  if (reconciled.kind === "anomaly") {
+  if (reconciled.kind === "invalid") {
     return {
-      kind: "anomaly",
+      kind: "invalid",
       title: result.title,
-      anomalyReason: reconciled.reason,
+      invalidReason: reconciled.reason,
     };
   }
 
@@ -102,12 +102,11 @@ async function persistAndResolveSuccess({
 function resolveOutcome(
   result: NormalizedParseOutput
 ): ParsePipelineResult | { kind: "continue"; result: NormalizedParseOutput } {
-  if (result.outcome === "invalid") return { kind: "invalid", title: result.title };
-  if (result.outcome === "anomaly") {
+  if (result.outcome === "invalid") {
     return {
-      kind: "anomaly",
+      kind: "invalid",
       title: result.title,
-      anomalyReason: result.anomaly_reason ?? "Document cannot be parsed",
+      invalidReason: result.invalid_reason ?? "Document cannot be parsed",
     };
   }
   return { kind: "continue", result };
@@ -127,7 +126,7 @@ async function executeParsePipeline(
 
     throwIfProcessingCancelled(ctx.signal);
 
-    // Short-circuit: invalid or anomaly
+    // Invalid documents do not benefit from a second parse pass.
     const firstDecision = resolveOutcome(first);
     if (firstDecision.kind !== "continue") return firstDecision;
 
@@ -177,11 +176,11 @@ async function executeParsePipeline(
 
     throwIfProcessingCancelled(ctx.signal);
 
-    if (arbitration.kind === "anomaly") {
+    if (arbitration.kind === "invalid") {
       return {
-        kind: "anomaly",
+        kind: "invalid",
         title: first.title,
-        anomalyReason: arbitration.reason,
+        invalidReason: arbitration.reason,
       };
     }
 

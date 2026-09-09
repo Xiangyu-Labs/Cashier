@@ -160,35 +160,33 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     throwIfProcessingCancelled(signal);
     const output = toParseSourceDocumentOutput(pipeline);
     if (output.verificationStatus !== "passed") {
-      const anomalyReason =
-        output.anomalyReason ??
-        (output.verificationStatus === "invalid" ? "Invalid content" : "Parsing results diverged");
+      const invalidReason = output.invalidReason ?? "Invalid content";
       const preserved = await this.options.preserveTerminalOutcome({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
-        outcome: "anomaly",
-        anomalyReason,
+        outcome: "invalid",
+        invalidReason,
       });
       if (!preserved && request.lease != null) {
         throw new ProcessingCancelledError();
       }
-      return { outcome: "anomaly", anomalyReason, completion: "atomic" };
+      return { outcome: "invalid", invalidReason, completion: "atomic" };
     }
 
     const validation = validateEntries(output.ledgerEntries);
     throwIfProcessingCancelled(signal);
     if (!validation.isValid) {
-      const anomalyReason = validation.reason ?? "No valid entries";
+      const invalidReason = validation.reason ?? "No valid entries";
       const preserved = await this.options.preserveTerminalOutcome({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
-        outcome: "anomaly",
-        anomalyReason,
+        outcome: "invalid",
+        invalidReason,
       });
       if (!preserved && request.lease != null) {
         throw new ProcessingCancelledError();
       }
-      return { outcome: "anomaly", anomalyReason, completion: "atomic" };
+      return { outcome: "invalid", invalidReason, completion: "atomic" };
     }
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
     const validEntries = output.ledgerEntries.filter(

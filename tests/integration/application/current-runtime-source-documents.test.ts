@@ -90,8 +90,8 @@ describe("current-runtime target adapters", () => {
       ledgerId,
       sourceDocumentId: first.document.id,
       revisionId: failedRetry.revision.id,
-      outcome: "anomaly",
-      anomalyReason: "unreadable",
+      outcome: "invalid",
+      invalidReason: "unreadable",
     });
     const preserved = await postgresRevisionAdapter.get(ledgerId, first.document.id);
     expect(preserved).toMatchObject({

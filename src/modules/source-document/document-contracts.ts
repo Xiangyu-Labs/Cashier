@@ -22,7 +22,7 @@ interface SourceDocumentSummaryDto {
   title: string | null;
   status: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
-  anomalyReason: string | null;
+  invalidReason: string | null;
   entryDate: string | null;
   createdAt: string;
   updatedAt: string;

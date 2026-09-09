@@ -416,7 +416,7 @@ async function loadSourceDocumentDetailSnapshot(
       revisionTitle: sourceDocumentRevisions.title,
       submittedText: sourceDocumentRevisions.submittedText,
       revisionOutcome: sourceDocumentRevisions.outcome,
-      anomalyReason: sourceDocumentRevisions.anomalyReason,
+      invalidReason: sourceDocumentRevisions.invalidReason,
       failureCode: sourceDocumentRevisions.failureCode,
       ...duplicateReviewColumns(),
     })
@@ -573,13 +573,13 @@ async function loadSourceDocumentDetailSnapshot(
     revisionTitle: baseRow.revisionTitle,
     submittedText: baseRow.submittedText,
     revisionOutcome: baseRow.revisionOutcome,
-    anomalyReason: baseRow.anomalyReason,
+    invalidReason: baseRow.invalidReason,
     failureCode: baseRow.failureCode,
     hasImages: fileRows.length > 0,
     files: fileRows,
     ledgerEntries: selectedEntries,
     activeResultSummary:
-      (baseRow.revisionOutcome === "anomaly" || baseRow.revisionOutcome === "failed") &&
+      (baseRow.revisionOutcome === "invalid" || baseRow.revisionOutcome === "failed") &&
       baseRow.activeRevisionId != null
         ? {
             entryCount: activeEntries.length,
@@ -613,7 +613,7 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
       revisionTitle: sourceDocumentRevisions.title,
       submittedText: sourceDocumentRevisions.submittedText,
       revisionOutcome: sourceDocumentRevisions.outcome,
-      anomalyReason: sourceDocumentRevisions.anomalyReason,
+      invalidReason: sourceDocumentRevisions.invalidReason,
       failureCode: sourceDocumentRevisions.failureCode,
       hasImages: sql<boolean>`EXISTS (
             SELECT 1
@@ -672,7 +672,7 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
         revisionTitle: row.revisionTitle,
         submittedText: row.submittedText,
         revisionOutcome: row.revisionOutcome,
-        anomalyReason: row.anomalyReason,
+        invalidReason: row.invalidReason,
         failureCode: row.failureCode,
         hasImages: row.hasImages,
         files: [],

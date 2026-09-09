@@ -187,7 +187,7 @@ describe("executeParser — single-pass receipt parser", () => {
 
   // === Outcome branches ===
 
-  it("returns invalid outcome when AI reports invalid", async () => {
+  it("returns invalid outcome without a reason when AI omits it", async () => {
     const aiInvalid = createMockAI({
       ...SIMPLE_SUCCESS_RESPONSE,
       outcome: "invalid",
@@ -200,22 +200,22 @@ describe("executeParser — single-pass receipt parser", () => {
     expect(result.outcome).toBe("invalid");
   });
 
-  it("returns anomaly outcome when AI reports anomaly", async () => {
-    const aiAnomaly = createMockAI({
+  it("preserves the invalid reason reported by AI", async () => {
+    const aiInvalid = createMockAI({
       ...SIMPLE_SUCCESS_RESPONSE,
-      outcome: "anomaly",
-      anomaly_reason: "Blurry image",
+      outcome: "invalid",
+      invalid_reason: "Blurry image",
       ledger_entries: [],
       receipt_totals: [],
     });
 
     const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
-      aiAnomaly
+      aiInvalid
     );
 
-    expect(result.outcome).toBe("anomaly");
-    expect(result.anomaly_reason).toBe("Blurry image");
+    expect(result.outcome).toBe("invalid");
+    expect(result.invalid_reason).toBe("Blurry image");
   });
 
   // === Prompt contains required sections ===

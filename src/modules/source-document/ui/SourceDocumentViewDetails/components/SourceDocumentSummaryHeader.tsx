@@ -14,7 +14,7 @@ interface SourceDocumentSummaryHeaderProps {
   displayEntryDate: string;
   onSourceDocChange: (changes: SourceDocPendingChanges) => void;
   fieldsDisabled: boolean;
-  isAnomaly: boolean;
+  isInvalid: boolean;
   createdAt: string;
   totalInMainCurrency: string;
   mainCurrency: string;
@@ -29,7 +29,7 @@ export function SourceDocumentSummaryHeader({
   displayEntryDate,
   onSourceDocChange,
   fieldsDisabled,
-  isAnomaly,
+  isInvalid,
   createdAt,
   totalInMainCurrency,
   mainCurrency,
@@ -60,7 +60,7 @@ export function SourceDocumentSummaryHeader({
             truncate={false}
             disabled={fieldsDisabled}
           />
-          {isAnomaly && (
+          {isInvalid && (
             <Badge variant="error" className="h-5 rounded-full px-1.5 text-xs font-medium">
               {tCommon("error")}
             </Badge>

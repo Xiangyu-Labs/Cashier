@@ -104,7 +104,7 @@ function buildArbitrationMessageContent(input: ParserInput): AIMessageContentPar
 
 export type ArbitrationResult =
   | { kind: "chosen"; result: NormalizedParseOutput; wasArbitrated: boolean }
-  | { kind: "anomaly"; reason: string };
+  | { kind: "invalid"; reason: string };
 
 async function generateForArbitration(
   ai: AiContextContract,
@@ -219,17 +219,10 @@ export async function arbitrateResults(
   }
 
   const normalized = normalizeResult(parsedCorrected.data, input.aiLanguage);
-  if (normalized.outcome === "anomaly") {
-    return {
-      kind: "anomaly",
-      reason: normalized.anomaly_reason ?? "Arbitrated result indicates anomaly",
-    };
-  }
-
   if (normalized.outcome === "invalid") {
     return {
-      kind: "anomaly",
-      reason: "Arbitrated result indicates document is invalid",
+      kind: "invalid",
+      reason: normalized.invalid_reason ?? "Arbitrated result indicates invalid",
     };
   }
 

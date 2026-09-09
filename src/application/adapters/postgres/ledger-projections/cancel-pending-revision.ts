@@ -44,7 +44,7 @@ export async function cancelPendingRevision(
 
     const restoredActiveResult = document.activeRevisionId != null;
     const canAbandonFinishedCandidate =
-      restoredActiveResult && ["completed", "anomaly", "failed"].includes(revision.outcome);
+      restoredActiveResult && ["completed", "invalid", "failed"].includes(revision.outcome);
     if (revision.outcome !== "processing" && !canAbandonFinishedCandidate) {
       throw new ConflictError("Processing already reached a final state");
     }
@@ -74,7 +74,7 @@ export async function cancelPendingRevision(
         and(
           eq(sourceDocumentRevisions.id, revisionId),
           canAbandonFinishedCandidate
-            ? inArray(sourceDocumentRevisions.outcome, ["completed", "anomaly", "failed"])
+            ? inArray(sourceDocumentRevisions.outcome, ["completed", "invalid", "failed"])
             : eq(sourceDocumentRevisions.outcome, "processing")
         )
       )
@@ -122,7 +122,7 @@ export async function cancelPendingRevision(
       ? transitionSourceDocument(
           {
             status: (revision.outcome === "completed" ? "candidate_pending" : revision.outcome) as
-              "candidate_pending" | "anomaly" | "failed",
+              "candidate_pending" | "invalid" | "failed",
             hasActiveResult: true,
           },
           { type: "abandon_candidate", activeDuplicateReviewPending }

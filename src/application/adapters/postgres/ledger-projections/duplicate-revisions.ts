@@ -73,7 +73,7 @@ export async function storeDuplicatePendingRevision(
         title: title ?? null,
         outcome: "completed",
         finalizedAt: now,
-        anomalyReason: null,
+        invalidReason: null,
         failureCode: null,
       })
       .where(eq(sourceDocumentRevisions.id, revisionId));

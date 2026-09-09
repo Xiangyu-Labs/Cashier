@@ -64,7 +64,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -130,7 +130,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -204,7 +204,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -260,7 +260,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const generate1 = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -307,7 +307,7 @@ describe("PostgresProcessingIntentAdapter", () => {
     const generate2 = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Dinner",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "25.00", currency: "USD" }],
@@ -384,7 +384,7 @@ describe("PostgresProcessingIntentAdapter", () => {
       adapter.complete({
         intentId: intent.id,
         claimToken: second!.claimToken,
-        outcome: "anomaly",
+        outcome: "invalid",
       })
     ).resolves.toBe(true);
   });

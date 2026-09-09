@@ -253,6 +253,13 @@
       "when": 1788655785041,
       "tag": "0035_maintenance_work_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788963638980,
+      "tag": "0036_hard_the_fury",
+      "breakpoints": true
     }
   ]
 }

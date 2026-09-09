@@ -101,9 +101,9 @@ export function createSourceDocumentData(
     text: string | null;
     imageUrls: string[];
     metadata: Record<string, unknown>;
-    status: "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "deleted";
+    status: "processing" | "completed" | "invalid" | "failed" | "cancelled" | "deleted";
     type: "ai_parsed" | "manual";
-    anomalyReason: string | null;
+    invalidReason: string | null;
     entryDate: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -116,7 +116,7 @@ export function createSourceDocumentData(
     imageUrls: _imageUrls,
     metadata: _metadata,
     status = "completed",
-    anomalyReason: _anomalyReason,
+    invalidReason: _invalidReason,
     deletedAt,
     ...canonicalOverrides
   } = overrides;

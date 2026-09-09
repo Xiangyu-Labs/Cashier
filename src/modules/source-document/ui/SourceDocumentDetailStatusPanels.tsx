@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AmountText } from "@/modules/currency/ui/amount-text";
-import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
-import { toStableAnomalyCode, toStableFailureCode } from "@/application/contracts";
+import type { InvalidCode, ProcessingFailureCode } from "@/application/contracts";
+import { toStableInvalidCode, toStableFailureCode } from "@/application/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
@@ -94,13 +94,13 @@ export function SourceDocumentDetailStatusPanels({
 
       {sourceDocument && (
         <>
-          {/* Diagnostic code display for anomaly/failed states */}
-          {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && (
+          {/* Diagnostic code display for invalid/failed states */}
+          {(sourceDocument.status === "invalid" || sourceDocument.status === "failed") && (
             <div className="mb-3 px-1">
               {(() => {
-                const stableCode: AnomalyCode | ProcessingFailureCode =
-                  sourceDocument.status === "anomaly"
-                    ? toStableAnomalyCode(sourceDocument.anomalyReason)
+                const stableCode: InvalidCode | ProcessingFailureCode =
+                  sourceDocument.status === "invalid"
+                    ? toStableInvalidCode(sourceDocument.invalidReason)
                     : toStableFailureCode((sourceDocument as SourceDocument).errorCode);
                 return (
                   <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
@@ -119,7 +119,7 @@ export function SourceDocumentDetailStatusPanels({
             </div>
           )}
           {/* Retained active result notice */}
-          {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") &&
+          {(sourceDocument.status === "invalid" || sourceDocument.status === "failed") &&
             sourceDocument.activeResultSummary != null && (
               <div className="mb-3 px-1">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">

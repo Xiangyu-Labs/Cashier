@@ -23,7 +23,7 @@ import type { EntryFilters, StreamStatusPreset } from "@/modules/ledger/filters"
 const STATUS_OPTIONS: SourceDocumentStatusType[] = [
   "processing",
   "completed",
-  "anomaly",
+  "invalid",
   "failed",
   "cancelled",
   "candidate_pending",
@@ -77,8 +77,8 @@ export function EntryFilterContent({
         return t("statusProcessing");
       case "completed":
         return t("statusCompleted");
-      case "anomaly":
-        return t("statusAnomaly");
+      case "invalid":
+        return t("statusInvalid");
       case "failed":
         return t("statusFailed");
       case "cancelled":

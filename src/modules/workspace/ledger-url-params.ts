@@ -28,7 +28,7 @@ const STATUSES_URL_DELIMITER = ",";
 const CANONICAL_STATUS_ORDER: readonly SourceDocumentStatusType[] = [
   "processing",
   "completed",
-  "anomaly",
+  "invalid",
   "failed",
   "cancelled",
   "candidate_pending",

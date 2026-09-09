@@ -15,7 +15,7 @@ function makeItem(overrides: Partial<SourceDocumentListItemDto> = {}): SourceDoc
     text: null,
     status: "completed",
     type: "ai_parsed",
-    anomalyReason: null,
+    invalidReason: null,
     entryDate: "2026-08-05",
     createdAt: "2026-08-06T00:00:00.000Z",
     updatedAt: "2026-08-06T00:00:00.000Z",

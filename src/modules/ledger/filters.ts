@@ -30,7 +30,7 @@ export const STREAM_STATUS_PRESETS = [
 export type StreamStatusPreset = (typeof STREAM_STATUS_PRESETS)[number];
 
 export const STREAM_STATUS_PRESET_VALUES: Record<StreamStatusPreset, SourceDocumentStatusType[]> = {
-  needs_attention: ["candidate_pending", "duplicate_pending", "anomaly", "failed"],
+  needs_attention: ["candidate_pending", "duplicate_pending", "invalid", "failed"],
   possible_duplicates: ["duplicate_pending"],
   in_progress: ["processing"],
 };

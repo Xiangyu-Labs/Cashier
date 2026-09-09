@@ -28,7 +28,7 @@ function fixture() {
 }
 
 describe("single processing intent completion", () => {
-  it.each(["completed", "anomaly"] as const)(
+  it.each(["completed", "invalid"] as const)(
     "does not complete an atomic %s twice",
     async (outcome) => {
       const f = fixture();

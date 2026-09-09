@@ -22,7 +22,7 @@ const sourceDocument: SourceDocument = {
   files: [],
   status: "completed",
   type: "ai_parsed",
-  anomalyReason: null,
+  invalidReason: null,
   entryDate: "2026-07-28",
   metadata: {},
   createdAt: "2026-07-28T00:00:00.000Z",

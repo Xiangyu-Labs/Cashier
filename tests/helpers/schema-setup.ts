@@ -69,7 +69,7 @@ export async function createTestSourceDocument(
   ledgerId: string,
   overrides: Partial<{
     text: string;
-    status: "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "deleted";
+    status: "processing" | "completed" | "invalid" | "failed" | "cancelled" | "deleted";
     imageUrls: string[];
     entryDate: string | null;
     title: string | null;
@@ -101,7 +101,7 @@ export async function createTestSourceDocument(
             revisionNumber: 1,
             submittedText: overrides.text ?? "Test document",
             outcome:
-              status === "processing" || status === "anomaly" || status === "failed"
+              status === "processing" || status === "invalid" || status === "failed"
                 ? status
                 : "completed",
             finalizedAt: status === "processing" ? null : new Date(),

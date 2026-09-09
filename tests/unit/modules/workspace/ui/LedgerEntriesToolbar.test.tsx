@@ -61,7 +61,7 @@ describe("LedgerEntriesToolbar", () => {
     render(
       <LedgerEntriesToolbar
         {...defaultProps}
-        filters={{ statuses: ["candidate_pending", "anomaly", "failed"] }}
+        filters={{ statuses: ["candidate_pending", "invalid", "failed"] }}
       />
     );
 

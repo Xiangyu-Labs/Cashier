@@ -10,11 +10,11 @@ const MAX_RELATIVE_DIFFERENCE = new Decimal("0.02");
 function determineTargetTotal(
   receiptIndex: number,
   receiptTotals: NormalizedReceiptTotal[]
-): { kind: "ok"; total: NormalizedReceiptTotal } | { kind: "anomaly"; reason: string } {
+): { kind: "ok"; total: NormalizedReceiptTotal } | { kind: "invalid"; reason: string } {
   const matching = receiptTotals.filter((total) => total.receipt_index === receiptIndex);
   if (matching.length === 0) {
     return {
-      kind: "anomaly",
+      kind: "invalid",
       reason: `Unable to reconcile receipt ${receiptIndex}: missing receipt total`,
     };
   }
@@ -22,7 +22,7 @@ function determineTargetTotal(
   const [first] = matching;
   if (first == null) {
     return {
-      kind: "anomaly",
+      kind: "invalid",
       reason: `Unable to reconcile receipt ${receiptIndex}: missing receipt total`,
     };
   }
@@ -37,7 +37,7 @@ function determineTargetTotal(
   );
   if (hasConflict) {
     return {
-      kind: "anomaly",
+      kind: "invalid",
       reason: `Unable to reconcile receipt ${receiptIndex}: conflicting receipt totals`,
     };
   }
@@ -51,9 +51,9 @@ export function reconcileParseOutput({
 }: {
   aiLanguage?: string;
   result: NormalizedParseOutput;
-}): { kind: "success"; result: NormalizedParseOutput } | { kind: "anomaly"; reason: string } {
+}): { kind: "success"; result: NormalizedParseOutput } | { kind: "invalid"; reason: string } {
   if (result.outcome !== "success") {
-    return { kind: "anomaly", reason: "reconciliation requires success result" };
+    return { kind: "invalid", reason: "reconciliation requires success result" };
   }
 
   const copy = getAiOutputCopy(aiLanguage);
@@ -70,7 +70,7 @@ export function reconcileParseOutput({
 
   for (const receiptIndex of receiptIndices) {
     const target = determineTargetTotal(receiptIndex, result.receipt_totals);
-    if (target.kind === "anomaly") {
+    if (target.kind === "invalid") {
       return target;
     }
 
@@ -85,7 +85,7 @@ export function reconcileParseOutput({
     );
     if (containsForeignCurrency) {
       return {
-        kind: "anomaly",
+        kind: "invalid",
         reason: `Unable to reconcile receipt ${receiptIndex}: mixed currencies`,
       };
     }
@@ -111,7 +111,7 @@ export function reconcileParseOutput({
       absoluteDelta.dividedBy(absoluteTarget).lte(MAX_RELATIVE_DIFFERENCE);
     if (absoluteDelta.gt(MAX_ABSOLUTE_DIFFERENCE) || !withinRelativeLimit) {
       return {
-        kind: "anomaly",
+        kind: "invalid",
         reason: `amount_conflict: receipt ${receiptIndex} differs from extracted items by ${delta}`,
       };
     }

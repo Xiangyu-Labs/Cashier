@@ -68,7 +68,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           title: input.title ?? null,
           outcome: "completed",
           finalizedAt: now,
-          anomalyReason: null,
+          invalidReason: null,
           failureCode: null,
         })
         .where(eq(sourceDocumentRevisions.id, input.revisionId));

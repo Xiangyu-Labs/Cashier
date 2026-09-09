@@ -280,7 +280,7 @@ describe("ledger-url-params", () => {
     });
 
     it("returns empty array when all tokens are invalid", () => {
-      expect(parseStatusesParam("invalid,bogus")).toEqual([]);
+      expect(parseStatusesParam("unknown,bogus")).toEqual([]);
     });
 
     it("handles whitespace around tokens", () => {
@@ -317,10 +317,10 @@ describe("ledger-url-params", () => {
   describe("statuses in updateLedgerSearchParams", () => {
     it("sets statuses parameter when provided", () => {
       const params = updateLedgerSearchParams(new URLSearchParams(""), {
-        statuses: ["failed", "anomaly"],
+        statuses: ["failed", "invalid"],
       });
 
-      expect(params.get("statuses")).toBe("anomaly,failed");
+      expect(params.get("statuses")).toBe("invalid,failed");
     });
 
     it("deletes statuses parameter when set to null", () => {
@@ -354,7 +354,7 @@ describe("ledger-url-params", () => {
           period: "all",
           minAmount: null,
           maxAmount: null,
-          statuses: ["candidate_pending", "anomaly", "failed"],
+          statuses: ["candidate_pending", "invalid", "failed"],
           tab: "stream",
         }
       );
@@ -364,7 +364,7 @@ describe("ledger-url-params", () => {
       expect(params.get("endDate")).toBeNull();
       expect(params.get("minAmount")).toBeNull();
       expect(params.get("maxAmount")).toBeNull();
-      expect(params.get("statuses")).toBe("anomaly,failed,candidate_pending");
+      expect(params.get("statuses")).toBe("invalid,failed,candidate_pending");
       expect(params.get("tab")).toBe("stream");
     });
   });

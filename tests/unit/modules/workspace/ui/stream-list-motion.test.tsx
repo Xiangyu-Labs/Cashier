@@ -32,7 +32,7 @@ function card(
     text: null,
     status: "processing",
     type: "ai_parsed",
-    anomalyReason: null,
+    invalidReason: null,
     entryDate: "2026-07-15",
     createdAt: "2026-07-15T00:00:00.000Z",
     updatedAt: "2026-07-15T00:00:00.000Z",

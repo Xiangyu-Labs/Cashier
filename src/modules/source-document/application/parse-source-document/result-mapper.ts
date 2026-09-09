@@ -106,14 +106,8 @@ export function toParseSourceDocumentOutput(
       return {
         ledgerEntries: [],
         title: result.title,
+        invalidReason: result.invalidReason,
         verificationStatus: "invalid",
-      };
-    case "anomaly":
-      return {
-        ledgerEntries: [],
-        title: result.title,
-        anomalyReason: result.anomalyReason,
-        verificationStatus: "anomaly",
       };
     case "cancelled":
       throw new ProcessingCancelledError();

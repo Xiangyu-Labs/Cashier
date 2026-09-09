@@ -7,7 +7,7 @@ export interface RevisionPointerFact {
   id: string;
   ledgerId: string;
   sourceDocumentId: string;
-  outcome: "processing" | "completed" | "anomaly" | "failed";
+  outcome: "processing" | "completed" | "invalid" | "failed";
 }
 
 export function assertSourceDocumentRevisionPointers(input: {

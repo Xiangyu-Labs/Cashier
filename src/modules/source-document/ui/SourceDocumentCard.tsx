@@ -29,7 +29,7 @@ interface SourceDocumentCardProps {
   onEditRetry?: () => void | Promise<void>;
   onEditRetryIntent?: () => void;
   status: SourceDocumentStatusType;
-  anomalyReason?: string | null;
+  invalidReason?: string | null;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   className?: string;
   selectionMode?: boolean;
@@ -63,7 +63,7 @@ function SourceDocumentCardBody({
   onEditRetry,
   onEditRetryIntent,
   status,
-  anomalyReason,
+  invalidReason,
   errorCode,
   className,
   selectionMode = false,
@@ -126,7 +126,7 @@ function SourceDocumentCardBody({
         <SourceDocumentCardHeader
           sourceDocument={sourceDocument}
           status={status}
-          anomalyReason={anomalyReason}
+          invalidReason={invalidReason}
           errorCode={errorCode}
           ledgerEntries={ledgerEntries}
           mainCurrency={mainCurrency}

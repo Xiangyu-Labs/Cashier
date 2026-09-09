@@ -26,7 +26,7 @@ const requiredTimestamp = (name: string) => timestamp(name, { withTimezone: true
 export const revisionOutcomeEnum = pgEnum("revision_outcome", [
   "processing",
   "completed",
-  "anomaly",
+  "invalid",
   "failed",
   "cancelled",
   "abandoned",
@@ -35,14 +35,14 @@ export const processingAttemptStatusEnum = pgEnum("processing_attempt_status", [
   "queued",
   "processing",
   "completed",
-  "anomaly",
+  "invalid",
   "failed",
   "cancelled",
 ]);
 export const retryClassificationEnum = pgEnum("retry_classification", [
   "retryable",
   "permanent",
-  "anomaly",
+  "invalid",
 ]);
 export const processingOutboxStatusEnum = pgEnum("processing_outbox_status", [
   "pending",
@@ -83,7 +83,7 @@ export const sourceDocumentRevisions = pgTable(
     title: text("title"),
     submittedText: text("submitted_text"),
     outcome: revisionOutcomeEnum("outcome").notNull().default("processing"),
-    anomalyReason: text("anomaly_reason"),
+    invalidReason: text("invalid_reason"),
     failureCode: text("failure_code"),
     submittedAt: requiredTimestamp("submitted_at").$defaultFn(() => new Date()),
     finalizedAt: timestamp("finalized_at", { withTimezone: true }),

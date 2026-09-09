@@ -79,7 +79,7 @@ describe("leased processor fencing", () => {
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
-        anomaly_reason: null,
+        invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -131,8 +131,8 @@ describe("leased processor fencing", () => {
 
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
-        outcome: "anomaly",
-        anomaly_reason: "Image too blurry",
+        outcome: "invalid",
+        invalid_reason: "Image too blurry",
         title: "Lunch",
         receipt_count: 1,
         receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
@@ -168,7 +168,7 @@ describe("leased processor fencing", () => {
       where: eq(sourceDocuments.id, intent.sourceDocumentId),
     });
     expect(revision?.outcome).toBe("processing");
-    expect(revision?.anomalyReason).toBeNull();
+    expect(revision?.invalidReason).toBeNull();
     expect(document?.stateVersion).toBe(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });

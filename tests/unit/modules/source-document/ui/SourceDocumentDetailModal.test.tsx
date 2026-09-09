@@ -160,7 +160,7 @@ const sourceDocument: SourceDocumentLight = {
   files: [],
   status: "completed",
   type: "manual",
-  anomalyReason: null,
+  invalidReason: null,
   entryDate: "2026-07-28",
   createdAt: "2026-07-28T00:00:00.000Z",
   hasImages: false,

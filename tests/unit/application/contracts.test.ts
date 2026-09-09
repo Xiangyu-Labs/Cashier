@@ -10,7 +10,7 @@ import { AppError } from "@/lib/errors";
 import {
   supportedSourceDocumentActions,
   toStableFailureCode,
-  toStableAnomalyCode,
+  toStableInvalidCode,
 } from "@/application/contracts";
 
 describe("target application contracts", () => {
@@ -145,44 +145,44 @@ describe("target application contracts", () => {
     });
   });
 
-  describe("toStableAnomalyCode", () => {
+  describe("toStableInvalidCode", () => {
     it("returns insufficient_evidence for null or undefined input", () => {
-      expect(toStableAnomalyCode(null)).toBe("insufficient_evidence");
-      expect(toStableAnomalyCode(undefined)).toBe("insufficient_evidence");
+      expect(toStableInvalidCode(null)).toBe("insufficient_evidence");
+      expect(toStableInvalidCode(undefined)).toBe("insufficient_evidence");
     });
 
-    it("passes through known stable anomaly codes unchanged", () => {
-      expect(toStableAnomalyCode("insufficient_evidence")).toBe("insufficient_evidence");
-      expect(toStableAnomalyCode("currency_required")).toBe("currency_required");
-      expect(toStableAnomalyCode("amount_conflict")).toBe("amount_conflict");
-      expect(toStableAnomalyCode("unsupported_document")).toBe("unsupported_document");
+    it("passes through known stable invalid codes unchanged", () => {
+      expect(toStableInvalidCode("insufficient_evidence")).toBe("insufficient_evidence");
+      expect(toStableInvalidCode("currency_required")).toBe("currency_required");
+      expect(toStableInvalidCode("amount_conflict")).toBe("amount_conflict");
+      expect(toStableInvalidCode("unsupported_document")).toBe("unsupported_document");
     });
 
     it("maps legacy currency-related reasons to currency_required", () => {
-      expect(toStableAnomalyCode("unknown_currency")).toBe("currency_required");
-      expect(toStableAnomalyCode("Currency not recognized")).toBe("currency_required");
+      expect(toStableInvalidCode("unknown_currency")).toBe("currency_required");
+      expect(toStableInvalidCode("Currency not recognized")).toBe("currency_required");
     });
 
     it("maps legacy amount/conflict reasons to amount_conflict", () => {
-      expect(toStableAnomalyCode("amount_conflict")).toBe("amount_conflict");
-      expect(toStableAnomalyCode("Parsing results diverged")).toBe("amount_conflict");
-      expect(toStableAnomalyCode("Conflict detected in amounts")).toBe("amount_conflict");
+      expect(toStableInvalidCode("amount_conflict")).toBe("amount_conflict");
+      expect(toStableInvalidCode("Parsing results diverged")).toBe("amount_conflict");
+      expect(toStableInvalidCode("Conflict detected in amounts")).toBe("amount_conflict");
     });
 
     it("maps legacy invalid/unsupported reasons to unsupported_document", () => {
-      expect(toStableAnomalyCode("Invalid content")).toBe("unsupported_document");
-      expect(toStableAnomalyCode("unsupported document type")).toBe("unsupported_document");
-      expect(toStableAnomalyCode("Unrecognized format")).toBe("unsupported_document");
+      expect(toStableInvalidCode("Invalid content")).toBe("unsupported_document");
+      expect(toStableInvalidCode("unsupported document type")).toBe("unsupported_document");
+      expect(toStableInvalidCode("Unrecognized format")).toBe("unsupported_document");
     });
 
     it("maps legacy evidence/content reasons to insufficient_evidence", () => {
-      expect(toStableAnomalyCode("No valid entries")).toBe("insufficient_evidence");
-      expect(toStableAnomalyCode("Evidence anomaly")).toBe("insufficient_evidence");
+      expect(toStableInvalidCode("No valid entries")).toBe("insufficient_evidence");
+      expect(toStableInvalidCode("Evidence anomaly")).toBe("insufficient_evidence");
     });
 
     it("maps unknown reasons to insufficient_evidence", () => {
-      expect(toStableAnomalyCode("Some unknown reason")).toBe("insufficient_evidence");
-      expect(toStableAnomalyCode("")).toBe("insufficient_evidence");
+      expect(toStableInvalidCode("Some unknown reason")).toBe("insufficient_evidence");
+      expect(toStableInvalidCode("")).toBe("insufficient_evidence");
     });
   });
 });

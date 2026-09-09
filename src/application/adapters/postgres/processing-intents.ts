@@ -179,7 +179,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
                 OR revision.outcome IN ('cancelled', 'abandoned')
               THEN 'cancelled'
               WHEN revision.outcome = 'failed' THEN 'failed'
-              WHEN revision.outcome = 'anomaly' THEN 'anomaly'
+              WHEN revision.outcome = 'invalid' THEN 'invalid'
               ELSE 'completed'
             END AS attempt_status
           FROM processing_outbox outbox
@@ -371,8 +371,8 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           status: result.outcome,
           completedAt: now,
           retryClassification:
-            result.outcome === "anomaly"
-              ? "anomaly"
+            result.outcome === "invalid"
+              ? "invalid"
               : result.outcome === "failed"
                 ? "retryable"
                 : null,

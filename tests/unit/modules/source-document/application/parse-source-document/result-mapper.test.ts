@@ -239,31 +239,18 @@ describe("toParseSourceDocumentOutput", () => {
     });
   });
 
-  it("maps invalid results to invalid output with title", () => {
+  it("maps invalid results to invalid output with title and reason", () => {
     const result: ParsePipelineResult = {
       kind: "invalid",
-      title: "Chat screenshot",
+      title: "Blurred receipt",
+      invalidReason: "Results inconsistent",
     };
 
     expect(toParseSourceDocumentOutput(result)).toEqual({
       ledgerEntries: [],
-      title: "Chat screenshot",
+      title: "Blurred receipt",
+      invalidReason: "Results inconsistent",
       verificationStatus: "invalid",
-    });
-  });
-
-  it("maps anomaly results to anomaly output with title", () => {
-    const result: ParsePipelineResult = {
-      kind: "anomaly",
-      title: "Blurred receipt",
-      anomalyReason: "Results inconsistent",
-    };
-
-    expect(toParseSourceDocumentOutput(result)).toEqual({
-      ledgerEntries: [],
-      title: "Blurred receipt",
-      anomalyReason: "Results inconsistent",
-      verificationStatus: "anomaly",
     });
   });
 

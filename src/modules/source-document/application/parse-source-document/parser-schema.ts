@@ -54,8 +54,8 @@ const orderAdjustmentSchema = z.object({
 
 export const parserOutputSchema = z
   .object({
-    outcome: z.enum(["success", "invalid", "anomaly"]).default("success"),
-    anomaly_reason: z.string().nullish(),
+    outcome: z.enum(["success", "invalid"]).default("success"),
+    invalid_reason: z.string().nullish(),
     title: z.string().nullish(),
     receipt_count: z.number().int().min(0).default(1),
     receipt_totals: z.array(receiptTotalSchema).default([]),
@@ -135,9 +135,9 @@ export type NormalizedOrderAdjustment = Omit<
 
 export type NormalizedParseOutput = Omit<
   ParsedOutput,
-  "anomaly_reason" | "title" | "receipt_totals" | "ledger_entries" | "order_adjustments"
+  "invalid_reason" | "title" | "receipt_totals" | "ledger_entries" | "order_adjustments"
 > & {
-  anomaly_reason?: string;
+  invalid_reason?: string;
   title: string;
   receipt_totals: NormalizedReceiptTotal[];
   ledger_entries: NormalizedLedgerEntry[];
@@ -152,8 +152,6 @@ function fallbackTitleForOutcome(
   switch (output.outcome) {
     case "invalid":
       return copy.invalidContent;
-    case "anomaly":
-      return copy.unparseableDocument;
     default:
       return copy.untitledDocument;
   }
@@ -191,8 +189,8 @@ export function normalizeResult(
   const invalidEntry = ledgerEntries.find((entry) => compare(entry.amount, "0") <= 0);
   if (invalidEntry != null) {
     return {
-      outcome: "anomaly",
-      anomaly_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
+      outcome: "invalid",
+      invalid_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
       title: normalizeTitle(output.title, fallbackTitleForOutcome(output, aiLanguage)),
       receipt_count: output.receipt_count,
       receipt_totals: receiptTotals,
@@ -204,7 +202,7 @@ export function normalizeResult(
 
   return {
     outcome: output.outcome,
-    ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),
+    ...(output.invalid_reason != null ? { invalid_reason: output.invalid_reason } : {}),
     title: normalizeTitle(output.title, fallbackTitleForOutcome(output, aiLanguage)),
     receipt_count: output.receipt_count,
     receipt_totals: receiptTotals,
@@ -225,7 +223,7 @@ export function normalizeResult(
 
 /**
  * Returns true when the document is complex enough to warrant a second parse pass.
- * Only applies to successful outcomes; invalid/anomaly short-circuit without dual-run.
+ * Only applies to successful outcomes; invalid results short-circuit without dual-run.
  */
 export function shouldDualRun(result: NormalizedParseOutput): boolean {
   if (result.outcome !== "success") return false;

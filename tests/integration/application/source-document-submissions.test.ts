@@ -209,7 +209,7 @@ describe("target source-document submissions", () => {
 
   it.each([
     ["failed", "PROCESSING_UNAVAILABLE"],
-    ["anomaly", null],
+    ["invalid", null],
   ] as const)(
     "keeps a first %s outcome without an active revision or ledger projection",
     async (outcome, failureCode) => {
@@ -226,7 +226,7 @@ describe("target source-document submissions", () => {
           sourceDocumentId: pending.document.id,
           revisionId: pending.revision.id,
           outcome,
-          ...(failureCode == null ? { anomalyReason: "unreadable" } : { failureCode }),
+          ...(failureCode == null ? { invalidReason: "unreadable" } : { failureCode }),
         })
       ).resolves.toBe(true);
 
@@ -274,8 +274,8 @@ describe("target source-document submissions", () => {
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       revisionId: anomalous.revision.id,
-      outcome: "anomaly",
-      anomalyReason: "unreadable",
+      outcome: "invalid",
+      invalidReason: "unreadable",
     });
 
     expect(

@@ -82,8 +82,8 @@ Return a single JSON object:
 
 \`\`\`json
 {
-  "outcome": "success | invalid | anomaly",
-  "anomaly_reason": "string or null — only when outcome is anomaly",
+  "outcome": "success | invalid",
+  "invalid_reason": "string or null — only when outcome is invalid",
   "title": "merchant, service, or document name",
   "receipt_count": 1,
   "receipt_totals": [
@@ -117,7 +117,7 @@ Return a single JSON object:
 - Do not infer an expense from a balance, available credit, coupon value, price range, comparison list, advertisement, or an unrelated number on a status screen. If the screen does not clearly connect one price to one transaction or service, set outcome to "invalid".
 - A displayed minus sign can be a visual convention for a debit, payment, spending, or charge. When it means money leaving the user, record the expense amount and receipt total as positive values. Do not treat the visual sign alone as a refund.
 - Set outcome to "invalid" if the document contains no usable expense evidence.
-- Set outcome to "anomaly" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include anomaly_reason.
+- Set outcome to "invalid" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include invalid_reason.
 - Core accounting rule:
   - The receipt total should satisfy: sum(ledger_entries.amount) + sum(order_adjustments.amount) = receipt total.
   - Every monetary effect must appear exactly once.
@@ -143,7 +143,7 @@ Return a single JSON object:
 - Important special case:
   - Even if there is only one purchased item on the receipt, bill-level adjustments must still stay in order_adjustments.
   - Do not fold a bill-level discount or fee into the single item's amount just because there is only one item.
-- This system only handles expenses. If the document is a refund or credit note, set outcome to "anomaly".
+- This system only handles expenses. If the document is a refund or credit note, set outcome to "invalid".
 - Each receipt in a multi-receipt image gets its own receipt_index starting from 0.
 - Examples:
   - Two items + order-level coupon: keep the item prices in ledger_entries, put the coupon in order_adjustments.

@@ -51,7 +51,7 @@ export interface SourceDocumentHydrationRow {
   revisionTitle: string | null;
   submittedText: string | null;
   revisionOutcome: string | null;
-  anomalyReason: string | null;
+  invalidReason: string | null;
   failureCode: string | null;
   hasImages: boolean;
   files: SourceDocumentStoredFileAggregateRow[];
@@ -210,7 +210,7 @@ export function mapListItem(
     text: null,
     status: row.currentStatus,
     type: row.type,
-    anomalyReason: hydration.anomalyReason,
+    invalidReason: hydration.invalidReason,
     entryDate: row.entryDate,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -272,7 +272,7 @@ export function mapSourceDocumentDetail(
     ledgerEntries: hydration.ledgerEntries.map(mapLedgerEntryAggregateDto),
     status: row.currentStatus,
     type: row.type,
-    anomalyReason: hydration.anomalyReason,
+    invalidReason: hydration.invalidReason,
     entryDate: row.entryDate,
     metadata: {},
     createdAt: row.createdAt.toISOString(),
@@ -291,7 +291,7 @@ function sanitizedErrorCode(
   outcome: string | undefined,
   failureCode: string | null | undefined
 ): ApplicationErrorCode | ProcessingFailureCode | null {
-  if (outcome === "anomaly") return "VALIDATION_FAILED";
+  if (outcome === "invalid") return "VALIDATION_FAILED";
   if (outcome !== "failed") return null;
   const allowed: readonly ApplicationErrorCode[] = [
     "VALIDATION_FAILED",

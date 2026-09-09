@@ -103,7 +103,7 @@ function createMockAI(
     firstParseResult?: object;
     secondParseResult?: object; // if set, 2nd call returns this (for disagreement)
     arbitrationChoice?: number;
-    firstParseOutcome?: "success" | "invalid" | "anomaly";
+    firstParseOutcome?: "success" | "invalid";
   } = {}
 ): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
   const {
@@ -297,31 +297,31 @@ describe("runParsePipeline — new single-pass flow", () => {
     });
   });
 
-  it("anomaly outcome returns anomaly result", async () => {
+  it("invalid outcome returns invalid result", async () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
-        outcome: "anomaly",
-        anomaly_reason: "Image too blurry",
+        outcome: "invalid",
+        invalid_reason: "Image too blurry",
         ledger_entries: [],
         receipt_totals: [],
       },
     });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
-    expect(result.kind).toBe("anomaly");
-    if (result.kind === "anomaly") {
-      expect(result.anomalyReason).toBe("Image too blurry");
+    expect(result.kind).toBe("invalid");
+    if (result.kind === "invalid") {
+      expect(result.invalidReason).toBe("Image too blurry");
     }
   });
 
-  it("returns anomaly with a fallback title when AI sends blank title", async () => {
+  it("returns invalid with a fallback title when AI sends blank title", async () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
-        outcome: "anomaly",
+        outcome: "invalid",
         title: "   ",
-        anomaly_reason: "Image too blurry",
+        invalid_reason: "Image too blurry",
         ledger_entries: [],
         receipt_totals: [],
       },
@@ -330,8 +330,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result).toMatchObject({
-      kind: "anomaly",
-      anomalyReason: "Image too blurry",
+      kind: "invalid",
+      invalidReason: "Image too blurry",
       title: expect.any(String),
     });
   });

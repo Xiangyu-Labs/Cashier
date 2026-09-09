@@ -57,18 +57,18 @@ describe("parser-schema", () => {
     expect(parsed.title).toBe("Invalid content");
   });
 
-  it("uses anomaly fallback title for anomaly results with blank title", () => {
+  it("uses invalid-content fallback title for invalid results with a reason", () => {
     const parsed = normalizeResult(
       parserOutputSchema.parse({
         ...simpleSuccess,
-        outcome: "anomaly",
+        outcome: "invalid",
         title: "   ",
-        anomaly_reason: "Image too blurry",
+        invalid_reason: "Image too blurry",
         ledger_entries: [],
         receipt_totals: [],
       })
     );
-    expect(parsed.title).toBe("Unparseable document");
+    expect(parsed.title).toBe("Invalid content");
   });
 
   it("uses a localized fallback title for the target AI language", () => {
@@ -113,7 +113,7 @@ describe("parser-schema", () => {
     expect(shouldDualRun(complex)).toBe(true);
   });
 
-  it("does not require dual-run for invalid or anomaly outcomes", () => {
+  it("does not require dual-run for invalid outcomes", () => {
     const invalid = normalizeResult(
       parserOutputSchema.parse({
         ...simpleSuccess,
@@ -172,13 +172,13 @@ describe("parser-schema", () => {
     expect(compareResults(left, right)).toBe(false);
   });
 
-  it("normalizeResult returns anomaly when a ledger_entry has a non-positive amount", () => {
+  it("normalizeResult returns invalid when a ledger_entry has a non-positive amount", () => {
     const withZeroEntry = parserOutputSchema.parse({
       ...simpleSuccess,
       ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "0" }],
     });
     const result = normalizeResult(withZeroEntry);
-    expect(result.outcome).toBe("anomaly");
+    expect(result.outcome).toBe("invalid");
   });
 
   it("normalizes a negative ledger entry and receipt total used as debit-display notation", () => {
