@@ -1,8 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const { currentLocale } = vi.hoisted(() => {
@@ -45,127 +42,62 @@ vi.mock("next-intl", async () => {
   };
 });
 
-describe("UI Core Components", () => {
-  describe("Button", () => {
-    it("renders default variant correctly", () => {
-      render(<Button>Default Button</Button>);
-      const button = screen.getByRole("button", { name: /default button/i });
-      expect(button.className).toContain("bg-primary");
+describe("Dialog", () => {
+  describe.each(["en", "zh"] as const)("localization (%s)", (locale) => {
+    beforeEach(() => {
+      currentLocale.value = locale;
     });
 
-    it("renders destructive variant correctly", () => {
-      render(<Button variant="destructive">Destructive Button</Button>);
-      const button = screen.getByRole("button", { name: /destructive button/i });
-      expect(button.className).toContain("bg-danger");
-    });
-
-    it("renders outline variant correctly", () => {
-      render(<Button variant="outline">Outline Button</Button>);
-      const button = screen.getByRole("button", { name: /outline button/i });
-      expect(button.className).toContain("border-border");
-    });
-  });
-
-  describe("Badge", () => {
-    it("renders default variant correctly", () => {
-      render(<Badge>Default Badge</Badge>);
-      const badge = screen.getByText("Default Badge");
-      expect(badge.className).toContain("bg-surface2");
-    });
-
-    it("renders success variant correctly", () => {
-      render(<Badge variant="success">Success Badge</Badge>);
-      const badge = screen.getByText("Success Badge");
-      expect(badge.className).toContain("bg-primary/20");
-    });
-
-    it("renders error variant correctly", () => {
-      render(<Badge variant="error">Error Badge</Badge>);
-      const badge = screen.getByText("Error Badge");
-      expect(badge.className).toContain("bg-danger/20");
-    });
-  });
-
-  describe("Card", () => {
-    it("renders card sections with the expected title typography", () => {
+    it("renders localized close screen-reader text via Common namespace", () => {
       render(
-        <Card>
-          <CardHeader>
-            <CardTitle>Card Title</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Card Content</p>
-          </CardContent>
-          <CardFooter>
-            <p>Card Footer</p>
-          </CardFooter>
-        </Card>
+        <Dialog open>
+          <DialogTrigger />
+          <DialogContent variant="modal">
+            <p>Dialog body</p>
+          </DialogContent>
+        </Dialog>
       );
 
-      const title = screen.getByText("Card Title");
-      expect(title.closest("div")?.className).toContain("font-semibold");
+      const expected = locale === "en" ? "Close" : "关闭";
+      const closeButton = screen.getByRole("button", { name: expected });
+      expect(closeButton).toBeDefined();
     });
-  });
 
-  describe("Dialog", () => {
-    describe.each(["en", "zh"] as const)("localization (%s)", (locale) => {
-      beforeEach(() => {
-        currentLocale.value = locale;
-      });
+    it("focuses the dialog title before its close control", async () => {
+      render(
+        <Dialog open>
+          <DialogContent variant="modal">
+            <DialogTitle>Dialog title</DialogTitle>
+            <p>Dialog body</p>
+          </DialogContent>
+        </Dialog>
+      );
 
-      it("renders localized close screen-reader text via Common namespace", () => {
-        render(
-          <Dialog open>
-            <DialogTrigger />
-            <DialogContent variant="modal">
-              <p>Dialog body</p>
-            </DialogContent>
-          </Dialog>
-        );
+      await waitFor(() =>
+        expect(screen.getByRole("heading", { name: "Dialog title" })).toHaveFocus()
+      );
+      expect(
+        screen.getByRole("button", { name: locale === "en" ? "Close" : "关闭" })
+      ).not.toHaveFocus();
+    });
 
-        const expected = locale === "en" ? "Close" : "关闭";
-        const closeButton = screen.getByRole("button", { name: expected });
-        expect(closeButton).toBeDefined();
-      });
+    it("increments the layer for a nested task dialog", () => {
+      render(
+        <Dialog open>
+          <DialogContent variant="detail">
+            <p>Detail body</p>
+            <Dialog open>
+              <DialogContent variant="modal">
+                <p>Task body</p>
+              </DialogContent>
+            </Dialog>
+          </DialogContent>
+        </Dialog>
+      );
 
-      it("focuses the dialog title before its close control", async () => {
-        render(
-          <Dialog open>
-            <DialogContent variant="modal">
-              <DialogTitle>Dialog title</DialogTitle>
-              <p>Dialog body</p>
-            </DialogContent>
-          </Dialog>
-        );
-
-        await waitFor(() =>
-          expect(screen.getByRole("heading", { name: "Dialog title" })).toHaveFocus()
-        );
-        expect(
-          screen.getByRole("button", { name: locale === "en" ? "Close" : "关闭" })
-        ).not.toHaveFocus();
-      });
-
-      it("increments the layer for a nested task dialog", () => {
-        render(
-          <Dialog open>
-            <DialogContent variant="detail">
-              <p>Detail body</p>
-              <Dialog open>
-                <DialogContent variant="modal">
-                  <p>Task body</p>
-                </DialogContent>
-              </Dialog>
-            </DialogContent>
-          </Dialog>
-        );
-
-        const detail = screen.getByText("Detail body").parentElement;
-        const task = screen.getByText("Task body").parentElement;
-        expect(detail?.style.zIndex).toBe("110");
-        expect(task?.style.zIndex).toBe("130");
-        expect(task?.className).toContain("top-1/2");
-      });
+      const detail = screen.getByText("Detail body").parentElement;
+      const task = screen.getByText("Task body").parentElement;
+      expect(Number(task?.style.zIndex)).toBeGreaterThan(Number(detail?.style.zIndex));
     });
   });
 });

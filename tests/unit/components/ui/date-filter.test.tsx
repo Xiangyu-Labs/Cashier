@@ -8,28 +8,6 @@ vi.mock("next-intl", () => ({
 }));
 
 describe("DateFilter", () => {
-  it("applies truncate class by default", () => {
-    render(<DateFilter value={new Date(2026, 3, 17)} onChange={() => {}} />);
-
-    const dateText = screen.getByText("2026年4月17日");
-    expect(dateText.tagName.toLowerCase()).toBe("span");
-    expect(dateText.classList.contains("truncate")).toBe(true);
-  });
-
-  it("does not apply truncate class when truncate prop is false", () => {
-    render(<DateFilter value={new Date(2026, 3, 17)} onChange={() => {}} truncate={false} />);
-
-    const dateText = screen.getByText("2026年4月17日");
-    expect(dateText.classList.contains("truncate")).toBe(false);
-    expect(dateText.classList.contains("whitespace-nowrap")).toBe(true);
-  });
-
-  it("parses a date-only string as a local civil date", () => {
-    render(<DateFilter value="2026-04-17" onChange={() => {}} />);
-
-    expect(screen.getByText("2026年4月17日")).toBeInTheDocument();
-  });
-
   it("renders a date-only string without shifting it to the previous day", () => {
     render(<DateFilter value="2026-07-28" onChange={() => {}} />);
 

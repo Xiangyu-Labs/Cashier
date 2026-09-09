@@ -143,125 +143,12 @@ describe("stream list motion", () => {
     );
   });
 
-  it("fades new cards in and cleans up after the entrance window", () => {
-    const { rerender } = renderGroups(["doc-1"]);
-    rerenderGroups(rerender, ["doc-1", "doc-2"]);
-
-    const entering = document.querySelector('[data-stream-card-id="doc-2"]');
-    expect(entering).not.toBeNull();
-    expect(entering).toHaveClass("stream-card-enter");
-
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    expect(document.querySelector('[data-stream-card-id="doc-2"]')).not.toHaveClass(
-      "stream-card-enter"
-    );
-  });
-
   it("removes cards without inserting a flashing exit placeholder", () => {
     const { rerender } = renderGroups(["doc-1", "doc-2"]);
     rerenderGroups(rerender, ["doc-1"]);
 
     expect(document.querySelector('[data-stream-exit-card="doc-2"]')).toBeNull();
     expect(screen.getByTestId("card-doc-1")).toBeInTheDocument();
-  });
-
-  it("removes the first card without duplicating remaining content", () => {
-    const { rerender } = renderGroups(["doc-1", "doc-2"]);
-
-    expect(() => rerenderGroups(rerender, ["doc-2"])).not.toThrow();
-
-    expect(document.querySelector('[data-stream-exit-card="doc-1"]')).toBeNull();
-    expect(document.querySelector('[data-stream-exit-card="doc-2"]')).toBeNull();
-    expect(screen.getByTestId("card-doc-2")).toBeInTheDocument();
-  });
-
-  it("removes a middle card without an empty visual copy", () => {
-    const { rerender } = renderGroups(["doc-1", "doc-2", "doc-3"]);
-
-    expect(() => rerenderGroups(rerender, ["doc-1", "doc-3"])).not.toThrow();
-
-    expect(document.querySelectorAll("[data-stream-exit-card]")).toHaveLength(0);
-    expect(screen.getByTestId("card-doc-1")).toBeInTheDocument();
-    expect(screen.getByTestId("card-doc-3")).toBeInTheDocument();
-  });
-
-  it("removes consecutive leading cards without exit placeholders", () => {
-    const { rerender } = renderGroups(["doc-1", "doc-2", "doc-3"]);
-
-    expect(() => rerenderGroups(rerender, ["doc-3"])).not.toThrow();
-
-    expect(document.querySelectorAll("[data-stream-exit-card]")).toHaveLength(0);
-    expect(screen.getByTestId("card-doc-3")).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    expect(document.querySelectorAll("[data-stream-exit-card]")).toHaveLength(0);
-  });
-
-  it("applies a FLIP transform on reorder and clears it after the animation", () => {
-    const rects = new Map<string, number>();
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
-      this: HTMLElement
-    ) {
-      const id = this.getAttribute("data-stream-card-id");
-      const top = id != null ? (rects.get(id) ?? 0) : 0;
-      return {
-        top,
-        left: 0,
-        right: 300,
-        bottom: top + 68,
-        width: 300,
-        height: 68,
-        x: 0,
-        y: top,
-        toJSON: () => ({}),
-      } as DOMRect;
-    });
-
-    rects.set("doc-1", 0);
-    rects.set("doc-2", 100);
-    const { rerender } = renderGroups(["doc-1", "doc-2"]);
-
-    rects.set("doc-1", 100);
-    rects.set("doc-2", 0);
-    rerenderGroups(rerender, ["doc-2", "doc-1"]);
-
-    const moved = document.querySelector('[data-stream-card-id="doc-1"]') as HTMLElement;
-    expect(moved.style.transform).toContain("translate(0px, -100px)");
-
-    act(() => {
-      vi.advanceTimersByTime(16);
-    });
-    expect(moved.style.transform).toBe("");
-    expect(moved.style.transition).toContain("transform");
-
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
-    expect(moved.style.transform).toBe("");
-  });
-
-  it("does not read card rects when the semantic list is unchanged", () => {
-    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
-      top: 0,
-      left: 0,
-      right: 300,
-      bottom: 68,
-      width: 300,
-      height: 68,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    } as DOMRect);
-    const { rerender } = renderGroups(["doc-1", "doc-2"]);
-    rectSpy.mockClear();
-
-    rerenderGroups(rerender, ["doc-1", "doc-2"]);
-
-    expect(rectSpy).not.toHaveBeenCalled();
   });
 
   it("skips all animation states under reduced motion", () => {

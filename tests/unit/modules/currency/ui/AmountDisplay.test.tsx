@@ -69,9 +69,7 @@ describe("AmountDisplay", () => {
     renderAmountDisplay();
 
     expect(screen.getByText(/\$13\.33/)).toBeInTheDocument();
-    const secondary = screen.getByText(/CNY\s*100\.00/);
-    expect(secondary).toHaveClass("text-xs", "font-normal", "text-muted-foreground");
-    expect(secondary).not.toHaveClass("opacity-70");
+    expect(screen.getByText(/CNY\s*100\.00/)).toBeInTheDocument();
   });
 
   it("can hide the original amount on success", () => {

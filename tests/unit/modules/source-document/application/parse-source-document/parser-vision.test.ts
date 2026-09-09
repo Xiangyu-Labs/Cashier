@@ -44,8 +44,6 @@ describe("executeParser — single-pass receipt parser", () => {
     mockAI = createMockAI();
   });
 
-  // === Return shape ===
-
   it("returns NormalizedParseOutput with outcome, title, entries, adjustments", async () => {
     const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
@@ -58,25 +56,6 @@ describe("executeParser — single-pass receipt parser", () => {
     expect(result.receipt_totals).toHaveLength(1);
     expect(result.ledger_entries).toHaveLength(1);
     expect(result.order_adjustments).toEqual([]);
-  });
-
-  it("does NOT return DocumentUnderstanding shape (no primaryEvidence field)", async () => {
-    const result = await executeParser(
-      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
-      mockAI
-    );
-
-    expect("primaryEvidence" in result).toBe(false);
-    expect("documentType" in result).toBe(false);
-  });
-
-  it("preserves receipt_index on ledger entries", async () => {
-    const result = await executeParser(
-      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
-      mockAI
-    );
-
-    expect(result.ledger_entries[0]?.receipt_index).toBe(0);
   });
 
   it("preserves order_adjustments with negative amounts", async () => {

@@ -1,121 +1,45 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { SQL } from "drizzle-orm";
+import { PgDialect, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { forLedger } from "@/lib/db/scoped-query";
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { SQL } from "drizzle-orm";
 
-// Create a test table that mimics the structure of real tables
-const testTable = pgTable("test_entities", {
+const dialect = new PgDialect();
+const table = pgTable("test_entities", {
   id: text("id").primaryKey(),
   ledgerId: text("ledger_id").notNull(),
-  name: text("name"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
-
-// Create a table without deletedAt to test conditional logic
-const tableWithoutSoftDelete = pgTable("no_soft_delete", {
+const tableWithoutSoftDelete = pgTable("active_entities", {
   id: text("id").primaryKey(),
   ledgerId: text("ledger_id").notNull(),
-  name: text("name"),
 });
 
+function compile(condition: SQL | undefined) {
+  if (condition === undefined) throw new Error("Expected a ledger scope condition");
+  return dialect.sqlToQuery(condition);
+}
+
 describe("forLedger", () => {
-  const TEST_LEDGER_ID = "test-ledger-123";
+  it("scopes active reads by ledger and excludes soft-deleted rows", () => {
+    const query = compile(forLedger(table, "ledger-1").whereActive);
 
-  it("should return an object with required methods", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-
-    expect(scope).toHaveProperty("whereActive");
-    expect(scope).toHaveProperty("whereId");
-    expect(scope).toHaveProperty("softDelete");
-    expect(scope).toHaveProperty("ledgerId");
+    expect(query.sql).toContain('"test_entities"."ledger_id" = $1');
+    expect(query.sql).toContain('"test_entities"."deleted_at" is null');
+    expect(query.params).toEqual(["ledger-1"]);
   });
 
-  it("should store the ledgerId", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-    expect(scope.ledgerId).toBe(TEST_LEDGER_ID);
+  it("scopes entity mutations by both ID and ledger", () => {
+    const query = compile(forLedger(table, "ledger-1").whereId("entry-1"));
+
+    expect(query.sql).toContain('"test_entities"."id" = $1');
+    expect(query.sql).toContain('"test_entities"."ledger_id" = $2');
+    expect(query.params).toEqual(["entry-1", "ledger-1"]);
   });
 
-  it("should return a SQL condition for whereActive", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-    const condition = scope.whereActive;
+  it("supports ledger-scoped tables without soft deletion", () => {
+    const query = compile(forLedger(tableWithoutSoftDelete, "ledger-1").whereActive);
 
-    expect(condition).toBeDefined();
-    expect(condition).toBeInstanceOf(SQL);
-  });
-
-  it("should return a SQL condition for whereId", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-    const condition = scope.whereId("entity-123");
-
-    expect(condition).toBeDefined();
-    expect(condition).toBeInstanceOf(SQL);
-  });
-
-  it("should return softDelete object with deletedAt", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-    const softDelete = scope.softDelete;
-
-    expect(softDelete).toHaveProperty("deletedAt");
-    expect(softDelete.deletedAt).toBeInstanceOf(Date);
-  });
-
-  it("should work with tables that have deletedAt column", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-
-    // Should not throw
-    expect(() => scope.whereActive).not.toThrow();
-    expect(() => scope.whereId("test-id")).not.toThrow();
-  });
-
-  it("should work with tables without deletedAt column", () => {
-    const scope = forLedger(tableWithoutSoftDelete, TEST_LEDGER_ID);
-
-    // Should not throw
-    expect(() => scope.whereActive).not.toThrow();
-    expect(() => scope.whereId("test-id")).not.toThrow();
-  });
-
-  it("should create different scopes for different ledgerIds", () => {
-    const scope1 = forLedger(testTable, "ledger-1");
-    const scope2 = forLedger(testTable, "ledger-2");
-
-    expect(scope1.ledgerId).toBe("ledger-1");
-    expect(scope2.ledgerId).toBe("ledger-2");
-    expect(scope1.ledgerId).not.toBe(scope2.ledgerId);
-  });
-
-  it("should generate whereActive as a getter (not a function)", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-
-    // whereActive should be a property, not a method
-    expect(typeof scope.whereActive).toBe("object");
-    expect(scope.whereActive).toBeInstanceOf(SQL);
-  });
-
-  it("should generate softDelete as a getter (not a function)", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-
-    // softDelete should be a property
-    expect(typeof scope.softDelete).toBe("object");
-    expect(scope.softDelete).toHaveProperty("deletedAt");
-  });
-
-  it("should generate whereId as a function", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-
-    // whereId should be a function
-    expect(typeof scope.whereId).toBe("function");
-  });
-
-  it("should produce valid SQL for different IDs", () => {
-    const scope = forLedger(testTable, TEST_LEDGER_ID);
-
-    const condition1 = scope.whereId("id-1");
-    const condition2 = scope.whereId("id-2");
-
-    expect(condition1).toBeInstanceOf(SQL);
-    expect(condition2).toBeInstanceOf(SQL);
-    // Each call should produce a distinct SQL object
-    expect(condition1).not.toBe(condition2);
+    expect(query.sql).toContain('"active_entities"."ledger_id" = $1');
+    expect(query.sql).not.toContain("deleted_at");
   });
 });

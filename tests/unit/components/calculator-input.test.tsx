@@ -53,24 +53,6 @@ describe("CalculatorInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("34.50");
   });
 
-  it("keeps the same typography when switching into inline edit mode", () => {
-    render(
-      <CalculatorInput
-        value={0}
-        onChange={() => {}}
-        ariaLabel="test-amount"
-        displayClassName="text-3xl font-bold font-mono text-center"
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "test-amount" }));
-    const input = screen.getByRole("textbox");
-
-    expect(input.className).toContain("font-mono");
-    expect(input.className).toContain("text-3xl");
-    expect(input.className).not.toContain("!text-base");
-  });
-
   it("commits a valid inline value on Enter and outside click", () => {
     const onChange = vi.fn();
     render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);

@@ -1,15 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-
-const { dialogFooterSpy } = vi.hoisted(() => ({
-  dialogFooterSpy: vi.fn(
-    ({ children, className }: { children?: ReactNode; className?: string }) => (
-      <div data-class-name={className ?? ""}>{children}</div>
-    )
-  ),
-}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -29,7 +21,7 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogClose: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  DialogFooter: dialogFooterSpy,
+  DialogFooter: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogTrigger: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
@@ -81,25 +73,6 @@ describe("ConfirmDialog", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "confirm" })).toBeEnabled());
     expect(onOpenChange).not.toHaveBeenCalled();
   });
-  beforeEach(() => {
-    dialogFooterSpy.mockClear();
-  });
-
-  it("passes layout className only for the three-button layout", () => {
-    render(
-      <ConfirmDialog
-        title="Unsaved changes"
-        description="Choose what to do"
-        onConfirm={() => {}}
-        onSave={() => {}}
-      />
-    );
-
-    const footerProps = dialogFooterSpy.mock.calls[0]?.[0] as { className?: string } | undefined;
-
-    expect(footerProps?.className).toBe("justify-between sm:justify-between");
-  });
-
   it("stays open and disables its action until an async confirmation succeeds", async () => {
     let resolveConfirmation!: () => void;
     const onOpenChange = vi.fn();

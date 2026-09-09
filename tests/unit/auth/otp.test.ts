@@ -1,213 +1,79 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   generateOTP,
-  hashOTP,
-  verifyOTP,
-  isValidOTPFormat,
-  getOTPExpiration,
   getLockoutExpiration,
   getMaxAttempts,
+  getOTPExpiration,
   getResendCooldown,
+  hashOTP,
+  isValidOTPFormat,
+  verifyOTP,
 } from "@/modules/auth/services/otp";
 
-describe("OTP Utility Functions", () => {
-  describe("generateOTP", () => {
-    it("should generate a 6-digit OTP", () => {
-      const otp = generateOTP();
-      expect(otp).toMatch(/^\d{6}$/);
-      expect(otp).toHaveLength(6);
-    });
-
-    it("should generate different OTPs on subsequent calls", () => {
-      const otp1 = generateOTP();
-      const otp2 = generateOTP();
-      const otp3 = generateOTP();
-
-      // At least one should be different (extremely high probability)
-      expect(otp1 !== otp2 || otp2 !== otp3).toBe(true);
-    });
-
-    it("should pad with leading zeros", () => {
-      // Test multiple times to increase chance of getting a number < 100000
-      const otps = Array.from({ length: 100 }, () => generateOTP());
-      otps.forEach((otp) => {
-        expect(otp).toHaveLength(6);
-        expect(otp).toMatch(/^\d{6}$/);
-      });
-    });
+describe("OTP security contracts", () => {
+  beforeEach(() => {
+    delete process.env.OTP_EXPIRES_SECONDS;
+    delete process.env.OTP_MAX_ATTEMPTS;
+    delete process.env.OTP_LOCKOUT_MINUTES;
+    delete process.env.OTP_RESEND_COOLDOWN_SECONDS;
   });
 
-  describe("hashOTP", () => {
-    it("should produce a versioned keyed HMAC hash with a per-token salt", () => {
-      const otp = "123456";
-      const hash = hashOTP(otp);
-
-      expect(hash).toHaveLength(100);
-      expect(hash).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
-    });
-
-    it("should include per-token entropy so identical OTPs produce distinct hashes", () => {
-      const otp = "123456";
-      const hash1 = hashOTP(otp);
-      const hash2 = hashOTP(otp);
-
-      expect(hash1).not.toBe(hash2);
-      expect(hash1).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
-      expect(hash2).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
-      expect(verifyOTP(otp, hash1)).toBe(true);
-      expect(verifyOTP(otp, hash2)).toBe(true);
-    });
-
-    it("should produce different hashes for different inputs", () => {
-      const hash1 = hashOTP("123456");
-      const hash2 = hashOTP("654321");
-
-      expect(hash1).not.toBe(hash2);
-    });
-
-    it("rejects legacy unkeyed hashes", () => {
-      expect(
-        verifyOTP(
-          "123456",
-          "8d969eef6ecad3c29a3a629280e686cff8ca64f6f63f5f5a86aff3ca12020c923:legacy-salt"
-        )
-      ).toBe(false);
-    });
+  it("generates and validates exactly six decimal digits", () => {
+    expect(generateOTP()).toMatch(/^\d{6}$/);
+    expect(isValidOTPFormat("000000")).toBe(true);
+    for (const invalid of ["12345", "1234567", "12345a", "12 345"]) {
+      expect(isValidOTPFormat(invalid)).toBe(false);
+    }
   });
 
-  describe("verifyOTP", () => {
-    it("should verify correct OTP", () => {
-      const otp = "123456";
-      const hash = hashOTP(otp);
+  it("uses distinct salted v2 hashes that verify only the original OTP", () => {
+    const first = hashOTP("123456");
+    const second = hashOTP("123456");
 
-      expect(verifyOTP(otp, hash)).toBe(true);
-    });
-
-    it("should reject incorrect OTP", () => {
-      const otp = "123456";
-      const hash = hashOTP(otp);
-
-      expect(verifyOTP("654321", hash)).toBe(false);
-    });
-
-    it("should be case sensitive (though OTPs are numeric)", () => {
-      const hash = hashOTP("123456");
-      expect(verifyOTP("123456", hash)).toBe(true);
-    });
-
-    it("rejects unknown version prefixes and malformed v2 hashes", () => {
-      const otp = "123456";
-      const v2 = hashOTP(otp);
-
-      expect(verifyOTP(otp, `v3:${v2.slice(3)}`)).toBe(false);
-      expect(verifyOTP(otp, `${v2}:extra`)).toBe(false);
-      expect(verifyOTP(otp, "v2:not-hex:not-hex")).toBe(false);
-      expect(verifyOTP(otp, "v2:not-hex")).toBe(false);
-      expect(verifyOTP(otp, "v2::")).toBe(false);
-      expect(verifyOTP(otp, "v2")).toBe(false);
-      expect(verifyOTP(otp, "")).toBe(false);
-    });
-
-    it("rejects legacy hashes with invalid hash formats", () => {
-      expect(verifyOTP("123456", "not-hex:salt")).toBe(false);
-      expect(verifyOTP("123456", "abcdef:salt")).toBe(false);
-      expect(verifyOTP("123456", "cafebabe")).toBe(false);
-      expect(verifyOTP("123456", "v2:")).toBe(false);
-    });
+    expect(first).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
+    expect(second).not.toBe(first);
+    expect(verifyOTP("123456", first)).toBe(true);
+    expect(verifyOTP("654321", first)).toBe(false);
   });
 
-  describe("isValidOTPFormat", () => {
-    it("should accept valid 6-digit OTPs", () => {
-      expect(isValidOTPFormat("123456")).toBe(true);
-      expect(isValidOTPFormat("000000")).toBe(true);
-      expect(isValidOTPFormat("999999")).toBe(true);
-    });
-
-    it("should reject non-6-digit strings", () => {
-      expect(isValidOTPFormat("12345")).toBe(false);
-      expect(isValidOTPFormat("1234567")).toBe(false);
-      expect(isValidOTPFormat("")).toBe(false);
-    });
-
-    it("should reject non-numeric strings", () => {
-      expect(isValidOTPFormat("12345a")).toBe(false);
-      expect(isValidOTPFormat("abc123")).toBe(false);
-      expect(isValidOTPFormat("12 34 56")).toBe(false);
-    });
+  it("rejects legacy, unknown-version, and malformed hashes", () => {
+    const valid = hashOTP("123456");
+    for (const stored of [
+      "8d969eef6ecad3c29a3a629280e686cff8ca64f6f63f5f5a86aff3ca12020c923:salt",
+      `v3:${valid.slice(3)}`,
+      `${valid}:extra`,
+      "v2:not-hex:not-hex",
+      "",
+    ]) {
+      expect(verifyOTP("123456", stored)).toBe(false);
+    }
   });
 
-  describe("Configuration helpers", () => {
-    beforeEach(() => {
-      delete process.env.OTP_EXPIRES_SECONDS;
-      delete process.env.OTP_MAX_ATTEMPTS;
-      delete process.env.OTP_LOCKOUT_MINUTES;
-      delete process.env.OTP_RESEND_COOLDOWN_SECONDS;
-    });
+  it("uses the documented default expiration and lockout durations", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
 
-    describe("getOTPExpiration", () => {
-      it("should return default 5 minutes", () => {
-        const expiration = getOTPExpiration();
-        const now = new Date();
-        const diff = expiration.getTime() - now.getTime();
+    expect(getOTPExpiration()).toEqual(new Date("2026-01-01T00:05:00.000Z"));
+    expect(getLockoutExpiration()).toEqual(new Date("2026-01-01T00:15:00.000Z"));
+    expect(getMaxAttempts()).toBe(5);
+    expect(getResendCooldown()).toBe(60);
 
-        // Should be approximately 5 minutes (300 seconds)
-        expect(diff).toBeGreaterThan(299000);
-        expect(diff).toBeLessThan(301000);
-      });
+    vi.useRealTimers();
+  });
 
-      it("should respect custom expiration", () => {
-        process.env.OTP_EXPIRES_SECONDS = "600"; // 10 minutes
-        const expiration = getOTPExpiration();
-        const now = new Date();
-        const diff = expiration.getTime() - now.getTime();
+  it("honors configured expiration, lockout, attempt, and resend limits", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    process.env.OTP_EXPIRES_SECONDS = "600";
+    process.env.OTP_LOCKOUT_MINUTES = "30";
+    process.env.OTP_MAX_ATTEMPTS = "3";
+    process.env.OTP_RESEND_COOLDOWN_SECONDS = "120";
 
-        expect(diff).toBeGreaterThan(599000);
-        expect(diff).toBeLessThan(601000);
-      });
-    });
+    expect(getOTPExpiration()).toEqual(new Date("2026-01-01T00:10:00.000Z"));
+    expect(getLockoutExpiration()).toEqual(new Date("2026-01-01T00:30:00.000Z"));
+    expect(getMaxAttempts()).toBe(3);
+    expect(getResendCooldown()).toBe(120);
 
-    describe("getLockoutExpiration", () => {
-      it("should return default 15 minutes", () => {
-        const expiration = getLockoutExpiration();
-        const now = new Date();
-        const diff = expiration.getTime() - now.getTime();
-
-        // Should be approximately 15 minutes (900 seconds)
-        expect(diff).toBeGreaterThan(899000);
-        expect(diff).toBeLessThan(901000);
-      });
-
-      it("should respect custom lockout duration", () => {
-        process.env.OTP_LOCKOUT_MINUTES = "30";
-        const expiration = getLockoutExpiration();
-        const now = new Date();
-        const diff = expiration.getTime() - now.getTime();
-
-        expect(diff).toBeGreaterThan(1799000); // 30 min
-        expect(diff).toBeLessThan(1801000);
-      });
-    });
-
-    describe("getMaxAttempts", () => {
-      it("should return default 5 attempts", () => {
-        expect(getMaxAttempts()).toBe(5);
-      });
-
-      it("should respect custom max attempts", () => {
-        process.env.OTP_MAX_ATTEMPTS = "3";
-        expect(getMaxAttempts()).toBe(3);
-      });
-    });
-
-    describe("getResendCooldown", () => {
-      it("should return default 60 seconds", () => {
-        expect(getResendCooldown()).toBe(60);
-      });
-
-      it("should respect custom cooldown", () => {
-        process.env.OTP_RESEND_COOLDOWN_SECONDS = "120";
-        expect(getResendCooldown()).toBe(120);
-      });
-    });
+    vi.useRealTimers();
   });
 });

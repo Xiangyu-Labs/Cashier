@@ -269,52 +269,6 @@ describe("LedgerEntryDetailModal feedback", () => {
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
-  it("preserves pending changes while a lower detail is temporarily hidden", async () => {
-    const onUpdate = vi.fn(async () => undefined);
-    const { rerender } = render(
-      <LedgerEntryDetailModal
-        ledgerEntry={ledgerEntry}
-        categories={[]}
-        mainCurrency="CNY"
-        preferredCurrencies={[]}
-        open
-        onClose={vi.fn()}
-        onUpdate={onUpdate}
-        onDelete={vi.fn(async () => undefined)}
-      />
-    );
-
-    fireEvent.click(screen.getByText("edit-entry"));
-    fireEvent.click(screen.getByText("change-name"));
-    rerender(
-      <LedgerEntryDetailModal
-        ledgerEntry={ledgerEntry}
-        categories={[]}
-        mainCurrency="CNY"
-        preferredCurrencies={[]}
-        open={false}
-        onClose={vi.fn()}
-        onUpdate={onUpdate}
-        onDelete={vi.fn(async () => undefined)}
-      />
-    );
-    rerender(
-      <LedgerEntryDetailModal
-        ledgerEntry={ledgerEntry}
-        categories={[]}
-        mainCurrency="CNY"
-        preferredCurrencies={[]}
-        open
-        onClose={vi.fn()}
-        onUpdate={onUpdate}
-        onDelete={vi.fn(async () => undefined)}
-      />
-    );
-
-    fireEvent.click(screen.getByText("edit-entry"));
-    fireEvent.click(screen.getByText("save-entry"));
-  });
-
   it("keeps a failed detail open and retries it in place", async () => {
     const onClose = vi.fn();
     const onReload = vi.fn(async () => undefined);

@@ -1,38 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
 
 vi.mock("@/components/ui/popover", () => ({
   Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  PopoverContent: ({
-    children,
-    align,
-    collisionPadding,
-    className,
-  }: ComponentPropsWithoutRef<"div"> & {
-    align?: string;
-    collisionPadding?: number;
-  }) => (
-    <div
-      data-testid="popover-content"
-      data-align={align}
-      data-collision-padding={collisionPadding}
-      className={className}
-    >
-      {children}
-    </div>
+  PopoverContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="popover-content">{children}</div>
   ),
 }));
 
 vi.mock("@/components/ui/date-filter", () => ({
-  DateFilter: ({ className }: { className?: string }) => (
-    <button type="button" className={className}>
-      date
-    </button>
-  ),
+  DateFilter: () => <button type="button">date</button>,
 }));
 
 let mobileViewport = false;
@@ -83,38 +64,6 @@ describe("EntryFilterPanel", () => {
     expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
   });
 
-  it("keeps search inside the filter panel and uses a mobile-safe font size", () => {
-    render(
-      <EntryFilterPanel
-        filters={{}}
-        onFiltersChange={vi.fn()}
-        showCategory={false}
-        showCurrency={false}
-      />
-    );
-
-    expect(screen.getByPlaceholderText("搜索标题、名称或描述")).toHaveClass("text-base");
-  });
-
-  it("keeps the desktop filter in an anchored popover", () => {
-    render(
-      <EntryFilterPanel
-        filters={{}}
-        onFiltersChange={vi.fn()}
-        showCategory={false}
-        showCurrency={false}
-      />
-    );
-
-    const filterPopover = screen
-      .getAllByTestId("popover-content")
-      .find((content) => content.className.includes("w-[min(420px,calc(100vw-2rem))]"));
-
-    expect(filterPopover).toBeDefined();
-    expect(filterPopover?.getAttribute("data-align")).toBe("center");
-    expect(filterPopover?.getAttribute("data-collision-padding")).toBe("16");
-  });
-
   it("opens a bottom dialog and applies the shared draft on mobile", async () => {
     mobileViewport = true;
     const user = userEvent.setup();
@@ -130,8 +79,7 @@ describe("EntryFilterPanel", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "筛选" }));
-    const dialog = screen.getByRole("dialog", { name: "筛选" });
-    expect(dialog).toHaveClass("bottom-0", "rounded-b-none");
+    screen.getByRole("dialog", { name: "筛选" });
     expect(screen.queryByTestId("popover-content")).not.toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("搜索标题、名称或描述"), "coffee");

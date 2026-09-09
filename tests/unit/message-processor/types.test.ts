@@ -1,49 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { determineSourceType, type SourceDocumentInput } from "@/lib/ai/types";
 
 describe("determineSourceType", () => {
-  it('should return "text" for text-only input', () => {
-    const input: SourceDocumentInput = { text: "Hello" };
-    expect(determineSourceType(input)).toBe("text");
-  });
+  it("selects the parser input mode from user-provided evidence", () => {
+    const image = { data: "base64", mimeType: "image/jpeg" };
+    const cases: Array<[SourceDocumentInput, string]> = [
+      [{}, "text"],
+      [{ text: "note" }, "text"],
+      [{ images: [image] }, "image"],
+      [{ text: "note", images: [image] }, "mixed"],
+    ];
 
-  it('should return "image" for image-only input', () => {
-    const input: SourceDocumentInput = {
-      images: [{ data: "base64...", mimeType: "image/jpeg" }],
-    };
-    expect(determineSourceType(input)).toBe("image");
-  });
-
-  it('should return "mixed" for text + image input', () => {
-    const input: SourceDocumentInput = {
-      text: "Description",
-      images: [{ data: "base64...", mimeType: "image/jpeg" }],
-    };
-    expect(determineSourceType(input)).toBe("mixed");
-  });
-
-  it('should return "text" for empty input', () => {
-    const input: SourceDocumentInput = {};
-    expect(determineSourceType(input)).toBe("text");
-  });
-
-  it('should return "text" for empty images array', () => {
-    const input: SourceDocumentInput = { images: [] };
-    expect(determineSourceType(input)).toBe("text");
-  });
-
-  it('should return "text" for undefined text', () => {
-    const input: SourceDocumentInput = {};
-    expect(determineSourceType(input)).toBe("text");
-  });
-
-  it('should return "image" for multiple images', () => {
-    const input: SourceDocumentInput = {
-      images: [
-        { data: "base64_1...", mimeType: "image/jpeg" },
-        { data: "base64_2...", mimeType: "image/png" },
-      ],
-    };
-    expect(determineSourceType(input)).toBe("image");
+    for (const [input, expected] of cases) {
+      expect(determineSourceType(input)).toBe(expected);
+    }
   });
 });

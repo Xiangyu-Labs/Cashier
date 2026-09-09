@@ -130,25 +130,4 @@ describe("parser-schema", () => {
     const result = parserOutputSchema.safeParse(exponentEntry);
     expect(result.success).toBe(false);
   });
-
-  it("exposes binary floating-point error: 0.1 + 0.2 does not round-trip correctly with number", () => {
-    // 0.1 + 0.2 = 0.30000000000000004 in JavaScript
-    // Using decimal strings avoids this error
-    const parsed = normalizeResult(
-      parserOutputSchema.parse({
-        ...simpleSuccess,
-        receipt_totals: [{ receipt_index: 0, amount: "0.30", currency: "USD" }],
-        ledger_entries: [
-          { ...simpleSuccess.ledger_entries[0]!, amount: "0.10", item_name: "Item A" },
-          { ...simpleSuccess.ledger_entries[0]!, amount: "0.20", item_name: "Item B" },
-        ],
-      })
-    );
-    expect(parsed.ledger_entries).toHaveLength(2);
-    // 0.10 + 0.20 should exactly equal 0.30 as strings
-    expect(
-      Number.parseFloat(parsed.ledger_entries[0]!.amount) +
-        Number.parseFloat(parsed.ledger_entries[1]!.amount)
-    ).not.toBe(0.3); // BINARY ERROR: proves we need strings
-  });
 });

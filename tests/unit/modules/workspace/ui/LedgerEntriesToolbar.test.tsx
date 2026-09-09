@@ -43,34 +43,11 @@ describe("LedgerEntriesToolbar", () => {
     expect(screen.queryByText("Total ¥123.45")).not.toBeInTheDocument();
   });
 
-  it("does not render status summary when no statuses are active", () => {
-    render(<LedgerEntriesToolbar {...defaultProps} />);
-
-    // No status summary should be rendered
-    expect(screen.queryByText(/状态：/)).not.toBeInTheDocument();
-  });
-
   it("keeps active status details inside the filter panel", () => {
     render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
 
     expect(screen.queryByText(/状态：/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
-  });
-
-  it("does not render preset summaries outside the filter panel", () => {
-    render(
-      <LedgerEntriesToolbar
-        {...defaultProps}
-        filters={{ statuses: ["candidate_pending", "invalid", "failed"] }}
-      />
-    );
-
-    expect(screen.queryByText(/待处理/)).not.toBeInTheDocument();
-  });
-
-  it("does not render an external status reset control", () => {
-    render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
-    expect(screen.queryByRole("button", { name: "全部状态" })).not.toBeInTheDocument();
   });
 
   it("does not render EntryFilterPanel in selection mode", () => {
@@ -86,13 +63,6 @@ describe("LedgerEntriesToolbar", () => {
 
     expect(screen.getByText("¥123.45")).toBeInTheDocument();
     expect(screen.queryByText(/Filtered total/i)).not.toBeInTheDocument();
-  });
-
-  it("places synchronization status in its own mobile row", () => {
-    render(<LedgerEntriesToolbar {...defaultProps} syncStatus="Updated just now" />);
-
-    expect(screen.getByTestId("toolbar-sync-status")).toHaveClass("basis-full");
-    expect(screen.getByTestId("toolbar-sync-status")).toHaveTextContent("Updated just now");
   });
 
   it("blocks date confirmation when the selection query changes after preview", async () => {

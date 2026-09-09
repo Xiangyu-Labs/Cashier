@@ -18,19 +18,6 @@ describe("OTPInput", () => {
     }
   });
 
-  it("uses a six-column responsive layout without fixed-width digits", () => {
-    const { container } = render(
-      <OTPInput
-        value=""
-        onChange={vi.fn()}
-        getDigitLabel={(position, length) => `Digit ${position} of ${length}`}
-      />
-    );
-
-    expect(container.firstChild).toHaveClass("grid-cols-6");
-    expect(screen.getByRole("textbox", { name: "Digit 1 of 6" })).toHaveClass("w-full");
-  });
-
   it("emits digits only when deleting a middle slot", () => {
     const onChange = vi.fn();
     render(

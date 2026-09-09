@@ -64,7 +64,8 @@ describe("getSourceDocumentLightAction", () => {
     expect(result!.ledgerId).toBe(ledgerData.id);
     expect(result!.title).toBe("Test Receipt");
     expect(result!.text).toBe("Lunch for 25.50");
-    expect(typeof result!.createdAt).toBe("string");
+    expect(result!.hasImages).toBe(false);
+    expect(result).not.toHaveProperty("metadata");
   });
 
   it("should include stored-file identities in the normalized light response", async () => {
@@ -144,41 +145,6 @@ describe("getSourceDocumentLightAction", () => {
       ledgerId: ledgerData.id,
       hasImages: false,
     });
-  });
-
-  it("should hasImages should be false when no images", async () => {
-    const db = getTestDb();
-    const ledgerData = createLedgerData({ userId: testUserId });
-    await db.insert(ledgers).values(ledgerData);
-
-    const docData = createSourceDocumentData(ledgerData.id, { imageUrls: [] });
-    await db.insert(sourceDocuments).values(docData);
-    await activateTestSourceDocumentProjection(db, docData.id);
-
-    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
-
-    expect(result).not.toBeNull();
-    expect(result!.hasImages).toBe(false);
-  });
-
-  it("should exclude sensitive metadata fields", async () => {
-    const db = getTestDb();
-    const ledgerData = createLedgerData({ userId: testUserId });
-    await db.insert(ledgers).values(ledgerData);
-
-    const docData = createSourceDocumentData(ledgerData.id, {
-      metadata: {
-        visionDescription: "sensitive-vision-data",
-        normalField: "should-be-included",
-      },
-    });
-    await db.insert(sourceDocuments).values(docData);
-    await activateTestSourceDocumentProjection(db, docData.id);
-
-    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
-
-    expect(result).not.toBeNull();
-    expect(result).not.toHaveProperty("metadata");
   });
 
   it("should include associated ledgerEntries", async () => {

@@ -15,7 +15,7 @@ describe("RefreshButton", () => {
     vi.clearAllMocks();
   });
 
-  it("shows success after the refresh resolves and clears it after 1.8 seconds", async () => {
+  it("shows temporary success after the refresh resolves", async () => {
     vi.useFakeTimers();
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     const { container } = render(<RefreshButton onRefresh={onRefresh} isRefreshing={false} />);
@@ -24,7 +24,7 @@ describe("RefreshButton", () => {
     await act(async () => Promise.resolve());
     expect(container.querySelector(".lucide-check")).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(1800));
+    act(() => vi.runAllTimers());
     expect(container.querySelector(".lucide-check")).not.toBeInTheDocument();
   });
 

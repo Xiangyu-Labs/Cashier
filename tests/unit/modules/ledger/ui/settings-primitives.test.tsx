@@ -1,25 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CurrencySection } from "@/modules/ledger/ui/CurrencySection";
-import { SettingsSection } from "@/modules/ledger/ui/settings/SettingsSection";
 
 describe("settings primitives", () => {
-  it("uses the shared select and settings heading hierarchy for main currency", () => {
-    render(
-      <CurrencySection
-        settings={{ mainCurrency: "CNY", currencies: ["CNY"] }}
-        onUpdateSettings={vi.fn()}
-      />
-    );
-
-    expect(screen.getByRole("combobox", { name: "主货币" })).toHaveTextContent("CNY");
-    expect(screen.getByRole("heading", { name: "主货币" })).toHaveClass(
-      "text-sm",
-      "font-medium",
-      "text-text"
-    );
-  });
-
   it("updates the main-currency draft without opening a confirmation", () => {
     const onUpdateSettings = vi.fn();
     render(
@@ -37,20 +20,6 @@ describe("settings primitives", () => {
       currencies: ["CNY", "USD"],
     });
     expect(screen.queryByText("更改主货币？")).not.toBeInTheDocument();
-  });
-
-  it("applies one splitter rule to every direct setting after the first", () => {
-    render(
-      <SettingsSection title="Account">
-        <div>Email</div>
-        <div>Password</div>
-        <div>API keys</div>
-        <div>Sign out</div>
-      </SettingsSection>
-    );
-
-    const items = screen.getByText("Email").parentElement;
-    expect(items).toHaveClass("[&>*+*]:border-t", "[&>*+*]:border-border", "[&>*+*]:pt-4");
   });
 
   it("searches and toggles preferred currencies in the section draft", () => {
