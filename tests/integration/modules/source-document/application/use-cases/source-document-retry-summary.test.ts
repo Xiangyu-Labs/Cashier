@@ -84,57 +84,40 @@ async function setupDocumentWithFirstParseFailure(
 }
 
 describe("retry active result summary", () => {
-  it("anomalous retry with active revision includes activeResultSummary in detail", async () => {
+  it("includes the active result summary for terminal retries", async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-invalid-detail");
+    for (const outcome of ["invalid", "failed"] as const) {
+      const { ledgerId } = await createTestUserWithLedger(
+        db,
+        `retry-${outcome}-detail@example.com`,
+        undefined,
+        crypto.randomUUID()
+      );
+      const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, outcome);
 
-    const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, "invalid");
-
-    const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
-    expect(detail).not.toBeNull();
-    expect(detail?.status).toBe("invalid");
-
-    expect(detail?.activeResultSummary).toBeDefined();
-    expect(detail?.activeResultSummary?.entryCount).toBe(1);
-    expect(detail?.activeResultSummary?.total).toBe("12.50");
-  });
-
-  it("failed retry with active revision includes activeResultSummary in detail", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-failed-detail");
-
-    const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, "failed");
-
-    const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
-    expect(detail).not.toBeNull();
-    expect(detail?.status).toBe("failed");
-
-    expect(detail?.activeResultSummary).toBeDefined();
-    expect(detail?.activeResultSummary?.entryCount).toBe(1);
-    expect(detail?.activeResultSummary?.total).toBe("12.50");
-  });
-
-  it("first-parse invalid (no active revision) does NOT include activeResultSummary", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-first-invalid");
-
-    const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, "invalid");
-
-    const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
-    if (detail != null) {
-      expect(detail.activeResultSummary).toBeUndefined();
+      const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
+      expect(detail).toMatchObject({
+        status: outcome,
+        activeResultSummary: { entryCount: 1, total: "12.50" },
+      });
     }
   });
 
-  it("first-parse failure (no active revision) does NOT include activeResultSummary", async () => {
+  it("omits the active result summary when the first parse has no active revision", async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "retry-first-failed");
+    for (const outcome of ["invalid", "failed"] as const) {
+      const { ledgerId } = await createTestUserWithLedger(
+        db,
+        `retry-first-${outcome}@example.com`,
+        undefined,
+        crypto.randomUUID()
+      );
+      const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, outcome);
 
-    const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, "failed");
-
-    const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
-    expect(detail?.status).toBe("failed");
-    expect(detail?.activeResultSummary).toBeUndefined();
+      const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
+      expect(detail).toMatchObject({ status: outcome });
+      expect(detail?.activeResultSummary).toBeUndefined();
+    }
   });
 
   it("activeResultSummary reflects accurate count and total with multiple entries", async () => {

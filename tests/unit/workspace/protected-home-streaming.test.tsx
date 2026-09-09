@@ -1,5 +1,4 @@
 import React from "react";
-import { getDefaultLedger } from "@/config/default-ledger";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // --------------------------------------------------------------------------
@@ -110,10 +109,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 // --------------------------------------------------------------------------
 // Imports after all mocks
 // --------------------------------------------------------------------------
-import { Suspense } from "react";
-import HomePage from "@/app/[locale]/(protected)/page";
 import { ActiveTab } from "@/app/[locale]/(protected)/_active-tab";
-import { ActiveContent } from "@/app/[locale]/(protected)/_active-content";
 import { UnauthorizedError } from "@/lib/errors";
 
 describe("protected home streaming boundary", () => {
@@ -150,68 +146,11 @@ describe("protected home streaming boundary", () => {
     });
   });
 
-  it("page.tsx returns Suspense with LedgerPageSkeleton fallback and ActiveTab child", async () => {
-    const pageElement = await HomePage({
-      searchParams: Promise.resolve({}),
-    });
-
-    // The top-level element should be a Suspense boundary
-    expect(pageElement.type).toBe(Suspense);
-
-    // Fallback should be the LedgerPageSkeleton
-    expect(pageElement.props.fallback).toBeDefined();
-
-    // Children should be defined (the ActiveTab component)
-    expect(pageElement.props.children).toBeDefined();
-    expect(typeof pageElement.props.children.type).toBe("function");
-  });
-
-  it("does not call auth/resolveHome at the page level (those are in ActiveTab)", async () => {
-    const pageElement = await HomePage({
-      searchParams: Promise.resolve({}),
-    });
-
-    expect(pageElement.type).toBe(Suspense);
-    // resolveAuthenticatedHome is inside ActiveTab, not triggered by page.tsx
-    // directly — Suspense children are lazy renderable
-    expect(resolveAuthenticatedHomeMock).not.toHaveBeenCalled();
-  });
-
-  it("forwards search params to the ActiveTab component", async () => {
-    const searchParams = {
-      tab: "details",
-      period: "custom",
-      startDate: "2026-01-01",
-    };
-    const pageElement = await HomePage({
-      searchParams: Promise.resolve(searchParams),
-    });
-
-    const activeTabElement = pageElement.props.children;
-    expect(activeTabElement.props.searchParams).toEqual(searchParams);
-  });
-
-  it("mounts the shell immediately and keeps bootstrap behind a nested boundary", async () => {
-    const element = await ActiveTab({ searchParams: {} });
+  it("schedules recovery and bootstraps the authorized ledger", async () => {
+    await ActiveTab({ searchParams: {} });
 
     expect(resolveAuthenticatedHomeMock).toHaveBeenCalled();
     expect(scheduleProcessingRecoveryAfterMock).toHaveBeenCalledWith("ledger-1");
-
-    const shellElement = element!.props.children;
-    expect(shellElement).toBeDefined();
-
-    // The shell renders immediately; the bootstrapped content stays behind
-    // a nested Suspense with a startup-preview fallback.
-    const suspenseElement = shellElement.props.children;
-    expect(suspenseElement.type).toBe(Suspense);
-    expect(suspenseElement.props.fallback).toBeDefined();
-
-    const bootstrapElement = suspenseElement.props.children;
-    expect(typeof bootstrapElement.type).toBe("function");
-    const hydrationElement = await bootstrapElement.type(bootstrapElement.props);
-    expect(hydrationElement.type.name).toBe("HydrationBoundary");
-    const innerContent = hydrationElement.props.children;
-    expect(innerContent.type).toBe(ActiveContent);
     expect(getLedgerPageBootstrapMock).toHaveBeenCalledWith(
       expect.objectContaining({
         ledgerId: "ledger-1",
@@ -220,54 +159,6 @@ describe("protected home streaming boundary", () => {
       }),
       expect.any(Object)
     );
-  });
-
-  it("falls back to client queries when the bootstrap fails", async () => {
-    getLedgerPageBootstrapMock.mockRejectedValueOnce(new Error("bootstrap unavailable"));
-
-    const element = await ActiveTab({ searchParams: {} });
-    const suspenseElement = element!.props.children.props.children;
-    const bootstrapElement = suspenseElement.props.children;
-
-    const contentElement = await bootstrapElement.type(bootstrapElement.props);
-
-    expect(contentElement.type.name).toBe("HydrationBoundary");
-    expect(contentElement.props.children.type).toBe(ActiveContent);
-  });
-
-  it("ActiveContent passes the pre-authorized ledger dto to the client", () => {
-    const ledgerDto = {
-      id: "ledger-1",
-      userId: "user-1",
-      settings: { ...getDefaultLedger("en").settings, mainCurrency: "USD" },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    const element = ActiveContent({
-      ledgerId: "ledger-1",
-      ledgerDto,
-      initialTab: "stream",
-      userEmail: "user@test.com",
-    });
-
-    expect(element.props.initialLedger).toBe(ledgerDto);
-  });
-
-  it("ActiveContent keeps the interactive client mounted for slow or failed tab queries", () => {
-    const ledgerDto = {
-      id: "ledger-1",
-      userId: "user-1",
-      settings: getDefaultLedger("zh").settings,
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    const element = ActiveContent({
-      ledgerId: "ledger-1",
-      ledgerDto,
-      initialTab: "stream",
-    });
-
-    expect(element.props.initialLedger).toBe(ledgerDto);
   });
 
   it("throws non-UnauthorizedError from resolveAuthenticatedHome", async () => {

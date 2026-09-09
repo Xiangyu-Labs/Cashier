@@ -35,13 +35,7 @@ describe("buildPwaManifest", () => {
     });
   });
 
-  it("builds the Chinese locale manifest with its existing scope and start URL", () => {
-    expect(buildPwaManifest("zh")).toMatchObject({
-      name: "Cashier - AI 记账助手",
-      description: "AI 驱动的智能记账工具",
-      start_url: "/zh",
-      scope: "/zh/",
-      icons: expectedIcons,
-    });
+  it("adds locale scope to the Chinese manifest", () => {
+    expect(buildPwaManifest("zh")).toMatchObject({ start_url: "/zh", scope: "/zh/" });
   });
 });

@@ -72,36 +72,30 @@ describe("sendLoginNotification", () => {
     );
   });
 
-  it("renders a Chinese login-notification email when locale is zh", async () => {
+  it("renders localized login-notification content", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    const cases = [
+      ["zh", "您的账户有新的登录", "检测到您的账户有新的登录", "登录时间"],
+      ["en", "New sign-in to your account", "New sign-in detected", "Time:"],
+    ] as const;
+
+    for (const [locale, subject, heading, timeLabel] of cases) {
+      sendMock.mockClear();
+      await sendLoginNotification({ email: "notify@example.com", locale });
+
+      const message = sendMock.mock.calls[0]?.[0];
+      expect(message?.subject).toBe(subject);
+      const rendered = await render(message?.react);
+      expect(rendered).toContain(heading);
+      expect(rendered).toContain(timeLabel);
+    }
+  });
+
+  it("uses the configured sender and falls back when it is absent", async () => {
     process.env.AUTH_RESEND_KEY = "resend-key";
 
     await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
 
-    const firstCall = sendMock.mock.calls[0]?.[0];
-    expect(firstCall?.subject).toBe("您的账户有新的登录");
-    const rendered = await render(firstCall?.react);
-    expect(rendered).toContain("检测到您的账户有新的登录");
-    expect(rendered).toContain("登录时间");
-  });
-
-  it("renders an English login-notification email when locale is en", async () => {
-    process.env.AUTH_RESEND_KEY = "resend-key";
-
-    await sendLoginNotification({ email: "notify@example.com", locale: "en" });
-
-    const firstCall = sendMock.mock.calls[0]?.[0];
-    expect(firstCall?.subject).toBe("New sign-in to your account");
-    const rendered = await render(firstCall?.react);
-    expect(rendered).toContain("New sign-in detected");
-    expect(rendered).toContain("Time:");
-  });
-
-  it("sends with fallback sender when AUTH_EMAIL_FROM is missing", async () => {
-    process.env.AUTH_RESEND_KEY = "resend-key";
-
-    await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
-
-    expect(sendMock).toHaveBeenCalledTimes(1);
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         from: "Cashier <noreply@example.com>",
@@ -112,10 +106,7 @@ describe("sendLoginNotification", () => {
       { subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) },
       "Login notification sent"
     );
-  });
-
-  it("uses AUTH_EMAIL_FROM when configured", async () => {
-    process.env.AUTH_RESEND_KEY = "resend-key";
+    sendMock.mockClear();
     process.env.AUTH_EMAIL_FROM = "security@cashier.example";
 
     await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
@@ -127,41 +118,25 @@ describe("sendLoginNotification", () => {
     );
   });
 
-  it("does not throw when resend send fails", async () => {
+  it("absorbs provider failure responses without leaking delivery errors", async () => {
     process.env.AUTH_RESEND_KEY = "resend-key";
-    const sendError = new Error("smtp down");
-    sendMock.mockRejectedValueOnce(sendError);
+    const failures = [
+      () => sendMock.mockRejectedValueOnce(new Error("smtp down")),
+      () => sendMock.mockResolvedValueOnce({ data: null, error: { message: "rejected" } }),
+      () => sendMock.mockResolvedValueOnce({ data: {}, error: null }),
+    ];
 
-    await expect(
-      sendLoginNotification({ email: "notify@example.com", locale: "zh" })
-    ).resolves.toBeUndefined();
-    expect(loggerErrorMock).toHaveBeenCalledWith(
-      { error: sendError, subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) },
-      "Failed to send login notification"
-    );
-  });
-
-  it("treats a provider error result as a failed delivery", async () => {
-    process.env.AUTH_RESEND_KEY = "resend-key";
-    sendMock.mockResolvedValueOnce({ data: null, error: { message: "rejected" } });
-
-    await expect(
-      sendLoginNotification({ email: "notify@example.com", locale: "zh" })
-    ).resolves.toBeUndefined();
-    expect(loggerErrorMock).toHaveBeenCalledWith(
-      expect.objectContaining({ subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) }),
-      "Failed to send login notification"
-    );
-  });
-
-  it("treats a missing provider message id as a failed delivery", async () => {
-    process.env.AUTH_RESEND_KEY = "resend-key";
-    sendMock.mockResolvedValueOnce({ data: {}, error: null });
-
-    await expect(
-      sendLoginNotification({ email: "notify@example.com", locale: "zh" })
-    ).resolves.toBeUndefined();
-    expect(loggerErrorMock).toHaveBeenCalled();
+    for (const arrangeFailure of failures) {
+      loggerErrorMock.mockClear();
+      arrangeFailure();
+      await expect(
+        sendLoginNotification({ email: "notify@example.com", locale: "zh" })
+      ).resolves.toBeUndefined();
+      expect(loggerErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({ subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) }),
+        "Failed to send login notification"
+      );
+    }
   });
 
   it("stops waiting after five seconds and logs the timeout once", async () => {

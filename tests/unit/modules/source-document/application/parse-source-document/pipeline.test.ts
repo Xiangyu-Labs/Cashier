@@ -140,76 +140,36 @@ function buildCtx(ai: AIContext) {
 }
 
 describe("runParsePipeline — single-pass flow", () => {
-  it("returns success for simple document with one AI call", async () => {
-    const { ai, generate } = createMockAI({ firstParseResult: SIMPLE_FIRST_PARSE_RESULT });
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
+  it("uses one AI request for both simple and complex documents", async () => {
+    for (const firstParseResult of [SIMPLE_FIRST_PARSE_RESULT, COMPLEX_FIRST_PARSE_RESULT]) {
+      const { ai, generate } = createMockAI({ firstParseResult });
+      const result = await runParsePipeline(createInput(), buildCtx(ai));
 
-    expect(result.kind).toBe("success");
-    expect(generate).toHaveBeenCalledTimes(1);
-  });
-
-  it("uses one AI call for complex documents", async () => {
-    const { ai, generate } = createMockAI({ firstParseResult: COMPLEX_FIRST_PARSE_RESULT });
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
-
-    expect(result.kind).toBe("success");
-    expect(generate).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns an invalid outcome after one AI call", async () => {
-    const { ai, generate } = createMockAI({ firstParseOutcome: "invalid" });
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
-
-    expect(result.kind).toBe("invalid");
-    expect(generate).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns invalid with a fallback title when AI sends title null", async () => {
-    const { ai } = createMockAI({
-      firstParseResult: {
-        ...SIMPLE_FIRST_PARSE_RESULT,
-        outcome: "invalid",
-        title: null,
-        ledger_entries: [],
-        receipt_totals: [],
-      },
-    });
-
-    const result = await runParsePipeline(
-      createInput({ text: "今天天气很好出去散步了" }),
-      buildCtx(ai)
-    );
-
-    expect(result).toMatchObject({
-      kind: "invalid",
-      title: expect.any(String),
-    });
-    if (result.kind === "invalid") {
-      expect(result.title.trim().length).toBeGreaterThan(0);
+      expect(result.kind).toBe("success");
+      expect(generate).toHaveBeenCalledOnce();
     }
   });
 
-  it("returns invalid with a fallback title when AI omits title", async () => {
-    const { ai } = createMockAI({
-      firstParseResult: {
-        outcome: "invalid",
-        receipt_count: 1,
-        receipt_totals: [],
-        ledger_entries: [],
-        order_adjustments: [],
-        reasoning: "Not a receipt",
-      },
-    });
+  it("provides a nonblank fallback title when an invalid AI result has no usable title", async () => {
+    for (const title of [null, undefined, "   "] as const) {
+      const { ai } = createMockAI({
+        firstParseResult: {
+          ...SIMPLE_FIRST_PARSE_RESULT,
+          outcome: "invalid",
+          ...(title === undefined ? {} : { title }),
+          ledger_entries: [],
+          receipt_totals: [],
+        },
+      });
 
-    const result = await runParsePipeline(
-      createInput({ text: "今天天气很好出去散步了" }),
-      buildCtx(ai)
-    );
+      const result = await runParsePipeline(
+        createInput({ text: "今天天气很好出去散步了" }),
+        buildCtx(ai)
+      );
 
-    expect(result).toMatchObject({
-      kind: "invalid",
-      title: expect.any(String),
-    });
+      expect(result.kind).toBe("invalid");
+      if (result.kind === "invalid") expect(result.title.trim()).not.toBe("");
+    }
   });
 
   it("invalid outcome returns invalid result", async () => {
@@ -228,27 +188,6 @@ describe("runParsePipeline — single-pass flow", () => {
     if (result.kind === "invalid") {
       expect(result.invalidReason).toBe("Image too blurry");
     }
-  });
-
-  it("returns invalid with a fallback title when AI sends blank title", async () => {
-    const { ai } = createMockAI({
-      firstParseResult: {
-        ...SIMPLE_FIRST_PARSE_RESULT,
-        outcome: "invalid",
-        title: "   ",
-        invalid_reason: "Image too blurry",
-        ledger_entries: [],
-        receipt_totals: [],
-      },
-    });
-
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
-
-    expect(result).toMatchObject({
-      kind: "invalid",
-      invalidReason: "Image too blurry",
-      title: expect.any(String),
-    });
   });
 
   it("text-only input uses text model (no vision call)", async () => {

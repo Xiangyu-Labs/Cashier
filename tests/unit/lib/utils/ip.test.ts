@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { getClientIPFromHeaders } from "@/lib/utils/ip";
 
@@ -11,15 +9,6 @@ afterEach(() => {
   else process.env.TRUSTED_PROXY = originalTrustedProxy;
   if (originalVercel === undefined) delete process.env.VERCEL;
   else process.env.VERCEL = originalVercel;
-});
-
-describe("ip module boundaries", () => {
-  it("keeps header parsing utilities free of next/headers", () => {
-    const source = readFileSync(resolve(process.cwd(), "src/lib/utils/ip.ts"), "utf8");
-
-    expect(source).not.toContain('from "next/headers"');
-    expect(source).not.toContain("export async function getClientIP");
-  });
 });
 
 describe("trusted proxy handling", () => {

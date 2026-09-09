@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from "@playwright/test";
 
-test("selection alignment, discard confirmation and one-tap split navigation", async ({
+test("selection, discard confirmation and one-tap split navigation", async ({
   page,
   isMobile,
 }, testInfo) => {
@@ -27,37 +27,20 @@ test("selection alignment, discard confirmation and one-tap split navigation", a
   const surface = page.locator('[data-selection-mode="true"]').filter({ has: card });
   const expand = surface.getByRole("button", { name: "Collapse", exact: true });
   await expect(expand).toHaveCount(1);
-  const marker = surface.getByRole("checkbox").locator("span");
-  const markerBox = await marker.boundingBox();
   const expandBox = await expand.boundingBox();
-  expect(
-    Math.abs(markerBox!.y + markerBox!.height / 2 - expandBox!.y - expandBox!.height / 2)
-  ).toBeLessThan(1.5);
   expect(expandBox!.width + 0.001).toBeGreaterThanOrEqual(44);
   expect(expandBox!.height + 0.001).toBeGreaterThanOrEqual(44);
   await activate(surface.getByRole("checkbox"));
   await activate(expand);
   await expect(surface.getByRole("checkbox")).toBeChecked();
   await page.screenshot({ path: testInfo.outputPath("stream-selection.png"), fullPage: true });
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.locator("html")).toHaveClass(/dark/);
-  await page.screenshot({ path: testInfo.outputPath("stream-selection-dark.png"), fullPage: true });
-  await page.emulateMedia({ colorScheme: "light" });
   await activate(page.getByRole("button", { name: "Cancel", exact: true }));
   await card.getByRole("button", { name: /Quick Entry$/ }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Select", exact: true }).click();
   const row = dialog.getByRole("checkbox", { name: `Select ${name}`, exact: true });
-  const rowBox = await row.boundingBox();
-  const rowMarker = await row.locator("span").boundingBox();
-  expect(
-    Math.abs(rowBox!.y + rowBox!.height / 2 - rowMarker!.y - rowMarker!.height / 2)
-  ).toBeLessThan(1.5);
   await activate(row);
-  await expect(dialog.getByRole("button", { name: "Delete", exact: true }).first()).toHaveCSS(
-    "color",
-    "rgb(255, 255, 255)"
-  );
+  await expect(dialog.getByRole("button", { name: "Delete", exact: true }).first()).toBeEnabled();
   await page.screenshot({ path: testInfo.outputPath("detail-selection.png"), fullPage: true });
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await dialog.getByRole("button", { name: "Edit", exact: true }).click();

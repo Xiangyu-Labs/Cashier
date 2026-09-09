@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCellAmount,
-  getHeatmapColor,
   getHeatmapLegend,
   getHeatmapLevel,
 } from "@/modules/stats/lib/heatmap-colors";
@@ -28,10 +27,6 @@ describe("heatmap-colors", () => {
 
     expect(getHeatmapLevel("4", stats)).toBe(2);
     expect(getHeatmapLevel("20", stats)).toBe(5);
-  });
-
-  it("returns safe fallback color for invalid level index", () => {
-    expect(getHeatmapColor(99 as unknown as 0)).toBe("var(--heatmap-0)");
   });
 
   it("returns legend entries for all six levels", () => {

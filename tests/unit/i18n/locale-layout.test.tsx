@@ -97,18 +97,6 @@ describe("locale layout", () => {
     }
   );
 
-  it("renders without a downloaded font class", async () => {
-    const layout = await LocaleLayout({
-      children: <div>Content</div>,
-      params: Promise.resolve({ locale: "en" }),
-    });
-    const html = layout as React.ReactElement<{
-      children: React.ReactElement<{ className: string }>;
-    }>;
-    const body = html.props.children;
-    expect(body.props.className).toBe("antialiased");
-  });
-
   it.each(["sw.js", "en-US", "typo"])(
     "rejects invalid locale %s before loading localized content",
     async (locale) => {

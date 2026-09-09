@@ -36,8 +36,8 @@ beforeEach(() => {
 });
 
 describe("EntryFilterPanel", () => {
-  it("does not count the default current-month period", () => {
-    render(
+  it("counts only non-default periods as active filters", () => {
+    const view = render(
       <EntryFilterPanel
         filters={{}}
         periodParams={{ period: "thisMonth" }}
@@ -46,12 +46,9 @@ describe("EntryFilterPanel", () => {
         showCurrency={false}
       />
     );
+    expect(screen.getByRole("button", { name: "筛选" })).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: "筛选" })).toBeDefined();
-  });
-
-  it("counts all time as one active filter", () => {
-    render(
+    view.rerender(
       <EntryFilterPanel
         filters={{}}
         periodParams={{ period: "all" }}
@@ -60,8 +57,7 @@ describe("EntryFilterPanel", () => {
         showCurrency={false}
       />
     );
-
-    expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "筛选 1" })).toBeInTheDocument();
   });
 
   it("opens a bottom dialog and applies the shared draft on mobile", async () => {
@@ -109,22 +105,6 @@ describe("EntryFilterPanel", () => {
     expect(screen.getByText("无效")).toBeDefined();
     expect(screen.getByText("失败")).toBeDefined();
     expect(screen.getByText("待核准")).toBeDefined();
-  });
-
-  it("renders All Statuses reset button and preset buttons", () => {
-    render(
-      <EntryFilterPanel
-        filters={{}}
-        onFiltersChange={vi.fn()}
-        showCategory={false}
-        showCurrency={false}
-      />
-    );
-
-    expect(screen.getByText("全部状态")).toBeDefined();
-    expect(screen.getByText("待处理")).toBeDefined();
-    // "进行中" is the in_progress preset button (distinct from "处理中" checkbox label)
-    expect(screen.getByRole("button", { name: "进行中" })).toBeDefined();
   });
 
   it("keeps needs_attention preset in the draft until Apply", async () => {

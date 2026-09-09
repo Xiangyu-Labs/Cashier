@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -43,12 +43,16 @@ vi.mock("next-intl", async () => {
 });
 
 describe("Dialog", () => {
-  describe.each(["en", "zh"] as const)("localization (%s)", (locale) => {
-    beforeEach(() => {
-      currentLocale.value = locale;
-    });
+  beforeEach(() => {
+    currentLocale.value = "en";
+  });
 
-    it("renders localized close screen-reader text via Common namespace", () => {
+  it("renders localized close screen-reader text via Common namespace", () => {
+    for (const [locale, expected] of [
+      ["en", "Close"],
+      ["zh", "关闭"],
+    ] as const) {
+      currentLocale.value = locale;
       render(
         <Dialog open>
           <DialogTrigger />
@@ -58,46 +62,43 @@ describe("Dialog", () => {
         </Dialog>
       );
 
-      const expected = locale === "en" ? "Close" : "关闭";
-      const closeButton = screen.getByRole("button", { name: expected });
-      expect(closeButton).toBeDefined();
-    });
+      expect(screen.getByRole("button", { name: expected })).toBeInTheDocument();
+      cleanup();
+    }
+  });
 
-    it("focuses the dialog title before its close control", async () => {
-      render(
-        <Dialog open>
-          <DialogContent variant="modal">
-            <DialogTitle>Dialog title</DialogTitle>
-            <p>Dialog body</p>
-          </DialogContent>
-        </Dialog>
-      );
+  it("focuses the dialog title before its close control", async () => {
+    render(
+      <Dialog open>
+        <DialogContent variant="modal">
+          <DialogTitle>Dialog title</DialogTitle>
+          <p>Dialog body</p>
+        </DialogContent>
+      </Dialog>
+    );
 
-      await waitFor(() =>
-        expect(screen.getByRole("heading", { name: "Dialog title" })).toHaveFocus()
-      );
-      expect(
-        screen.getByRole("button", { name: locale === "en" ? "Close" : "关闭" })
-      ).not.toHaveFocus();
-    });
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Dialog title" })).toHaveFocus()
+    );
+    expect(screen.getByRole("button", { name: "Close" })).not.toHaveFocus();
+  });
 
-    it("increments the layer for a nested task dialog", () => {
-      render(
-        <Dialog open>
-          <DialogContent variant="detail">
-            <p>Detail body</p>
-            <Dialog open>
-              <DialogContent variant="modal">
-                <p>Task body</p>
-              </DialogContent>
-            </Dialog>
-          </DialogContent>
-        </Dialog>
-      );
+  it("increments the layer for a nested task dialog", () => {
+    render(
+      <Dialog open>
+        <DialogContent variant="detail">
+          <p>Detail body</p>
+          <Dialog open>
+            <DialogContent variant="modal">
+              <p>Task body</p>
+            </DialogContent>
+          </Dialog>
+        </DialogContent>
+      </Dialog>
+    );
 
-      const detail = screen.getByText("Detail body").parentElement;
-      const task = screen.getByText("Task body").parentElement;
-      expect(Number(task?.style.zIndex)).toBeGreaterThan(Number(detail?.style.zIndex));
-    });
+    const detail = screen.getByText("Detail body").parentElement;
+    const task = screen.getByText("Task body").parentElement;
+    expect(Number(task?.style.zIndex)).toBeGreaterThan(Number(detail?.style.zIndex));
   });
 });

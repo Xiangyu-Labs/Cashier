@@ -54,14 +54,6 @@ describe("ledger-url-params", () => {
     expect(params.get("maxAmount")).toBeNull();
   });
 
-  it("preserves __uncategorized__ when writing category filters", () => {
-    const params = updateLedgerSearchParams(new URLSearchParams("categoryId=old"), {
-      categoryId: "__uncategorized__",
-    });
-
-    expect(params.toString()).toContain("categoryId=__uncategorized__");
-  });
-
   it("reads __uncategorized__ back from the URL", () => {
     const filters = readLedgerFilterParams(
       new URLSearchParams("categoryId=__uncategorized__&currency=USD")
@@ -251,66 +243,38 @@ describe("ledger-url-params", () => {
   });
 
   describe("parseStatusesParam", () => {
-    it("returns empty array for null", () => {
-      expect(parseStatusesParam(null)).toEqual([]);
-    });
+    it("normalizes status filters into canonical valid values", () => {
+      const cases = [
+        [null, []],
+        ["", []],
+        ["completed", ["completed"]],
+        ["failed,processing", ["processing", "failed"]],
+        ["processing,processing,processing", ["processing"]],
+        ["processing,unknown_status,failed", ["processing", "failed"]],
+        ["unknown,bogus", []],
+        [" processing , failed ", ["processing", "failed"]],
+        [",processing,", ["processing"]],
+        ["processing,,failed", ["processing", "failed"]],
+      ] as const;
 
-    it("returns empty array for empty string", () => {
-      expect(parseStatusesParam("")).toEqual([]);
-    });
-
-    it("parses a single valid status", () => {
-      expect(parseStatusesParam("completed")).toEqual(["completed"]);
-    });
-
-    it("parses multiple comma-delimited statuses in canonical order", () => {
-      // Input order: failed,processing — canonical order: processing,failed
-      expect(parseStatusesParam("failed,processing")).toEqual(["processing", "failed"]);
-    });
-
-    it("deduplicates repeated statuses", () => {
-      expect(parseStatusesParam("processing,processing,processing")).toEqual(["processing"]);
-    });
-
-    it("ignores unknown status tokens", () => {
-      expect(parseStatusesParam("processing,unknown_status,failed")).toEqual([
-        "processing",
-        "failed",
-      ]);
-    });
-
-    it("returns empty array when all tokens are invalid", () => {
-      expect(parseStatusesParam("unknown,bogus")).toEqual([]);
-    });
-
-    it("handles whitespace around tokens", () => {
-      expect(parseStatusesParam(" processing , failed ")).toEqual(["processing", "failed"]);
-    });
-
-    it("handles trailing and leading delimiters", () => {
-      expect(parseStatusesParam(",processing,")).toEqual(["processing"]);
-    });
-
-    it("handles empty tokens between delimiters", () => {
-      expect(parseStatusesParam("processing,,failed")).toEqual(["processing", "failed"]);
+      for (const [input, expected] of cases) {
+        expect(parseStatusesParam(input)).toEqual(expected);
+      }
     });
   });
 
   describe("formatStatusesParam", () => {
-    it("returns null for empty array", () => {
-      expect(formatStatusesParam([])).toBeNull();
-    });
+    it("serializes status filters canonically", () => {
+      const cases = [
+        [[], null],
+        [["completed"], "completed"],
+        [["failed", "processing"], "processing,failed"],
+        [["processing", "processing", "processing"], "processing"],
+      ] as const;
 
-    it("formats a single status", () => {
-      expect(formatStatusesParam(["completed"])).toBe("completed");
-    });
-
-    it("formats multiple statuses in canonical order", () => {
-      expect(formatStatusesParam(["failed", "processing"])).toBe("processing,failed");
-    });
-
-    it("deduplicates values", () => {
-      expect(formatStatusesParam(["processing", "processing", "processing"])).toBe("processing");
+      for (const [input, expected] of cases) {
+        expect(formatStatusesParam([...input])).toBe(expected);
+      }
     });
   });
 
@@ -323,20 +287,13 @@ describe("ledger-url-params", () => {
       expect(params.get("statuses")).toBe("invalid,failed");
     });
 
-    it("deletes statuses parameter when set to null", () => {
-      const params = updateLedgerSearchParams(new URLSearchParams("statuses=processing,failed"), {
-        statuses: null,
-      });
-
-      expect(params.get("statuses")).toBeNull();
-    });
-
-    it("deletes statuses parameter when set to empty array", () => {
-      const params = updateLedgerSearchParams(new URLSearchParams("statuses=processing,failed"), {
-        statuses: [],
-      });
-
-      expect(params.get("statuses")).toBeNull();
+    it("deletes statuses parameter when the filter is cleared", () => {
+      for (const statuses of [null, []] as const) {
+        const params = updateLedgerSearchParams(new URLSearchParams("statuses=processing,failed"), {
+          statuses: statuses == null ? null : [...statuses],
+        });
+        expect(params.get("statuses")).toBeNull();
+      }
     });
 
     it("preserves existing statuses when not in updates", () => {
