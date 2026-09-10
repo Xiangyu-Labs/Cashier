@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useLoginFlow } from "../hooks/use-login-flow";
 import { EmailStep } from "./email-step";
@@ -33,9 +34,13 @@ export function AuthLoginPage({
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface text-lg font-semibold text-primary">
-            C
-          </div>
+          <Image
+            src="/icon.png"
+            alt=""
+            width={48}
+            height={48}
+            className="mx-auto mb-4 rounded-lg border border-border"
+          />
           <h1 className="text-2xl font-semibold text-text">Cashier</h1>
           <p className="mt-2 text-sm text-muted-foreground">{t("productTagline")}</p>
         </div>

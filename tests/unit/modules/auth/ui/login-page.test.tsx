@@ -99,6 +99,8 @@ describe("AuthLoginPage", () => {
     const { AuthLoginPage } = await import("@/modules/auth/ui/login-page");
     render(<AuthLoginPage />);
 
+    const logo = document.querySelector('img[src*="icon.png"]');
+    expect(logo).toHaveAttribute("alt", "");
     expect(screen.getByRole("heading", { name: "Cashier" })).toBeInTheDocument();
     expect(screen.getByText("一个安静的个人账本")).toBeInTheDocument();
   });
