@@ -1,7 +1,5 @@
 "use client";
 import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
-import type { EntryCategory } from "@/modules/ledger/contracts";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,7 +15,6 @@ interface EntryHeaderProps {
   itemName: string;
   amount: number;
   currency: string;
-  category?: EntryCategory;
   preferredCurrencies: string[];
   mainCurrency: string;
   convertedAmount: string | null;
@@ -33,7 +30,6 @@ export function EntryHeader({
   itemName,
   amount,
   currency,
-  category,
   preferredCurrencies,
   mainCurrency,
   convertedAmount,
@@ -49,13 +45,13 @@ export function EntryHeader({
   ];
 
   return (
-    <div className="flex items-start gap-3 sm:gap-4">
-      <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl sm:rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-        <CategoryIcon
-          {...(category?.icon !== undefined ? { iconName: category.icon } : {})}
-          className="h-6 w-6 sm:h-8 sm:w-8 text-primary"
-        />
-      </div>
+    <div className="flex items-start gap-3">
+      {/*
+        The category already has its own labelled row in the metadata block
+        below, so this slot keeps an icon-sized spacer instead of a second
+        56px tile that repeats the same icon and name.
+      */}
+      <div className="h-12 w-12 shrink-0 sm:h-14 sm:w-14" aria-hidden="true" />
 
       <div className="flex-1 space-y-1 sm:space-y-2 min-w-0 pr-8">
         <EditableField

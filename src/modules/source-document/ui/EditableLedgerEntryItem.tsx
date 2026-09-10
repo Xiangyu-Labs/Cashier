@@ -139,6 +139,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         onChange={(categoryId) => handleChange("categoryId", categoryId)}
         placeholder={categoryPlaceholder}
         disabled={readOnly}
+        iconOnly
       />
 
       {/* Name + Description */}
