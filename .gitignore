@@ -48,6 +48,7 @@ public/worker-*.js
 .claude/
 .formless/
 .worktrees/
+.zcode/
 
 # Local uploads
 /uploads/

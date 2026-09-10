@@ -915,7 +915,12 @@
     "updateNow": "Reload",
     "later": "Later",
     "updating": "Reloading…",
-    "dirtyBlocked": "Save or discard your changes before reloading the app."
+    "dirtyBlocked": "Save or discard your changes before reloading the app.",
+    "requestBlocked": "A request is still in progress. Reloading will continue automatically once it finishes.",
+    "dialogBlocked": "Close the open dialog before reloading the app.",
+    "focusBlocked": "Leave the text field before reloading the app.",
+    "batchBlocked": "Finish selecting entries before reloading the app.",
+    "offlineBlocked": "Reconnect to the network before reloading the app."
   },
   "LedgerQueryError": {
     "emptyDescription": "Could not load this view. Check your connection and try again.",

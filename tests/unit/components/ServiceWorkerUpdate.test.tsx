@@ -108,6 +108,34 @@ describe("ServiceWorkerUpdate", () => {
     expect(toastErrorMock).toHaveBeenCalledWith("dirtyBlocked");
     expect(worker.postMessage).not.toHaveBeenCalledWith({ type: "ACTIVATE_NOW" });
   });
+  it("reloads while a background refetch is in flight", async () => {
+    // The app polls category metadata every few seconds; a pending background
+    // fetch must not block the reload the way `isFetching()` used to.
+    const fetchQuery = client.fetchQuery({
+      queryKey: ["background-refresh"],
+      queryFn: () => new Promise(() => {}),
+    });
+    void fetchQuery.catch(() => undefined);
+    mount();
+    await waitFor(() => expect(client.isFetching()).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(worker.postMessage).toHaveBeenCalledWith({ type: "ACTIVATE_SINGLE_WINDOW" })
+    );
+  });
+  it("blocks an update while a mutation is pending and names the request", async () => {
+    const isMutating = vi.spyOn(client, "isMutating").mockReturnValue(1);
+    mount();
+    await waitFor(() => expect(registration.update).toHaveBeenCalled());
+    expect(worker.postMessage).not.toHaveBeenCalled();
+    const options = toastMock.mock.calls.at(-1)?.[1] as { action: { onClick: () => void } };
+    act(() => options.action.onClick());
+    expect(toastErrorMock).toHaveBeenCalledWith("requestBlocked");
+    isMutating.mockReturnValue(0);
+    act(() => window.dispatchEvent(new Event("focus")));
+    await waitFor(() =>
+      expect(worker.postMessage).toHaveBeenCalledWith({ type: "ACTIVATE_SINGLE_WINDOW" })
+    );
+  });
   it("waits for open dialogs to close", async () => {
     const dialog = document.createElement("div");
     dialog.setAttribute("role", "dialog");

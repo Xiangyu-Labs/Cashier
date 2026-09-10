@@ -8,6 +8,38 @@ import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 const UPDATE_TOAST_ID = "service-worker-update";
 
+/**
+ * Why an update cannot reload right now, or `null` when it is safe.
+ *
+ * Background refetches deliberately do not block: the app polls category
+ * metadata every few seconds, which would otherwise make the reload button
+ * fail while the user is doing nothing.
+ */
+type UpdateBlocker = "dirty" | "request" | "dialog" | "focus" | "batch" | "hidden" | "offline";
+
+function blockerMessage(
+  blocker: UpdateBlocker | "disposed",
+  t: ReturnType<typeof useTranslations>
+): string {
+  switch (blocker) {
+    case "dirty":
+      return t("dirtyBlocked");
+    case "request":
+      return t("requestBlocked");
+    case "dialog":
+      return t("dialogBlocked");
+    case "focus":
+      return t("focusBlocked");
+    case "batch":
+      return t("batchBlocked");
+    case "offline":
+      return t("offlineBlocked");
+    case "hidden":
+    case "disposed":
+      return t("dirtyBlocked");
+  }
+}
+
 export function ServiceWorkerUpdate() {
   const queryClient = useQueryClient();
   const t = useTranslations("ServiceWorkerUpdate");
@@ -23,20 +55,29 @@ export function ServiceWorkerUpdate() {
     let port: MessagePort | null = null;
     let requestTimeout: ReturnType<typeof setTimeout> | undefined;
     let hasEstablishedController = navigator.serviceWorker.controller != null;
-    const safeToUpdate = () =>
-      !disposed &&
-      document.visibilityState === "visible" &&
-      navigator.onLine &&
-      !useUnsavedChangesStore.getState().hasDirtyChanges() &&
-      queryClient.isMutating() === 0 &&
-      queryClient.isFetching() === 0 &&
-      document.documentElement.dataset.batchSelection !== "true" &&
-      document.querySelector('[role="dialog"][data-state="open"], [data-update-blocked="true"]') ==
-        null &&
-      !(
+    const updateBlocker = (): UpdateBlocker | "disposed" | null => {
+      if (disposed) return "disposed";
+      if (document.visibilityState !== "visible") return "hidden";
+      if (!navigator.onLine) return "offline";
+      if (useUnsavedChangesStore.getState().hasDirtyChanges()) return "dirty";
+      if (queryClient.isMutating() !== 0) return "request";
+      if (document.documentElement.dataset.batchSelection === "true") return "batch";
+      if (
+        document.querySelector(
+          '[role="dialog"][data-state="open"], [data-update-blocked="true"]'
+        ) != null
+      ) {
+        return "dialog";
+      }
+      if (
         document.activeElement instanceof HTMLElement &&
         document.activeElement.matches("input, textarea, [contenteditable=true]")
-      );
+      ) {
+        return "focus";
+      }
+      return null;
+    };
+    const safeToUpdate = () => updateBlocker() === null;
     const releaseRequest = () => {
       clearTimeout(requestTimeout);
       port?.close();
@@ -52,9 +93,13 @@ export function ServiceWorkerUpdate() {
         action: {
           label: t("updateNow"),
           onClick: () => {
-            if (!safeToUpdate()) {
-              toast.error(t("dirtyBlocked"));
+            const blocker = updateBlocker();
+            if (blocker != null) {
+              toast.error(blockerMessage(blocker, t));
               showUpdate(worker);
+              // Retry as soon as the blocking condition clears, so the reload
+              // does not require a second click once a request settles.
+              if (blocker === "request" || blocker === "dirty") tryUpdate();
               return;
             }
             toast(t("updating"), { id: UPDATE_TOAST_ID, duration: Infinity });
