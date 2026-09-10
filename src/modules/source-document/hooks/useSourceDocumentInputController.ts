@@ -105,11 +105,11 @@ export function useSourceDocumentInputController(options: UseSourceDocumentInput
   };
 
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+    const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (files == null) return;
+    if (files.length === 0) return;
 
-    fireAndForget(appendFiles(Array.from(files)), {
+    fireAndForget(appendFiles(files), {
       context: "SourceDocumentInput.processFiles",
     });
   };

@@ -69,4 +69,34 @@ describe("useSourceDocumentInputController", () => {
     expect(result.current.isPreparingImages).toBe(false);
     expect(result.current.canSubmit).toBe(true);
   });
+
+  it("snapshots selected files before resetting an iOS-style live file list", async () => {
+    loadFilesMock.mockResolvedValue([]);
+    const { result } = renderHook(() =>
+      useSourceDocumentInputController({ ledgerId: "ledger-1", messages })
+    );
+    const selectedFile = new File([new Uint8Array([1])], "camera.jpg", {
+      type: "image/jpeg",
+    });
+    let selectedFiles: File[] = [selectedFile];
+    const input = {
+      get files() {
+        return selectedFiles;
+      },
+      set value(value: string) {
+        if (value === "") selectedFiles = [];
+      },
+    };
+
+    act(() => {
+      result.current.handleFileInputChange({
+        target: input,
+      } as unknown as ChangeEvent<HTMLInputElement>);
+    });
+
+    await waitFor(() =>
+      expect(loadFilesMock).toHaveBeenCalledWith([selectedFile], expect.anything())
+    );
+    expect(selectedFiles).toEqual([]);
+  });
 });
