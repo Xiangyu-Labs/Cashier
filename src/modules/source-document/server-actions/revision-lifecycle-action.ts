@@ -22,18 +22,6 @@ export function sourceDocumentLifecyclePort(): SourceDocumentLifecyclePort {
   return {
     acceptCandidate: aggregate.acceptCandidate,
     abandonCandidate: aggregate.abandonCandidate,
-    keepDuplicate: (ledgerId, sourceDocumentId, expectedVersion) =>
-      aggregate
-        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "keep" })
-        .then((result) =>
-          result == null ? null : { version: result.version, status: "completed" as const }
-        ),
-    discardDuplicate: (ledgerId, sourceDocumentId, expectedVersion) =>
-      aggregate
-        .resolveDuplicate({ ledgerId, sourceDocumentId, expectedVersion, decision: "discard" })
-        .then((result) =>
-          result == null ? null : { version: result.version, status: "deleted" as const }
-        ),
     cancelPending: aggregate.cancelProcessing,
   };
 }

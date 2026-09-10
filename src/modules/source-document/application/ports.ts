@@ -19,7 +19,6 @@ import type {
   SourceDocumentCandidateReviewDto,
   SplitSourceDocumentResultDto,
   SourceDocumentDto,
-  SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
   AtomicBatchCommandResult,
@@ -37,11 +36,6 @@ interface SourceDocumentFilterInput {
   search?: string;
 }
 
-export interface PendingDuplicateReviewContract {
-  sourceDocumentId: string;
-  revisionId: string;
-}
-
 interface SourceDocumentListInput extends SourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
@@ -56,14 +50,6 @@ export interface SourceDocumentReadPort {
     ledgerId: string,
     sourceDocumentId: string
   ): Promise<SourceDocumentCandidateReviewDto>;
-  duplicateReview(
-    ledgerId: string,
-    sourceDocumentId: string
-  ): Promise<SourceDocumentDuplicateReviewDetailDto>;
-  listPendingDuplicateReviews(
-    ledgerId: string,
-    sourceDocumentIds: readonly string[]
-  ): Promise<PendingDuplicateReviewContract[]>;
   getEvidence(
     ledgerId: string,
     sourceDocumentId: string
@@ -129,12 +115,6 @@ export interface SourceDocumentAggregateWritePort {
   acceptCandidate: SourceDocumentLifecyclePort["acceptCandidate"];
   abandonCandidate: SourceDocumentLifecyclePort["abandonCandidate"];
   cancelProcessing: SourceDocumentLifecyclePort["cancelPending"];
-  resolveDuplicate(input: {
-    ledgerId: string;
-    sourceDocumentId: string;
-    expectedVersion: number;
-    decision: "keep" | "discard";
-  }): Promise<{ version: number; status: "completed" | "deleted" } | null>;
   deleteDocuments(input: {
     ledgerId: string;
     target: VersionedTarget;
@@ -171,29 +151,19 @@ export interface SourceDocumentLifecyclePort {
     ledgerId: string,
     sourceDocumentId: string,
     expectedVersion: number
-  ): Promise<{ version: number; status: "completed" | "duplicate_pending" }>;
+  ): Promise<{ version: number; status: "completed" }>;
   abandonCandidate(
     ledgerId: string,
     sourceDocumentId: string,
     expectedVersion: number
-  ): Promise<{ version: number; status: "completed" | "duplicate_pending" } | null>;
-  keepDuplicate(
-    ledgerId: string,
-    sourceDocumentId: string,
-    expectedVersion: number
   ): Promise<{ version: number; status: "completed" } | null>;
-  discardDuplicate(
-    ledgerId: string,
-    sourceDocumentId: string,
-    expectedVersion: number
-  ): Promise<{ version: number; status: "deleted" } | null>;
   cancelPending(
     ledgerId: string,
     sourceDocumentId: string,
     expectedVersion: number
   ): Promise<{
     version: number;
-    status: "cancelled" | "completed" | "duplicate_pending";
+    status: "cancelled" | "completed";
   }>;
 }
 

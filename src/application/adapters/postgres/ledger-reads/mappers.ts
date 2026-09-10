@@ -66,11 +66,7 @@ function mapSourceDocumentReferenceDto(
     version: doc.stateVersion,
     ledgerId: doc.ledgerId,
     title: doc.title,
-    // Ledger-entry references describe the active accounting projection.
-    // Duplicate-pending is the one active status that remains actionable in
-    // the UI; retry/invalid states still expose their retained completed
-    // projection as completed for compatibility.
-    status: doc.currentStatus === "duplicate_pending" ? "duplicate_pending" : "completed",
+    status: "completed",
     type: doc.type,
     entryDate: doc.entryDate,
     createdAt: toIso(doc.createdAt)!,

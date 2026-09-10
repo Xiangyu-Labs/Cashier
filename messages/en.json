@@ -132,13 +132,7 @@
     "retryImpact": "Retry preview",
     "deleted": "Deleted {count} records",
     "retried": "Submitted {count} records for retry",
-    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}",
-    "keepDuplicates": "Keep possible duplicates ({count})",
-    "deleteDuplicates": "Delete duplicates ({count})",
-    "deleteDuplicatesTitle": "Delete possible duplicates",
-    "deleteDuplicatesDescription": "Delete the selected {count} possible duplicates? This cannot be undone.",
-    "duplicatesKept": "Kept {count} possible duplicates",
-    "duplicatesDiscarded": "Deleted {count} duplicates"
+    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}"
   },
   "EntryFilterPanel": {
     "filter": "Filter",
@@ -159,14 +153,12 @@
     "allStatuses": "All Statuses",
     "needsAttention": "Needs Attention",
     "inProgress": "In Progress",
-    "possibleDuplicates": "Possible duplicates",
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "statusInvalid": "Invalid",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusCandidatePending": "Candidate Pending",
-    "statusDuplicatePending": "Duplicate pending",
     "statusSummary": "Status: {label}",
     "search": "Search",
     "searchPlaceholder": "Search title, name, or description",
@@ -275,8 +267,7 @@
     "submittedGroupSuffix": "(submitted)",
     "today": "Today",
     "yesterday": "Yesterday",
-    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved.",
-    "duplicatePendingTitle": "Possible duplicate"
+    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
   },
   "QuickEntryForm": {
     "selectCategory": "Select a category",
@@ -327,7 +318,6 @@
     "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
-    "statusDuplicatePending": "Duplicate pending",
     "refresh": "Refresh",
     "refreshSuccess": "Refreshed",
     "refreshFailed": "Refresh failed. Try again.",
@@ -532,8 +522,6 @@
     "assistant": "Smart Assistant",
     "aiLanguage": "AI Output Language",
     "aiLanguageDesc": "Makes AI-generated titles, item names, adjustments, and notes natural for native speakers of this language without limiting the receipt's original language",
-    "duplicateDetection": "Detect possible duplicates",
-    "duplicateDetectionDesc": "When enabled, new bills are checked against nearby bills and flagged for your confirmation. Turning it off affects future submissions and retries only; existing reviews stay unchanged.",
     "aiSettings": "AI Settings",
     "serviceCredentialsSection": "Service Credentials",
     "dataConfig": "Currency & Categories",
@@ -960,27 +948,5 @@
   },
   "Currency": {
     "conversionUnavailable": "Conversion unavailable"
-  },
-  "DuplicateReview": {
-    "title": "Possible duplicate bill",
-    "confidence": "Confidence {percent}%",
-    "original": "Original bill",
-    "newBill": "New bill",
-    "image": "image",
-    "viewImage": "View {filename}",
-    "matchedMissing": "The matched bill is no longer available.",
-    "snapshotVersion": "Version at detection",
-    "matchedModified": "This bill was modified after detection. The version used for detection is shown below.",
-    "matchedDeleted": "This bill was deleted after detection. The version used for detection is shown below.",
-    "untitled": "Untitled",
-    "date": "Date: {date}",
-    "unconverted": "{count} unconverted",
-    "keep": "Keep this bill",
-    "discard": "Delete duplicate",
-    "discardConfirmTitle": "Delete this entire bill?",
-    "discardConfirmDescription": "This deletes the bill dated {date}, all {count} entries, and its total of {amount}. This cannot be undone.",
-    "keepSuccess": "Bill kept",
-    "discardSuccess": "Duplicate deleted",
-    "actionFailed": "Action failed, please retry."
   }
 }

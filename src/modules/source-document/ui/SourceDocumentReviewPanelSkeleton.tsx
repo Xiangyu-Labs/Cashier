@@ -4,7 +4,7 @@ function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden className={cn("animate-pulse rounded bg-surface2", className)} />;
 }
 
-export function ReviewPanelSkeleton() {
+export function SourceDocumentReviewPanelSkeleton() {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">

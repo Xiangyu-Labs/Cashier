@@ -5,7 +5,6 @@ const SOURCE_DOCUMENT_STATUSES = [
   "failed",
   "cancelled",
   "candidate_pending",
-  "duplicate_pending",
 ] as const;
 
 export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
@@ -15,7 +14,6 @@ export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
   "failed",
   "cancelled",
   "candidate_pending",
-  "duplicate_pending",
 ] as const;
 
 export const SourceDocumentStatus = {
@@ -25,7 +23,6 @@ export const SourceDocumentStatus = {
   Failed: SOURCE_DOCUMENT_STATUSES[3],
   Cancelled: SOURCE_DOCUMENT_STATUSES[4],
   CandidatePending: SOURCE_DOCUMENT_STATUSES[5],
-  DuplicatePending: SOURCE_DOCUMENT_STATUSES[6],
 } as const;
 
 export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];

@@ -13,7 +13,6 @@ import { LedgerEntriesStreamBody } from "./LedgerEntriesStreamBody";
 import {
   LedgerEntriesOverlays,
   preloadCandidateReviewDialog,
-  preloadDuplicateReviewDialog,
   preloadEditRetryDialog,
 } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
@@ -146,7 +145,6 @@ export function LedgerEntriesTab({
         queryFingerprint={selection.queryFingerprint}
         selectedSourceDocumentIds={selection.selectedIds}
         selectedEntryIds={selection.selectedEntryIds}
-        selectedDuplicateCount={selection.selectedDuplicateCount}
         onToggleSelectionMode={selection.handleToggleSelectionMode}
         onSelectAll={() => !selection.isBatchPending && selection.selectAll()}
         onClearSelection={() => !selection.isBatchPending && selection.clearSelection()}
@@ -170,20 +168,6 @@ export function LedgerEntriesTab({
         }}
         isRetrying={selection.batchRetry.isPending}
         isDeleting={selection.batchDelete.isPending}
-        onKeepDuplicates={async () => {
-          await selection.batchKeepDuplicates.mutateAsync({
-            ids: selection.selectedDuplicateIds,
-            preserveIds: selection.selectedOrdinaryIds,
-          });
-        }}
-        onDiscardDuplicates={async () => {
-          await selection.batchDiscardDuplicates.mutateAsync({
-            ids: selection.selectedDuplicateIds,
-            preserveIds: selection.selectedOrdinaryIds,
-          });
-        }}
-        isKeepingDuplicates={selection.batchKeepDuplicates.isPending}
-        isDiscardingDuplicates={selection.batchDiscardDuplicates.isPending}
         isProcessing={selection.isBatchPending}
         filters={filters}
         onFiltersChange={onFiltersChange}
@@ -218,7 +202,6 @@ export function LedgerEntriesTab({
           onViewSourceDetail={handleViewSourceDetail}
           onViewSourceDetailIntent={(document) => {
             if (document.status === "candidate_pending") preloadCandidateReviewDialog();
-            if (document.status === "duplicate_pending") preloadDuplicateReviewDialog();
           }}
           onEditRetry={setRetrySourceDocument}
           onEditRetryIntent={preloadEditRetryDialog}

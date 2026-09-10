@@ -125,10 +125,6 @@ describe("PostgreSQL schema contract", () => {
       "fk_processing_outbox_document_ledger",
       "fk_upload_session_files_session_ledger",
       "fk_upload_session_files_stored_file_ledger",
-      "fk_duplicate_reviews_document_ledger",
-      "fk_duplicate_reviews_revision_ledger",
-      "fk_duplicate_reviews_matched_ledger",
-      "fk_duplicate_reviews_matched_revision_ledger",
       "fk_source_documents_active_revision",
       "fk_source_documents_pending_revision",
     ];
@@ -147,14 +143,8 @@ describe("PostgreSQL schema contract", () => {
     expect(byName.has("ledger_entries_category_id_entry_categories_id_fk")).toBe(false);
   });
 
-  it("keeps duplicate review checks and sync version guards", async () => {
+  it("keeps sync version guards", async () => {
     const byName = new Map((await fetchConstraints()).map((row) => [row.conname, row.definition]));
-
-    expect(compact(byName.get("ck_duplicate_reviews_confidence"))).toContain("confidence>=0");
-    expect(compact(byName.get("ck_duplicate_reviews_confidence"))).toContain("confidence<=1");
-    expect(byName.get("ck_duplicate_reviews_decision")).toContain("'keep_duplicate'");
-    expect(byName.get("ck_duplicate_reviews_decision")).toContain("'discard_duplicate'");
-    expect(byName.get("ck_duplicate_reviews_decision")).toContain("'superseded'");
 
     // 0016 declared these inline, so PostgreSQL auto-named them.
     expect(compact(byName.get("ledger_sync_state_version_check"))).toContain("version>=0");
@@ -206,9 +196,6 @@ describe("PostgreSQL schema contract", () => {
     for (const name of [
       "uq_entry_categories_ledger_id_id",
       "uq_ledger_entries_revision_position",
-      "uq_duplicate_reviews_document_revision",
-      "uq_duplicate_reviews_pending_per_document",
-      "uq_duplicate_reviews_staged_per_document",
       "idx_source_documents_active_feed",
       "idx_ledger_entries_active_feed",
       "idx_ledger_entries_active_category",
@@ -219,10 +206,6 @@ describe("PostgreSQL schema contract", () => {
       expect(byName.has(name), `missing index ${name}`).toBe(true);
     }
     expect(byName.get("idx_source_documents_active_feed")).toContain("effective_date");
-    expect(byName.has("uq_duplicate_reviews_document")).toBe(false);
-    expect(byName.get("uq_duplicate_reviews_pending_per_document")).toContain("WHERE");
-    expect(byName.get("uq_duplicate_reviews_pending_per_document")).toContain("'pending'");
-    expect(byName.get("uq_duplicate_reviews_staged_per_document")).toContain("'staged'");
     expect(byName.get("idx_ledger_entries_active_amount")).toContain("converted_amount");
     expect(byName.get("idx_ledger_entries_active_amount")).toContain("WHERE");
     expect(byName.get("idx_ledger_entries_search")).toContain("gin");

@@ -3,7 +3,6 @@ import type {
   SourceDocumentStoredFileDto,
   SourceDocumentListItemDto,
   SourceDocumentCandidateProjectionSummary,
-  SourceDocumentDuplicateReviewDto,
   SourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/contracts";
 import {
@@ -34,16 +33,6 @@ export interface SourceDocumentRow {
   deletedAt: Date | null;
 }
 
-interface DuplicateReviewRow {
-  sourceDocumentId: string;
-  revisionId: string;
-  matchedSourceDocumentId: string;
-  matchedRevisionId: string | null;
-  status: "pending" | "kept" | "discarded" | "staged";
-  reason: string | null;
-  confidence: string | number | null;
-}
-
 export interface SourceDocumentHydrationRow {
   documentId: string;
   selectedRevisionId: string | null;
@@ -57,13 +46,6 @@ export interface SourceDocumentHydrationRow {
   files: SourceDocumentStoredFileAggregateRow[];
   ledgerEntries: SourceDocumentLedgerEntryAggregateRow[];
   activeResultSummary: SourceDocumentCandidateProjectionSummary | null;
-  duplicateSourceDocumentId: string | null;
-  duplicateRevisionId: string | null;
-  duplicateMatchedSourceDocumentId: string | null;
-  duplicateMatchedRevisionId: string | null;
-  duplicateStatus: "pending" | "kept" | "discarded" | "staged" | null;
-  duplicateReason: string | null;
-  duplicateConfidence: string | number | null;
 }
 
 export interface SourceDocumentStoredFileAggregateRow {
@@ -100,21 +82,6 @@ export interface SourceDocumentLedgerEntryAggregateRow {
   updatedAt: string;
   deletedAt: string | null;
   category: SourceDocumentEntryCategoryAggregateRow | null;
-}
-
-export function mapDuplicateReviewDto(
-  review: DuplicateReviewRow
-): SourceDocumentDuplicateReviewDto {
-  if (review.status === "staged") {
-    throw new Error("Staged duplicate reviews are not client-visible");
-  }
-  return {
-    sourceDocumentId: review.sourceDocumentId,
-    matchedSourceDocumentId: review.matchedSourceDocumentId,
-    status: review.status,
-    reason: review.reason,
-    confidence: review.confidence == null ? null : Number(review.confidence),
-  };
 }
 
 export function mapStoredFileDto(file: {
@@ -155,34 +122,6 @@ function mapLedgerEntryAggregateDto(
   };
 }
 
-export function mapDuplicateReviewEntryDto(
-  entry: {
-    id: string;
-    itemName: string;
-    description: string | null;
-    amount: string;
-    currency: string | null;
-    convertedAmount: string | null;
-  },
-  ledgerId: string
-): SourceDocumentLedgerEntryDto {
-  return {
-    id: entry.id,
-    ledgerId,
-    categoryId: null,
-    sourceDocumentId: null,
-    amount: entry.amount,
-    currency: entry.currency,
-    itemName: entry.itemName,
-    description: entry.description,
-    convertedAmount: entry.convertedAmount,
-    exchangeRate: null,
-    createdAt: "",
-    updatedAt: "",
-    deletedAt: null,
-  };
-}
-
 export function effectiveDocumentTitle(
   documentTitle: string | null | undefined,
   revisionTitle: string | null | undefined
@@ -219,38 +158,13 @@ export function mapListItem(
     canEdit: capabilities.canEdit,
     errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
   };
-  const duplicateReview = duplicateReviewFromHydration(hydration);
-  if (duplicateReview != null) item.duplicateReview = duplicateReview;
   return item;
-}
-
-function duplicateReviewFromHydration(
-  hydration: SourceDocumentHydrationRow
-): SourceDocumentDuplicateReviewDto | null {
-  if (
-    hydration.duplicateSourceDocumentId == null ||
-    hydration.duplicateRevisionId == null ||
-    hydration.duplicateMatchedSourceDocumentId == null ||
-    hydration.duplicateStatus == null
-  ) {
-    return null;
-  }
-  return mapDuplicateReviewDto({
-    sourceDocumentId: hydration.duplicateSourceDocumentId,
-    revisionId: hydration.duplicateRevisionId,
-    matchedSourceDocumentId: hydration.duplicateMatchedSourceDocumentId,
-    matchedRevisionId: hydration.duplicateMatchedRevisionId,
-    status: hydration.duplicateStatus,
-    reason: hydration.duplicateReason,
-    confidence: hydration.duplicateConfidence,
-  });
 }
 
 export function mapSourceDocumentDetail(
   row: SourceDocumentRow,
   hydration: SourceDocumentHydrationRow
 ): SourceDocumentDto {
-  const duplicateReview = duplicateReviewFromHydration(hydration);
   const activeResultSummary =
     hydration.activeResultSummary == null
       ? null
@@ -282,7 +196,6 @@ export function mapSourceDocumentDetail(
     supportedActions: capabilities.supportedActions,
     canEdit: capabilities.canEdit,
     errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
-    ...(duplicateReview == null ? {} : { duplicateReview }),
     ...(activeResultSummary == null ? {} : { activeResultSummary }),
   };
 }

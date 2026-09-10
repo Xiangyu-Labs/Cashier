@@ -66,8 +66,6 @@ export const queryKeys = {
     ["ledger", ledgerId, "source-document", documentId, "light"] as const,
   sourceDocumentCandidateReview: (ledgerId: string, id: string) =>
     ["ledger", ledgerId, "source-document", id, "review", "candidate"] as const,
-  sourceDocumentDuplicateReview: (ledgerId: string, id: string) =>
-    ["ledger", ledgerId, "source-document", id, "review", "duplicate"] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>
     ["ledger", ledgerId, "source-document", id, "full"] as const,
   sourceDocumentRefresh: (ledgerId: string) =>

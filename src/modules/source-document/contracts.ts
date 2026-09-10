@@ -11,8 +11,6 @@ export type {
   SourceDocumentCandidateReviewRevisionDto,
   SourceDocumentCandidateProjectionSummary,
   SourceDocumentDto,
-  SourceDocumentDuplicateReviewDto,
-  SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentFullDto,
   SourceDocumentLedgerEntryDto,
   SourceDocumentLightWithEntriesDto,
@@ -125,13 +123,13 @@ export interface DeleteSourceDocumentResultDto {
 }
 
 export interface AcceptCandidateResponseDto {
-  status: "completed" | "duplicate_pending";
+  status: "completed";
 }
 
 export interface AbandonCandidateResponseDto {
-  status: "completed" | "duplicate_pending";
+  status: "completed";
 }
 
 export interface CancelProcessingResponseDto {
-  status: "cancelled" | "completed" | "duplicate_pending";
+  status: "cancelled" | "completed";
 }

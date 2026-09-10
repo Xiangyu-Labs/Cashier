@@ -28,10 +28,6 @@ describe("target application contracts", () => {
         { activeRevisionId: "revision-1", pendingOutcome: "completed" as const },
         ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"],
       ],
-      [
-        { activeRevisionId: "revision-1", pendingOutcome: null, duplicateReviewPending: true },
-        ["keep_duplicate", "discard_duplicate", "delete"],
-      ],
       [{ activeRevisionId: null, pendingOutcome: "failed" as const, deleted: true }, []],
     ] as const;
 

@@ -125,7 +125,7 @@ export function buildUnifiedStreamGroups(
       };
       groups.push(group);
     }
-    if (sourceDocument.status === "completed" || sourceDocument.status === "duplicate_pending") {
+    if (sourceDocument.status === "completed") {
       addEntries(group, entries, mainCurrency);
     }
   }

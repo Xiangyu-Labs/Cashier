@@ -22,7 +22,6 @@ interface LedgerEntriesToolbarProps {
   selectedCount: number;
   selectedSourceDocumentIds?: string[];
   selectedEntryIds?: string[];
-  selectedDuplicateCount?: number;
   queryFingerprint: string;
   onToggleSelectionMode: () => void;
   onSelectAll: () => void;
@@ -37,10 +36,6 @@ interface LedgerEntriesToolbarProps {
   onDelete?: (onCommitted: () => void) => Promise<void | boolean> | void;
   isRetrying?: boolean;
   isDeleting?: boolean;
-  onKeepDuplicates?: () => Promise<void> | void;
-  onDiscardDuplicates?: () => Promise<void> | void;
-  isKeepingDuplicates?: boolean;
-  isDiscardingDuplicates?: boolean;
   isProcessing?: boolean;
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
@@ -60,7 +55,6 @@ export function LedgerEntriesToolbar({
   selectedCount,
   selectedSourceDocumentIds = [],
   selectedEntryIds = [],
-  selectedDuplicateCount = 0,
   queryFingerprint,
   onToggleSelectionMode,
   onSelectAll,
@@ -72,10 +66,6 @@ export function LedgerEntriesToolbar({
   onDelete,
   isRetrying = false,
   isDeleting = false,
-  onKeepDuplicates,
-  onDiscardDuplicates,
-  isKeepingDuplicates = false,
-  isDiscardingDuplicates = false,
   isProcessing: externallyProcessing = false,
   filters,
   onFiltersChange,
@@ -115,13 +105,7 @@ export function LedgerEntriesToolbar({
     dateSelectionSnapshot.entryIds.length === selectedEntryIds.length &&
     dateSelectionSnapshot.entryIds.every((id, index) => id === selectedEntryIds[index]);
   const showBatchActions = isSelectionMode && selectedCount > 0;
-  const isProcessing =
-    externallyProcessing ||
-    isUpdatingDates ||
-    isRetrying ||
-    isDeleting ||
-    isKeepingDuplicates ||
-    isDiscardingDuplicates;
+  const isProcessing = externallyProcessing || isUpdatingDates || isRetrying || isDeleting;
   const masterChecked: boolean | "indeterminate" = isAllSelected
     ? true
     : selectedCount > 0
@@ -213,11 +197,6 @@ export function LedgerEntriesToolbar({
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
               showUpdateDates={onUpdateDates !== undefined}
-              duplicateCount={selectedDuplicateCount}
-              {...(onKeepDuplicates != null ? { onKeepDuplicates } : {})}
-              {...(onDiscardDuplicates != null ? { onDiscardDuplicates } : {})}
-              isKeepingDuplicates={isKeepingDuplicates}
-              isDiscardingDuplicates={isDiscardingDuplicates}
               dateImpactError={dateImpactError}
               isPreviewingDateImpact={isPreviewingDateImpact}
             />

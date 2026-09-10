@@ -2,7 +2,6 @@ import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import {
-  duplicateReviews,
   processingAttempts,
   processingOutbox,
   sourceDocumentRevisions,
@@ -10,15 +9,11 @@ import {
 } from "@/persistence";
 import { transitionSourceDocument } from "@/modules/source-document/application/source-document-state";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "../transaction-locks";
-import {
-  assertExpectedSourceDocumentVersion,
-  hasActiveDuplicateReviewPending,
-  ledgerScopedRevisionWhere,
-} from "./revision-guards";
+import { assertExpectedSourceDocumentVersion, ledgerScopedRevisionWhere } from "./revision-guards";
 import { activeDocumentWhere } from "./shared";
 export interface CancelPendingRevisionResult {
   version: number;
-  status: "cancelled" | "completed" | "duplicate_pending";
+  status: "cancelled" | "completed";
 }
 
 /** Stop accepting results for a pending revision without interrupting provider I/O. */
@@ -51,22 +46,6 @@ export async function cancelPendingRevision(
 
     const now = new Date();
     const nextOutcome = canAbandonFinishedCandidate ? "abandoned" : "cancelled";
-    if (canAbandonFinishedCandidate) {
-      // The candidate's staged duplicate review can never be promoted once
-      // the candidate is abandoned; the old active revision's pending review
-      // stays untouched so `hasActiveDuplicateReviewPending` below can restore it.
-      await tx
-        .update(duplicateReviews)
-        .set({ status: "discarded", decision: "superseded", decidedAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(duplicateReviews.ledgerId, ledgerId),
-            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-            eq(duplicateReviews.revisionId, revisionId),
-            eq(duplicateReviews.status, "staged")
-          )
-        );
-    }
     const revisionUpdated = await tx
       .update(sourceDocumentRevisions)
       .set({ outcome: nextOutcome, finalizedAt: now })
@@ -110,14 +89,6 @@ export async function cancelPendingRevision(
     // (already verified above), not the document row's `currentStatus` column:
     // nothing keeps that column synced to a revision outcome written outside
     // the normal terminal-outcome write path.
-    const activeDuplicateReviewPending = restoredActiveResult
-      ? await hasActiveDuplicateReviewPending(
-          tx,
-          ledgerId,
-          sourceDocumentId,
-          document.activeRevisionId!
-        )
-      : false;
     const { state: cancelledState } = canAbandonFinishedCandidate
       ? transitionSourceDocument(
           {
@@ -125,11 +96,11 @@ export async function cancelPendingRevision(
               "candidate_pending" | "invalid" | "failed",
             hasActiveResult: true,
           },
-          { type: "abandon_candidate", activeDuplicateReviewPending }
+          { type: "abandon_candidate" }
         )
       : transitionSourceDocument(
           { status: "processing", hasActiveResult: restoredActiveResult },
-          { type: "cancel_processing", activeDuplicateReviewPending }
+          { type: "cancel_processing" }
         );
 
     let finalStatus: CancelPendingRevisionResult["status"];
@@ -154,7 +125,7 @@ export async function cancelPendingRevision(
       if (documentUpdated == null) {
         throw new ConflictError("Source document changed during cancellation");
       }
-      finalStatus = cancelledState.status as "completed" | "duplicate_pending";
+      finalStatus = "completed";
     } else {
       await tx
         .update(sourceDocuments)

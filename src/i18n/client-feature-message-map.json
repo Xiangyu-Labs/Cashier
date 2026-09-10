@@ -31,8 +31,7 @@
     "SourceDocumentDetail",
     "SourceDocumentEditRetryDialog",
     "SourceDocumentImageModal",
-    "SourceDocumentInput",
-    "DuplicateReview"
+    "SourceDocumentInput"
   ],
   "details": [
     "BatchActions",
@@ -52,7 +51,6 @@
     "SourceDocumentDetail",
     "SourceDocumentEditRetryDialog",
     "SourceDocumentImageModal",
-    "DuplicateReview",
     "ReviewDialog"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],

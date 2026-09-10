@@ -132,13 +132,7 @@
     "retryImpact": "重试预览",
     "deleted": "已删除 {count} 条记录",
     "retried": "已提交 {count} 条记录重试",
-    "partialResult": "成功 {succeeded} 项，跳过 {skipped} 项，失败 {failed} 项",
-    "keepDuplicates": "保留疑似重复（{count}）",
-    "deleteDuplicates": "删除重复项（{count}）",
-    "deleteDuplicatesTitle": "删除疑似重复账单",
-    "deleteDuplicatesDescription": "确定删除所选 {count} 项疑似重复账单吗？此操作无法撤销。",
-    "duplicatesKept": "已保留 {count} 项疑似重复账单",
-    "duplicatesDiscarded": "已删除 {count} 项重复账单"
+    "partialResult": "成功 {succeeded} 项，跳过 {skipped} 项，失败 {failed} 项"
   },
   "EntryFilterPanel": {
     "filter": "筛选",
@@ -159,14 +153,12 @@
     "allStatuses": "全部状态",
     "needsAttention": "待处理",
     "inProgress": "进行中",
-    "possibleDuplicates": "疑似重复",
     "statusProcessing": "处理中",
     "statusCompleted": "已完成",
     "statusInvalid": "无效",
     "statusFailed": "失败",
     "statusCancelled": "已取消",
     "statusCandidatePending": "待核准",
-    "statusDuplicatePending": "待确认重复",
     "statusSummary": "状态：{label}",
     "search": "搜索",
     "searchPlaceholder": "搜索标题、名称或描述",
@@ -275,8 +267,7 @@
     "submittedGroupSuffix": "（提交）",
     "today": "今天",
     "yesterday": "昨天",
-    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。",
-    "duplicatePendingTitle": "疑似重复账单"
+    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。"
   },
   "QuickEntryForm": {
     "selectCategory": "选择分类",
@@ -327,7 +318,6 @@
     "discard": "放弃",
     "readOnlyPreview": "只读预览",
     "saveAllSuccess": "已保存 {count} 处修改",
-    "statusDuplicatePending": "待确认重复",
     "refresh": "刷新",
     "refreshSuccess": "已刷新",
     "refreshFailed": "刷新失败，请重试",
@@ -532,8 +522,6 @@
     "assistant": "智能助理",
     "aiLanguage": "AI 输出语言",
     "aiLanguageDesc": "使 AI 生成的标题、项目名、补差项和备注符合该语言母语者的记账表达，不限制票据原文语言",
-    "duplicateDetection": "检测疑似重复",
-    "duplicateDetectionDesc": "开启后，新的账单会与附近账单进行查重并等待您确认。关闭只影响之后提交或重试的账单，已有审查不会改变。",
     "aiSettings": "AI 设置",
     "serviceCredentialsSection": "服务凭证",
     "dataConfig": "货币与分类",
@@ -960,27 +948,5 @@
   },
   "Currency": {
     "conversionUnavailable": "暂时无法换算"
-  },
-  "DuplicateReview": {
-    "title": "疑似重复账单",
-    "confidence": "置信度 {percent}%",
-    "original": "原始账单",
-    "newBill": "新账单",
-    "image": "图片",
-    "viewImage": "查看{filename}",
-    "matchedMissing": "匹配的原始账单已不可用。",
-    "snapshotVersion": "检测时版本",
-    "matchedModified": "该账单在检测后已修改；下方仍展示检测时版本。",
-    "matchedDeleted": "该账单在检测后已删除；下方仍展示检测时版本。",
-    "untitled": "未命名",
-    "date": "日期：{date}",
-    "unconverted": "{count} 条未换算",
-    "keep": "仍然保留",
-    "discard": "删除重复",
-    "discardConfirmTitle": "删除整张账单？",
-    "discardConfirmDescription": "这将删除日期为 {date}、金额为 {amount} 的整张单据及其全部 {count} 条明细，且无法撤销。",
-    "keepSuccess": "已保留账单",
-    "discardSuccess": "已删除重复账单",
-    "actionFailed": "操作失败，请重试。"
   }
 }

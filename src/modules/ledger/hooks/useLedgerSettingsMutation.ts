@@ -14,7 +14,6 @@ export interface UpdateLedgerData {
   aiLanguage?: string;
   collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
-  duplicateDetectionEnabled?: boolean;
   timeZone?: string | null;
 }
 
@@ -61,7 +60,6 @@ export function useLedgerSettingsMutation({
         aiLanguage,
         collapseEntriesDefault,
         aiCustomPrompt,
-        duplicateDetectionEnabled,
         timeZone,
       } = data;
       const payload: { settings: Record<string, unknown> } = { settings: {} };
@@ -74,9 +72,6 @@ export function useLedgerSettingsMutation({
         settings.collapseEntriesDefault = collapseEntriesDefault;
       }
       if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
-      if (duplicateDetectionEnabled !== undefined) {
-        settings.duplicateDetectionEnabled = duplicateDetectionEnabled;
-      }
       if (timeZone !== undefined) settings.timeZone = timeZone;
 
       payload.settings = settings;

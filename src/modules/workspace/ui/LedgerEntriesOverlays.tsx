@@ -9,8 +9,6 @@ const loadEditRetryDialog = () =>
   import("@/modules/source-document/ui/SourceDocumentEditRetryDialog");
 const loadCandidateReviewDialog = () =>
   import("@/modules/source-document/ui/SourceDocumentCandidateReviewDialog");
-const loadDuplicateReviewDialog = () =>
-  import("@/modules/source-document/ui/SourceDocumentDuplicateReviewDialog");
 
 const SourceDocumentEditRetryDialog = dynamic(
   () => loadEditRetryDialog().then((module) => module.SourceDocumentEditRetryDialog),
@@ -23,10 +21,6 @@ export function preloadEditRetryDialog() {
 
 export function preloadCandidateReviewDialog() {
   void loadCandidateReviewDialog();
-}
-
-export function preloadDuplicateReviewDialog() {
-  void loadDuplicateReviewDialog();
 }
 
 interface LedgerEntriesOverlaysProps {

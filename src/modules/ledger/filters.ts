@@ -22,15 +22,10 @@ export interface LedgerEntryFilterParams {
   search?: string | null;
 }
 
-export const STREAM_STATUS_PRESETS = [
-  "needs_attention",
-  "possible_duplicates",
-  "in_progress",
-] as const;
+export const STREAM_STATUS_PRESETS = ["needs_attention", "in_progress"] as const;
 export type StreamStatusPreset = (typeof STREAM_STATUS_PRESETS)[number];
 
 export const STREAM_STATUS_PRESET_VALUES: Record<StreamStatusPreset, SourceDocumentStatusType[]> = {
-  needs_attention: ["candidate_pending", "duplicate_pending", "invalid", "failed"],
-  possible_duplicates: ["duplicate_pending"],
+  needs_attention: ["candidate_pending", "invalid", "failed"],
   in_progress: ["processing"],
 };

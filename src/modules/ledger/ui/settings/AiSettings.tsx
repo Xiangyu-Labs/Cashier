@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { SettingsField } from "./SettingsField";
 import { SettingsSection } from "./SettingsSection";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SettingsSectionActions } from "./SettingsSectionActions";
 import { useEffect, useMemo, useState } from "react";
@@ -112,14 +111,6 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
           </SelectContent>
         </Select>
       </SettingsField>
-      <SettingsField title={t("duplicateDetection")} description={t("duplicateDetectionDesc")}>
-        <Switch
-          aria-label={t("duplicateDetection")}
-          checked={draft.duplicateDetectionEnabled}
-          onCheckedChange={(checked) => updateDraft({ duplicateDetectionEnabled: checked })}
-          disabled={status === "saving"}
-        />
-      </SettingsField>
       <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
         <Textarea
           value={draft.aiCustomPrompt}
@@ -148,27 +139,21 @@ export type { AiSettingsProps };
 
 interface AiDraft {
   aiLanguage: string;
-  duplicateDetectionEnabled: boolean;
   aiCustomPrompt: string;
 }
 
 type AiField = keyof AiDraft;
-const aiFields: readonly AiField[] = ["aiLanguage", "duplicateDetectionEnabled", "aiCustomPrompt"];
+const aiFields: readonly AiField[] = ["aiLanguage", "aiCustomPrompt"];
 
 function normalizeAiSettings(settings: AiDraft): AiDraft {
   return {
     aiLanguage: settings.aiLanguage,
-    duplicateDetectionEnabled: settings.duplicateDetectionEnabled,
     aiCustomPrompt: settings.aiCustomPrompt,
   };
 }
 
 function aiSettingsEqual(left: AiDraft, right: AiDraft): boolean {
-  return (
-    left.aiLanguage === right.aiLanguage &&
-    left.duplicateDetectionEnabled === right.duplicateDetectionEnabled &&
-    left.aiCustomPrompt === right.aiCustomPrompt
-  );
+  return left.aiLanguage === right.aiLanguage && left.aiCustomPrompt === right.aiCustomPrompt;
 }
 
 function buildAiPatch(
@@ -179,12 +164,6 @@ function buildAiPatch(
   const patch: Partial<Settings> = {};
   if (touchedFields.has("aiLanguage") && server.aiLanguage !== draft.aiLanguage) {
     patch.aiLanguage = draft.aiLanguage;
-  }
-  if (
-    touchedFields.has("duplicateDetectionEnabled") &&
-    server.duplicateDetectionEnabled !== draft.duplicateDetectionEnabled
-  ) {
-    patch.duplicateDetectionEnabled = draft.duplicateDetectionEnabled;
   }
   if (touchedFields.has("aiCustomPrompt") && server.aiCustomPrompt !== draft.aiCustomPrompt) {
     patch.aiCustomPrompt = draft.aiCustomPrompt;
@@ -199,9 +178,6 @@ function rebaseAiDraft(
 ): AiDraft {
   return {
     aiLanguage: touchedFields.has("aiLanguage") ? draft.aiLanguage : incoming.aiLanguage,
-    duplicateDetectionEnabled: touchedFields.has("duplicateDetectionEnabled")
-      ? draft.duplicateDetectionEnabled
-      : incoming.duplicateDetectionEnabled,
     aiCustomPrompt: touchedFields.has("aiCustomPrompt")
       ? draft.aiCustomPrompt
       : incoming.aiCustomPrompt,
