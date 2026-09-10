@@ -52,6 +52,19 @@ const ledgerEntry: LedgerEntry = {
 };
 
 describe("SourceDocumentCard interactions", () => {
+  it("shows the total for completed manual revisions without a processing status", () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={{ ...sourceDocument, processingStatus: null, type: "manual" }}
+        ledgerEntries={[ledgerEntry]}
+        processingStatus={null}
+        defaultExpanded={false}
+      />
+    );
+
+    expect(screen.getByText(/12\.00/)).toBeInTheDocument();
+  });
+
   it("starts expanded by default and opens details only from the main region", () => {
     const onViewDetails = vi.fn();
     render(

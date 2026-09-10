@@ -2,10 +2,19 @@ import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { serverComposition } from "@/application/server-composition-root";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
 const port = serverComposition.sourceDocumentAggregate;
+const queryPorts = {
+  documents: serverComposition.sourceDocumentReads,
+  ledgerReads: serverComposition.ledgerReads,
+  changes: serverComposition.ledgerChanges,
+};
+
+const listStreamPage = (ledgerId: string) =>
+  listStreamPageUseCase(ledgerId, { limit: 20 }, queryPorts);
 
 async function createFixture() {
   const db = getTestDb();
@@ -113,6 +122,14 @@ describe("date organization", () => {
     expect(created.map(({ document, names }) => [document.documentDate, names])).toEqual([
       ["2026-09-09", ["Yesterday"]],
       ["2026-09-08", ["Earlier"]],
+    ]);
+    const stream = await listStreamPage(fixture.ledgerId);
+    const createdCards = result.data.createdSourceDocumentIds.map((id) =>
+      stream.items.find((item) => item.id === id)
+    );
+    expect(createdCards.map((item) => item?.ledgerEntries)).toMatchObject([
+      [{ itemName: "Yesterday", amount: "2.000", convertedAmount: "2.000" }],
+      [{ itemName: "Earlier", amount: "3.000", convertedAmount: "3.000" }],
     ]);
   });
 

@@ -106,6 +106,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       status === "failed" ||
       status === "processing" ||
       status === "cancelled");
+  const shouldShowTotal = ledgerEntries.length > 0 && (status === "completed" || status == null);
 
   // Derive stable error code for display
   const stableErrorCode =
@@ -177,7 +178,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         )}
 
-        {status === "completed" && (
+        {shouldShowTotal && (
           <div className="text-right">
             <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
           </div>
