@@ -181,11 +181,11 @@
     "backToHome": "Back to Home"
   },
   "ServiceWorkerUpdate": {
-    "title": "A new version is available",
-    "description": "Save your work, then update when ready.",
-    "updateNow": "Update now",
+    "title": "Reload required",
+    "description": "The server has been updated. Save your changes, then reload to continue.",
+    "updateNow": "Reload",
     "later": "Later",
-    "updating": "Updating…",
-    "dirtyBlocked": "Save or discard your changes before updating."
+    "updating": "Reloading…",
+    "dirtyBlocked": "Save or discard your changes before reloading the app."
   }
 }

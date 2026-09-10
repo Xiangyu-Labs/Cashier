@@ -19,6 +19,7 @@ describe("PWA policy", () => {
     expect(worker).toContain("precacheEntries: self.__SW_MANIFEST");
     expect(worker).toContain("skipWaiting: false");
     expect(worker).toContain('type === "ACTIVATE_SINGLE_WINDOW"');
+    expect(worker).toContain('type === "ACTIVATE_NOW"');
     expect(worker).toContain("clientsClaim: true");
     expect(worker).not.toContain("navigate");
     expect(worker).not.toContain("offline");

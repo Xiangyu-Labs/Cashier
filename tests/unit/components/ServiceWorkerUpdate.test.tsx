@@ -4,6 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
+const { toastMock, toastErrorMock, toastDismissMock } = vi.hoisted(() => ({
+  toastMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastDismissMock: vi.fn(),
+}));
+
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(toastMock, { error: toastErrorMock, dismiss: toastDismissMock }),
+}));
+
 describe("ServiceWorkerUpdate", () => {
   let count = 1;
   let client: QueryClient;
@@ -44,6 +55,9 @@ describe("ServiceWorkerUpdate", () => {
       controller: {} as object | null,
     });
     Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: serviceWorker });
+    toastMock.mockReset();
+    toastErrorMock.mockReset();
+    toastDismissMock.mockReset();
   });
   afterEach(() => {
     cleanup();
@@ -79,10 +93,20 @@ describe("ServiceWorkerUpdate", () => {
     mount();
     await waitFor(() => expect(registration.update).toHaveBeenCalledOnce());
     expect(worker.postMessage).not.toHaveBeenCalled();
+    expect(toastMock).toHaveBeenCalledWith("title", expect.any(Object));
     act(() => useUnsavedChangesStore.getState().setDirty("editor", false));
     await waitFor(() =>
       expect(worker.postMessage).toHaveBeenCalledWith({ type: "ACTIVATE_SINGLE_WINDOW" })
     );
+  });
+  it("explains why an update cannot reload while edits are unsaved", async () => {
+    useUnsavedChangesStore.getState().setDirty("editor", true);
+    mount();
+    await waitFor(() => expect(toastMock).toHaveBeenCalled());
+    const options = toastMock.mock.calls.at(-1)?.[1] as { action: { onClick: () => void } };
+    act(() => options.action.onClick());
+    expect(toastErrorMock).toHaveBeenCalledWith("dirtyBlocked");
+    expect(worker.postMessage).not.toHaveBeenCalledWith({ type: "ACTIVATE_NOW" });
   });
   it("waits for open dialogs to close", async () => {
     const dialog = document.createElement("div");
@@ -102,11 +126,32 @@ describe("ServiceWorkerUpdate", () => {
     mount();
     await waitFor(() => expect(worker.postMessage).toHaveBeenCalled());
     expect(worker.postMessage).not.toHaveBeenCalledWith({ type: "ACTIVATE_SINGLE_WINDOW" });
+    expect(toastMock).toHaveBeenCalledWith(
+      "title",
+      expect.objectContaining({ id: "service-worker-update", duration: Infinity })
+    );
     count = 1;
     act(() => window.dispatchEvent(new Event("focus")));
     await waitFor(() =>
       expect(worker.postMessage).toHaveBeenCalledWith({ type: "ACTIVATE_SINGLE_WINDOW" })
     );
+  });
+
+  it("lets the user explicitly activate an update when another window is open", async () => {
+    count = 2;
+    mount();
+    await waitFor(() => expect(toastMock).toHaveBeenCalled());
+    const options = toastMock.mock.calls.at(-1)?.[1] as { action: { onClick: () => void } };
+    act(() => options.action.onClick());
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: "ACTIVATE_NOW" });
+  });
+
+  it("reloads after another window activates the waiting worker", async () => {
+    const reload = vi.spyOn(window.location, "reload").mockImplementation(() => undefined);
+    mount();
+    await waitFor(() => expect(registration.update).toHaveBeenCalled());
+    act(() => serviceWorker.dispatchEvent(new Event("controllerchange")));
+    expect(reload).toHaveBeenCalledOnce();
   });
   it("does not reload for first installation", async () => {
     serviceWorker.controller = null;
@@ -116,6 +161,24 @@ describe("ServiceWorkerUpdate", () => {
     act(() => serviceWorker.dispatchEvent(new Event("controllerchange")));
     expect(worker.postMessage).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
+  });
+  it("handles a later update after the first worker starts controlling the page", async () => {
+    serviceWorker.controller = null;
+    registration.waiting = null;
+    const reload = vi.spyOn(window.location, "reload").mockImplementation(() => undefined);
+    mount();
+    await waitFor(() => expect(registration.update).toHaveBeenCalled());
+    serviceWorker.controller = {};
+    act(() => serviceWorker.dispatchEvent(new Event("controllerchange")));
+    expect(reload).not.toHaveBeenCalled();
+
+    registration.waiting = worker;
+    act(() => window.dispatchEvent(new Event("focus")));
+    await waitFor(() =>
+      expect(worker.postMessage).toHaveBeenCalledWith({ type: "ACTIVATE_SINGLE_WINDOW" })
+    );
+    act(() => serviceWorker.dispatchEvent(new Event("controllerchange")));
+    expect(reload).toHaveBeenCalledOnce();
   });
 
   it("waits for a mutation and rechecks safety after receiving the window count", async () => {
@@ -150,6 +213,19 @@ describe("ServiceWorkerUpdate", () => {
     mount();
     await waitFor(() => expect(registration.update).toHaveBeenCalledOnce());
     act(() => window.dispatchEvent(new Event("focus")));
+    await waitFor(() => expect(registration.update).toHaveBeenCalledTimes(2));
+  });
+  it("checks for a new version immediately after a data request fails", async () => {
+    registration.waiting = null;
+    mount();
+    await waitFor(() => expect(registration.update).toHaveBeenCalledOnce());
+    await client
+      .fetchQuery({
+        queryKey: ["failing-request"],
+        queryFn: () => Promise.reject(new Error("request failed")),
+        retry: false,
+      })
+      .catch(() => undefined);
     await waitFor(() => expect(registration.update).toHaveBeenCalledTimes(2));
   });
   it("ignores readiness failure and unsubscribes on unmount", async () => {

@@ -21,7 +21,9 @@ serwist.addEventListeners();
 
 self.addEventListener("message", (event) => {
   const type = (event.data as { type?: string } | null)?.type;
-  if (type !== "GET_WINDOW_COUNT" && type !== "ACTIVATE_SINGLE_WINDOW") return;
+  if (type !== "GET_WINDOW_COUNT" && type !== "ACTIVATE_SINGLE_WINDOW" && type !== "ACTIVATE_NOW") {
+    return;
+  }
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -30,6 +32,7 @@ self.addEventListener("message", (event) => {
       ).length;
       if (type === "GET_WINDOW_COUNT") event.ports[0]?.postMessage(count);
       if (type === "ACTIVATE_SINGLE_WINDOW" && count === 1) await self.skipWaiting();
+      if (type === "ACTIVATE_NOW") await self.skipWaiting();
     })()
   );
 });

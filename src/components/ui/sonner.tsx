@@ -27,5 +27,20 @@ export function Toaster(props: ToasterProps) {
   const { theme = "system" } = useTheme();
   const toasterTheme = theme as NonNullable<ToasterProps["theme"]>;
 
-  return <Sonner theme={toasterTheme} className="toaster" style={toasterStyle} expand {...props} />;
+  return (
+    <Sonner
+      theme={toasterTheme}
+      className="toaster"
+      style={toasterStyle}
+      offset={16}
+      mobileOffset={{
+        top: "calc(env(safe-area-inset-top) + 12px)",
+        right: 16,
+        bottom: "calc(env(safe-area-inset-bottom) + 12px)",
+        left: 16,
+      }}
+      visibleToasts={2}
+      {...props}
+    />
+  );
 }

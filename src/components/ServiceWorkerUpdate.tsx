@@ -2,15 +2,19 @@
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+
+const UPDATE_TOAST_ID = "service-worker-update";
 
 export function ServiceWorkerUpdate() {
   const queryClient = useQueryClient();
+  const t = useTranslations("ServiceWorkerUpdate");
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     let disposed = false;
     let activating = false;
-    let activationRequested = false;
     let reloaded = false;
     let controllerChanged = false;
     let checking = false;
@@ -18,6 +22,7 @@ export function ServiceWorkerUpdate() {
     let installing: ServiceWorker | null = null;
     let port: MessagePort | null = null;
     let requestTimeout: ReturnType<typeof setTimeout> | undefined;
+    let hasEstablishedController = navigator.serviceWorker.controller != null;
     const safeToUpdate = () =>
       !disposed &&
       document.visibilityState === "visible" &&
@@ -38,10 +43,46 @@ export function ServiceWorkerUpdate() {
       port = null;
       activating = false;
     };
+    const showUpdate = (worker: ServiceWorker | null) => {
+      if (disposed || !hasEstablishedController) return;
+      toast(t("title"), {
+        id: UPDATE_TOAST_ID,
+        description: t("description"),
+        duration: Infinity,
+        action: {
+          label: t("updateNow"),
+          onClick: () => {
+            if (!safeToUpdate()) {
+              toast.error(t("dirtyBlocked"));
+              showUpdate(worker);
+              return;
+            }
+            toast(t("updating"), { id: UPDATE_TOAST_ID, duration: Infinity });
+            if (controllerChanged || worker == null) {
+              reloaded = true;
+              window.location.reload();
+              return;
+            }
+            worker.postMessage({ type: "ACTIVATE_NOW" });
+          },
+        },
+        cancel: {
+          label: t("later"),
+          onClick: () => toast.dismiss(UPDATE_TOAST_ID),
+        },
+      });
+    };
     const tryUpdate = () => {
-      if (!safeToUpdate() || reloaded) return;
+      if (reloaded) return;
+      if (!safeToUpdate()) {
+        if (controllerChanged || registration?.waiting != null) {
+          showUpdate(registration?.waiting ?? null);
+        }
+        return;
+      }
       if (controllerChanged) {
         reloaded = true;
+        toast.dismiss(UPDATE_TOAST_ID);
         window.location.reload();
         return;
       }
@@ -52,13 +93,18 @@ export function ServiceWorkerUpdate() {
       port = channel.port1;
       requestTimeout = setTimeout(releaseRequest, 5_000);
       channel.port1.onmessage = (event: MessageEvent<unknown>) => {
-        if (event.data !== 1 || !safeToUpdate() || registration?.waiting !== worker) {
+        if (!safeToUpdate() || registration?.waiting !== worker) {
           releaseRequest();
+          showUpdate(worker);
+          return;
+        }
+        if (event.data !== 1) {
+          releaseRequest();
+          showUpdate(worker);
           return;
         }
         channel.port1.close();
         port = null;
-        activationRequested = true;
         worker.postMessage({ type: "ACTIVATE_SINGLE_WINDOW" });
       };
       // The waiting worker supports this even when the active app predates the protocol.
@@ -85,7 +131,10 @@ export function ServiceWorkerUpdate() {
       installing?.addEventListener("statechange", tryUpdate);
     };
     const onControllerChange = () => {
-      if (!activationRequested) return;
+      if (!hasEstablishedController) {
+        hasEstablishedController = navigator.serviceWorker.controller != null;
+        return;
+      }
       controllerChanged = true;
       releaseRequest();
       tryUpdate();
@@ -101,8 +150,14 @@ export function ServiceWorkerUpdate() {
       })
       .catch(() => undefined);
     const unsubscribeDirty = useUnsavedChangesStore.subscribe(tryUpdate);
-    const unsubscribeMutations = queryClient.getMutationCache().subscribe(tryUpdate);
-    const unsubscribeQueries = queryClient.getQueryCache().subscribe(tryUpdate);
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
+      tryUpdate();
+      if (event.type === "updated" && event.action.type === "error") void checkUpdate();
+    });
+    const unsubscribeQueries = queryClient.getQueryCache().subscribe((event) => {
+      tryUpdate();
+      if (event.type === "updated" && event.action.type === "error") void checkUpdate();
+    });
     const observer = new MutationObserver(tryUpdate);
     observer.observe(document.body, {
       childList: true,
@@ -110,7 +165,7 @@ export function ServiceWorkerUpdate() {
       attributes: true,
       attributeFilter: ["data-state", "data-update-blocked"],
     });
-    const interval = setInterval(tryUpdate, 5_000);
+    const interval = setInterval(() => void checkUpdate(), 60_000);
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     window.addEventListener("online", onForeground);
     window.addEventListener("focus", onForeground);
@@ -118,6 +173,7 @@ export function ServiceWorkerUpdate() {
     document.addEventListener("focusout", tryUpdate);
     return () => {
       disposed = true;
+      toast.dismiss(UPDATE_TOAST_ID);
       releaseRequest();
       clearInterval(interval);
       observer.disconnect();
@@ -132,6 +188,6 @@ export function ServiceWorkerUpdate() {
       document.removeEventListener("visibilitychange", onForeground);
       document.removeEventListener("focusout", tryUpdate);
     };
-  }, [queryClient]);
+  }, [queryClient, t]);
   return null;
 }

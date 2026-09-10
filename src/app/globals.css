@@ -466,3 +466,22 @@ body {
   padding: 8px 12px;
   touch-action: manipulation;
 }
+
+.toaster [data-sonner-toast][data-styled="true"] {
+  line-height: 1.4;
+}
+
+.toaster [data-sonner-toast] [data-content] {
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .toaster [data-sonner-toast][data-styled="true"] {
+    padding: 12px 14px;
+  }
+
+  .toaster [data-sonner-toast] [data-title],
+  .toaster [data-sonner-toast] [data-description] {
+    overflow-wrap: anywhere;
+  }
+}

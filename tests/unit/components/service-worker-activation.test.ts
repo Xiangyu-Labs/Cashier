@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe("service worker activation protocol", () => {
-  it.each([1, 2])("reports %i application windows and only activates for one", async (count) => {
+  it.each([1, 2])("reports %i application windows and supports safe activation", async (count) => {
     let listener!: (event: {
       data: { type: string };
       ports: { postMessage: ReturnType<typeof vi.fn> }[];
@@ -45,5 +45,8 @@ describe("service worker activation protocol", () => {
     listener({ data: { type: "ACTIVATE_SINGLE_WINDOW" }, ports: [], waitUntil });
     await work;
     expect(skipWaiting).toHaveBeenCalledTimes(count === 1 ? 1 : 0);
+    listener({ data: { type: "ACTIVATE_NOW" }, ports: [], waitUntil });
+    await work;
+    expect(skipWaiting).toHaveBeenCalledTimes(count === 1 ? 2 : 1);
   });
 });
