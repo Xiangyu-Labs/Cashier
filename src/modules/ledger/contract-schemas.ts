@@ -35,13 +35,17 @@ const positiveDecimalSchema = z
   .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
   .transform(normalize)
   .refine((value) => compare(value, "0") > 0, "Amount must be positive");
+const nonZeroDecimalSchema = z
+  .string()
+  .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+  .transform(normalize)
+  .refine((value) => compare(value, "0") !== 0, "Amount must be non-zero");
 const optionalQueryDecimalSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
   z
     .string()
     .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
     .transform(normalize)
-    .refine((value) => compare(value, "0") >= 0, "Amount must be non-negative")
     .optional()
 );
 const optionalSearchSchema = z.preprocess(
@@ -140,7 +144,7 @@ const createLedgerEntryInputSchema = strictObjectSchema({
 
 export const updateLedgerEntryInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
-  amount: positiveDecimalSchema.optional(),
+  amount: nonZeroDecimalSchema.optional(),
   currency: nullableCurrencyCodeSchema,
   itemName: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(500).nullable().optional(),
@@ -149,7 +153,7 @@ export const updateLedgerEntryInputSchema = nonEmptyStrictObjectSchema({
 const batchUpdateLedgerEntriesInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
   currency: nullableCurrencyCodeSchema,
-  amount: positiveDecimalSchema.optional(),
+  amount: nonZeroDecimalSchema.optional(),
   description: z.string().max(500).nullable().optional(),
   itemName: z.string().trim().min(1).max(200).optional(),
 });

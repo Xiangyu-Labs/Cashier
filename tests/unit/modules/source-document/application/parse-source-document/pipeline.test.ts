@@ -218,95 +218,50 @@ describe("runParsePipeline — single-pass flow", () => {
     }
   });
 
-  it("supports successful reconciliation when aiLanguage is omitted", async () => {
+  it("accepts mixed currencies without totals and preserves signed adjustments", async () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "50", currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "49" }],
-        order_adjustments: [],
-      },
-    });
-
-    const result = await runParsePipeline(createInput({ aiLanguage: undefined }), buildCtx(ai));
-
-    expect(result.kind).toBe("success");
-    if (result.kind === "success") {
-      expect(result.ledgerEntries).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ amount: "1.00", itemName: expect.any(String) }),
-        ])
-      );
-    }
-  });
-
-  it("returns a reconciled synthetic ledger entry when parser output is below the receipt total", async () => {
-    const { ai } = createMockAI({
-      firstParseResult: {
-        ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "50", currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "49" }],
-        order_adjustments: [],
-      },
-    });
-
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
-
-    expect(result.kind).toBe("success");
-    if (result.kind === "success") {
-      expect(result.ledgerEntries).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            amount: "1.00",
-            itemName: expect.any(String),
-            isAdjustment: false,
-          }),
-        ])
-      );
-    }
-  });
-
-  it("reconciles an over-stated parse by adding a synthetic bill adjustment before mapping to parsed entries", async () => {
-    const { ai } = createMockAI({
-      firstParseResult: {
-        ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "50", currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "51" }],
-        order_adjustments: [],
-      },
-    });
-
-    const result = await runParsePipeline(createInput(), buildCtx(ai));
-
-    expect(result.kind).toBe("success");
-    if (result.kind === "success") {
-      expect(result.ledgerEntries).toHaveLength(1);
-      expect(result.ledgerEntries[0]).toMatchObject({ amount: "50.00", itemName: "Lunch" });
-    }
-  });
-
-  it("order_adjustments are folded proportionally into ledgerEntries", async () => {
-    // SIMPLE_ENTRY: { receipt_index: 0, amount: "10", currency: "USD", item_name: "Lunch" }
-    // receipt total is 8 after a -2 bill-level discount, so reconciliation should not add residuals.
-    const { ai } = createMockAI({
-      firstParseResult: {
-        ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "8", currency: "USD" }],
+        receipt_totals: [],
+        ledger_entries: [SIMPLE_ENTRY, { ...SIMPLE_ENTRY, currency: "MYR", amount: "30" }],
         order_adjustments: [
-          { receipt_index: 0, item_name: "Discount", amount: "-2", currency: "USD" },
+          {
+            receipt_index: 0,
+            item_name: "Discount",
+            amount: "-2",
+            currency: "MYR",
+            category_index: 0,
+          },
         ],
       },
     });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
-
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
-      // No separate adjustment row — discount is folded into the entry
-      expect(result.ledgerEntries.every((e) => !e.isAdjustment)).toBe(true);
-      const entry = result.ledgerEntries.find((e) => e.itemName === "Lunch");
-      expect(entry?.amount).toBe("8.00");
+      expect(result.ledgerEntries.map((e) => [e.amount, e.currency])).toEqual([
+        ["10.00", "USD"],
+        ["30.00", "MYR"],
+        ["-2.00", "MYR"],
+      ]);
     }
   });
+  it.each(["1", "1000"])(
+    "ignores legacy total %s without synthesizing balancing rows",
+    async (amount) => {
+      const { ai } = createMockAI({
+        firstParseResult: {
+          ...SIMPLE_FIRST_PARSE_RESULT,
+          receipt_totals: [{ receipt_index: 0, amount, currency: "USD" }],
+        },
+      });
+      const result = await runParsePipeline(createInput({ aiLanguage: undefined }), buildCtx(ai));
+      expect(result.kind).toBe("success");
+      if (result.kind === "success")
+        expect(result.ledgerEntries).toEqual([
+          expect.objectContaining({ amount: "10.00", isAdjustment: false }),
+        ]);
+    }
+  );
 
   it("cancellation returns cancelled result", async () => {
     const controller = new AbortController();

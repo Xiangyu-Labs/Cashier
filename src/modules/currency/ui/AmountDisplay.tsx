@@ -1,4 +1,5 @@
 "use client";
+import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
@@ -49,6 +50,7 @@ export function AmountDisplay({
       aria-atomic="true"
       {...(status === "loading" ? { "aria-busy": true } : {})}
     >
+      <ExpenseDeductionBadge amount={amount} />
       <AmountText variant={variant}>
         {formatCurrencyAmount(displayAmount, displayCurrency, locale, { currencyDisplay })}
       </AmountText>

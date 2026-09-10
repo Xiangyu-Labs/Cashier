@@ -83,6 +83,10 @@
     "retryError": "重试失败",
     "retryErrorDescription": "原结果未改变，请稍后重试。"
   },
+  "Currency": {
+    "conversionUnavailable": "暂时无法换算",
+    "expenseDeduction": "支出抵扣"
+  },
   "DateFilter": {
     "selectDate": "选择日期",
     "today": "今天",

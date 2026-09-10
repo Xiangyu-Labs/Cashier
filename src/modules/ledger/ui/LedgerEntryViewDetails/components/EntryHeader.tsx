@@ -1,3 +1,5 @@
+"use client";
+import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { EditableField } from "@/components/ui/editable-field";
@@ -9,6 +11,7 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
+import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 
 interface EntryHeaderProps {
   itemName: string;
@@ -62,6 +65,7 @@ export function EntryHeader({
           disabled={disabled}
         />
 
+        <ExpenseDeductionBadge amount={amount} />
         <div className="mt-1">
           <div className="flex items-baseline gap-1.5 sm:gap-2">
             <Popover modal={true}>
@@ -97,6 +101,9 @@ export function EntryHeader({
               onChange={(v) => onFieldChange("amount", v)}
               displayClassName={amountTextClassName("item")}
               disabled={disabled}
+              allowNegative={amount < 0}
+              preserveDirection
+              maxDecimals={getCurrencyDecimals(currency)}
             />
           </div>
 

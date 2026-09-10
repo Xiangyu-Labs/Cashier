@@ -10,7 +10,6 @@ export type { ParsePipelineResult } from "./contracts";
 import { executeParser } from "./parser";
 import type { ParserInput } from "./parser";
 import { convertToParsedEntries } from "./result-mapper";
-import { reconcileParseOutput } from "./reconciliation";
 import type { NormalizedParseOutput } from "./parser-schema";
 import { runtimeEnv } from "@/lib/env/runtime";
 
@@ -58,28 +57,6 @@ function resolveSuccess(
   };
 }
 
-async function persistAndResolveSuccess({
-  aiLanguage,
-  result,
-}: {
-  aiLanguage: string | undefined;
-  result: NormalizedParseOutput;
-}): Promise<ParsePipelineResult> {
-  const reconciled =
-    aiLanguage === undefined
-      ? reconcileParseOutput({ result })
-      : reconcileParseOutput({ aiLanguage, result });
-  if (reconciled.kind === "invalid") {
-    return {
-      kind: "invalid",
-      title: result.title,
-      failureMessage: reconciled.reason,
-    };
-  }
-
-  return resolveSuccess(reconciled.result);
-}
-
 function resolveOutcome(
   result: NormalizedParseOutput
 ): ParsePipelineResult | { kind: "continue"; result: NormalizedParseOutput } {
@@ -110,10 +87,7 @@ async function executeParsePipeline(
     const decision = resolveOutcome(result);
     if (decision.kind !== "continue") return decision;
 
-    return persistAndResolveSuccess({
-      aiLanguage: input.aiLanguage,
-      result: decision.result,
-    });
+    return resolveSuccess(decision.result);
   } catch (error) {
     if (error instanceof ProcessingCancelledError) {
       return { kind: "cancelled" };

@@ -93,7 +93,14 @@ export function StatsChart({
   const formatAmount = (value: string) => formatCurrencyAmount(value, currencySymbol, locale);
   const formatAxisAmount = (value: number) =>
     formatCompactCurrencyAmount(value, currencySymbol, locale);
-  const yAxisTicks = [yAxisMax, (yAxisMax * 2) / 3, yAxisMax / 3, 0];
+  const yAxisMin = Math.min(0, ...chartPoints.map((point) => point.value));
+  const yAxisRange = yAxisMax - yAxisMin;
+  const yAxisTicks = [
+    yAxisMax,
+    yAxisMin + (yAxisRange * 2) / 3,
+    yAxisMin + yAxisRange / 3,
+    yAxisMin,
+  ];
 
   return (
     <div className="w-full h-52 relative pt-6 pb-6 select-none">
@@ -132,7 +139,9 @@ export function StatsChart({
                   // Calculate y position (inverted: 0 at top) using capped value
                   const displayValue = Math.min(p.value, yAxisMax);
                   const yPercent =
-                    paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
+                    paddingTop +
+                    (1 - (displayValue - yAxisMin) / yAxisRange) *
+                      (100 - paddingTop - paddingBottom);
                   return `${xPercent},${yPercent}`;
                 })
                 .join(" ")}
@@ -154,7 +163,8 @@ export function StatsChart({
           const isCapped = p.value > yAxisMax;
           const displayValue = Math.min(p.value, yAxisMax);
           const topPercent =
-            paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
+            paddingTop +
+            (1 - (displayValue - yAxisMin) / yAxisRange) * (100 - paddingTop - paddingBottom);
 
           // Format display date based on range type
           const displayDate =

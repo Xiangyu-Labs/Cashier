@@ -71,6 +71,56 @@ describe("CalculatorInput", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
+  it("edits negative values when explicitly enabled", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={-8} onChange={onChange} ariaLabel="amount" allowNegative />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "-6.25" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith(-6.25);
+  });
+
+  it("keeps a negative value in the deduction direction", () => {
+    const onChange = vi.fn();
+    render(
+      <CalculatorInput
+        value={-8}
+        onChange={onChange}
+        ariaLabel="amount"
+        allowNegative
+        preserveDirection
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "6.25" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("请输入有效金额。");
+  });
+
+  it("preserves configured three-decimal precision", () => {
+    const onChange = vi.fn();
+    render(
+      <CalculatorInput
+        value={-0.123}
+        onChange={onChange}
+        ariaLabel="amount"
+        allowNegative
+        maxDecimals={3}
+      />
+    );
+
+    expect(screen.getByText("-0.123")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.blur(screen.getByRole("textbox"));
+
+    expect(onChange).toHaveBeenCalledWith(-0.123);
+  });
+
   it("commits once when an outside mousedown is followed by blur", () => {
     const onChange = vi.fn();
     render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);

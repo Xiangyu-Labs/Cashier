@@ -1,3 +1,4 @@
+import { assertExpenseAmountDirection } from "@/lib/money/expense-amount";
 import { and, asc, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
@@ -228,6 +229,16 @@ export async function saveChanges(
   const nextEntryDate = input.sourceDocument?.documentDate ?? document.documentDate ?? undefined;
   const nextEntries = activeEntries.map((entry) => {
     const patch = patches.get(entry.id);
+    if (patch?.amount !== undefined || patch?.currency !== undefined) {
+      assertExpenseAmountDirection(
+        entry.amount,
+        patch?.amount ?? entry.amount,
+        normalizeCurrency(
+          patch?.currency !== undefined ? patch.currency : entry.currency,
+          ledger.mainCurrency
+        )
+      );
+    }
     return {
       id: entry.id,
       categoryId: patch?.categoryId !== undefined ? patch.categoryId : entry.categoryId,

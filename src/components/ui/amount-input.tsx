@@ -11,6 +11,7 @@ export interface AmountInputProps extends Omit<
   onChange: (value: string) => void;
   /** Maximum digits allowed after the decimal separator. */
   maxDecimals?: number;
+  allowNegative?: boolean;
 }
 
 /**
@@ -19,10 +20,10 @@ export interface AmountInputProps extends Omit<
  * browser's locale, and offers no control over decimal precision.
  */
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
-  ({ value, onChange, maxDecimals = 2, ...props }, ref) => {
+  ({ value, onChange, maxDecimals = 2, allowNegative = false, ...props }, ref) => {
     const decimalPattern = React.useMemo(
-      () => new RegExp(`^\\d*(?:\\.\\d{0,${maxDecimals}})?$`),
-      [maxDecimals]
+      () => new RegExp(`^${allowNegative ? "-?" : ""}\\d*(?:\\.\\d{0,${maxDecimals}})?$`),
+      [allowNegative, maxDecimals]
     );
 
     return (
@@ -31,7 +32,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
         type="text"
         inputMode="decimal"
         autoComplete="off"
-        pattern={`[0-9]*[.,]?[0-9]{0,${maxDecimals}}`}
+        pattern={`${allowNegative ? "-?" : ""}[0-9]*[.,]?[0-9]{0,${maxDecimals}}`}
         value={value}
         onChange={(event) => {
           const next = event.target.value.replace(",", ".");

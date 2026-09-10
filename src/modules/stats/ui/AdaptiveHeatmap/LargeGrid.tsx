@@ -81,6 +81,7 @@ export function LargeGridHeatmap({
                 date={date}
                 dayNumber={dayNumber}
                 amount={amount}
+                count={dayData?.entryCount ?? 0}
                 level={level}
                 currency={currency}
                 locale={locale}

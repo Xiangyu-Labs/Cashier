@@ -46,6 +46,7 @@ const ledgerEntrySchema = z.object({
 });
 
 const orderAdjustmentSchema = z.object({
+  category_index: z.number().int().min(0).default(0),
   receipt_index: z.number().int().min(0),
   item_name: z.string(),
   amount: decimalStringSchema,
@@ -74,26 +75,6 @@ export const parserOutputSchema = z
       return;
     }
     const expected = new Set(Array.from({ length: output.receipt_count }, (_, index) => index));
-    const totalsByIndex = new Map<number, number>();
-    output.receipt_totals.forEach((total, index) => {
-      totalsByIndex.set(total.receipt_index, (totalsByIndex.get(total.receipt_index) ?? 0) + 1);
-      if (!expected.has(total.receipt_index)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["receipt_totals", index, "receipt_index"],
-          message: "Receipt index is outside receipt_count",
-        });
-      }
-    });
-    for (const receiptIndex of expected) {
-      if (totalsByIndex.get(receiptIndex) !== 1) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["receipt_totals"],
-          message: `Receipt ${receiptIndex} must have exactly one total`,
-        });
-      }
-    }
     for (const [field, values] of [
       ["ledger_entries", output.ledger_entries],
       ["order_adjustments", output.order_adjustments],

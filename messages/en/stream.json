@@ -83,6 +83,10 @@
     "retryError": "Retry failed",
     "retryErrorDescription": "The original result was kept. Please try again."
   },
+  "Currency": {
+    "conversionUnavailable": "Conversion unavailable",
+    "expenseDeduction": "Expense deduction"
+  },
   "DateFilter": {
     "selectDate": "Select date",
     "today": "Today",

@@ -14,6 +14,7 @@ interface DayCellLargeProps {
   date: string;
   dayNumber: number;
   amount: string;
+  count?: number;
   level: HeatmapLevel;
   onClick?: () => void;
   currency: string;
@@ -24,6 +25,7 @@ export function DayCellLarge({
   date,
   dayNumber,
   amount,
+  count = 0,
   level,
   onClick,
   currency,
@@ -37,7 +39,7 @@ export function DayCellLarge({
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label={`${date}, ${compare(amount, "0") > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
+            aria-label={`${date}, ${count > 0 || compare(amount, "0") !== 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
             onClick={onClick}
             className={cn(
               "aspect-square w-full min-w-0 overflow-hidden rounded-lg transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
@@ -56,7 +58,7 @@ export function DayCellLarge({
               {dayNumber}
             </span>
 
-            {compare(amount, "0") > 0 ? (
+            {count > 0 || compare(amount, "0") !== 0 ? (
               <span
                 className="max-w-full truncate px-0.5 text-xs font-semibold"
                 style={{ color: `var(--heatmap-text-${level >= 4 ? "high" : "low"})` }}
@@ -68,7 +70,7 @@ export function DayCellLarge({
         </TooltipTrigger>
         <TooltipContent side="top" align="center">
           <div className="font-medium">{date}</div>
-          {compare(amount, "0") > 0 ? (
+          {count > 0 || compare(amount, "0") !== 0 ? (
             <div>
               {t("expense")}: {formatCellAmount(amount, currency, locale)}
             </div>

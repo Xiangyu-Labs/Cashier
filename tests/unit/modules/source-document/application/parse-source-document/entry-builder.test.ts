@@ -162,7 +162,7 @@ describe("entry-builder", () => {
           notes: null,
         },
       ])
-    ).toEqual({ isValid: false, reason: "No entries with valid amount" });
+    ).toEqual({ isValid: false, reason: "Invalid expense amount" });
 
     expect(
       validateEntries([

@@ -37,7 +37,7 @@ export function DayCellSmall({
       <TooltipTrigger asChild>
         <button
           type="button"
-          aria-label={`${date}, ${compare(amount, "0") > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
+          aria-label={`${date}, ${count > 0 || compare(amount, "0") !== 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
           onClick={onClick}
           className={cn(
             "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
@@ -53,7 +53,7 @@ export function DayCellSmall({
       </TooltipTrigger>
       <TooltipContent side="top" align="center">
         <div className="font-medium">{date}</div>
-        {compare(amount, "0") > 0 ? (
+        {count > 0 || compare(amount, "0") !== 0 ? (
           <>
             <div>
               {t("expense")}: {formatCellAmount(amount, currency, locale)}

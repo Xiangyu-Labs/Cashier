@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { updateLedgerEntryAction } from "@/modules/ledger/server-actions/entries";
+import { ValidationError } from "@/lib/errors";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../setup";
 import { activateTestSourceDocumentProjection, TEST_USER_ID } from "../../helpers/schema-setup";
@@ -71,6 +72,30 @@ describe("updateLedgerEntryAction version CAS", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(document?.version).toBe(1);
+  });
+
+  it("edits a deduction while preserving its negative direction", async () => {
+    await getTestDb()
+      .update(ledgerEntries)
+      .set({ amount: "-8.000", convertedAmount: "-8.000" })
+      .where(eq(ledgerEntries.id, entryId));
+
+    await expect(
+      updateLedgerEntryAction(ledgerId, { sourceDocumentId, expectedVersion: 1 }, entryId, {
+        amount: "-6",
+      })
+    ).resolves.toMatchObject({ ok: true, version: 2 });
+
+    const entry = await getTestDb().query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.id, entryId),
+    });
+    expect(entry).toMatchObject({ amount: "-6.000", convertedAmount: "-6.000" });
+
+    await expect(
+      updateLedgerEntryAction(ledgerId, { sourceDocumentId, expectedVersion: 2 }, entryId, {
+        amount: "6",
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("returns stale without changing the entry", async () => {

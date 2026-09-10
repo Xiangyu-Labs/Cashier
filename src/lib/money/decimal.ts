@@ -64,13 +64,6 @@ export function add(a: string, b: string): string {
 }
 
 /**
- * Subtract b from a.
- */
-export function subtract(a: string, b: string): string {
-  return toCanonical(new MoneyDecimal(a).minus(b));
-}
-
-/**
  * Multiply two decimal strings.
  */
 export function multiply(a: string, b: string): string {

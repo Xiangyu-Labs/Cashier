@@ -911,7 +911,8 @@
     "loginWarn": "If you did not sign in, please secure your account immediately."
   },
   "Currency": {
-    "conversionUnavailable": "Conversion unavailable"
+    "conversionUnavailable": "Conversion unavailable",
+    "expenseDeduction": "Expense deduction"
   },
   "SourceDocumentAction": {
     "cancelProcessing": "Cancel processing",
