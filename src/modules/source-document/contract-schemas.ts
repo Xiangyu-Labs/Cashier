@@ -44,7 +44,6 @@ const optionalQueryDecimalSchema = z.preprocess(
     .string()
     .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
     .transform(normalize)
-    .refine((value) => compare(value, "0") >= 0, "Amount must be non-negative")
     .optional()
 );
 const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);

@@ -96,6 +96,15 @@ export interface ValidationResult {
  * Validate entries before saving
  */
 export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult {
+  if (
+    entries.some(
+      (entry) =>
+        compare(roundToCurrency(entry.amount, entry.currency ?? "CNY"), "0") === 0 ||
+        (compare(entry.amount, "0") < 0 && entry.isAdjustment !== true)
+    )
+  ) {
+    return { isValid: false, reason: "Invalid expense amount" };
+  }
   // Adjustments (discounts, fees) may have negative amounts — keep them
   const positiveEntries = entries.filter(
     (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true

@@ -1,4 +1,5 @@
 "use client";
+import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -244,6 +245,7 @@ function ReviewEntry({
         <CategoryIcon iconName={entry.category?.icon ?? null} className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
+        <ExpenseDeductionBadge amount={entry.amount} />
         <p className="break-words text-sm font-medium text-text">{entry.itemName}</p>
         <p className="break-words text-xs text-muted-foreground">
           {entry.category?.name ?? "-"}

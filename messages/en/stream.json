@@ -105,6 +105,10 @@
     "reload": "Reload",
     "noEntries": "No entries"
   },
+  "Currency": {
+    "conversionUnavailable": "Conversion unavailable",
+    "expenseDeduction": "Expense deduction"
+  },
   "DateFilter": {
     "selectDate": "Select date",
     "today": "Today",

@@ -19,6 +19,9 @@ interface CalculatorInputProps {
   ariaLabel?: string;
   disabled?: boolean;
   inlineInputMode?: "decimal" | "minor-unit";
+  allowNegative?: boolean;
+  preserveDirection?: boolean;
+  maxDecimals?: number;
 }
 
 type EditMode = "display" | "input" | "calculator";
@@ -30,6 +33,9 @@ export function CalculatorInput({
   ariaLabel: externalAriaLabel,
   disabled = false,
   inlineInputMode = "decimal",
+  allowNegative = false,
+  preserveDirection = false,
+  maxDecimals = 2,
 }: CalculatorInputProps) {
   const t = useTranslations("Calculator");
   const ariaLabel = externalAriaLabel ?? t("amountAriaLabel");
@@ -43,7 +49,15 @@ export function CalculatorInput({
 
   const calculator = useCalculatorState({
     value,
+    maxDecimals,
     onConfirm: (nextValue) => {
+      if (
+        (!allowNegative && nextValue < 0) ||
+        (preserveDirection && (value < 0 ? nextValue >= 0 : nextValue < 0))
+      ) {
+        setInputError(t("invalidValue"));
+        return;
+      }
       onChange(nextValue);
       setInputError(null);
       setMode("display");
@@ -70,8 +84,13 @@ export function CalculatorInput({
     }
 
     const numValue = parseFloat(inputValue);
-    if (!isNaN(numValue) && inputValue.trim() !== "") {
-      onChange(parseFloat(numValue.toFixed(2)));
+    if (
+      Number.isFinite(numValue) &&
+      inputValue.trim() !== "" &&
+      (allowNegative || numValue >= 0) &&
+      (!preserveDirection || (value < 0 ? numValue < 0 : numValue >= 0))
+    ) {
+      onChange(parseFloat(numValue.toFixed(maxDecimals)));
       committedRef.current = true;
       setInputError(null);
       setMode("display");
@@ -80,7 +99,16 @@ export function CalculatorInput({
 
     setInputError(t("invalidValue"));
     return false;
-  }, [inlineInputMode, inputValue, onChange, t]);
+  }, [
+    allowNegative,
+    inlineInputMode,
+    inputValue,
+    maxDecimals,
+    onChange,
+    preserveDirection,
+    t,
+    value,
+  ]);
 
   React.useEffect(() => {
     if (mode !== "input") return;
@@ -107,7 +135,7 @@ export function CalculatorInput({
           : amountToMinorUnitDigits(value)
         : value === 0
           ? ""
-          : value.toFixed(2);
+          : value.toFixed(maxDecimals);
     originalInputValueRef.current = nextInputValue;
     setInputValue(nextInputValue);
     setInputError(null);
@@ -148,7 +176,10 @@ export function CalculatorInput({
     }
 
     const newValue = e.target.value;
-    if (newValue === "" || /^\d*\.?\d{0,2}$/.test(newValue)) {
+    const decimalPattern = new RegExp(
+      `^${allowNegative ? "-?" : ""}\\d*(?:\\.\\d{0,${maxDecimals}})?$`
+    );
+    if (newValue === "" || decimalPattern.test(newValue)) {
       setInputValue(newValue);
       setInputError(null);
     }
@@ -178,7 +209,7 @@ export function CalculatorInput({
         onClick={handleStartInput}
         aria-label={ariaLabel}
       >
-        <span className="font-mono">{value.toFixed(2)}</span>
+        <span className="font-mono">{value.toFixed(maxDecimals)}</span>
       </button>
     );
   }

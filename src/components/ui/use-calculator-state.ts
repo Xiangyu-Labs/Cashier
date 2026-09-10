@@ -13,6 +13,7 @@ interface CalculatorState {
 
 interface UseCalculatorStateOptions {
   value: number;
+  maxDecimals?: number;
   onConfirm: (value: number) => void;
   onInvalid: () => void;
 }
@@ -36,17 +37,17 @@ export function digitsToAmount(digits: string): number {
   return Number.parseFloat((Number.parseInt(normalized, 10) / 100).toFixed(2));
 }
 
-function initialCalculatorState(value: number): CalculatorState {
+function initialCalculatorState(value: number, maxDecimals: number): CalculatorState {
   return {
-    displayValue: value === 0 ? "0" : value.toFixed(2),
+    displayValue: value === 0 ? "0" : value.toFixed(maxDecimals),
     operator: null,
     operand: "",
     hasResult: false,
   };
 }
 
-function formatDisplay(value: number): string {
-  return Number.parseFloat(value.toFixed(2)).toString();
+function formatDisplay(value: number, maxDecimals: number): string {
+  return Number.parseFloat(value.toFixed(maxDecimals)).toString();
 }
 
 function calculate(a: number, operator: Operator, b: number): number | null {
@@ -64,12 +65,19 @@ function calculate(a: number, operator: Operator, b: number): number | null {
   }
 }
 
-export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculatorStateOptions) {
-  const [state, setState] = useState<CalculatorState>(() => initialCalculatorState(value));
+export function useCalculatorState({
+  value,
+  maxDecimals = 2,
+  onConfirm,
+  onInvalid,
+}: UseCalculatorStateOptions) {
+  const [state, setState] = useState<CalculatorState>(() =>
+    initialCalculatorState(value, maxDecimals)
+  );
 
   const reset = useCallback(() => {
-    setState(initialCalculatorState(value));
-  }, [value]);
+    setState(initialCalculatorState(value, maxDecimals));
+  }, [maxDecimals, value]);
 
   const handleNumber = useCallback((digit: string) => {
     setState((previous) => {
@@ -104,29 +112,32 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
     });
   }, []);
 
-  const handleOperator = useCallback((operator: Exclude<Operator, null>) => {
-    setState((previous) => {
-      if (previous.hasResult) {
-        return { ...previous, operator, operand: "", hasResult: false };
-      }
-      if (previous.operator !== null && previous.operand !== "") {
-        const result = calculate(
-          Number.parseFloat(previous.displayValue),
-          previous.operator,
-          Number.parseFloat(previous.operand)
-        );
-        if (result !== null) {
-          return {
-            displayValue: formatDisplay(result),
-            operator,
-            operand: "",
-            hasResult: false,
-          };
+  const handleOperator = useCallback(
+    (operator: Exclude<Operator, null>) => {
+      setState((previous) => {
+        if (previous.hasResult) {
+          return { ...previous, operator, operand: "", hasResult: false };
         }
-      }
-      return { ...previous, operator, operand: "" };
-    });
-  }, []);
+        if (previous.operator !== null && previous.operand !== "") {
+          const result = calculate(
+            Number.parseFloat(previous.displayValue),
+            previous.operator,
+            Number.parseFloat(previous.operand)
+          );
+          if (result !== null) {
+            return {
+              displayValue: formatDisplay(result, maxDecimals),
+              operator,
+              operand: "",
+              hasResult: false,
+            };
+          }
+        }
+        return { ...previous, operator, operand: "" };
+      });
+    },
+    [maxDecimals]
+  );
 
   const handleEquals = useCallback(() => {
     setState((previous) => {
@@ -138,7 +149,7 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
       );
       if (result !== null) {
         return {
-          displayValue: formatDisplay(result),
+          displayValue: formatDisplay(result, maxDecimals),
           operator: null,
           operand: "",
           hasResult: true,
@@ -146,7 +157,7 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
       }
       return { displayValue: "Error", operator: null, operand: "", hasResult: true };
     });
-  }, []);
+  }, [maxDecimals]);
 
   const handleClear = useCallback(() => {
     setState({ displayValue: "0", operator: null, operand: "", hasResult: false });
@@ -154,7 +165,7 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
 
   const handleDelete = useCallback(() => {
     setState((previous) => {
-      if (previous.hasResult) return initialCalculatorState(value);
+      if (previous.hasResult) return initialCalculatorState(value, maxDecimals);
       if (previous.operator === null) {
         const sliced = previous.displayValue.slice(0, -1);
         const displayValue = sliced === "" || sliced === "." ? "0" : sliced;
@@ -165,7 +176,7 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
       }
       return { ...previous, operator: null };
     });
-  }, [value]);
+  }, [maxDecimals, value]);
 
   const handleConfirm = useCallback(() => {
     const resultValue = Number.parseFloat(state.displayValue);
@@ -173,8 +184,8 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
       onInvalid();
       return;
     }
-    onConfirm(Number.parseFloat(resultValue.toFixed(2)));
-  }, [onConfirm, onInvalid, state.displayValue]);
+    onConfirm(Number.parseFloat(resultValue.toFixed(maxDecimals)));
+  }, [maxDecimals, onConfirm, onInvalid, state.displayValue]);
 
   const handleSubmit = useCallback(() => {
     if (state.operator === null) {
@@ -195,8 +206,16 @@ export function useCalculatorState({ value, onConfirm, onInvalid }: UseCalculato
       onInvalid();
       return;
     }
-    onConfirm(Number.parseFloat(result.toFixed(2)));
-  }, [handleConfirm, onConfirm, onInvalid, state.displayValue, state.operand, state.operator]);
+    onConfirm(Number.parseFloat(result.toFixed(maxDecimals)));
+  }, [
+    handleConfirm,
+    maxDecimals,
+    onConfirm,
+    onInvalid,
+    state.displayValue,
+    state.operand,
+    state.operator,
+  ]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {

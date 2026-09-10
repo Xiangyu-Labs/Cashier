@@ -18,6 +18,7 @@
     "CandidateReview",
     "CandidateAction",
     "ReviewDialog",
+    "Currency",
     "DateFilter",
     "DateRangeFilter",
     "DiagnosticCode",
@@ -51,7 +52,8 @@
     "SourceDocumentDetail",
     "SourceDocumentEditRetryDialog",
     "SourceDocumentImageModal",
-    "ReviewDialog"
+    "ReviewDialog",
+    "Currency"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
   "settings": ["LedgerError", "ServiceCredentials", "Settings"]

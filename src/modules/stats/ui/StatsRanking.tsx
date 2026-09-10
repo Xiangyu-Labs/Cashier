@@ -36,6 +36,9 @@ export function StatsRanking({
 }: StatsRankingProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
+  const showPercent =
+    data.every((cat) => new Decimal(cat.totalConverted).gte(0)) &&
+    data.some((cat) => new Decimal(cat.totalConverted).gt(0));
 
   if (isLoading) {
     return (
@@ -90,7 +93,7 @@ export function StatsRanking({
               type="button"
               key={cat.id ?? "__uncategorized__"}
               disabled={onCategoryClick == null}
-              aria-label={`${displayName}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${percent.toFixed(0)}%`}
+              aria-label={`${displayName}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${showPercent ? `${percent.toFixed(0)}%` : ""}`}
               className={cn(
                 "group flex w-full items-center gap-3 text-left",
                 onCategoryClick &&
@@ -119,16 +122,19 @@ export function StatsRanking({
                 {/* Bottom Line: Progress + Detail */}
                 <div className="flex items-center gap-3">
                   {/* Progress Bar */}
-                  <div className="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden">
+                  <div
+                    hidden={!showPercent}
+                    className="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden"
+                  >
                     <div
                       className="h-full origin-left rounded-full bg-primary transition-transform duration-[var(--motion-expand)] ease-[var(--motion-enter)]"
-                      style={{ transform: `scaleX(${percent / 100})` }}
+                      style={{ transform: `scaleX(${Math.max(0, Math.min(100, percent)) / 100})` }}
                     />
                   </div>
 
                   {/* Stats Detail */}
                   <div className="text-xs text-muted-foreground flex items-center gap-2 shrink-0">
-                    <span className="tabular-nums">{percent.toFixed(0)}%</span>
+                    {showPercent && <span className="tabular-nums">{percent.toFixed(0)}%</span>}
                     {/* Show trend if significant */}
                     {cat.trend && Math.abs(cat.trend.percent) > 10 && (
                       <span

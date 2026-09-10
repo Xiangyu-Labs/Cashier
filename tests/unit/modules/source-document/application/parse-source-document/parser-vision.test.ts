@@ -227,8 +227,8 @@ describe("executeParser — single-pass receipt parser", () => {
     const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt;
     expect(prompt).toContain("refund/credit note is the only thing on it");
     expect(prompt).toContain("skip the refund card entirely");
-    expect(prompt).toContain("ignore all of them for receipt_total");
-    expect(prompt).toContain("set receipt_total by literally re-adding those exact amounts");
+    expect(prompt).toContain("Ignore running balances and day/period summary headers");
+    expect(prompt).toContain("No receipt total is required");
   });
 
   it("keeps the v11 rules in a stable prefix before per-request context", async () => {

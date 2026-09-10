@@ -72,12 +72,12 @@ describe("search param validation", () => {
     });
   });
 
-  it("rejects reversed ranges, negative amounts, and unknown fields", () => {
+  it("rejects reversed ranges and unknown fields while accepting signed amount filters", () => {
     expect(() =>
       parseListLedgerEntriesInput({ startDate: "2026-04-01", endDate: "2026-03-01" })
     ).toThrow();
     expect(() => ledgerStatsQuerySchema.parse({ minAmount: "20", maxAmount: "10" })).toThrow();
-    expect(() => ledgerStatsQuerySchema.parse({ minAmount: "-1" })).toThrow();
+    expect(ledgerStatsQuerySchema.parse({ minAmount: "-1" })).toMatchObject({ minAmount: "-1" });
     expect(() => ledgerStatsQuerySchema.parse({ mainCurrency: "USD" })).toThrow();
   });
 });

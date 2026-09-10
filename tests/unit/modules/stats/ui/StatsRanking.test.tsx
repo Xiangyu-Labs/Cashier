@@ -8,4 +8,25 @@ describe("StatsRanking", () => {
 
     expect(screen.getByText("暂无统计")).toBeInTheDocument();
   });
+
+  it("hides percentages when a category has a negative net expense", () => {
+    render(
+      <StatsRanking
+        currencySymbol="CNY"
+        data={[
+          { id: "food", name: "Dining", icon: null, totalConverted: "30", percent: 120, count: 2 },
+          {
+            id: "discount",
+            name: "Discount",
+            icon: null,
+            totalConverted: "-5",
+            percent: -20,
+            count: 1,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
 });

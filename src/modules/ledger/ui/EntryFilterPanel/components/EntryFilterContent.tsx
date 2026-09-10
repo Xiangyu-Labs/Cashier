@@ -220,6 +220,7 @@ export function EntryFilterContent({
           <AmountInput
             placeholder={t("minAmount")}
             value={tempFilters.minAmount ?? ""}
+            allowNegative
             onChange={(value) =>
               setTempFilters((prev) => ({
                 ...prev,
@@ -232,6 +233,7 @@ export function EntryFilterContent({
           <AmountInput
             placeholder={t("maxAmount")}
             value={tempFilters.maxAmount ?? ""}
+            allowNegative
             onChange={(value) =>
               setTempFilters((prev) => ({
                 ...prev,

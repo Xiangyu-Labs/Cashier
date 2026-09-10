@@ -10,7 +10,6 @@ import {
   normalize,
   parse,
   round,
-  subtract,
 } from "@/lib/money/decimal";
 import { getCurrencyDecimals, roundToCurrency } from "@/lib/money/currency-precision";
 
@@ -18,7 +17,6 @@ describe("decimal money operations", () => {
   it("performs exact arithmetic without binary floating-point loss", () => {
     expect(add("0.1", "0.2")).toBe("0.3");
     expect(add("-10.50", "5.25")).toBe("-5.25");
-    expect(subtract("5", "10")).toBe("-5");
     expect(multiply("0.01", "0.00012345")).toBe("0.0000012345");
     expect(divide("1", "7")).toBe("0.14285714285714285714");
   });

@@ -1,3 +1,4 @@
+import { assertExpenseAmountDirection } from "@/lib/money/expense-amount";
 import { and, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
@@ -183,6 +184,7 @@ async function prepareUpdateConversion(input: {
   const nextCurrency = input.currency !== undefined ? input.currency : context.currency;
   const effectiveCurrency = nextCurrency ?? context.mainCurrency;
   const nextAmount = input.amount ?? context.amount;
+  assertExpenseAmountDirection(context.amount, nextAmount, effectiveCurrency);
   const conversion = await convertEntryAmount(
     {
       amount: nextAmount,
@@ -242,6 +244,7 @@ async function prepareBatchConversions(input: {
   const preparedRows = rows.map((entry) => {
     const nextCurrency = input.currency !== undefined ? input.currency : entry.currency;
     const effectiveCurrency = nextCurrency ?? entry.mainCurrency;
+    assertExpenseAmountDirection(entry.amount, input.amount ?? entry.amount, effectiveCurrency);
     return {
       entry,
       effectiveCurrency,

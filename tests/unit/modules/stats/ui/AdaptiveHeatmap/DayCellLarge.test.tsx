@@ -31,4 +31,22 @@ describe("DayCellLarge", () => {
 
     expect(await screen.findByText("Expense: $12.5K")).toBeVisible();
   });
+
+  it("shows a zero net amount when the day contains offsetting entries", () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <DayCellLarge
+          date="2026-09-03"
+          dayNumber={3}
+          amount="0"
+          count={2}
+          level={0}
+          currency="USD"
+          locale="en-US"
+        />
+      </TooltipProvider>
+    );
+
+    expect(screen.getByRole("button", { name: "2026-09-03, Expense: $0" })).toBeVisible();
+  });
 });

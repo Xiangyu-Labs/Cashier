@@ -1,4 +1,5 @@
 "use client";
+import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { memo } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -16,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { EntryEditData } from "@/modules/source-document/types";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
+import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 
 function parseAmount(amount: string | null | undefined): number {
   if (amount == null) return 0;
@@ -116,6 +118,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   });
 
   const category = categories.find((c) => c.id === displayData.categoryId);
+  const amountDecimals = getCurrencyDecimals(displayData.currency ?? mainCurrency);
 
   const sortedCurrencies = (() => {
     const preferred = preferredCurrencies.filter((c) => c !== "unknown");
@@ -203,12 +206,16 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
 
         <CalculatorInput
           value={parseAmount(displayData.amount)}
-          onChange={(v) => handleChange("amount", v.toFixed(2))}
+          onChange={(v) => handleChange("amount", v.toFixed(amountDecimals))}
           displayClassName={amountTextClassName("item")}
           disabled={readOnly}
+          allowNegative={parseAmount(displayData.amount) < 0}
+          preserveDirection
+          maxDecimals={amountDecimals}
         />
       </div>
 
+      <ExpenseDeductionBadge amount={displayData.amount} />
       {isDifferentCurrency && status === "success" && converted != null && (
         <AmountText variant="secondary" className="shrink-0">
           ≈ {formatCurrencyAmount(converted, mainCurrency, locale)}
