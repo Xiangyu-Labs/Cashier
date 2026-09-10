@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { StaleSourceDocumentVersionError } from "@/lib/errors";
-import { duplicateReviews, sourceDocumentRevisions } from "@/persistence";
-import type { PostgresTransaction } from "../transaction-locks";
+import { sourceDocumentRevisions } from "@/persistence";
 
 export function assertExpectedSourceDocumentVersion(
   sourceDocumentId: string,
@@ -23,25 +22,4 @@ export function ledgerScopedRevisionWhere(
     eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
     eq(sourceDocumentRevisions.id, revisionId)
   );
-}
-
-export async function hasActiveDuplicateReviewPending(
-  tx: PostgresTransaction,
-  ledgerId: string,
-  sourceDocumentId: string,
-  activeRevisionId: string
-): Promise<boolean> {
-  const pendingReview = await tx
-    .select({ id: duplicateReviews.id })
-    .from(duplicateReviews)
-    .where(
-      and(
-        eq(duplicateReviews.ledgerId, ledgerId),
-        eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-        eq(duplicateReviews.revisionId, activeRevisionId),
-        eq(duplicateReviews.status, "pending")
-      )
-    )
-    .then((rows) => rows[0]);
-  return pendingReview != null;
 }

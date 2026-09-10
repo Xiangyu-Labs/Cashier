@@ -16,7 +16,6 @@ export function mapLedgerSettings(
     | "mainCurrency"
     | "collapseEntriesDefault"
     | "aiCustomPrompt"
-    | "duplicateDetectionEnabled"
     | "timeZone"
   >
 ): LedgerSettingsContract {
@@ -26,7 +25,6 @@ export function mapLedgerSettings(
     mainCurrency: row.mainCurrency,
     collapseEntriesDefault: row.collapseEntriesDefault,
     aiCustomPrompt: row.aiCustomPrompt,
-    duplicateDetectionEnabled: row.duplicateDetectionEnabled,
     timeZone: row.timeZone,
   };
 }
@@ -40,9 +38,6 @@ export function settingsColumns(settings: Partial<LedgerSettingsContract>) {
       ? {}
       : { collapseEntriesDefault: settings.collapseEntriesDefault }),
     ...(settings.aiCustomPrompt === undefined ? {} : { aiCustomPrompt: settings.aiCustomPrompt }),
-    ...(settings.duplicateDetectionEnabled === undefined
-      ? {}
-      : { duplicateDetectionEnabled: settings.duplicateDetectionEnabled }),
     ...(settings.timeZone === undefined ? {} : { timeZone: settings.timeZone }),
   };
 }

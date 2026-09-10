@@ -7,7 +7,6 @@ import {
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/server-actions/batch";
-import { batchResolveDuplicateReviewsAction } from "@/modules/source-document/server-actions/duplicate-reviews";
 import type {
   PartialBatchCommandResult,
   BatchUpdateSourceDocumentsResultDto,
@@ -20,17 +19,6 @@ import {
   unwrapAtomicBatchCommandResult,
   unwrapVersionedCommandResult,
 } from "@/modules/source-document/command-results";
-
-type DuplicateBatchVariables =
-  | string[]
-  | {
-      ids: string[];
-      preserveIds: string[];
-    };
-
-function getDuplicateBatchVariables(variables: DuplicateBatchVariables) {
-  return Array.isArray(variables) ? { ids: variables, preserveIds: [] } : variables;
-}
 
 export function useBatchSourceDocumentActions(
   ledgerId: string,
@@ -149,56 +137,10 @@ export function useBatchSourceDocumentActions(
     onError: () => toast.error(tCommon("error")),
   });
 
-  const batchKeepDuplicates = useLedgerMutation<PartialBatchCommandResult, DuplicateBatchVariables>(
-    ledgerId,
-    {
-      refreshMode: "background",
-      invalidates: ["documents", "stats"],
-      mutationFn: (variables) =>
-        batchResolveDuplicateReviewsAction(
-          ledgerId,
-          targetsFor(getDuplicateBatchVariables(variables).ids),
-          "keep"
-        ),
-      invalidationErrorMessage: tCommon("savedRefreshFailed"),
-      onSuccess: (result, variables) =>
-        settleBatchResult(
-          result,
-          tBatch("duplicatesKept", { count: result.succeeded.length }),
-          getDuplicateBatchVariables(variables).preserveIds
-        ),
-      onError: () => toast.error(tCommon("error")),
-    }
-  );
-
-  const batchDiscardDuplicates = useLedgerMutation<
-    PartialBatchCommandResult,
-    DuplicateBatchVariables
-  >(ledgerId, {
-    refreshMode: "background",
-    invalidates: ["documents", "stats"],
-    mutationFn: (variables) =>
-      batchResolveDuplicateReviewsAction(
-        ledgerId,
-        targetsFor(getDuplicateBatchVariables(variables).ids),
-        "discard"
-      ),
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    onSuccess: (result, variables) =>
-      settleBatchResult(
-        result,
-        tBatch("duplicatesDiscarded", { count: result.succeeded.length }),
-        getDuplicateBatchVariables(variables).preserveIds
-      ),
-    onError: () => toast.error(tCommon("error")),
-  });
-
   return {
     deleteSourceDocument,
     batchUpdateDates,
     batchDelete,
     batchRetry,
-    batchKeepDuplicates,
-    batchDiscardDuplicates,
   };
 }

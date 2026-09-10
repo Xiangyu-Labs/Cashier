@@ -9,7 +9,6 @@ import {
   objectCleanupJobs,
   processingAttempts,
   processingOutbox,
-  duplicateReviews,
   revisionFiles,
   serviceCredentials,
   sourceDocuments,
@@ -143,15 +142,6 @@ export const postgresLedgerAdapter: LedgerPort = {
           and(
             eq(processingAttempts.ledgerId, ledgerId),
             inArray(processingAttempts.status, ["queued", "processing"])
-          )
-        );
-      await tx
-        .update(duplicateReviews)
-        .set({ status: "discarded", decision: "superseded", decidedAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(duplicateReviews.ledgerId, ledgerId),
-            inArray(duplicateReviews.status, ["pending", "staged"])
           )
         );
       await tx

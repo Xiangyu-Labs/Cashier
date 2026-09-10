@@ -27,7 +27,6 @@ const STATUS_OPTIONS: SourceDocumentStatusType[] = [
   "failed",
   "cancelled",
   "candidate_pending",
-  "duplicate_pending",
 ];
 
 interface EntryFilterContentProps {
@@ -85,8 +84,6 @@ export function EntryFilterContent({
         return t("statusCancelled");
       case "candidate_pending":
         return t("statusCandidatePending");
-      case "duplicate_pending":
-        return t("statusDuplicatePending");
     }
   };
 
@@ -272,14 +269,6 @@ export function EntryFilterContent({
               onClick={() => handlePreset("needs_attention")}
             >
               {t("needsAttention")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => handlePreset("possible_duplicates")}
-            >
-              {t("possibleDuplicates")}
             </Button>
             <Button
               variant="outline"

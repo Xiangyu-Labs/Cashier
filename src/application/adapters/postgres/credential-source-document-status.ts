@@ -74,7 +74,6 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
     // decision is pending, even though the internal accounting projection is
     // already active and included in all ledger statistics.
     const status =
-      document.currentStatus === "duplicate_pending" ||
       document.currentStatus === "candidate_pending"
         ? "processing"
         : (revision.outcome as CredentialSourceDocumentStatusResult["status"]);

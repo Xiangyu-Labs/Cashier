@@ -15,12 +15,9 @@ import type {
   SourceDocumentDto,
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
-  SourceDocumentDuplicateReviewDetailDto,
 } from "@/modules/source-document/contracts";
-import type { PendingDuplicateReviewContract } from "@/modules/source-document/application/ports";
 import { add as decimalAdd } from "@/lib/money/decimal";
 import {
-  duplicateReviews,
   entryCategories,
   ledgerEntries,
   revisionFiles,
@@ -35,49 +32,13 @@ import type { TargetSourceDocumentListInput } from "./filters";
 import { baseConditions } from "./filters";
 import { cursorCondition, encodeCursor } from "./cursor";
 import {
-  effectiveDocumentTitle,
-  mapDuplicateReviewDto,
-  mapDuplicateReviewEntryDto,
   mapListItem,
   mapSourceDocumentDetail,
-  mapStoredFileDto,
   type SourceDocumentLedgerEntryAggregateRow,
   type SourceDocumentHydrationRow,
   type SourceDocumentRow,
   type SourceDocumentStoredFileAggregateRow,
 } from "./mappers";
-
-export async function listPendingDuplicateReviews(
-  ledgerId: string,
-  sourceDocumentIds: readonly string[]
-): Promise<PendingDuplicateReviewContract[]> {
-  if (sourceDocumentIds.length === 0) return [];
-
-  const rows = await db
-    .select({
-      sourceDocumentId: duplicateReviews.sourceDocumentId,
-      revisionId: duplicateReviews.revisionId,
-    })
-    .from(duplicateReviews)
-    .innerJoin(
-      sourceDocuments,
-      and(
-        eq(sourceDocuments.ledgerId, duplicateReviews.ledgerId),
-        eq(sourceDocuments.id, duplicateReviews.sourceDocumentId),
-        isNull(sourceDocuments.deletedAt),
-        eq(sourceDocuments.currentStatus, "duplicate_pending")
-      )
-    )
-    .where(
-      and(
-        eq(duplicateReviews.ledgerId, ledgerId),
-        eq(duplicateReviews.status, "pending"),
-        inArray(duplicateReviews.sourceDocumentId, [...sourceDocumentIds])
-      )
-    );
-
-  return rows;
-}
 
 export async function getSourceDocumentCandidateReview(
   ledgerId: string,
@@ -201,207 +162,6 @@ export async function getSourceDocumentCandidateReview(
   );
 }
 
-/**
- * Loads the side-by-side duplicate review payload: the review record, the
- * duplicate document's active review revision data, and the matched revision
- * snapshot captured at detection time. The matched side always renders the
- * snapshot, so a later edit or soft-delete of the matched bill never changes
- * the comparison evidence; `matchedState` reports what changed since.
- */
-export async function getSourceDocumentDuplicateReview(
-  ledgerId: string,
-  sourceDocumentId: string
-): Promise<SourceDocumentDuplicateReviewDetailDto> {
-  return db.transaction(
-    async (tx) => {
-      const review = await tx
-        .select()
-        .from(duplicateReviews)
-        .where(
-          and(
-            eq(duplicateReviews.ledgerId, ledgerId),
-            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-            eq(duplicateReviews.status, "pending")
-          )
-        )
-        .then((rows) => rows[0]);
-      if (review == null || review.status !== "pending")
-        throw new NotFoundError("Duplicate review");
-
-      const documents = await tx
-        .select({
-          id: sourceDocuments.id,
-          title: sourceDocuments.title,
-          entryDate: sourceDocuments.entryDate,
-          createdAt: sourceDocuments.createdAt,
-          stateVersion: sourceDocuments.stateVersion,
-          activeRevisionId: sourceDocuments.activeRevisionId,
-          deletedAt: sourceDocuments.deletedAt,
-        })
-        .from(sourceDocuments)
-        .where(
-          and(
-            eq(sourceDocuments.ledgerId, ledgerId),
-            inArray(sourceDocuments.id, [sourceDocumentId, review.matchedSourceDocumentId])
-          )
-        );
-      const duplicateDoc = documents.find(
-        (document) => document.id === sourceDocumentId && document.deletedAt == null
-      );
-      if (duplicateDoc == null) throw new NotFoundError("Source document");
-      const matchedDoc = documents.find(
-        (document) => document.id === review.matchedSourceDocumentId
-      );
-
-      const revisionIds = [review.revisionId, review.matchedRevisionId].filter(
-        (id): id is string => id != null
-      );
-      const revisions =
-        revisionIds.length === 0
-          ? []
-          : await tx
-              .select({
-                id: sourceDocumentRevisions.id,
-                sourceDocumentId: sourceDocumentRevisions.sourceDocumentId,
-                title: sourceDocumentRevisions.title,
-              })
-              .from(sourceDocumentRevisions)
-              .where(
-                and(
-                  eq(sourceDocumentRevisions.ledgerId, ledgerId),
-                  inArray(sourceDocumentRevisions.id, revisionIds)
-                )
-              );
-      const entries =
-        revisionIds.length === 0
-          ? []
-          : await tx
-              .select({
-                revisionId: ledgerEntries.sourceDocumentRevisionId,
-                id: ledgerEntries.id,
-                itemName: ledgerEntries.itemName,
-                description: ledgerEntries.description,
-                amount: ledgerEntries.amount,
-                currency: ledgerEntries.currency,
-                convertedAmount: ledgerEntries.convertedAmount,
-                deletedAt: ledgerEntries.deletedAt,
-              })
-              .from(ledgerEntries)
-              .where(
-                and(
-                  eq(ledgerEntries.ledgerId, ledgerId),
-                  inArray(ledgerEntries.sourceDocumentId, [
-                    sourceDocumentId,
-                    review.matchedSourceDocumentId,
-                  ]),
-                  inArray(ledgerEntries.sourceDocumentRevisionId, revisionIds)
-                )
-              )
-              .orderBy(asc(ledgerEntries.sourceDocumentRevisionId), asc(ledgerEntries.position));
-      const files =
-        revisionIds.length === 0
-          ? []
-          : await tx
-              .select({
-                revisionId: revisionFiles.revisionId,
-                id: storedFiles.id,
-                contentType: storedFiles.contentType,
-                byteSize: storedFiles.byteSize,
-                originalFilename: storedFiles.originalFilename,
-              })
-              .from(revisionFiles)
-              .innerJoin(
-                storedFiles,
-                and(
-                  eq(storedFiles.ledgerId, revisionFiles.ledgerId),
-                  eq(storedFiles.id, revisionFiles.storedFileId),
-                  isNull(storedFiles.deletedAt)
-                )
-              )
-              .where(
-                and(
-                  eq(revisionFiles.ledgerId, ledgerId),
-                  inArray(revisionFiles.revisionId, revisionIds)
-                )
-              )
-              .orderBy(asc(revisionFiles.revisionId), asc(revisionFiles.position));
-
-      const buildSide = (revisionId: string, includeDeletedEntries: boolean) => ({
-        entries: entries
-          .filter(
-            (entry) =>
-              entry.revisionId === revisionId && (includeDeletedEntries || entry.deletedAt == null)
-          )
-          .map((entry) => mapDuplicateReviewEntryDto(entry, ledgerId)),
-        files: files.filter((file) => file.revisionId === revisionId).map(mapStoredFileDto),
-      });
-      const duplicateRevision = revisions.find(
-        (revision) =>
-          revision.id === review.revisionId && revision.sourceDocumentId === sourceDocumentId
-      );
-      const duplicateSide = buildSide(review.revisionId, false);
-      const matchedState: SourceDocumentDuplicateReviewDetailDto["matchedState"] =
-        matchedDoc == null || matchedDoc.deletedAt != null
-          ? "deleted"
-          : matchedDoc.activeRevisionId !== review.matchedRevisionId
-            ? "modified"
-            : "unchanged";
-      if (review.matchedRevisionId == null || review.matchedCreatedAt == null) {
-        return {
-          version: duplicateDoc.stateVersion,
-          review: mapDuplicateReviewDto(review),
-          duplicate: {
-            id: duplicateDoc.id,
-            title: effectiveDocumentTitle(duplicateDoc.title, duplicateRevision?.title),
-            entryDate: duplicateDoc.entryDate,
-            createdAt: duplicateDoc.createdAt.toISOString(),
-            ...duplicateSide,
-          },
-          matched: null,
-          matchedState: "deleted",
-        };
-      }
-      const matchedRevision = revisions.find(
-        (revision) =>
-          revision.id === review.matchedRevisionId &&
-          revision.sourceDocumentId === review.matchedSourceDocumentId
-      );
-      return {
-        version: duplicateDoc.stateVersion,
-        review: mapDuplicateReviewDto(review),
-        duplicate: {
-          id: duplicateDoc.id,
-          title: effectiveDocumentTitle(duplicateDoc.title, duplicateRevision?.title),
-          entryDate: duplicateDoc.entryDate,
-          createdAt: duplicateDoc.createdAt.toISOString(),
-          ...duplicateSide,
-        },
-        matched: {
-          id: review.matchedSourceDocumentId,
-          title: effectiveDocumentTitle(review.matchedTitle, matchedRevision?.title),
-          entryDate: review.matchedEntryDate,
-          createdAt: review.matchedCreatedAt.toISOString(),
-          ...buildSide(review.matchedRevisionId, true),
-        },
-        matchedState,
-      };
-    },
-    { isolationLevel: "repeatable read", accessMode: "read only" }
-  );
-}
-
-function duplicateReviewColumns() {
-  return {
-    duplicateSourceDocumentId: duplicateReviews.sourceDocumentId,
-    duplicateRevisionId: duplicateReviews.revisionId,
-    duplicateMatchedSourceDocumentId: duplicateReviews.matchedSourceDocumentId,
-    duplicateMatchedRevisionId: duplicateReviews.matchedRevisionId,
-    duplicateStatus: duplicateReviews.status,
-    duplicateReason: duplicateReviews.reason,
-    duplicateConfidence: duplicateReviews.confidence,
-  };
-}
-
 async function loadSourceDocumentDetailSnapshot(
   tx: PostgresTransaction,
   ledgerId: string,
@@ -418,7 +178,6 @@ async function loadSourceDocumentDetailSnapshot(
       revisionOutcome: sourceDocumentRevisions.outcome,
       invalidReason: sourceDocumentRevisions.invalidReason,
       failureCode: sourceDocumentRevisions.failureCode,
-      ...duplicateReviewColumns(),
     })
     .from(sourceDocuments)
     .leftJoin(
@@ -436,14 +195,6 @@ async function loadSourceDocumentDetailSnapshot(
             eq(sourceDocumentRevisions.id, sourceDocuments.activeRevisionId)
           )
         )
-      )
-    )
-    .leftJoin(
-      duplicateReviews,
-      and(
-        eq(duplicateReviews.ledgerId, ledgerId),
-        eq(duplicateReviews.sourceDocumentId, sourceDocuments.id),
-        eq(duplicateReviews.status, "pending")
       )
     )
     .where(
@@ -589,13 +340,6 @@ async function loadSourceDocumentDetailSnapshot(
             ),
           }
         : null,
-    duplicateSourceDocumentId: baseRow.duplicateSourceDocumentId,
-    duplicateRevisionId: baseRow.duplicateRevisionId,
-    duplicateMatchedSourceDocumentId: baseRow.duplicateMatchedSourceDocumentId,
-    duplicateMatchedRevisionId: baseRow.duplicateMatchedRevisionId,
-    duplicateStatus: baseRow.duplicateStatus,
-    duplicateReason: baseRow.duplicateReason,
-    duplicateConfidence: baseRow.duplicateConfidence,
   };
   return { row: baseRow as SourceDocumentRow, hydration };
 }
@@ -625,7 +369,6 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
             WHERE list_revision_file.ledger_id = ${input.ledgerId}
               AND list_revision_file.revision_id = ${sourceDocumentRevisions.id}
           )`,
-      ...duplicateReviewColumns(),
     })
     .from(sourceDocuments)
     .leftJoin(
@@ -643,14 +386,6 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
             eq(sourceDocumentRevisions.id, sourceDocuments.activeRevisionId)
           )
         )
-      )
-    )
-    .leftJoin(
-      duplicateReviews,
-      and(
-        eq(duplicateReviews.ledgerId, input.ledgerId),
-        eq(duplicateReviews.sourceDocumentId, sourceDocuments.id),
-        eq(duplicateReviews.status, "pending")
       )
     )
     .where(and(...conditions))
@@ -678,13 +413,6 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
         files: [],
         ledgerEntries: [],
         activeResultSummary: null,
-        duplicateSourceDocumentId: row.duplicateSourceDocumentId,
-        duplicateRevisionId: row.duplicateRevisionId,
-        duplicateMatchedSourceDocumentId: row.duplicateMatchedSourceDocumentId,
-        duplicateMatchedRevisionId: row.duplicateMatchedRevisionId,
-        duplicateStatus: row.duplicateStatus,
-        duplicateReason: row.duplicateReason,
-        duplicateConfidence: row.duplicateConfidence,
       };
       return mapListItem(row as SourceDocumentRow, hydration);
     }),

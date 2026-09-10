@@ -20,7 +20,7 @@ export async function getStreamTotal(
   if (
     input.statuses != null &&
     input.statuses.length > 0 &&
-    !input.statuses.some((status) => status === "completed" || status === "duplicate_pending")
+    !input.statuses.includes("completed")
   ) {
     return { total: "0", unconvertedCount: 0 };
   }

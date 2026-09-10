@@ -67,7 +67,6 @@ const updateLedgerInputSchema = nonEmptyStrictObjectSchema({
     mainCurrency: optionalCurrencyCodeSchema,
     collapseEntriesDefault: z.boolean().optional(),
     aiCustomPrompt: z.string().max(4000).optional(),
-    duplicateDetectionEnabled: z.boolean().optional(),
     timeZone: z
       .string()
       .max(50)

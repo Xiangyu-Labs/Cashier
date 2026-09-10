@@ -45,9 +45,6 @@ vi.mock("@/modules/source-document/server-actions/batch", () => ({
   batchDeleteSourceDocumentsAction: vi.fn(),
   batchRetrySourceDocumentsAction: vi.fn(),
 }));
-vi.mock("@/modules/source-document/server-actions/duplicate-reviews", () => ({
-  batchResolveDuplicateReviewsAction: vi.fn(),
-}));
 vi.mock("@/modules/source-document/server-actions/delete", () => ({
   deleteSourceDocumentAction: deleteSourceDocumentActionMock,
 }));

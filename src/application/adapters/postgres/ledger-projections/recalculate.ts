@@ -60,7 +60,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       const now = new Date();
       const { state } = transitionSourceDocument(
         { status: "processing", hasActiveResult: false },
-        { type: "processing_succeeded", duplicate: false }
+        { type: "processing_succeeded" }
       );
       await tx
         .update(sourceDocumentRevisions)

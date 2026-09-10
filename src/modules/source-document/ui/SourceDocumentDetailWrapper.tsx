@@ -2,7 +2,6 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useCallback } from "react";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
-import { SourceDocumentDuplicateReviewDialog } from "./SourceDocumentDuplicateReviewDialog";
 import { SourceDocumentCandidateReviewDialog } from "./SourceDocumentCandidateReviewDialog";
 import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
 import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
@@ -98,22 +97,6 @@ export function SourceDocumentDetailWrapper({
   if (sourceDocument?.status === "candidate_pending") {
     return (
       <SourceDocumentCandidateReviewDialog
-        ledgerId={detailLedgerId ?? ledgerId}
-        sourceDocumentId={id}
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) onClose();
-        }}
-        {...(onBack !== undefined ? { onBack } : {})}
-        {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-        mainCurrency={mainCurrency}
-      />
-    );
-  }
-
-  if (sourceDocument?.status === "duplicate_pending" && sourceDocument.duplicateReview != null) {
-    return (
-      <SourceDocumentDuplicateReviewDialog
         ledgerId={detailLedgerId ?? ledgerId}
         sourceDocumentId={id}
         open={open}

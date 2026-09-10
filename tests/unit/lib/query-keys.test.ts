@@ -19,7 +19,6 @@ describe("queryKeys", () => {
       queryKeys.sourceDocument("ledger-1", "document-1"),
       queryKeys.sourceDocumentLight("ledger-1", "document-1"),
       queryKeys.sourceDocumentCandidateReview("ledger-1", "document-1"),
-      queryKeys.sourceDocumentDuplicateReview("ledger-1", "document-1"),
       queryKeys.sourceDocumentFull("ledger-1", "document-1"),
     ];
 

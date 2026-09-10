@@ -24,9 +24,7 @@ export type SupportedSourceDocumentAction =
   | "accept_candidate"
   | "abandon_candidate"
   | "cancel_processing"
-  | "split_entries"
-  | "keep_duplicate"
-  | "discard_duplicate";
+  | "split_entries";
 
 export interface SourceDocumentContract {
   id: SourceDocumentId;
@@ -50,15 +48,10 @@ export function supportedSourceDocumentActions(input: {
   activeRevisionId: RevisionId | null;
   pendingRevisionId?: RevisionId | null;
   pendingOutcome: RevisionOutcome | null;
-  duplicateReviewPending?: boolean;
   deleted?: boolean;
 }): readonly SupportedSourceDocumentAction[] {
   if (input.deleted) {
     return [];
-  }
-
-  if (input.duplicateReviewPending === true) {
-    return ["keep_duplicate", "discard_duplicate", "delete"];
   }
 
   if (input.pendingOutcome === "processing") {
@@ -77,11 +70,8 @@ export function supportedSourceDocumentActions(input: {
     return ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"];
   }
 
-  // First parse completed successfully (no active revision yet). This is
-  // retained for compatibility with pre-migration rows; new duplicate reviews
-  // use duplicateReviewPending above while the revision is already active.
   if (input.pendingOutcome === "completed") {
-    return ["keep_duplicate", "discard_duplicate", "delete"];
+    return ["retry", "edit_retry", "delete"];
   }
   const hasPendingRevision =
     input.pendingRevisionId === undefined

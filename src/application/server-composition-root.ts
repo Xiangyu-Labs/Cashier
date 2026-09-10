@@ -13,18 +13,14 @@ import {
   getTargetSourceDocumentAccessContext,
   getSourceDocumentEvidence,
   getSourceDocumentCandidateReview,
-  getSourceDocumentDuplicateReview,
-  listPendingDuplicateReviews,
   PostgresProcessingIntentAdapter,
   listTargetSourceDocuments,
   postgresSourceDocumentAggregateAdapter,
 } from "@/application/adapters/postgres";
-import { listDuplicateDetectionCandidates } from "@/application/adapters/postgres/duplicate-candidates";
 import { loadRevisionProcessingContext } from "@/application/adapters/postgres/revision-processing-context";
 import {
   postgresLedgerProjectionAdapter,
   storeCandidateRevision,
-  storeDuplicatePendingRevision,
 } from "@/application/adapters/postgres/ledger-projections";
 import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { postgresAccountSecurityAdapter } from "@/application/adapters/postgres/account-security";
@@ -74,14 +70,12 @@ function createRevisionProcessor(
         ledgerId,
         storedFileIds
       ),
-    listDuplicateCandidates: listDuplicateDetectionCandidates,
     getRates: (date) => postgresFxRateBook.getRates(date),
     preserveTerminalOutcome: (input) => postgresRevisionAdapter.preserveTerminalOutcome(input),
     getRevision: (ledgerId, sourceDocumentId) =>
       postgresRevisionAdapter.get(ledgerId, sourceDocumentId),
     activateRevision: (input) => postgresLedgerProjectionAdapter.activateRevision(input),
     storeCandidateRevision,
-    storeDuplicatePendingRevision,
   });
 }
 
@@ -121,11 +115,9 @@ export const serverComposition = {
   sourceDocumentReads: {
     candidateReview: getSourceDocumentCandidateReview,
     calculateCompletedTotal: calculateCompletedSourceDocumentTotal,
-    duplicateReview: getSourceDocumentDuplicateReview,
     getEvidence: getSourceDocumentEvidence,
     get: getTargetSourceDocument,
     getAccessContext: getTargetSourceDocumentAccessContext,
-    listPendingDuplicateReviews,
     list: listTargetSourceDocuments,
   },
   credentialSourceDocuments: postgresCredentialSourceDocumentReadAdapter,

@@ -7,8 +7,6 @@ function lifecycle(abandonCandidate: SourceDocumentLifecyclePort["abandonCandida
   return {
     acceptCandidate: vi.fn(),
     abandonCandidate,
-    keepDuplicate: vi.fn(),
-    discardDuplicate: vi.fn(),
     cancelPending: vi.fn(),
   } satisfies SourceDocumentLifecyclePort;
 }

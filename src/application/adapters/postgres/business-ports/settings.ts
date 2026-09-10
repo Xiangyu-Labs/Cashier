@@ -18,7 +18,6 @@ export const postgresSettingsAdapter: SettingsPort = {
         mainCurrency: true,
         collapseEntriesDefault: true,
         aiCustomPrompt: true,
-        duplicateDetectionEnabled: true,
         timeZone: true,
       },
     });

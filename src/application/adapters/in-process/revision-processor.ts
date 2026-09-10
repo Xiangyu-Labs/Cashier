@@ -26,23 +26,11 @@ import {
   ProcessingFailure,
   throwIfProcessingCancelled,
 } from "@/modules/source-document/application/parse-source-document/contracts";
-import { detectDuplicateBill } from "@/modules/source-document/application/duplicate-detection";
 import {
   isFailedLoadImageResult,
   isSuccessfulLoadImageResult,
   type LoadImageResult,
 } from "./stored-image-loader";
-import type { DuplicateCandidateContract } from "@/modules/source-document/application/duplicate-detection";
-
-type DuplicateReviewSnapshot = {
-  matchedSourceDocumentId: string;
-  matchedRevisionId: string;
-  matchedTitle: string | null;
-  matchedEntryDate: string | null;
-  matchedCreatedAt: string;
-  reason: string | null;
-  confidence: number | null;
-};
 
 export interface CurrentRevisionProcessorOptions {
   createAIContext: (signal: AbortSignal) => AIContext;
@@ -51,11 +39,6 @@ export interface CurrentRevisionProcessorOptions {
   ) => Promise<RevisionProcessingContextContract>;
   getSettings: SettingsPort["get"];
   loadStoredFiles: (ledgerId: string, storedFileIds: string[]) => Promise<LoadImageResult[]>;
-  listDuplicateCandidates: (
-    ledgerId: string,
-    entryDate: string,
-    excludeSourceDocumentId: string
-  ) => Promise<DuplicateCandidateContract[]>;
   getRates: FxRateBook["getRates"];
   preserveTerminalOutcome: SourceDocumentPort["preserveTerminalOutcome"];
   getRevision: SourceDocumentPort["get"];
@@ -67,17 +50,6 @@ export interface CurrentRevisionProcessorOptions {
     expectedMainCurrency: string,
     title: string | null | undefined,
     entries: readonly LedgerProjectionEntryContract[],
-    lease?: RevisionProcessingRequestContract["lease"],
-    duplicateReview?: DuplicateReviewSnapshot
-  ) => Promise<boolean>;
-  storeDuplicatePendingRevision: (
-    ledgerId: string,
-    sourceDocumentId: string,
-    revisionId: string,
-    expectedMainCurrency: string,
-    title: string | null | undefined,
-    entries: readonly LedgerProjectionEntryContract[],
-    review: DuplicateReviewSnapshot,
     lease?: RevisionProcessingRequestContract["lease"]
   ) => Promise<boolean>;
 }
@@ -104,21 +76,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     }
     throwIfProcessingCancelled(signal);
 
-    const evidenceReads = new Map<string, Promise<LoadImageResult>>();
-    const loadFiles = (fileIds: readonly string[]) => {
-      const missing = [...new Set(fileIds)].filter((id) => !evidenceReads.has(id));
-      if (missing.length > 0) {
-        const batch = this.options.loadStoredFiles(request.ledgerId, missing);
-        missing.forEach((id, index) => {
-          evidenceReads.set(
-            id,
-            batch.then((files) => files[index]!)
-          );
-        });
-      }
-      return Promise.all(fileIds.map((id) => evidenceReads.get(id)!));
-    };
-    const loadedEvidence = await loadFiles(storedFileIds);
+    const loadedEvidence = await this.options.loadStoredFiles(request.ledgerId, storedFileIds);
     throwIfProcessingCancelled(signal);
     const failedEvidence = loadedEvidence.filter(isFailedLoadImageResult);
     if (failedEvidence.length > 0) {
@@ -227,98 +185,6 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           exchangeRate: entry.exchangeRate,
           createdAt: entry.entryDate,
         }));
-
-        if (
-          document.type === "ai_parsed" &&
-          currentSettings?.duplicateDetectionEnabled !== false &&
-          document.entryDate != null
-        ) {
-          const candidates = await this.options.listDuplicateCandidates(
-            request.ledgerId,
-            document.entryDate,
-            request.sourceDocumentId
-          );
-          const detection = await detectDuplicateBill({
-            ledgerId: request.ledgerId,
-            mainCurrency,
-            ...(currentSettings?.aiLanguage === undefined
-              ? {}
-              : { aiLanguage: currentSettings.aiLanguage }),
-            ...(currentSettings?.aiCustomPrompt === undefined
-              ? {}
-              : { aiCustomPrompt: currentSettings.aiCustomPrompt }),
-            sourceDocumentId: request.sourceDocumentId,
-            currentCreatedAt: document.createdAt.toISOString(),
-            currentEntryDate: document.entryDate,
-            currentTitle: output.title ?? null,
-            currentEntries: entryInputs,
-            currentStoredFileIds: storedFileIds,
-            candidates,
-            loadImages: async (candidateFileIds) => {
-              const loaded = await loadFiles(candidateFileIds);
-              return loaded
-                .filter(isSuccessfulLoadImageResult)
-                .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
-            },
-            ai,
-            signal,
-          });
-          throwIfProcessingCancelled(signal);
-          if (
-            detection?.duplicate === true &&
-            detection.matchedSourceDocumentId != null &&
-            detection.matchedRevisionId != null
-          ) {
-            const matchedCandidate = candidates.find(
-              (candidate) => candidate.sourceDocumentId === detection.matchedSourceDocumentId
-            );
-            if (matchedCandidate != null) {
-              const reviewSnapshot = {
-                matchedSourceDocumentId: detection.matchedSourceDocumentId,
-                matchedRevisionId: detection.matchedRevisionId,
-                matchedTitle: matchedCandidate.title,
-                matchedEntryDate: matchedCandidate.entryDate,
-                matchedCreatedAt: matchedCandidate.createdAt,
-                reason: detection.reason,
-                confidence: detection.confidence,
-              };
-              if (document.activeRevisionId == null) {
-                throwIfProcessingCancelled(signal);
-                const stored = await this.options.storeDuplicatePendingRevision(
-                  request.ledgerId,
-                  request.sourceDocumentId,
-                  request.revisionId,
-                  mainCurrency,
-                  output.title,
-                  entryInputs,
-                  reviewSnapshot,
-                  request.lease
-                );
-                if (!stored) {
-                  if (request.lease != null) throw new ProcessingCancelledError();
-                  throw new Error("Failed to store duplicate pending revision");
-                }
-                return { outcome: "completed", completion: "atomic" };
-              }
-              throwIfProcessingCancelled(signal);
-              const stored = await this.options.storeCandidateRevision(
-                request.ledgerId,
-                request.sourceDocumentId,
-                request.revisionId,
-                mainCurrency,
-                output.title,
-                entryInputs,
-                request.lease,
-                reviewSnapshot
-              );
-              if (!stored) {
-                if (request.lease != null) throw new ProcessingCancelledError();
-                throw new Error("Failed to store candidate revision");
-              }
-              return { outcome: "completed", completion: "atomic" };
-            }
-          }
-        }
 
         if (document.activeRevisionId == null) {
           throwIfProcessingCancelled(signal);

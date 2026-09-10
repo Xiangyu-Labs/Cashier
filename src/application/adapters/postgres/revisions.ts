@@ -13,7 +13,6 @@ import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { MAX_FILES, MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
 import {
-  duplicateReviews,
   ledgers,
   revisionFiles,
   sourceDocumentRevisions,
@@ -248,27 +247,6 @@ export async function createPendingRevisionInTransaction(
       }))
     );
   }
-
-  // A retry/supersede retires any *staged* duplicate review: the staged review
-  // belongs to the candidate revision that this retry replaces and can never
-  // be promoted. A pending duplicate review on the old active revision is
-  // deliberately kept: the document is only `duplicate_pending` again after
-  // the retry is rejected, so the original review must survive the retry.
-  await tx
-    .update(duplicateReviews)
-    .set({
-      status: "discarded",
-      decision: "superseded",
-      decidedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(duplicateReviews.ledgerId, input.ledgerId),
-        eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-        eq(duplicateReviews.status, "staged")
-      )
-    );
 
   const updatedDocument = await tx
     .update(sourceDocuments)

@@ -121,7 +121,6 @@
     "discard": "放弃",
     "readOnlyPreview": "只读预览",
     "saveAllSuccess": "已保存 {count} 处修改",
-    "statusDuplicatePending": "待确认重复",
     "refresh": "刷新",
     "refreshSuccess": "已刷新",
     "refreshFailed": "刷新失败，请重试",

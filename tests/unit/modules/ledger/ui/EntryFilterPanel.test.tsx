@@ -129,7 +129,6 @@ describe("EntryFilterPanel", () => {
     expect(onFiltersChange).toHaveBeenCalledTimes(1);
     expect(onFiltersChange.mock.calls[0]?.[0].statuses).toEqual([
       "candidate_pending",
-      "duplicate_pending",
       "invalid",
       "failed",
     ]);

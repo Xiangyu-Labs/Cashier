@@ -17,7 +17,6 @@ import { describe, expect, it } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { serverComposition } from "@/application/server-composition-root";
 import type { SourceDocumentAggregateWritePort } from "@/modules/source-document/application/ports";
-import { storeDuplicatePendingRevision } from "@/application/adapters/postgres";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import { ConflictError, NotFoundError, StaleSourceDocumentVersionError } from "@/lib/errors";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
@@ -31,22 +30,15 @@ import { getTestDb } from "tests/setup";
  *   document; there is no prior version to be a CAS against.
  * - `completeProcessing`: provider-driven internal writes keyed by revision
  *   ids, not a browser-facing versioned command.
- * - `resolveDuplicate`: one port method with two distinct terminal outcomes
- *   ("keep" vs "discard"), split here into two scenario keys so each is
- *   independently exercised.
  */
-type ExistingDocumentCommand =
-  | Exclude<
-      keyof SourceDocumentAggregateWritePort,
-      | "createProcessingDocument"
-      | "createIdempotentProcessingDocument"
-      | "createManualDocument"
-      | "installIdempotentRetry"
-      | "completeProcessing"
-      | "resolveDuplicate"
-    >
-  | "resolveDuplicateKeep"
-  | "resolveDuplicateDiscard";
+type ExistingDocumentCommand = Exclude<
+  keyof SourceDocumentAggregateWritePort,
+  | "createProcessingDocument"
+  | "createIdempotentProcessingDocument"
+  | "createManualDocument"
+  | "installIdempotentRetry"
+  | "completeProcessing"
+>;
 
 const port: SourceDocumentAggregateWritePort = serverComposition.sourceDocumentAggregate;
 
@@ -158,37 +150,6 @@ async function createCandidatePendingDocument(ledgerId: string) {
   return {
     sourceDocumentId: active.sourceDocumentId,
     version: await currentVersion(active.sourceDocumentId),
-  };
-}
-
-/** A `duplicate_pending` document — a completed, active revision flagged as a duplicate. */
-async function createDuplicatePendingDocument(ledgerId: string) {
-  const pending = await createProcessingDocument(ledgerId);
-  const matched = await createActiveDocumentWithRevision(ledgerId);
-  const stored = await storeDuplicatePendingRevision(
-    ledgerId,
-    pending.sourceDocumentId,
-    (await getTestDb().query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, pending.sourceDocumentId),
-      columns: { pendingRevisionId: true },
-    }))!.pendingRevisionId!,
-    "CNY",
-    "Duplicate candidate",
-    [entry],
-    {
-      matchedSourceDocumentId: matched.sourceDocumentId,
-      matchedRevisionId: matched.revisionId,
-      matchedTitle: "Original",
-      matchedEntryDate: "2026-08-01",
-      matchedCreatedAt: new Date().toISOString(),
-      reason: "Same bill",
-      confidence: 0.9,
-    }
-  );
-  if (!stored) throw new Error("Expected duplicate-pending revision to be stored");
-  return {
-    sourceDocumentId: pending.sourceDocumentId,
-    version: await currentVersion(pending.sourceDocumentId),
   };
 }
 
@@ -612,78 +573,6 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
     expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
   },
 
-  async resolveDuplicateKeep() {
-    const ledgerId = await newLedger();
-    const { sourceDocumentId, version } = await createDuplicatePendingDocument(ledgerId);
-    const staleVersion = version - 1;
-
-    const changed = await port.resolveDuplicate({
-      ledgerId,
-      sourceDocumentId,
-      expectedVersion: version,
-      decision: "keep",
-    });
-    expect(changed).toMatchObject({ version: version + 1, status: "completed" });
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    // No-op: replaying "keep" at the current (already-kept) version reports
-    // the same success without a further write.
-    const noop = await port.resolveDuplicate({
-      ledgerId,
-      sourceDocumentId,
-      expectedVersion: version + 1,
-      decision: "keep",
-    });
-    expect(noop).toMatchObject({ version: version + 1, status: "completed" });
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    await expect(
-      port.resolveDuplicate({
-        ledgerId,
-        sourceDocumentId,
-        expectedVersion: staleVersion,
-        decision: "keep",
-      })
-    ).rejects.toThrow(StaleSourceDocumentVersionError);
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-  },
-
-  async resolveDuplicateDiscard() {
-    const ledgerId = await newLedger();
-    const { sourceDocumentId, version } = await createDuplicatePendingDocument(ledgerId);
-    const staleVersion = version - 1;
-
-    const changed = await port.resolveDuplicate({
-      ledgerId,
-      sourceDocumentId,
-      expectedVersion: version,
-      decision: "discard",
-    });
-    expect(changed).toMatchObject({ version: version + 1, status: "deleted" });
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    // No-op: replaying "discard" at the current (already-discarded) version
-    // still reads the now-tombstoned row and reports the same success.
-    const noop = await port.resolveDuplicate({
-      ledgerId,
-      sourceDocumentId,
-      expectedVersion: version + 1,
-      decision: "discard",
-    });
-    expect(noop).toMatchObject({ version: version + 1, status: "deleted" });
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    await expect(
-      port.resolveDuplicate({
-        ledgerId,
-        sourceDocumentId,
-        expectedVersion: staleVersion,
-        decision: "discard",
-      })
-    ).rejects.toThrow(StaleSourceDocumentVersionError);
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-  },
-
   async deleteDocuments() {
     const ledgerId = await newLedger();
     const { sourceDocumentId } = await createActiveDocument(ledgerId);
@@ -737,14 +626,7 @@ describe("source document aggregate — version invariants", () => {
     it(`${name}: +1 on change, no-op or well-defined replay, stale rejected with zero writes`, run);
   }
 
-  it.each([
-    "processing",
-    "candidate_pending",
-    "duplicate_pending",
-    "invalid",
-    "failed",
-    "cancelled",
-  ] as const)(
+  it.each(["processing", "candidate_pending", "invalid", "failed", "cancelled"] as const)(
     "%s documents reject changed and no-op projection writes without side effects",
     async (status) => {
       const ledgerId = await newLedger();

@@ -4,9 +4,7 @@ import { postgresLedgerProjectionAdapter } from "../ledger-projections";
 import {
   abandonCandidateRevision,
   acceptCandidateRevision,
-  activateDuplicatePendingRevision,
   cancelPendingRevision,
-  discardDuplicatePendingRevision,
 } from "../ledger-projections/activate-revision";
 import { postgresSourceDocumentSubmissionAdapter } from "../submissions";
 import { saveChanges, updateDocuments, updateEntryDates } from "../source-document-updates";
@@ -32,10 +30,6 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   acceptCandidate: acceptCandidateRevision,
   abandonCandidate: abandonCandidateRevision,
   cancelProcessing: cancelPendingRevision,
-  resolveDuplicate: ({ ledgerId, sourceDocumentId, expectedVersion, decision }) =>
-    decision === "keep"
-      ? activateDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion)
-      : discardDuplicatePendingRevision(ledgerId, sourceDocumentId, expectedVersion),
   deleteDocuments: deleteSourceDocumentAtomically,
   completeProcessing: (input) => postgresLedgerProjectionAdapter.activateRevision(input),
 };

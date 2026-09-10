@@ -2,7 +2,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import { DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, RotateCcw } from "lucide-react";
-import { ReviewPanelSkeleton } from "./SourceDocumentDuplicateReviewDialog/components/ReviewPanelSkeleton";
+import { SourceDocumentReviewPanelSkeleton } from "./SourceDocumentReviewPanelSkeleton";
 
 interface SourceDocumentReviewDialogContentProps extends PropsWithChildren {
   isPending: boolean;
@@ -50,8 +50,8 @@ export function SourceDocumentReviewDialogContent({
             aria-busy="true"
             aria-label={loadingLabel}
           >
-            <ReviewPanelSkeleton />
-            <ReviewPanelSkeleton />
+            <SourceDocumentReviewPanelSkeleton />
+            <SourceDocumentReviewPanelSkeleton />
           </div>
         ) : hasError ? (
           <div

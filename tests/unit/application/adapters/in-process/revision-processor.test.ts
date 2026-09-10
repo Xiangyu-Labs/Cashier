@@ -2,16 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import type { AIContext } from "@/lib/tasks/types";
 import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
-import type { DuplicateDetectionInput } from "@/modules/source-document/application/duplicate-detection";
 
-const { runParsePipelineMock, toOutputMock, detectDuplicateMock } = vi.hoisted(() => ({
+const { runParsePipelineMock, toOutputMock } = vi.hoisted(() => ({
   runParsePipelineMock: vi.fn(),
   toOutputMock: vi.fn(),
-  detectDuplicateMock: vi.fn(),
-}));
-
-vi.mock("@/modules/source-document/application/duplicate-detection", () => ({
-  detectDuplicateBill: detectDuplicateMock,
 }));
 
 vi.mock("@/modules/source-document/application/parse-source-document/pipeline", () => ({
@@ -25,10 +19,7 @@ const { CurrentRevisionProcessor } =
   await import("@/application/adapters/in-process/revision-processor");
 
 function createProcessor(entryCount: number, overrides: Record<string, unknown> = {}) {
-  const getSettings = vi.fn().mockResolvedValue({
-    mainCurrency: "CNY",
-    duplicateDetectionEnabled: false,
-  });
+  const getSettings = vi.fn().mockResolvedValue({ mainCurrency: "CNY" });
   const getRates = vi.fn().mockResolvedValue({
     base: "EUR",
     date: "2026-09-01",
@@ -64,13 +55,11 @@ function createProcessor(entryCount: number, overrides: Record<string, unknown> 
     }),
     getSettings,
     loadStoredFiles: vi.fn().mockResolvedValue([]),
-    listDuplicateCandidates: vi.fn().mockResolvedValue([]),
     getRates,
     preserveTerminalOutcome: vi.fn().mockResolvedValue(true),
     getRevision: vi.fn().mockResolvedValue(null),
     activateRevision,
     storeCandidateRevision: vi.fn().mockResolvedValue(true),
-    storeDuplicatePendingRevision: vi.fn().mockResolvedValue(true),
     ...overrides,
   });
   return { processor, getSettings, getRates, activateRevision };
@@ -100,8 +89,8 @@ describe("CurrentRevisionProcessor", () => {
   it("rebuilds currency-dependent work after a commit conflict without reparsing", async () => {
     const getSettings = vi
       .fn()
-      .mockResolvedValueOnce({ mainCurrency: "CNY", duplicateDetectionEnabled: false })
-      .mockResolvedValueOnce({ mainCurrency: "USD", duplicateDetectionEnabled: false });
+      .mockResolvedValueOnce({ mainCurrency: "CNY" })
+      .mockResolvedValueOnce({ mainCurrency: "USD" });
     const activateRevision = vi
       .fn()
       .mockRejectedValueOnce(new LedgerMainCurrencyChangedError())
@@ -135,56 +124,5 @@ describe("CurrentRevisionProcessor", () => {
     expect(activateRevision).toHaveBeenCalledTimes(3);
     expect(getSettings).toHaveBeenCalledTimes(3);
     expect(runParsePipelineMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("loads each evidence file once per process call across duplicate checks and currency retries", async () => {
-    const loadStoredFiles = vi.fn(async (_ledgerId: string, ids: string[]) =>
-      ids.map((id) => ({
-        url: id,
-        dataUrl: `data:image/png;base64,${id}`,
-        success: true as const,
-      }))
-    );
-    const loadContext = vi.fn().mockResolvedValue({
-      revision: { submittedText: "receipt", outcome: "processing" },
-      document: {
-        activeRevisionId: null,
-        pendingRevisionId: "revision-1",
-        type: "ai_parsed",
-        entryDate: "2026-09-01",
-        createdAt: new Date("2026-09-01"),
-      },
-      storedFileIds: ["current"],
-      categories: [],
-    });
-    detectDuplicateMock.mockImplementation(async (input: DuplicateDetectionInput) => {
-      const [first, second] = await Promise.all([
-        input.loadImages(["current", "candidate"]),
-        input.loadImages(["candidate", "current"]),
-      ]);
-      expect(first.map((item) => item.url)).toEqual(["current", "candidate"]);
-      expect(second.map((item) => item.url)).toEqual(["candidate", "current"]);
-      return null;
-    });
-    const activateRevision = vi
-      .fn()
-      .mockRejectedValueOnce(new LedgerMainCurrencyChangedError())
-      .mockResolvedValue(true);
-    const { processor } = createProcessor(1, {
-      loadContext,
-      loadStoredFiles,
-      activateRevision,
-      getSettings: vi
-        .fn()
-        .mockResolvedValue({ mainCurrency: "CNY", duplicateDetectionEnabled: true }),
-    });
-    await processor.process(request);
-    expect(detectDuplicateMock).toHaveBeenCalledTimes(2);
-    expect(loadStoredFiles.mock.calls).toEqual([
-      ["ledger-1", ["current"]],
-      ["ledger-1", ["candidate"]],
-    ]);
-    await processor.process(request);
-    expect(loadStoredFiles).toHaveBeenCalledTimes(4);
   });
 });

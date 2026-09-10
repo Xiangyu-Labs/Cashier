@@ -9,14 +9,12 @@ import {
   uniqueIndex,
   timestamp,
   jsonb,
-  numeric,
   uuid,
   pgEnum,
   bigint,
   primaryKey,
   unique,
   boolean,
-  date,
 } from "drizzle-orm/pg-core";
 import { ledgers } from "./ledger";
 import { sourceDocuments } from "./source-document";
@@ -66,12 +64,6 @@ export const uploadFileStatusEnum = pgEnum("upload_file_status", [
   "rejected",
 ]);
 export const idempotencyStatusEnum = pgEnum("idempotency_status", ["pending", "completed"]);
-export const duplicateReviewStatusEnum = pgEnum("duplicate_review_status", [
-  "pending",
-  "staged",
-  "kept",
-  "discarded",
-]);
 
 export const sourceDocumentRevisions = pgTable(
   "source_document_revisions",
@@ -238,83 +230,6 @@ export const processingOutbox = pgTable(
       table.nextAvailableAt
     ),
     check("ck_processing_outbox_attempt_number", sql`${table.attemptNumber} > 0`),
-  ]
-);
-
-export const duplicateReviews = pgTable(
-  "duplicate_reviews",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    ledgerId: uuid("ledger_id").notNull(),
-    sourceDocumentId: uuid("source_document_id").notNull(),
-    revisionId: uuid("revision_id").notNull(),
-    matchedSourceDocumentId: uuid("matched_source_document_id").notNull(),
-    // Nullable for legacy reviews whose matched bill has no surviving
-    // revision; new reviews always store a snapshot.
-    matchedRevisionId: uuid("matched_revision_id"),
-    matchedTitle: text("matched_title"),
-    matchedEntryDate: date("matched_entry_date", { mode: "string" }),
-    matchedCreatedAt: timestamp("matched_created_at", { withTimezone: true }),
-    status: duplicateReviewStatusEnum("status").notNull().default("pending"),
-    reason: text("reason"),
-    confidence: numeric("confidence", { precision: 4, scale: 3 }),
-    decision: text("decision"),
-    decidedAt: timestamp("decided_at", { withTimezone: true }),
-    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
-    updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.ledgerId],
-      foreignColumns: [ledgers.id],
-      name: "fk_duplicate_reviews_ledger",
-    }).onDelete("cascade"),
-    uniqueIndex("uq_duplicate_reviews_document_revision").on(
-      table.sourceDocumentId,
-      table.revisionId
-    ),
-    uniqueIndex("uq_duplicate_reviews_pending_per_document")
-      .on(table.sourceDocumentId)
-      .where(sql`${table.status} = 'pending'`),
-    uniqueIndex("uq_duplicate_reviews_staged_per_document")
-      .on(table.sourceDocumentId)
-      .where(sql`${table.status} = 'staged'`),
-    index("idx_duplicate_reviews_ledger_status")
-      .on(table.ledgerId, table.status)
-      .where(sql`${table.status} = 'pending'`),
-    index("idx_duplicate_reviews_matched").on(table.ledgerId, table.matchedSourceDocumentId),
-    foreignKey({
-      columns: [table.ledgerId, table.sourceDocumentId],
-      foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
-      name: "fk_duplicate_reviews_document_ledger",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.ledgerId, table.revisionId],
-      foreignColumns: [sourceDocumentRevisions.ledgerId, sourceDocumentRevisions.id],
-      name: "fk_duplicate_reviews_revision_ledger",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.ledgerId, table.matchedSourceDocumentId],
-      foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
-      name: "fk_duplicate_reviews_matched_ledger",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.ledgerId, table.matchedSourceDocumentId, table.matchedRevisionId],
-      foreignColumns: [
-        sourceDocumentRevisions.ledgerId,
-        sourceDocumentRevisions.sourceDocumentId,
-        sourceDocumentRevisions.id,
-      ],
-      name: "fk_duplicate_reviews_matched_revision_ledger",
-    }).onDelete("cascade"),
-    check(
-      "ck_duplicate_reviews_confidence",
-      sql`${table.confidence} IS NULL OR (${table.confidence} >= 0 AND ${table.confidence} <= 1)`
-    ),
-    check(
-      "ck_duplicate_reviews_decision",
-      sql`${table.decision} IS NULL OR ${table.decision} IN ('keep_duplicate', 'discard_duplicate', 'superseded')`
-    ),
   ]
 );
 

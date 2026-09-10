@@ -56,33 +56,13 @@ export function useLedgerEntriesSelection({
     selectableCount,
   } = useSelection({ allIds: allSourceDocumentIds, queryFingerprint });
 
-  const {
-    deleteSourceDocument,
-    batchUpdateDates,
-    batchDelete,
-    batchRetry,
-    batchKeepDuplicates,
-    batchDiscardDuplicates,
-  } = useBatchSourceDocumentActions(
-    ledgerId,
-    clearSelection,
-    retainSelection,
-    sourceDocumentVersions
-  );
-  const selectedDuplicateIds = useMemo(() => {
-    if (selectedIds.length === 0) return [];
-    const statusById = new Map(
-      streamGroups.flatMap((group) =>
-        group.items.map((item) => [item.sourceDocument.id, item.sourceDocument.status] as const)
-      )
+  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } =
+    useBatchSourceDocumentActions(
+      ledgerId,
+      clearSelection,
+      retainSelection,
+      sourceDocumentVersions
     );
-    return selectedIds.filter((id) => statusById.get(id) === "duplicate_pending");
-  }, [selectedIds, streamGroups]);
-  const selectedDuplicateCount = selectedDuplicateIds.length;
-  const selectedOrdinaryIds = useMemo(() => {
-    const duplicateIds = new Set(selectedDuplicateIds);
-    return selectedIds.filter((id) => !duplicateIds.has(id));
-  }, [selectedDuplicateIds, selectedIds]);
   const selectedEntryIds = useMemo(() => {
     const selected = new Set(selectedIds);
     return [
@@ -96,11 +76,7 @@ export function useLedgerEntriesSelection({
     ];
   }, [selectedIds, streamGroups]);
   const isBatchPending =
-    batchUpdateDates.isPending ||
-    batchDelete.isPending ||
-    batchRetry.isPending ||
-    batchKeepDuplicates.isPending ||
-    batchDiscardDuplicates.isPending;
+    batchUpdateDates.isPending || batchDelete.isPending || batchRetry.isPending;
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
     return () => {
@@ -139,11 +115,6 @@ export function useLedgerEntriesSelection({
     batchUpdateDates,
     batchDelete,
     batchRetry,
-    batchKeepDuplicates,
-    batchDiscardDuplicates,
-    selectedDuplicateIds,
-    selectedDuplicateCount,
-    selectedOrdinaryIds,
     selectedEntryIds,
     isBatchPending,
     handleToggleSelectionMode,

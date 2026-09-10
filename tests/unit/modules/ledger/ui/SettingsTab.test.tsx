@@ -31,7 +31,6 @@ describe("explicit settings section drafts", () => {
       settings: {
         ...getDefaultLedger().settings,
         aiLanguage: "zh-CN",
-        duplicateDetectionEnabled: true,
         aiCustomPrompt: "Draft prompt",
       },
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -42,7 +41,6 @@ describe("explicit settings section drafts", () => {
         settings={{
           ...getDefaultLedger().settings,
           aiLanguage: "zh-CN",
-          duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
         }}
         onUpdateSettings={onUpdateSettings}
@@ -66,7 +64,6 @@ describe("explicit settings section drafts", () => {
         settings={{
           ...getDefaultLedger().settings,
           aiLanguage: "zh-CN",
-          duplicateDetectionEnabled: true,
           aiCustomPrompt: "Server prompt",
         }}
         onUpdateSettings={() =>

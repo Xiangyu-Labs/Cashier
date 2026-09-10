@@ -260,6 +260,13 @@
       "when": 1788963638980,
       "tag": "0036_hard_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1789011961222,
+      "tag": "0037_remove_duplicate_detection",
+      "breakpoints": true
     }
   ]
 }

@@ -121,7 +121,6 @@
     "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
-    "statusDuplicatePending": "Duplicate pending",
     "refresh": "Refresh",
     "refreshSuccess": "Refreshed",
     "refreshFailed": "Refresh failed. Try again.",

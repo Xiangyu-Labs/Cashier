@@ -77,10 +77,7 @@ describe("usePeriodFilter", () => {
       expect(params.get("streamMinAmount")).toBeNull();
       expect(params.get("streamMaxAmount")).toBeNull();
       expect(params.get("tab")).toBe("stream");
-      // Canonical order: invalid, failed, candidate_pending, duplicate_pending
-      expect(params.get("streamStatuses")).toBe(
-        "invalid,failed,candidate_pending,duplicate_pending"
-      );
+      expect(params.get("streamStatuses")).toBe("invalid,failed,candidate_pending");
     });
 
     it("applies in_progress preset: clears period/date/amount, sets statuses, switches to stream", () => {

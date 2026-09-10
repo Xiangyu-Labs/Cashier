@@ -130,7 +130,6 @@ export async function listStreamPage(
   const entriesByDocId = await ports.ledgerReads.listEntriesBySourceDocumentIds({
     ledgerId,
     sourceDocumentIds: page.items.map((item) => item.id),
-    includeDuplicatePending: true,
   });
 
   const items = page.items.map((item) => ({

@@ -61,11 +61,7 @@ export function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unkn
   return conditions;
 }
 
-/**
- * Sum active projections across the full filtered Stream result. A
- * `duplicate_pending` document is already a valid accounting projection, so it
- * shares the completed total semantics until it is discarded.
- */
+/** Sum active projections across the full filtered Stream result. */
 export async function calculateCompletedSourceDocumentTotal(
   input: TargetSourceDocumentFilterInput
 ): Promise<{ total: string; unconvertedCount: number }> {
@@ -107,12 +103,7 @@ export async function calculateCompletedSourceDocumentTotal(
         ...matchedEntryConditions
       )
     )
-    .where(
-      and(
-        ...baseConditions(input),
-        inArray(sourceDocuments.currentStatus, ["completed", "duplicate_pending"])
-      )
-    )
+    .where(and(...baseConditions(input), eq(sourceDocuments.currentStatus, "completed")))
     .then((rows) => rows[0]);
 
   return {

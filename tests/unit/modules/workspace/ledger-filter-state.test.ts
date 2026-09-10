@@ -126,18 +126,13 @@ describe("ledger-filter-state", () => {
   });
 
   describe("STREAM_STATUS_PRESETS", () => {
-    it("defines the attention, duplicate, and in-progress presets", () => {
-      expect(STREAM_STATUS_PRESETS).toEqual([
-        "needs_attention",
-        "possible_duplicates",
-        "in_progress",
-      ]);
+    it("defines the attention and in-progress presets", () => {
+      expect(STREAM_STATUS_PRESETS).toEqual(["needs_attention", "in_progress"]);
     });
 
-    it("needs_attention includes candidate_pending, duplicate_pending, invalid, and failed", () => {
+    it("needs_attention includes candidate_pending, invalid, and failed", () => {
       expect(STREAM_STATUS_PRESET_VALUES.needs_attention).toEqual([
         "candidate_pending",
-        "duplicate_pending",
         "invalid",
         "failed",
       ]);
@@ -145,10 +140,6 @@ describe("ledger-filter-state", () => {
 
     it("in_progress includes processing", () => {
       expect(STREAM_STATUS_PRESET_VALUES.in_progress).toEqual(["processing"]);
-    });
-
-    it("possible_duplicates includes only duplicate-pending documents", () => {
-      expect(STREAM_STATUS_PRESET_VALUES.possible_duplicates).toEqual(["duplicate_pending"]);
     });
   });
 });

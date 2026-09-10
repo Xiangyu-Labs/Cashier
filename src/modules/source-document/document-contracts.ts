@@ -42,7 +42,6 @@ export interface SourceDocumentDto extends SourceDocumentSummaryDto, SourceDocum
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
-  duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
 
 export interface SourceDocumentCandidateProjectionSummary {
@@ -73,55 +72,16 @@ export interface SourceDocumentCandidateReviewDto {
   candidate: SourceDocumentCandidateReviewRevisionDto;
 }
 
-export interface SourceDocumentDuplicateReviewDto {
-  sourceDocumentId: string;
-  matchedSourceDocumentId: string;
-  status: "pending" | "kept" | "discarded";
-  reason: string | null;
-  confidence: number | null;
-}
-
-/**
- * Side-by-side review payload for a duplicate-pending document. The `matched`
- * side renders the revision snapshot captured at detection time, so a later
- * edit or soft-delete of the matched bill never changes the evidence. It is
- * null only for legacy reviews whose matched bill has no surviving revision.
- * `matchedState` describes what happened to the matched bill since detection.
- */
-export interface SourceDocumentDuplicateReviewDetailDto {
-  version: number;
-  review: SourceDocumentDuplicateReviewDto;
-  duplicate: {
-    id: string;
-    title: string | null;
-    entryDate: string | null;
-    createdAt: string;
-    entries: SourceDocumentLedgerEntryDto[];
-    files: SourceDocumentStoredFileDto[];
-  };
-  matched: {
-    id: string;
-    title: string | null;
-    entryDate: string | null;
-    createdAt: string;
-    entries: SourceDocumentLedgerEntryDto[];
-    files: SourceDocumentStoredFileDto[];
-  } | null;
-  matchedState: "unchanged" | "modified" | "deleted";
-}
-
 export interface SourceDocumentListItemDto extends SourceDocumentSummaryDto {
   text: null;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages: boolean;
-  duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
 
 export interface SourceDocumentLightDto
   extends Omit<SourceDocumentSummaryDto, "updatedAt">, SourceDocumentEvidenceDto {
   hasImages: boolean;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
-  duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
 
 export interface StreamPage {

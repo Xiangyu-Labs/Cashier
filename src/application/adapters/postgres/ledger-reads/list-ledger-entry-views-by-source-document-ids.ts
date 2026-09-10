@@ -1,4 +1,4 @@
-import { and, asc, inArray, or, sql } from "drizzle-orm";
+import { and, asc, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
@@ -9,14 +9,11 @@ import { buildLedgerEntryVisibilityCondition } from "./ledger-entry-visibility";
 interface ListLedgerEntryViewsBySourceDocumentIdsInput {
   ledgerId: string;
   sourceDocumentIds: string[];
-  /** Also load pending-revision entries of duplicate_pending documents. */
-  includeDuplicatePending?: boolean;
 }
 
 export async function listLedgerEntryViewsBySourceDocumentIds({
   ledgerId,
   sourceDocumentIds,
-  includeDuplicatePending = false,
 }: ListLedgerEntryViewsBySourceDocumentIdsInput): Promise<
   Map<string, LedgerEntryEmbeddedViewDto[]>
 > {
@@ -31,19 +28,7 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
     where: and(
       q.whereActive,
       inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
-      includeDuplicatePending
-        ? or(
-            buildLedgerEntryVisibilityCondition(ledgerId),
-            sql`EXISTS (
-              SELECT 1 FROM source_documents sd
-              WHERE sd.ledger_id = ${ledgerEntries.ledgerId}
-                AND sd.id = ${ledgerEntries.sourceDocumentId}
-                AND sd.deleted_at IS NULL
-                AND sd.current_status = 'duplicate_pending'
-                AND sd.pending_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
-            )`
-          )
-        : buildLedgerEntryVisibilityCondition(ledgerId)
+      buildLedgerEntryVisibilityCondition(ledgerId)
     ),
     with: { category: true },
     orderBy: [
