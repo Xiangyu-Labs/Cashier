@@ -6,6 +6,10 @@ import { postgresSourceDocumentSubmissionAdapter } from "../submissions";
 import { saveChanges, updateDocuments, updateEntryDates } from "../source-document-updates";
 import { splitSourceDocumentAtomically } from "../source-document-splits";
 import { deleteSourceDocumentAtomically } from "../source-document-delete";
+import {
+  applyDateOrganization,
+  dismissDateOrganization,
+} from "../source-document-date-organization";
 
 export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWritePort = {
   createProcessingDocument: (input) => postgresSourceDocumentSubmissionAdapter.submit(input),
@@ -21,6 +25,8 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   batchUpdateEntries: (input) => postgresLedgerEntryCommandAdapter.batchUpdate(input),
   batchDeleteEntries: (input) => postgresLedgerEntryCommandAdapter.batchDelete(input),
   splitEntries: splitSourceDocumentAtomically,
+  applyDateOrganization,
+  dismissDateOrganization,
   installRetry: (input) => postgresSourceDocumentSubmissionAdapter.submit(input),
   cancelProcessing: cancelSourceDocumentProcessing,
   deleteDocuments: deleteSourceDocumentAtomically,

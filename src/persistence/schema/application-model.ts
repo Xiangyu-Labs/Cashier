@@ -15,6 +15,7 @@ import {
   primaryKey,
   unique,
   boolean,
+  date,
 } from "drizzle-orm/pg-core";
 import { ledgers } from "./ledger";
 import { sourceDocuments } from "./source-document";
@@ -83,6 +84,7 @@ export const sourceDocumentRevisions = pgTable(
     origin: revisionOriginEnum("origin").notNull().default("submission"),
     inputText: text("input_text"),
     inputDocumentDate: text("input_document_date"),
+    inputDateReference: date("input_date_reference", { mode: "string" }),
     processingStatus: revisionProcessingStatusEnum("processing_status"),
     failureKind: revisionFailureKindEnum("failure_kind"),
     failureCode: text("failure_code"),

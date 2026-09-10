@@ -60,6 +60,7 @@ const registeredSourceDocumentWriters = new Set([
   "src/application/adapters/postgres/ledger-projections/manual-entries.ts",
   "src/application/adapters/postgres/ledger-projections/recalculate.ts",
   "src/application/adapters/postgres/source-document-aggregate/recalculate-current-entries.ts",
+  "src/application/adapters/postgres/source-document-date-organization.ts",
 ]);
 const wholeLedgerDeleteWriter = "src/application/adapters/postgres/business-ports/ledger.ts";
 const forbiddenLogIdentifierProperties = [

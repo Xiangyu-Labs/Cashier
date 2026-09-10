@@ -150,6 +150,7 @@ export interface LedgerProjectionEntryContract {
   convertedAmount: string | null;
   exchangeRate: string | null;
   createdAt?: string;
+  dateHint?: import("@/modules/source-document/date-organization-contracts").DateHint;
 }
 
 export interface LedgerProjectionPort {
@@ -160,6 +161,9 @@ export interface LedgerProjectionPort {
     revisionId: RevisionId;
     title?: string | null;
     entries: readonly LedgerProjectionEntryContract[];
+    dateOrganizationSuggestion?:
+      | import("@/modules/source-document/date-organization-contracts").DateOrganizationSuggestion
+      | null;
     lease?: ProcessingLeaseContract;
   }): Promise<boolean>;
   createManual(input: {

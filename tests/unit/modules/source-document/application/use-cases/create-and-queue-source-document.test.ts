@@ -60,6 +60,7 @@ describe("createAndQueueSourceDocument", () => {
         text: "Lunch receipt",
         storedFileIds: ["file-1"],
         documentDate: "2026-07-15",
+        dateReference: "2026-07-15",
       },
     });
     expect(scheduleProcessing).toHaveBeenCalledWith({ id: "job-1" });

@@ -30,6 +30,9 @@ export interface SourceDocumentRow {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+  dateOrganizationSuggestion:
+    | import("@/modules/source-document/date-organization-contracts").DateOrganizationSuggestion
+    | null;
 }
 
 export interface SourceDocumentHydrationRow {
@@ -197,6 +200,7 @@ export function mapSourceDocumentDetail(
     failureMessage: hydration.failureMessage,
     documentDate: row.documentDate,
     metadata: {},
+    dateOrganizationSuggestion: row.dateOrganizationSuggestion,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,

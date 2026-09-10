@@ -563,6 +563,8 @@
     "deleteConfirmDesc": "Are you sure you want to delete this source document? This will also delete all associated ledger entries.",
     "rawContent": "Raw Evidence",
     "rawEvidence": "Evidence",
+    "viewEvidence": "View evidence",
+    "backToDetails": "Back to details",
     "translation": "Translation",
     "originalText": "Original",
     "createdAt": "Created at",
@@ -624,7 +626,28 @@
     "saveAndContinue": "Save and continue",
     "actionContextChanged": "The bill changed. Review the latest data and try again.",
     "batchModePendingTitle": "Resolve current changes first",
-    "batchModePendingDescription": "Save or discard your current edits before entering batch actions."
+    "batchModePendingDescription": "Save or discard your current edits before entering batch actions.",
+    "dateOrganization": {
+      "title": "Date organization suggestion",
+      "pending": "Suggestions are not applied and do not affect the current posting date",
+      "dismiss": "Dismiss",
+      "adjust": "Adjust",
+      "applyAll": "Apply all",
+      "referenceDate": "Reference date",
+      "cancel": "Cancel",
+      "done": "Finish adjusting",
+      "uncertain": "Date uncertain · keep original date",
+      "moveTo": "Move to {date} · {count} entries",
+      "applyDate": "Apply date",
+      "applyGroup": "Apply group",
+      "applyFailed": "Application failed. The bill was not changed. Try again.",
+      "keepsOriginal": "Keeps this bill",
+      "changesOriginal": "Changes this bill's date",
+      "createsNew": "Creates a new bill",
+      "recognizedFrom": "Recognized from “{text}”",
+      "inferred": "inferred from the reference date",
+      "entryDate": "Suggested date for {name}"
+    }
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry",

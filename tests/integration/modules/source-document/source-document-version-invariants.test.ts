@@ -111,6 +111,91 @@ async function createProcessingDocument(ledgerId: string) {
 }
 
 const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
+  async applyDateOrganization() {
+    const ledgerId = await newLedger();
+    const { sourceDocumentId, entryIds } = await createActiveDocument(ledgerId);
+    const suggestionId = crypto.randomUUID();
+    const db = getTestDb();
+    const rows = await db.query.ledgerEntries.findMany({
+      where: (row, { inArray }) => inArray(row.id, entryIds),
+    });
+    await db
+      .update(sourceDocuments)
+      .set({
+        dateOrganizationSuggestion: {
+          schemaVersion: 1,
+          id: suggestionId,
+          referenceDate: "2026-08-02",
+          sourceDocumentDate: "2026-08-02",
+          items: rows.map((entry) => ({
+            ledgerEntryId: entry.id,
+            dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+            resolvedDate: "2026-08-01",
+            sourceText: "昨天",
+            snapshot: {
+              itemName: entry.itemName,
+              amount: entry.amount,
+              currency: entry.currency ?? "CNY",
+            },
+          })),
+        },
+      })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+    const changed = await port.applyDateOrganization({
+      ledgerId,
+      sourceDocumentId,
+      expectedVersion: 1,
+      suggestionId,
+      groups: [{ id: "yesterday", entryDate: "2026-08-01", ledgerEntryIds: entryIds }],
+      appliedGroupIds: ["yesterday"],
+    });
+    expect(changed).toMatchObject({ ok: true, version: 2 });
+    expect(await currentVersion(sourceDocumentId)).toBe(2);
+    const stale = await port.applyDateOrganization({
+      ledgerId,
+      sourceDocumentId,
+      expectedVersion: 1,
+      suggestionId,
+      groups: [{ id: "yesterday", entryDate: "2026-08-01", ledgerEntryIds: entryIds }],
+      appliedGroupIds: ["yesterday"],
+    });
+    expect(stale).toMatchObject({ ok: false, reason: "stale", currentVersion: 2 });
+  },
+
+  async dismissDateOrganization() {
+    const ledgerId = await newLedger();
+    const { sourceDocumentId } = await createActiveDocument(ledgerId);
+    const suggestionId = crypto.randomUUID();
+    const db = getTestDb();
+    await db
+      .update(sourceDocuments)
+      .set({
+        dateOrganizationSuggestion: {
+          schemaVersion: 1,
+          id: suggestionId,
+          referenceDate: "2026-08-02",
+          sourceDocumentDate: "2026-08-02",
+          items: [],
+        },
+      })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+    const changed = await port.dismissDateOrganization({
+      ledgerId,
+      sourceDocumentId,
+      expectedVersion: 1,
+      suggestionId,
+    });
+    expect(changed).toMatchObject({ ok: true, version: 2 });
+    expect(await currentVersion(sourceDocumentId)).toBe(2);
+    const stale = await port.dismissDateOrganization({
+      ledgerId,
+      sourceDocumentId,
+      expectedVersion: 1,
+      suggestionId,
+    });
+    expect(stale).toMatchObject({ ok: false, reason: "stale", currentVersion: 2 });
+  },
+
   async saveChanges() {
     const ledgerId = await newLedger();
     const { sourceDocumentId } = await createActiveDocument(ledgerId);

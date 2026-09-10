@@ -52,8 +52,8 @@ export const SelectableEditableEntryCard = memo(function SelectableEditableEntry
     >
       <Card
         className={cn(
-          "overflow-hidden",
-          selectionMode && selected && "border-primary bg-primary/5"
+          "overflow-hidden rounded-none border-0 bg-surface shadow-none hover:bg-surface2/40",
+          selectionMode && selected && "bg-primary/5"
         )}
       >
         <EditableLedgerEntryItem

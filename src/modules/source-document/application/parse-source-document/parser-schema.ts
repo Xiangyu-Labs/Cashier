@@ -4,6 +4,7 @@ import { isValidDecimal, compare } from "@/lib/money/decimal";
 import { getAiOutputCopy } from "@/config/ai-output-locales";
 import { normalizeTitle } from "@/modules/source-document/title-policy";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { dateHintSchema } from "@/modules/source-document/date-organization-contracts";
 
 // ===== Decimal string validation =====
 
@@ -43,6 +44,7 @@ const ledgerEntrySchema = z.object({
   currency: supportedCurrencySchema,
   category_index: z.number().int().min(0),
   notes: z.string().nullish(),
+  date_hint: dateHintSchema,
 });
 
 const orderAdjustmentSchema = z.object({
@@ -105,6 +107,7 @@ export type NormalizedLedgerEntry = Omit<
 > & {
   amount: string;
   notes: string | null;
+  date_hint?: import("@/modules/source-document/date-organization-contracts").DateHint;
 };
 
 export type NormalizedOrderAdjustment = Omit<
@@ -194,6 +197,7 @@ export function normalizeResult(
       currency: e.currency,
       category_index: e.category_index,
       notes: e.notes ?? null,
+      date_hint: e.date_hint ?? null,
     })),
     order_adjustments: output.order_adjustments,
     reasoning: output.reasoning,

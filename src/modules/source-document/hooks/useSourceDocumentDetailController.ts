@@ -21,6 +21,8 @@ export function useSourceDocumentDetailController(
     ledgerEntries,
     open: options.open,
     externalPending: options.isCancelling,
+    externalUnsaved: options.externalUnsaved,
+    onDiscardExternalUnsaved: options.onDiscardExternalUnsaved,
     onClose: options.onClose,
     onReload: options.onReload,
     onSaveAll: options.onSaveAll,
@@ -140,6 +142,7 @@ export function useSourceDocumentDetailController(
     },
     actions: {
       handleClose: session.handleClose,
+      handleRequestLeave: session.handleRequestLeave,
       handleEnterEditMode: () => !selection.isSelectionMode && session.handleEnterEditMode(),
       handleCancelEditMode: session.handleCancelEditMode,
       handleEditSave: session.handleEditSave,

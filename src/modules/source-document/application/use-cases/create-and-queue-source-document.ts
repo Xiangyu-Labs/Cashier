@@ -59,6 +59,7 @@ export async function createAndQueueSourceDocument(
   }
 
   const prepareSubmission = async () => {
+    const resolvedDate = resolveDocumentDate(input.documentDate, input.timezone);
     const preparedImages =
       inlineImages.length > 0
         ? await prepareInlineImages(
@@ -76,7 +77,8 @@ export async function createAndQueueSourceDocument(
       input: {
         text: storedInput?.text ?? null,
         storedFileIds: [...(storedInput?.storedFileIds ?? []), ...processedImageIds],
-        documentDate: resolveDocumentDate(input.documentDate, input.timezone),
+        documentDate: resolvedDate,
+        dateReference: resolvedDate,
       },
     };
   };

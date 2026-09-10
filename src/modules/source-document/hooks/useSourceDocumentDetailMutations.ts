@@ -8,6 +8,10 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { saveSourceDocumentChangesAction } from "@/modules/source-document/server-actions/update";
 import { splitSourceDocumentAction } from "@/modules/source-document/server-actions/split";
 import {
+  applyDateOrganizationAction,
+  dismissDateOrganizationAction,
+} from "@/modules/source-document/server-actions/date-organization";
+import {
   createLedgerEntryAction,
   deleteLedgerEntryAction,
 } from "@/modules/ledger/server-actions/entries";
@@ -16,6 +20,8 @@ import type {
   SplitSourceDocumentInput,
   SplitSourceDocumentResultDto,
   PartialBatchCommandResult,
+  ApplyDateOrganizationInput,
+  ApplyDateOrganizationResultDto,
 } from "@/modules/source-document/contracts";
 import {
   requireSourceDocumentVersion,
@@ -131,6 +137,60 @@ export function useSourceDocumentDetailMutations({
     },
   });
 
+  const dateOrganizationMutation = useLedgerMutation<
+    ApplyDateOrganizationResultDto,
+    Omit<ApplyDateOrganizationInput, "sourceDocumentId" | "expectedVersion">
+  >(ledgerId, {
+    refreshMode: "background",
+    invalidates: ["documents", "stats"],
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", id),
+    mutationFn: async (input) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const result = await applyDateOrganizationAction(ledgerId, {
+        sourceDocumentId: id,
+        expectedVersion: requireSourceDocumentVersion(version, id),
+        ...input,
+      });
+      return unwrapVersionedCommandResult(result);
+    },
+    successMessage: null,
+    errorMessage: null,
+    onSuccess: async (result) => {
+      const key = queryKeys.sourceDocument(ledgerId!, id);
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      const document = result.sourceDocument;
+      queryClient.setQueryData<SourceDocumentResultDto>(key, (previous) =>
+        previous != null && previous.version > document.version
+          ? previous
+          : {
+              ...document,
+              hasImages: document.hasImages ?? false,
+              ledgerEntries: document.ledgerEntries ?? [],
+            }
+      );
+    },
+  });
+
+  const dismissDateOrganizationMutation = useLedgerMutation<
+    { dismissed: true },
+    { suggestionId: string }
+  >(ledgerId, {
+    refreshMode: "background",
+    invalidates: ["documents"],
+    refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", id),
+    mutationFn: async ({ suggestionId }) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const result = await dismissDateOrganizationAction(ledgerId, {
+        sourceDocumentId: id,
+        expectedVersion: requireSourceDocumentVersion(version, id),
+        suggestionId,
+      });
+      return unwrapVersionedCommandResult(result);
+    },
+    successMessage: null,
+    errorMessage: null,
+  });
+
   const addEntryMutation = useLedgerMutation<{ ledgerEntryId: string }, AddEntryData>(ledgerId, {
     refreshMode: "background",
     refreshQueryKey: queryKeys.sourceDocument(ledgerId ?? "", id),
@@ -179,6 +239,9 @@ export function useSourceDocumentDetailMutations({
     },
     splitEntries: (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) =>
       splitMutation.mutateAsync(input),
+    applyDateOrganization: dateOrganizationMutation.mutateAsync,
+    dismissDateOrganization: (suggestionId: string) =>
+      dismissDateOrganizationMutation.mutateAsync({ suggestionId }),
     addEntry: async (data: AddEntryData) => {
       await addEntryMutation.mutateAsync(data);
     },
@@ -196,6 +259,8 @@ export function useSourceDocumentDetailMutations({
     },
     isSavingChanges: saveChangesMutation.isPending,
     isSplitting: splitMutation.isPending,
+    isOrganizingDates:
+      dateOrganizationMutation.isPending || dismissDateOrganizationMutation.isPending,
   };
 }
 

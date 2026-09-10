@@ -18,6 +18,8 @@ interface UseSourceDocumentDetailSessionOptions {
   ledgerEntries: LedgerEntry[];
   open: boolean;
   externalPending: boolean;
+  externalUnsaved: boolean;
+  onDiscardExternalUnsaved: () => void;
   onClose: () => void;
   onReload?: (() => Promise<void>) | undefined;
   onSaveAll?:
@@ -36,6 +38,8 @@ export function useSourceDocumentDetailSession({
   ledgerEntries,
   open,
   externalPending,
+  externalUnsaved,
+  onDiscardExternalUnsaved,
   onClose,
   onReload,
   onSaveAll,
@@ -66,14 +70,26 @@ export function useSourceDocumentDetailSession({
   const interactionDisabled = busy || sourceDocument == null;
   const unsavedGuard = useUnsavedChangesGuard({
     key: ledgerDetailLeaveGuardKey("source-document", ledgerId, sourceDocument?.id ?? ""),
-    hasUnsavedChanges: sourceDocument?.id != null && pending.hasPendingChanges,
+    hasUnsavedChanges: sourceDocument?.id != null && (pending.hasPendingChanges || externalUnsaved),
   });
+
+  const handleRequestLeave = useCallback(
+    (continueNavigation: () => void) => {
+      if (busy) return;
+      if (pending.hasPendingChanges || externalUnsaved) {
+        unsavedGuard.requestLeave(continueNavigation);
+      } else {
+        continueNavigation();
+      }
+    },
+    [busy, externalUnsaved, pending.hasPendingChanges, unsavedGuard]
+  );
 
   const handleClose = useCallback(() => {
     if (busy) return;
-    if (pending.hasPendingChanges) unsavedGuard.requestLeave(null);
+    if (pending.hasPendingChanges || externalUnsaved) unsavedGuard.requestLeave(null);
     else onClose();
-  }, [busy, onClose, pending.hasPendingChanges, unsavedGuard]);
+  }, [busy, externalUnsaved, onClose, pending.hasPendingChanges, unsavedGuard]);
 
   const handleSaveAll = useCallback(async (): Promise<boolean> => {
     if (busy) return false;
@@ -153,10 +169,11 @@ export function useSourceDocumentDetailSession({
   }, [handleSaveAll]);
   const handleDiscardAndClose = useCallback(() => {
     pending.discardAllChanges();
+    onDiscardExternalUnsaved();
     const continueNavigation = unsavedGuard.resolveLeave();
     if (continueNavigation != null) continueNavigation();
     else onClose();
-  }, [onClose, pending, unsavedGuard]);
+  }, [onClose, onDiscardExternalUnsaved, pending, unsavedGuard]);
 
   return {
     pending,
@@ -177,6 +194,7 @@ export function useSourceDocumentDetailSession({
     reloadError,
     unsavedGuard,
     handleClose,
+    handleRequestLeave,
     handleSaveAll,
     handleReload,
     handleEnterEditMode,

@@ -45,6 +45,8 @@ export interface SourceDocumentDetailDto
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
   activeResultSummary?: SourceDocumentActiveResultSummary;
+  dateOrganizationSuggestion?:
+    import("./date-organization-contracts").DateOrganizationSuggestion | null;
 }
 
 export interface SourceDocumentActiveResultSummary {
@@ -62,6 +64,8 @@ export interface SourceDocumentDetailPreviewDto
   extends Omit<SourceDocumentSummaryDto, "updatedAt">, SourceDocumentInputDataDto {
   hasImages: boolean;
   activeResultSummary?: SourceDocumentActiveResultSummary;
+  dateOrganizationSuggestion?:
+    import("./date-organization-contracts").DateOrganizationSuggestion | null;
 }
 
 export interface StreamPage {

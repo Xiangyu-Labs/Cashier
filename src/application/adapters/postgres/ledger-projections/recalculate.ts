@@ -74,6 +74,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           version: sql`${sourceDocuments.version} + 1`,
           documentDate: revision.inputDocumentDate,
           ...(input.title == null || input.title === "" ? {} : { title: input.title }),
+          dateOrganizationSuggestion: input.dateOrganizationSuggestion ?? null,
           updatedAt: now,
         })
         .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));

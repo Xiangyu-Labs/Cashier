@@ -92,7 +92,8 @@ Return a single JSON object:
       "amount": "45.00",
       "currency": "CNY",
       "category_index": 1,
-      "notes": null
+      "notes": null,
+      "date_hint": { "kind": "relative", "value": "yesterday", "sourceText": "昨天" }
     }
   ],
   "order_adjustments": [
@@ -111,6 +112,7 @@ Return a single JSON object:
 - **When an amount is shown twice — an original/local-currency figure plus a "≈" converted estimate in another currency — record the original local-currency figure and its own currency, never the "≈" estimate.** For example "RM 1,713.00 ≈ ¥2,847.90" or "RM ▾ 9.18 ≈ ¥15.23" means the real amount and currency is MYR 1,713.00 / MYR 9.18; the ¥ figure is only a reference conversion, not the recorded currency.
 
 ### Rules
+- Date suggestions are metadata only. For each ledger entry, add date_hint when the row has a clear date context. Use {"kind":"absolute","value":"YYYY-MM-DD","sourceText":"visible text"}, {"kind":"month_day","value":"M-D","sourceText":"visible text"}, or {"kind":"relative","value":"today|yesterday|day_before_yesterday","sourceText":"visible text"}. Use null when unclear. Never invent a date.
 - Each entry and adjustment keeps its own original transaction currency, even within one receipt. Never add different currencies together. No receipt total is required: do not calculate totals, reconcile, allocate adjustments, or invent balancing entries.
 - Preserve only visible priced items when details are incomplete. If no items are visible but a clear transaction total is shown, record that amount once as a merchant/order entry. Ignore running balances and day/period summary headers.
 - Adjustment categories: when all products in the SAME receipt_index have one known category, use that category for fees and discounts. For mixed-category receipts, use a category only when attribution is explicit; otherwise category_index 0. Never borrow categories from another receipt. Food-order shipping is food expense, not transportation. Adjustments are saved as independent signed entries, not distributed.

@@ -30,6 +30,7 @@ import {
   isSuccessfulLoadImageResult,
   type LoadImageResult,
 } from "./stored-image-loader";
+import { createDateOrganizationSuggestion } from "@/modules/source-document/date-organization";
 
 export interface CurrentRevisionProcessorOptions {
   createAIContext: (signal: AbortSignal) => AIContext;
@@ -169,6 +170,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         });
         throwIfProcessingCancelled(signal);
         const entryInputs = entries.map((entry) => ({
+          id: entry.id,
           categoryId: entry.categoryId,
           amount: entry.amount,
           currency: entry.currency,
@@ -177,7 +179,14 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           convertedAmount: entry.convertedAmount,
           exchangeRate: entry.exchangeRate,
           createdAt: entry.entryDate,
+          ...(entry.dateHint == null ? {} : { dateHint: entry.dateHint }),
         }));
+
+        const dateOrganizationSuggestion = createDateOrganizationSuggestion({
+          referenceDate: revision.inputDateReference,
+          sourceDocumentDate: fallbackDate,
+          entries,
+        });
 
         throwIfProcessingCancelled(signal);
         const activated = await this.options.activateRevision({
@@ -186,6 +195,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           ...(request.lease == null ? {} : { lease: request.lease }),
           ...(output.title == null ? {} : { title: output.title }),
           entries: entryInputs,
+          dateOrganizationSuggestion,
         });
         if (!activated) {
           if (request.lease != null) throw new ProcessingCancelledError();

@@ -8,6 +8,7 @@ import {
   uuid,
   date,
   integer,
+  jsonb,
   pgEnum,
   foreignKey,
 } from "drizzle-orm/pg-core";
@@ -42,6 +43,9 @@ export const sourceDocuments = pgTable(
     activeRevisionId: uuid("active_revision_id"),
     latestSubmissionRevisionId: uuid("latest_submission_revision_id"),
     version: integer("version").notNull().default(1),
+    dateOrganizationSuggestion: jsonb("date_organization_suggestion").$type<
+      import("@/modules/source-document/date-organization-contracts").DateOrganizationSuggestion
+    >(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),

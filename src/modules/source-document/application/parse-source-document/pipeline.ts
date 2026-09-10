@@ -54,6 +54,10 @@ function resolveSuccess(
       ledgerEntries: result.ledger_entries,
       orderAdjustments: result.order_adjustments,
     }),
+    dateHints: [
+      ...result.ledger_entries.map((entry) => entry.date_hint ?? null),
+      ...result.order_adjustments.map(() => null),
+    ],
   };
 }
 

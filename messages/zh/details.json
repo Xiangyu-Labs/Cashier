@@ -594,6 +594,8 @@
     "deleteConfirmDesc": "确定要删除此原始凭证吗？这将同时删除所有关联的账本记录。",
     "rawContent": "原始输入",
     "rawEvidence": "原始凭证",
+    "viewEvidence": "查看原始凭证",
+    "backToDetails": "返回明细",
     "translation": "翻译",
     "originalText": "识别原文",
     "createdAt": "创建于",
@@ -655,7 +657,28 @@
     "saveAndContinue": "保存并继续",
     "actionContextChanged": "账单内容已变化，请检查最新数据后重试。",
     "batchModePendingTitle": "先处理当前修改",
-    "batchModePendingDescription": "进入批量操作前，请保存或放弃当前编辑。"
+    "batchModePendingDescription": "进入批量操作前，请保存或放弃当前编辑。",
+    "dateOrganization": {
+      "title": "日期整理建议",
+      "pending": "建议尚未应用，不影响当前入账日期",
+      "dismiss": "忽略",
+      "adjust": "调整",
+      "applyAll": "全部应用",
+      "referenceDate": "参照日期",
+      "cancel": "取消",
+      "done": "完成调整",
+      "uncertain": "日期未确定 · 保留原日期",
+      "moveTo": "建议移至 {date} · {count} 笔",
+      "applyDate": "应用日期",
+      "applyGroup": "应用此组",
+      "applyFailed": "应用失败，账单未更改。请重试。",
+      "keepsOriginal": "保留本账单",
+      "changesOriginal": "将修改本账单日期",
+      "createsNew": "将创建新账单",
+      "recognizedFrom": "识别原文“{text}”",
+      "inferred": "根据参照日期推算",
+      "entryDate": "{name} 的建议日期"
+    }
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试",

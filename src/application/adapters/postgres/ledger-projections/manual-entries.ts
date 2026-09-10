@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, max, or, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
+import type { DateOrganizationSuggestion } from "@/modules/source-document/date-organization-contracts";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import type { PostgresTransaction } from "../transaction-locks";
 import {
@@ -16,6 +17,29 @@ import {
   replaceProjection,
   requireCurrency,
 } from "./shared";
+
+function nextDateOrganizationSuggestion(
+  suggestion: DateOrganizationSuggestion | null,
+  entries: readonly LedgerProjectionEntryContract[],
+  dateChanged: boolean
+): DateOrganizationSuggestion | null | undefined {
+  if (suggestion == null) return undefined;
+  if (dateChanged) return null;
+
+  const entriesById = new Map(
+    entries.flatMap((entry) => (entry.id == null ? [] : [[entry.id, entry] as const]))
+  );
+  const remainingItems = suggestion.items.filter((item) => {
+    const entry = entriesById.get(item.ledgerEntryId);
+    return (
+      entry != null &&
+      entry.itemName === item.snapshot.itemName &&
+      entry.amount === item.snapshot.amount &&
+      (entry.currency ?? "CNY") === item.snapshot.currency
+    );
+  });
+  return remainingItems.length === 0 ? null : { ...suggestion, items: remainingItems };
+}
 
 export async function replaceManualProjection(
   tx: PostgresTransaction,
@@ -233,6 +257,7 @@ export async function replaceActiveProjectionInTransaction(
   }
 ): Promise<string> {
   const document = input.document;
+  const dateChanged = input.entryDate !== undefined && input.entryDate !== document.documentDate;
   if (document.version !== input.expectedStateVersion) {
     throw new ConflictError("Source document changed during the edit");
   }
@@ -286,7 +311,21 @@ export async function replaceActiveProjectionInTransaction(
       activeRevisionId: revision.id,
       version: sql`${sourceDocuments.version} + 1`,
       ...(input.title === undefined ? {} : { title: input.title }),
-      ...(input.entryDate === undefined ? {} : { documentDate: input.entryDate }),
+      ...(input.entryDate === undefined
+        ? {}
+        : {
+            documentDate: input.entryDate,
+            ...(dateChanged ? { dateOrganizationSuggestion: null } : {}),
+          }),
+      ...(!dateChanged && input.document.dateOrganizationSuggestion != null
+        ? {
+            dateOrganizationSuggestion: nextDateOrganizationSuggestion(
+              input.document.dateOrganizationSuggestion,
+              input.entries,
+              dateChanged
+            ),
+          }
+        : {}),
       updatedAt: new Date(),
     })
     .where(

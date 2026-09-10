@@ -269,6 +269,7 @@ export interface SourceDocumentInputContract {
   text: string | null;
   storedFileIds: readonly StoredFileId[];
   documentDate: string | null;
+  dateReference?: string | null;
 }
 
 export interface SourceDocumentIdempotencyInput {

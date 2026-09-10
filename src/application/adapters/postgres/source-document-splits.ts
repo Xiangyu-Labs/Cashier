@@ -250,6 +250,7 @@ export async function splitSourceDocumentAtomically(input: {
       .update(sourceDocuments)
       .set({
         activeRevisionId: sourceRevision.id,
+        dateOrganizationSuggestion: null,
         version: sql`${sourceDocuments.version} + 1`,
         updatedAt: now,
       })

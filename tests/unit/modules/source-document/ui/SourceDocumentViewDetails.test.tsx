@@ -140,6 +140,16 @@ describe("SourceDocumentViewDetails image stage", () => {
       "file-1,file-2"
     );
   });
+
+  it("switches to evidence and back on mobile without unmounting the detail view", () => {
+    renderDetails(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /view evidence|查看原始凭证/i }));
+    expect(screen.getByRole("button", { name: /back to details|返回明细/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /back to details|返回明细/i }));
+    expect(screen.getByRole("button", { name: /view evidence|查看原始凭证/i })).toBeInTheDocument();
+  });
 });
 
 describe("SourceDocumentViewDetails selection", () => {

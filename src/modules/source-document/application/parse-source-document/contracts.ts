@@ -55,10 +55,16 @@ export interface ParseSourceDocumentOutput {
   title?: string;
   failureMessage?: string;
   verificationStatus: "passed" | "invalid";
+  dateHints?: import("@/modules/source-document/date-organization-contracts").DateHint[];
 }
 
 export type ParsePipelineResult =
-  | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[] }
+  | {
+      kind: "success";
+      title: string;
+      ledgerEntries: ParsedLedgerEntry[];
+      dateHints?: import("@/modules/source-document/date-organization-contracts").DateHint[];
+    }
   | { kind: "invalid"; title: string; failureMessage: string }
   | { kind: "cancelled" };
 

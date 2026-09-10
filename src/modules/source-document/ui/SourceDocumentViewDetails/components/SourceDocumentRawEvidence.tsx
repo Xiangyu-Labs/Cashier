@@ -64,15 +64,16 @@ export function SourceDocumentRawEvidence({
                     <button
                       type="button"
                       data-testid="source-document-image-stage"
-                      className="group relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md border border-border/60 bg-surface2/70 transition-[border-color,background-color] duration-[var(--motion-feedback)] sm:max-h-[52dvh]"
+                      className="group relative flex aspect-[4/3] min-h-64 w-full items-start justify-center overflow-y-auto rounded-md border border-border/60 bg-surface2/70 transition-[border-color,background-color] duration-[var(--motion-feedback)]"
                       onClick={() => setViewerIndex(selectedImageIndex)}
                       aria-label={tCard("imageAlt", { index: selectedImageIndex + 1 })}
                     >
                       <Image
                         src={storedFileReadUrl(files[selectedImageIndex].id)}
                         alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
-                        fill
-                        className="object-contain p-2"
+                        width={1200}
+                        height={2400}
+                        className="h-auto w-full object-contain p-2"
                       />
                       <span className="fine-pointer-reveal absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-md bg-text/70 text-bg opacity-0 transition-opacity duration-[var(--motion-feedback)] group-focus-visible:opacity-100 group-active:opacity-100">
                         <Maximize2 className="h-4 w-4" />

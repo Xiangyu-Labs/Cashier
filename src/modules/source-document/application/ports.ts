@@ -89,6 +89,16 @@ export interface SourceDocumentAggregateWritePort {
     ledgerEntryIds: string[];
     entryDate: string;
   }): Promise<VersionedCommandResult<SplitSourceDocumentResultDto>>;
+  applyDateOrganization(
+    input: import("../contracts").ApplyDateOrganizationInput & {
+      ledgerId: string;
+    }
+  ): Promise<VersionedCommandResult<import("../contracts").ApplyDateOrganizationResultDto>>;
+  dismissDateOrganization(
+    input: import("../contracts").DismissDateOrganizationInput & {
+      ledgerId: string;
+    }
+  ): Promise<VersionedCommandResult<{ dismissed: true }>>;
   updateEntryDates(input: {
     ledgerId: string;
     targets: VersionedTarget[];

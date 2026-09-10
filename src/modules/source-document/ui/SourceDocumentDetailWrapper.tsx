@@ -55,6 +55,9 @@ export function SourceDocumentDetailWrapper({
     batchUpdate,
     batchDeleteEntries,
     deleteDocument,
+    applyDateOrganization,
+    dismissDateOrganization,
+    isOrganizingDates,
   } = useSourceDocumentDetailMutations({
     id,
     ledgerId,
@@ -102,6 +105,9 @@ export function SourceDocumentDetailWrapper({
       onDelete={deleteDocument}
       onCancelProcessing={cancelProcessing}
       isCancelling={isCancelling}
+      onApplyDateOrganization={applyDateOrganization}
+      onDismissDateOrganization={dismissDateOrganization}
+      isOrganizingDates={isOrganizingDates}
     />
   );
 }

@@ -5,12 +5,14 @@ import type {
   SourceDocumentLight,
   SplitSourceDocumentInput,
   SplitSourceDocumentResultDto,
+  ApplyDateOrganizationInput,
+  ApplyDateOrganizationResultDto,
 } from "@/modules/source-document/contracts";
-import { memo, useRef } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { EditableField } from "@/components/ui/editable-field";
@@ -22,6 +24,12 @@ import { SourceDocumentDetailFooterActions } from "./SourceDocumentDetailFooterA
 import { SourceDocumentDetailStatusPanels } from "./SourceDocumentDetailStatusPanels";
 import { SourceDocumentDetailConfirmDialogs } from "./SourceDocumentDetailConfirmDialogs";
 import { SourceDocumentDetailOverlays } from "./SourceDocumentDetailOverlays";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SourceDocumentDetailModalProps {
   sourceDocumentId?: string;
@@ -64,6 +72,11 @@ interface SourceDocumentDetailModalProps {
   onDelete?: (onCommitted?: () => void) => void | Promise<void>;
   onCancelProcessing?: () => Promise<void>;
   isCancelling?: boolean;
+  onApplyDateOrganization?: (
+    input: Omit<ApplyDateOrganizationInput, "sourceDocumentId" | "expectedVersion">
+  ) => Promise<ApplyDateOrganizationResultDto>;
+  onDismissDateOrganization?: (suggestionId: string) => Promise<unknown>;
+  isOrganizingDates?: boolean;
 }
 
 function SourceDocumentDetailEditor({
@@ -90,17 +103,27 @@ function SourceDocumentDetailEditor({
   onDelete,
   onCancelProcessing,
   isCancelling = false,
+  onApplyDateOrganization,
+  onDismissDateOrganization,
+  isOrganizingDates = false,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
   const restoreFocusRef = useRef<HTMLElement | null>(null);
-
+  const [dateAdjustmentActive, setDateAdjustmentActive] = useState(false);
+  const [dateDraftDirty, setDateDraftDirty] = useState(false);
+  const discardDateDraft = useCallback(() => {
+    setDateAdjustmentActive(false);
+    setDateDraftDirty(false);
+  }, []);
   const { editor, selection, status, dialogs, actions } = useSourceDocumentDetailController({
     ledgerId,
     sourceDocument,
     ledgerEntries,
     open,
     isCancelling,
+    externalUnsaved: dateDraftDirty,
+    onDiscardExternalUnsaved: discardDateDraft,
     onClose,
     onReload,
     onSaveAll,
@@ -114,14 +137,18 @@ function SourceDocumentDetailEditor({
     t,
     tCommon,
   });
+  const handleClose = () => {
+    if (!dateDraftDirty) discardDateDraft();
+    actions.handleClose();
+  };
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(val) => !val && !status.busy && actions.handleClose()}>
+      <Dialog open={open} onOpenChange={(val) => !val && !status.busy && handleClose()}>
         <DialogContent
           variant="detail"
           {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-          className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+          className="flex flex-col gap-0 overflow-hidden p-0 lg:h-[90dvh] lg:max-w-[1200px]"
           onOpenAutoFocus={() => {
             restoreFocusRef.current = document.activeElement as HTMLElement | null;
           }}
@@ -141,7 +168,12 @@ function SourceDocumentDetailEditor({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                onClick={onBack}
+                onClick={() =>
+                  actions.handleRequestLeave(() => {
+                    discardDateDraft();
+                    onBack();
+                  })
+                }
                 disabled={status.busy}
                 aria-label={tCommon("back")}
                 title={tCommon("back")}
@@ -159,21 +191,49 @@ function SourceDocumentDetailEditor({
                 disabled={status.busy || !editor.isEditMode}
               />
             </div>
+            {sourceDocument != null && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={status.busy}
+                    aria-label={t("title")}
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {sourceDocument.supportedActions.includes("edit_retry") && (
+                    <DropdownMenuItem onSelect={actions.handleOpenRetry}>
+                      <RefreshCw className="size-4" />
+                      {t("editRetry")}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="text-danger" onSelect={actions.handleRequestDelete}>
+                    <Trash2 className="size-4" />
+                    {tCommon("delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-            <SourceDocumentDetailStatusPanels
-              sourceDocument={sourceDocument}
-              loadError={loadError}
-              isLoading={isLoading}
-              isReloading={status.isReloading}
-              reloadError={status.reloadError}
-              onClose={onClose}
-              onReload={() => void actions.handleReload()}
-            />
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:flex lg:flex-col lg:overflow-hidden">
+            <div className="shrink-0">
+              <SourceDocumentDetailStatusPanels
+                sourceDocument={sourceDocument}
+                loadError={loadError}
+                isLoading={isLoading}
+                isReloading={status.isReloading}
+                reloadError={status.reloadError}
+                onClose={onClose}
+                onReload={() => void actions.handleReload()}
+              />
+            </div>
 
             {sourceDocument && (
-              <>
+              <div className="min-h-0 lg:flex-1">
                 <SourceDocumentViewDetails
                   sourceDocument={sourceDocument}
                   ledgerEntries={ledgerEntries}
@@ -187,13 +247,24 @@ function SourceDocumentDetailEditor({
                   onSourceDocChange={editor.handleSourceDocChange}
                   onEntryChange={editor.handleEntryChange}
                   onSelectEntry={selection.handleSelect}
-                  onToggleSelectionMode={actions.handleToggleSelectionMode}
+                  onToggleSelectionMode={() =>
+                    !dateAdjustmentActive && actions.handleToggleSelectionMode()
+                  }
                   interactionDisabled={status.busy}
                   isEditMode={editor.isEditMode}
                   onAddEntry={actions.handleOpenAddEntry}
                   onDeleteEntry={actions.handleRequestDeleteEntry}
+                  onRequestEdit={() => !dateAdjustmentActive && actions.handleEnterEditMode()}
+                  {...(onApplyDateOrganization == null ? {} : { onApplyDateOrganization })}
+                  {...(onDismissDateOrganization == null ? {} : { onDismissDateOrganization })}
+                  isOrganizingDates={isOrganizingDates}
+                  dateOrganizationDisabled={editor.isEditMode || selection.isSelectionMode}
+                  onDateAdjustmentStateChange={(active, dirty) => {
+                    setDateAdjustmentActive(active || dirty);
+                    setDateDraftDirty(dirty);
+                  }}
                 />
-              </>
+              </div>
             )}
           </div>
 

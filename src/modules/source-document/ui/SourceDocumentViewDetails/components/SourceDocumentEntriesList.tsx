@@ -2,6 +2,7 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Plus, X } from "lucide-react";
+import { useState } from "react";
 import type { EntryCategory, LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
 import type { EntriesPendingChanges } from "@/modules/source-document/detail-types";
@@ -25,6 +26,7 @@ interface SourceDocumentEntriesListProps {
   onAddEntry?: (() => void) | undefined;
   onDeleteEntry?: ((entryId: string) => void) | undefined;
   pendingChanges: EntriesPendingChanges;
+  onRequestEdit?: () => void;
 }
 
 export function SourceDocumentEntriesList({
@@ -45,9 +47,11 @@ export function SourceDocumentEntriesList({
   onAddEntry,
   onDeleteEntry,
   pendingChanges,
+  onRequestEdit,
 }: SourceDocumentEntriesListProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
 
   return (
     <div className="min-w-0">
@@ -75,37 +79,46 @@ export function SourceDocumentEntriesList({
         </div>
       </div>
 
-      <div className="space-y-2 pb-2">
+      <div className="divide-y overflow-hidden rounded-lg border bg-surface pb-0">
         {entries.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">
             <p className="text-muted-foreground text-sm font-medium">{t("noEntries")}</p>
           </div>
         ) : (
           entries.map((entry) => (
-            <SelectableEditableEntryCard
+            <div
               key={entry.id}
-              entry={entry}
-              categories={categories}
-              categoryPlaceholder={t("selectCategory")}
-              preferredCurrencies={preferredCurrencies}
-              mainCurrency={mainCurrency}
-              selectionMode={isSelectionMode}
-              selected={selectedEntryIds.includes(entry.id)}
-              selectionLabel={tCommon("selectItem", { item: entry.itemName })}
-              onEntryChange={onEntryChange}
-              onSelectEntry={onSelectEntry}
-              sourceDocumentEntryDate={displayEntryDate}
-              originalEntryDate={originalEntryDate}
-              readOnly={fieldsDisabled}
-              onDelete={
-                !interactionDisabled && isEditMode && onDeleteEntry != null
-                  ? () => onDeleteEntry(entry.id)
-                  : undefined
-              }
-              {...(pendingChanges[entry.id] !== undefined
-                ? { pendingChanges: pendingChanges[entry.id] }
-                : {})}
-            />
+              onClick={() => {
+                if (!isSelectionMode && !interactionDisabled) {
+                  setActiveEntryId(entry.id);
+                  onRequestEdit?.();
+                }
+              }}
+            >
+              <SelectableEditableEntryCard
+                entry={entry}
+                categories={categories}
+                categoryPlaceholder={t("selectCategory")}
+                preferredCurrencies={preferredCurrencies}
+                mainCurrency={mainCurrency}
+                selectionMode={isSelectionMode}
+                selected={selectedEntryIds.includes(entry.id)}
+                selectionLabel={tCommon("selectItem", { item: entry.itemName })}
+                onEntryChange={onEntryChange}
+                onSelectEntry={onSelectEntry}
+                sourceDocumentEntryDate={displayEntryDate}
+                originalEntryDate={originalEntryDate}
+                readOnly={fieldsDisabled || activeEntryId !== entry.id}
+                onDelete={
+                  !interactionDisabled && isEditMode && onDeleteEntry != null
+                    ? () => onDeleteEntry(entry.id)
+                    : undefined
+                }
+                {...(pendingChanges[entry.id] !== undefined
+                  ? { pendingChanges: pendingChanges[entry.id] }
+                  : {})}
+              />
+            </div>
           ))
         )}
         {!interactionDisabled && isEditMode && onAddEntry != null ? (

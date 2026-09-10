@@ -367,6 +367,49 @@ export const splitSourceDocumentInputSchema = strictObjectSchema({
   entryDate: dateStringSchema,
 });
 
+const dateOrganizationGroupSchema = strictObjectSchema({
+  id: z.string().trim().min(1).max(80),
+  entryDate: dateStringSchema.nullable(),
+  ledgerEntryIds: z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE),
+});
+
+export const applyDateOrganizationInputSchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  expectedVersion: z.number().int().positive(),
+  suggestionId: uuidSchema,
+  groups: z.array(dateOrganizationGroupSchema).min(1).max(MAX_BATCH_SIZE),
+  appliedGroupIds: z.array(z.string().trim().min(1).max(80)).min(1).max(MAX_BATCH_SIZE),
+}).superRefine((input, ctx) => {
+  const allEntries = input.groups.flatMap((group) => group.ledgerEntryIds);
+  if (new Set(allEntries).size !== allEntries.length) {
+    ctx.addIssue({ code: "custom", message: "A ledger entry may only belong to one date group" });
+  }
+  const groupIds = new Set(input.groups.map((group) => group.id));
+  const appliedGroupIds = new Set(input.appliedGroupIds);
+  if (
+    groupIds.size !== input.groups.length ||
+    appliedGroupIds.size !== input.appliedGroupIds.length ||
+    input.appliedGroupIds.some((id) => !groupIds.has(id))
+  ) {
+    ctx.addIssue({ code: "custom", message: "Date organization groups must be unique" });
+  }
+  const targetDates = input.groups.flatMap((group) =>
+    group.entryDate == null ? [] : [group.entryDate]
+  );
+  if (new Set(targetDates).size !== targetDates.length) {
+    ctx.addIssue({ code: "custom", message: "Date organization target dates must be unique" });
+  }
+  if (input.groups.some((group) => group.entryDate == null && appliedGroupIds.has(group.id))) {
+    ctx.addIssue({ code: "custom", message: "Retained entries cannot be applied" });
+  }
+});
+
+export const dismissDateOrganizationInputSchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  expectedVersion: z.number().int().positive(),
+  suggestionId: uuidSchema,
+});
+
 export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
   targets: versionedTargetsSchema,
   data: updateSourceDocumentInputSchema,

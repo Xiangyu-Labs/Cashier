@@ -102,6 +102,18 @@ export interface SaveSourceDocumentChangesResultDto {
 
 export type SplitSourceDocumentInput = z.infer<typeof splitSourceDocumentInputSchema>;
 
+export type ApplyDateOrganizationInput = z.infer<
+  typeof import("./contract-schemas").applyDateOrganizationInputSchema
+>;
+export type DismissDateOrganizationInput = z.infer<
+  typeof import("./contract-schemas").dismissDateOrganizationInputSchema
+>;
+
+export interface ApplyDateOrganizationResultDto {
+  sourceDocument: import("./document-contracts").SourceDocumentResultDto;
+  createdSourceDocumentIds: string[];
+}
+
 export interface SplitSourceDocumentResultDto {
   sourceDocument: import("./document-contracts").SourceDocumentResultDto;
   splitSourceDocumentId: string;

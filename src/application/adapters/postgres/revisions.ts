@@ -31,6 +31,7 @@ export interface CreatePendingRevisionInput {
     text: string | null;
     storedFileIds: readonly string[];
     documentDate: string | null;
+    dateReference?: string | null;
   };
 }
 
@@ -194,6 +195,7 @@ export async function createProcessingRevisionInTransaction(
       origin: "submission",
       inputText: input.input.text,
       inputDocumentDate: input.input.documentDate,
+      inputDateReference: input.input.dateReference ?? input.input.documentDate,
       processingStatus: "processing",
     })
     .returning()

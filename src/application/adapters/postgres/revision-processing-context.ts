@@ -19,6 +19,7 @@ export async function loadRevisionProcessingContext(
       .select({
         inputText: sourceDocumentRevisions.inputText,
         inputDocumentDate: sourceDocumentRevisions.inputDocumentDate,
+        inputDateReference: sourceDocumentRevisions.inputDateReference,
         processingStatus: sourceDocumentRevisions.processingStatus,
         activeRevisionId: sourceDocuments.activeRevisionId,
         latestSubmissionRevisionId: sourceDocuments.latestSubmissionRevisionId,
@@ -74,6 +75,7 @@ export async function loadRevisionProcessingContext(
         : {
             inputText: identity.inputText,
             inputDocumentDate: identity.inputDocumentDate,
+            inputDateReference: identity.inputDateReference,
             processingStatus: identity.processingStatus,
           },
     document:

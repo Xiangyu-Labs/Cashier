@@ -71,6 +71,7 @@ vi.mock("@/modules/source-document/ui/SourceDocumentViewDetails", () => ({
     onToggleSelectionMode,
     onSelectEntry,
     onAddEntry,
+    onDateAdjustmentStateChange,
   }: {
     isEditMode?: boolean;
     isSelectionMode: boolean;
@@ -78,6 +79,7 @@ vi.mock("@/modules/source-document/ui/SourceDocumentViewDetails", () => ({
     onToggleSelectionMode: () => void;
     onSelectEntry: (entryId: string, selected: boolean) => void;
     onAddEntry?: () => void;
+    onDateAdjustmentStateChange?: (active: boolean, dirty: boolean) => void;
   }) => (
     <div>
       <span>{isEditMode ? "editing" : "viewing"}</span>
@@ -91,6 +93,10 @@ vi.mock("@/modules/source-document/ui/SourceDocumentViewDetails", () => ({
       <button onClick={onToggleSelectionMode}>batch-toggle</button>
       <button onClick={() => onSelectEntry("entry-1", true)}>select-first</button>
       <button onClick={onAddEntry}>add-entry</button>
+      <button onClick={() => onDateAdjustmentStateChange?.(true, false)}>
+        begin-date-adjustment
+      </button>
+      <button onClick={() => onDateAdjustmentStateChange?.(true, true)}>change-date-draft</button>
     </div>
   ),
 }));
@@ -400,6 +406,19 @@ describe("SourceDocumentDetailModal batch mode", () => {
     render(modal(undefined, sourceDocument, { onClose }));
     fireEvent.click(screen.getByText("edit"));
     fireEvent.click(screen.getByText("change-draft"));
+    fireEvent.click(screen.getByText("dialog-close"));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("unsavedChanges")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("confirm-discard"));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("requires confirmation before closing with an adjusted date suggestion draft", () => {
+    const onClose = vi.fn();
+    render(modal(undefined, sourceDocument, { onClose }));
+    fireEvent.click(screen.getByText("begin-date-adjustment"));
+    fireEvent.click(screen.getByText("change-date-draft"));
     fireEvent.click(screen.getByText("dialog-close"));
 
     expect(onClose).not.toHaveBeenCalled();

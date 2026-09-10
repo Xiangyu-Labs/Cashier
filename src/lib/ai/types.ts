@@ -17,6 +17,7 @@ export interface ParsedLedgerEntry {
   notes?: string | null; // Consolidated notes
   receiptIndex?: number; // index of receipt within multi-receipt document
   isAdjustment?: boolean; // true for order_adjustments rows (discounts, fees, etc.)
+  dateHint?: import("@/modules/source-document/date-organization-contracts").DateHint;
 }
 
 export interface CategoryInfo {

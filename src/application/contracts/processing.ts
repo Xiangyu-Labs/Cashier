@@ -46,6 +46,7 @@ export interface RevisionProcessingContextContract {
   revision: {
     inputText: string | null;
     inputDocumentDate: string | null;
+    inputDateReference: string | null;
     processingStatus: RevisionProcessingStatus | null;
   } | null;
   document: {

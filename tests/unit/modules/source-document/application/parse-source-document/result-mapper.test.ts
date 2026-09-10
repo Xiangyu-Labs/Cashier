@@ -69,6 +69,26 @@ describe("convertToParsedEntries", () => {
 
     expect(result[1]?.categoryIndex).toBe(2);
   });
+  it("inherits a receipt date hint only when every product row agrees", () => {
+    const sharedHint = { kind: "relative" as const, value: "yesterday", sourceText: "昨天" };
+    const result = convertToParsedEntries({
+      ledgerEntries: [{ ...item(), date_hint: sharedHint }],
+      orderAdjustments: [adjustment("5")],
+    });
+    expect(result[1]?.dateHint).toEqual(sharedHint);
+
+    const mixedResult = convertToParsedEntries({
+      ledgerEntries: [
+        { ...item(), date_hint: sharedHint },
+        {
+          ...item(1, 0, "MYR"),
+          date_hint: { kind: "relative", value: "today", sourceText: "今天" },
+        },
+      ],
+      orderAdjustments: [adjustment("5")],
+    });
+    expect(mixedResult[2]?.dateHint).toBeUndefined();
+  });
   it("isolates categories by receipt and preserves each row's own currency precision", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [item(1, 0, "JPY"), item(2, 1, "KWD")],

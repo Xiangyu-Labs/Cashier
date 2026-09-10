@@ -74,6 +74,7 @@ async function submitInTransaction(
         .select({
           text: sourceDocumentRevisions.inputText,
           documentDate: sourceDocumentRevisions.inputDocumentDate,
+          dateReference: sourceDocumentRevisions.inputDateReference,
         })
         .from(sourceDocumentRevisions)
         .where(

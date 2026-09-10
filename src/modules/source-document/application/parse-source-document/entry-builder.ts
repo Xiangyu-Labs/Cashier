@@ -4,6 +4,7 @@ import { roundToCurrency } from "@/lib/money/currency-precision";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 
 export interface EntryToInsert {
+  id: string;
   ledgerId: string;
   categoryId: string | null;
   sourceDocumentId: string;
@@ -14,6 +15,7 @@ export interface EntryToInsert {
   entryDate: string;
   convertedAmount: string | null;
   exchangeRate: string | null;
+  dateHint?: import("@/modules/source-document/date-organization-contracts").DateHint;
 }
 
 export interface BuildEntriesParams {
@@ -72,6 +74,7 @@ export async function buildEntriesForInsert({
       }
 
       return {
+        id: crypto.randomUUID(),
         ledgerId,
         categoryId,
         sourceDocumentId,
@@ -82,6 +85,7 @@ export async function buildEntriesForInsert({
         entryDate: fallbackDate,
         convertedAmount,
         exchangeRate,
+        ...(entry.dateHint == null ? {} : { dateHint: entry.dateHint }),
       };
     })
   );
