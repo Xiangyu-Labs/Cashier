@@ -34,8 +34,8 @@ describe("Source Document Update Actions", () => {
       const db = getTestDb();
       const ledger = createLedgerData({ userId: testUserId, mainCurrency: "USD" });
       await db.insert(ledgers).values(ledger);
-      const documents = ["2024-03-14", "2024-03-15"].map((entryDate) =>
-        createSourceDocumentData(ledger.id, { status: "completed", entryDate })
+      const documents = ["2024-03-14", "2024-03-15"].map((documentDate) =>
+        createSourceDocumentData(ledger.id, { status: "completed", documentDate })
       );
       await db.insert(sourceDocuments).values(documents);
       const ids = documents.map(() => crypto.randomUUID());
@@ -61,7 +61,7 @@ describe("Source Document Update Actions", () => {
             sourceDocumentId: document.id,
             expectedVersion: 1,
           })),
-          data: { entryDate: "2024-03-15", title: "Updated title" },
+          data: { documentDate: "2024-03-15", title: "Updated title" },
         });
         expect(convert).toHaveBeenCalledExactlyOnceWith(
           [{ amount: "100.000", from: "MYR", date: "2024-03-15" }],
@@ -83,7 +83,7 @@ describe("Source Document Update Actions", () => {
       await db.insert(ledgers).values(ledger);
       const document = createSourceDocumentData(ledger.id, {
         status: "completed",
-        entryDate: "2024-03-14",
+        documentDate: "2024-03-14",
       });
       await db.insert(sourceDocuments).values(document);
       await activateTestSourceDocumentProjection(db, document.id);
@@ -91,12 +91,12 @@ describe("Source Document Update Actions", () => {
       try {
         await batchUpdateSourceDocumentsAction(ledger.id, {
           targets: [{ sourceDocumentId: document.id, expectedVersion: 1 }],
-          data: { entryDate: "2024-03-14" },
+          data: { documentDate: "2024-03-14" },
         });
         expect(convert).not.toHaveBeenCalled();
         expect(
           await db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, document.id) })
-        ).toMatchObject({ stateVersion: 1 });
+        ).toMatchObject({ version: 1 });
       } finally {
         convert.mockRestore();
       }
@@ -143,7 +143,7 @@ describe("Source Document Update Actions", () => {
       await db.insert(ledgers).values(ledgerData);
       const document = createSourceDocumentData(ledgerData.id, {
         status: "completed",
-        entryDate: "2024-03-14",
+        documentDate: "2024-03-14",
       });
       await db.insert(sourceDocuments).values(document);
       const entryId = crypto.randomUUID();
@@ -169,14 +169,14 @@ describe("Source Document Update Actions", () => {
 
       await batchUpdateSourceDocumentsAction(ledgerData.id, {
         targets: [{ sourceDocumentId: document.id, expectedVersion: 1 }],
-        data: { entryDate: "2024-03-15" },
+        data: { documentDate: "2024-03-15" },
       });
 
       const [updatedDocument, updatedEntry] = await Promise.all([
         db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, document.id) }),
         db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
       ]);
-      expect(updatedDocument?.entryDate).toBe("2024-03-15");
+      expect(updatedDocument?.documentDate).toBe("2024-03-15");
       expect(updatedEntry?.convertedAmount).toBe("10.000");
       expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
     });
@@ -215,7 +215,7 @@ describe("Source Document Update Actions", () => {
       const document = await db.query.sourceDocuments.findFirst({
         where: eq(sourceDocuments.id, docData.id),
       });
-      expect(document?.stateVersion).toBe(1);
+      expect(document?.version).toBe(1);
     });
 
     it("rolls back the whole batch — including the non-stale document — when one target is stale", async () => {
@@ -228,7 +228,7 @@ describe("Source Document Update Actions", () => {
       // Advance staleDoc's version out from under the caller's expectation.
       await db
         .update(sourceDocuments)
-        .set({ stateVersion: 2 })
+        .set({ version: 2 })
         .where(eq(sourceDocuments.id, staleDoc.id));
 
       const result = await batchUpdateSourceDocumentsAction(ledgerData.id, {
@@ -249,7 +249,7 @@ describe("Source Document Update Actions", () => {
         where: eq(sourceDocuments.id, okDoc.id),
       });
       expect(okDocument?.title).toBe("Original A");
-      expect(okDocument?.stateVersion).toBe(1);
+      expect(okDocument?.version).toBe(1);
     });
   });
 });

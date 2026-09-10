@@ -27,7 +27,6 @@ describe("createLedgerEntryAction version CAS", () => {
     await db.insert(sourceDocuments).values({
       id: sourceDocumentId,
       ledgerId,
-      currentStatus: "completed",
       type: "manual",
     });
     await activateTestSourceDocumentProjection(db, sourceDocumentId);
@@ -50,7 +49,7 @@ describe("createLedgerEntryAction version CAS", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(entry).toMatchObject({ itemName: "Lunch", amount: "50.000", currency: "CNY" });
-    expect(document?.stateVersion).toBe(2);
+    expect(document?.version).toBe(2);
   });
 
   it("returns stale for a lost-response retry and creates no second entry", async () => {

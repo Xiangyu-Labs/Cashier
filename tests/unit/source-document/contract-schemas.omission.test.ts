@@ -21,6 +21,8 @@ describe("contract schema omission semantics", () => {
     });
     const retryParsed = retrySourceDocumentInputSchema.parse({
       text: "Lunch 12.50",
+      storedFileIds: [],
+      documentDate: null,
       timezone: undefined,
     });
 

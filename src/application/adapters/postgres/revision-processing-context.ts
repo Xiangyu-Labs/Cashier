@@ -17,12 +17,12 @@ export async function loadRevisionProcessingContext(
   const [identity, files, categories] = await Promise.all([
     db
       .select({
-        submittedText: sourceDocumentRevisions.submittedText,
-        outcome: sourceDocumentRevisions.outcome,
+        inputText: sourceDocumentRevisions.inputText,
+        inputDocumentDate: sourceDocumentRevisions.inputDocumentDate,
+        processingStatus: sourceDocumentRevisions.processingStatus,
         activeRevisionId: sourceDocuments.activeRevisionId,
-        pendingRevisionId: sourceDocuments.pendingRevisionId,
+        latestSubmissionRevisionId: sourceDocuments.latestSubmissionRevisionId,
         type: sourceDocuments.type,
-        entryDate: sourceDocuments.entryDate,
         createdAt: sourceDocuments.createdAt,
       })
       .from(sourceDocumentRevisions)
@@ -71,15 +71,18 @@ export async function loadRevisionProcessingContext(
     revision:
       identity == null
         ? null
-        : { submittedText: identity.submittedText, outcome: identity.outcome },
+        : {
+            inputText: identity.inputText,
+            inputDocumentDate: identity.inputDocumentDate,
+            processingStatus: identity.processingStatus,
+          },
     document:
       identity == null
         ? null
         : {
             activeRevisionId: identity.activeRevisionId,
-            pendingRevisionId: identity.pendingRevisionId,
+            latestSubmissionRevisionId: identity.latestSubmissionRevisionId,
             type: identity.type,
-            entryDate: identity.entryDate,
             createdAt: identity.createdAt,
           },
     storedFileIds: files.map((file) => file.id),

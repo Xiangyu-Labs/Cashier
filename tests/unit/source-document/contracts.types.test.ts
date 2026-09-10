@@ -1,10 +1,9 @@
 import { describe, it, expectTypeOf } from "vitest";
 import type {
-  SourceDocumentDto,
-  SourceDocumentStatusType,
+  SourceDocumentDetailDto,
   SourceDocumentLight,
   SourceDocumentListItemDto,
-  SourceDocumentCandidateProjectionSummary,
+  SourceDocumentActiveResultSummary,
 } from "@/modules/source-document/contracts";
 import type { SourceDocumentTypeValue } from "@/lib/source-document-values";
 import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
@@ -15,17 +14,17 @@ describe("source-document contract types", () => {
     expectTypeOf<SourceDocumentListItemDto["text"]>().toEqualTypeOf<null>();
   });
 
-  it("keeps ledger source-document reference status/type aligned", () => {
-    expectTypeOf<SourceDocumentReferenceDto["status"]>().toEqualTypeOf<SourceDocumentStatusType>();
+  it("keeps ledger source-document reference date/type aligned", () => {
+    expectTypeOf<SourceDocumentReferenceDto["documentDate"]>().toEqualTypeOf<string | null>();
     expectTypeOf<SourceDocumentReferenceDto["type"]>().toEqualTypeOf<SourceDocumentTypeValue>();
   });
 
   it("exposes the optional active result summary on detail projections", () => {
     expectTypeOf<SourceDocumentLight["activeResultSummary"]>().toEqualTypeOf<
-      SourceDocumentCandidateProjectionSummary | undefined
+      SourceDocumentActiveResultSummary | undefined
     >();
-    expectTypeOf<SourceDocumentDto["activeResultSummary"]>().toEqualTypeOf<
-      SourceDocumentCandidateProjectionSummary | undefined
+    expectTypeOf<SourceDocumentDetailDto["activeResultSummary"]>().toEqualTypeOf<
+      SourceDocumentActiveResultSummary | undefined
     >();
   });
 });

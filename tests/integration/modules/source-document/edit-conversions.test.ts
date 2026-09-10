@@ -96,7 +96,7 @@ describe("document edit conversion scope", () => {
       ledgerId,
       sourceDocumentId,
       expectedVersion: 1,
-      sourceDocument: { entryDate: "2026-01-02" },
+      sourceDocument: { documentDate: "2026-01-02" },
       entries: [],
     });
     expect(convert).toHaveBeenCalledExactlyOnceWith(
@@ -113,7 +113,7 @@ describe("document edit conversion scope", () => {
     vi.spyOn(postgresFxRateBook, "convertBatch").mockImplementation(async () => {
       await db
         .update(sourceDocuments)
-        .set({ stateVersion: 2 })
+        .set({ version: 2 })
         .where(eq(sourceDocuments.id, sourceDocumentId));
       return [{ convertedAmount: "140", exchangeRate: "7" }];
     });

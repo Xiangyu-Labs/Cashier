@@ -2,7 +2,7 @@
 import * as React from "react";
 import { periodToDateRange, type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import {
   type EntryFilters,
   type StreamStatusPreset,
@@ -180,7 +180,7 @@ export function useEntryFilterDraft({
     setTempPeriod("thisMonth");
   };
 
-  const toggleStatus = (status: SourceDocumentStatusType) => {
+  const toggleStatus = (status: SourceDocumentProcessingStatus) => {
     setTempFilters((prev) => {
       const current = prev.statuses ?? [];
       const exists = current.includes(status);

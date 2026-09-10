@@ -61,8 +61,7 @@ describe("source-document-queries", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId,
-          currentStatus: status,
-          entryDate: `2026-03-${String(day).padStart(2, "0")}`,
+          documentDate: `2026-03-${String(day).padStart(2, "0")}`,
           createdAt: new Date(
             `2026-03-${String(day).padStart(2, "0")}T${String(10 + (i % 10)).padStart(2, "0")}:00:00Z`
           ),
@@ -92,7 +91,7 @@ describe("source-document-queries", () => {
         expect(seenIds.has(item.id)).toBe(false);
         seenIds.add(item.id);
         // Build effective date for assertion
-        const effectiveDate = item.entryDate ?? item.createdAt.slice(0, 10);
+        const effectiveDate = item.documentDate ?? item.createdAt.slice(0, 10);
         allItems.push({ id: item.id, effectiveDate });
       }
 
@@ -112,7 +111,7 @@ describe("source-document-queries", () => {
     }
   });
 
-  it("sorts null entryDate records by createdAt calendar date", async () => {
+  it("sorts null documentDate records by createdAt calendar date", async () => {
     const db = getTestDb();
     const today = new Date("2026-03-20T08:00:00Z");
     const yesterday = new Date("2026-03-19T10:00:00Z");
@@ -123,22 +122,19 @@ describe("source-document-queries", () => {
         {
           ledgerId,
           title: "null-date-older",
-          currentStatus: "completed",
-          entryDate: null,
+          documentDate: null,
           createdAt: today,
         },
         {
           ledgerId,
           title: "null-date-newer",
-          currentStatus: "completed",
-          entryDate: "2026-03-18",
+          documentDate: "2026-03-18",
           createdAt: yesterday,
         },
         {
           ledgerId,
           title: "has-explicit-date",
-          currentStatus: "completed",
-          entryDate: "2026-03-19",
+          documentDate: "2026-03-19",
           createdAt: new Date("2026-03-19T12:00:00Z"),
         },
       ])
@@ -183,22 +179,19 @@ describe("source-document-queries", () => {
       {
         id: idA,
         ledgerId,
-        currentStatus: "completed",
-        entryDate: sameDate,
+        documentDate: sameDate,
         createdAt: sameCreatedAt,
       },
       {
         id: idB,
         ledgerId,
-        currentStatus: "completed",
-        entryDate: sameDate,
+        documentDate: sameDate,
         createdAt: sameCreatedAt,
       },
       {
         id: idC,
         ledgerId,
-        currentStatus: "completed",
-        entryDate: sameDate,
+        documentDate: sameDate,
         createdAt: sameCreatedAt,
       },
     ]);
@@ -224,26 +217,22 @@ describe("source-document-queries", () => {
         {
           ledgerId,
           title: "completed-in-range",
-          currentStatus: "completed",
-          entryDate: "2026-03-15",
+          documentDate: "2026-03-15",
         },
         {
           ledgerId,
           title: "completed-outside-range",
-          currentStatus: "completed",
-          entryDate: "2026-03-01",
+          documentDate: "2026-03-01",
         },
         {
           ledgerId,
           title: "processing-in-range",
-          currentStatus: "processing",
-          entryDate: "2026-03-16",
+          documentDate: "2026-03-16",
         },
         {
           ledgerId,
           title: "invalid-in-range",
-          currentStatus: "invalid",
-          entryDate: "2026-03-14",
+          documentDate: "2026-03-14",
         },
       ])
       .returning();

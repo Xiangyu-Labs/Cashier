@@ -11,6 +11,7 @@ import {
   entryCategories,
   ledgerEntries,
   ledgers,
+  sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
 import {
@@ -96,13 +97,11 @@ describe("getEnhancedStatsQuery", () => {
       .values([
         {
           ledgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-01",
+          documentDate: "2024-03-01",
         },
         {
           ledgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-02",
+          documentDate: "2024-03-02",
         },
       ])
       .returning();
@@ -162,8 +161,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: null,
+        documentDate: null,
         createdAt: new Date("2024-03-10T12:00:00Z"),
       })
       .returning();
@@ -196,8 +194,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "candidate_pending",
-        entryDate: "2024-03-12",
+        documentDate: "2024-03-12",
       })
       .returning();
     const doc = requireFirst(insertedDoc, "document");
@@ -214,9 +211,19 @@ describe("getEnhancedStatsQuery", () => {
     // Activate the projection, then simulate an in-flight reprocessing pass
     // that leaves the previous active projection in place.
     await activateTestSourceDocumentProjection(db, doc.id);
+    const [latestSubmission] = await db
+      .insert(sourceDocumentRevisions)
+      .values({
+        ledgerId,
+        sourceDocumentId: doc.id,
+        revisionNumber: 2,
+        origin: "submission",
+        processingStatus: "processing",
+      })
+      .returning({ id: sourceDocumentRevisions.id });
     await db
       .update(sourceDocuments)
-      .set({ currentStatus: "processing" })
+      .set({ latestSubmissionRevisionId: latestSubmission!.id })
       .where(eq(sourceDocuments.id, doc.id));
 
     const result = await getTargetEnhancedStatsQuery({
@@ -236,13 +243,11 @@ describe("getEnhancedStatsQuery", () => {
       .values([
         {
           ledgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-05",
+          documentDate: "2024-03-05",
         },
         {
           ledgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-05",
+          documentDate: "2024-03-05",
           deletedAt: new Date(),
         },
       ])
@@ -300,8 +305,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: "2024-04-01",
+        documentDate: "2024-04-01",
       })
       .returning();
     const doc = requireFirst(insertedDoc, "document");
@@ -345,8 +349,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: "2024-05-01",
+        documentDate: "2024-05-01",
       })
       .returning();
     const doc = requireFirst(insertedDoc, "document");
@@ -381,8 +384,7 @@ describe("getEnhancedStatsQuery", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId,
-          currentStatus: "completed",
-          entryDate: `2024-06-${day}`,
+          documentDate: `2024-06-${day}`,
         })
         .returning();
 
@@ -424,8 +426,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: "2024-07-01",
+        documentDate: "2024-07-01",
       })
       .returning();
 
@@ -538,8 +539,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: "2024-08-01",
+        documentDate: "2024-08-01",
       })
       .returning();
     const doc = requireFirst(insertedDoc, "document");

@@ -4,12 +4,12 @@ import { getTestDb } from "../../setup";
 import { supportedSourceDocumentActions } from "@/application/contracts";
 import type {
   ProcessingCompletionContract,
-  ProcessingIntentContract,
+  ProcessingJobContract,
   UploadPlanContract,
 } from "@/application/contracts";
 import { createStoredFileAdapter } from "@/application/adapters/storage";
 import {
-  PostgresProcessingIntentAdapter,
+  PostgresProcessingJobAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
 
@@ -36,8 +36,8 @@ class ContractFileStore {
 applicationContractSuite("real Postgres/object-storage/in-process adapter composition", () => {
   const db = getTestDb();
   const files = createStoredFileAdapter({ storage: new ContractFileStore() });
-  const processing = new PostgresProcessingIntentAdapter();
-  const actualIntents = new Map<string, ProcessingIntentContract>();
+  const processing = new PostgresProcessingJobAdapter();
+  const actualIntents = new Map<string, ProcessingJobContract>();
   const completions: ProcessingCompletionContract[] = [];
   let setupPromise: ReturnType<typeof createTestUserWithLedger> | null = null;
 
@@ -48,37 +48,35 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
     return setupPromise;
   }
 
-  async function prepareIntent(
-    intent: ProcessingIntentContract
-  ): Promise<ProcessingIntentContract> {
-    const existing = actualIntents.get(intent.id);
+  async function prepareIntent(job: ProcessingJobContract): Promise<ProcessingJobContract> {
+    const existing = actualIntents.get(job.id);
     if (existing != null) return existing;
     const { ledgerId } = await getSetup();
-    const pending = await postgresRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      submittedText: "contract processing input",
+      input: { text: "contract processing input", storedFileIds: [], documentDate: null },
     });
     const actual = {
-      ...intent,
+      ...job,
       id: crypto.randomUUID(),
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
     };
-    actualIntents.set(intent.id, actual);
+    actualIntents.set(job.id, actual);
     return actual;
   }
 
   const processingPort = {
-    async dispatch(intent: ProcessingIntentContract) {
-      await processing.dispatch(await prepareIntent(intent));
+    async dispatch(job: ProcessingJobContract) {
+      await processing.dispatch(await prepareIntent(job));
     },
-    claim: (intentId: string) => processing.claim(actualIntents.get(intentId)?.id ?? intentId),
-    renew: (intentId: string, claimToken: string) =>
-      processing.renew(actualIntents.get(intentId)?.id ?? intentId, claimToken),
+    claim: (jobId: string) => processing.claim(actualIntents.get(jobId)?.id ?? jobId),
+    renew: (jobId: string, claimToken: string) =>
+      processing.renew(actualIntents.get(jobId)?.id ?? jobId, claimToken),
     async complete(result: ProcessingCompletionContract) {
       const completed = await processing.complete({
         ...result,
-        intentId: actualIntents.get(result.intentId)?.id ?? result.intentId,
+        jobId: actualIntents.get(result.jobId)?.id ?? result.jobId,
       });
       if (completed) completions.push(result);
       return completed;
@@ -118,9 +116,13 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
         finalizationToken: current.finalizationToken,
         targetIds: [current.targets[0]!.id],
       });
-      await postgresRevisionAdapter.createPending({
+      await postgresRevisionAdapter.createProcessingRevision({
         ledgerId,
-        storedFileIds: finalized.map((file) => file.id),
+        input: {
+          text: null,
+          storedFileIds: finalized.map((file) => file.id),
+          documentDate: null,
+        },
       });
       return finalized;
     },
@@ -128,7 +130,7 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
       const { ledgerId } = await getSetup();
       return files.readAuthorized(ledgerId, file.id);
     },
-    dispatch: (intent) => processingPort.dispatch(intent),
+    dispatch: (job) => processingPort.dispatch(job),
     completions: () => completions,
   };
 });

@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
-  PendingRevisionSubmissionContract,
+  SourceDocumentSubmissionResult,
   SourceDocumentIdempotencyInput,
   SourceDocumentSubmissionInput,
   SourceDocumentSubmissionPort,
@@ -20,7 +20,7 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { createPendingRevisionInTransaction } from "./revisions";
+import { createProcessingRevisionInTransaction } from "./revisions";
 import type { PostgresTransaction } from "./transaction-locks";
 
 const IDEMPOTENCY_WAIT_ATTEMPTS = 10;
@@ -32,21 +32,20 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function createPendingWithIntentInTransaction(
+async function submitInTransaction(
   tx: PostgresTransaction,
   input: SourceDocumentSubmissionInput
-): Promise<PendingRevisionSubmissionContract> {
-  const intentId = crypto.randomUUID();
+): Promise<SourceDocumentSubmissionResult> {
+  const jobId = crypto.randomUUID();
   const requestedAt = new Date();
-  let submittedText = input.submittedText;
-  let storedFileIds = input.storedFileIds;
+  let revisionInput = input.input;
 
-  if (input.inheritEvidence === true && input.sourceDocumentId != null) {
+  if (input.sourceDocumentId != null) {
     const document = await tx
       .select({
         activeRevisionId: sourceDocuments.activeRevisionId,
-        pendingRevisionId: sourceDocuments.pendingRevisionId,
-        stateVersion: sourceDocuments.stateVersion,
+        latestSubmissionRevisionId: sourceDocuments.latestSubmissionRevisionId,
+        version: sourceDocuments.version,
       })
       .from(sourceDocuments)
       .where(
@@ -59,66 +58,61 @@ async function createPendingWithIntentInTransaction(
       .for("update")
       .then((rows) => rows[0]);
     if (document == null) throw new NotFoundError("Source document");
-    if (input.expectedVersion != null && document.stateVersion !== input.expectedVersion) {
+    if (input.expectedVersion != null && document.version !== input.expectedVersion) {
       throw new StaleSourceDocumentVersionError(
         input.sourceDocumentId,
         input.expectedVersion,
-        document.stateVersion
+        document.version
       );
     }
-    const evidenceRevisionId = document?.pendingRevisionId ?? document?.activeRevisionId;
+    const inputRevisionId = document.latestSubmissionRevisionId;
 
-    if (submittedText === undefined) {
-      const evidenceRevision =
-        evidenceRevisionId == null
-          ? null
-          : await tx
-              .select({ submittedText: sourceDocumentRevisions.submittedText })
-              .from(sourceDocumentRevisions)
-              .where(
-                and(
-                  eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-                  eq(sourceDocumentRevisions.id, evidenceRevisionId),
-                  eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId)
-                )
-              )
-              .then((rows) => rows[0]);
-      submittedText = evidenceRevision?.submittedText ?? null;
-    }
-
-    if (storedFileIds === undefined && evidenceRevisionId != null) {
-      storedFileIds = (
+    if (input.inheritInput === true) {
+      if (inputRevisionId == null)
+        throw new ConflictError("Source document has no submission input");
+      const previousInput = await tx
+        .select({
+          text: sourceDocumentRevisions.inputText,
+          documentDate: sourceDocumentRevisions.inputDocumentDate,
+        })
+        .from(sourceDocumentRevisions)
+        .where(
+          and(
+            eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+            eq(sourceDocumentRevisions.id, inputRevisionId),
+            eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId)
+          )
+        )
+        .then((rows) => rows[0]);
+      if (previousInput == null) throw new ConflictError("Source document has no submission input");
+      const storedFileIds = (
         await tx
           .select({ id: revisionFiles.storedFileId })
           .from(revisionFiles)
           .where(
             and(
               eq(revisionFiles.ledgerId, input.ledgerId),
-              eq(revisionFiles.revisionId, evidenceRevisionId)
+              eq(revisionFiles.revisionId, inputRevisionId)
             )
           )
           .orderBy(asc(revisionFiles.position))
       ).map((file) => file.id);
+      revisionInput = { ...previousInput, storedFileIds };
     }
 
-    if (input.supersedeProcessing === true && document?.pendingRevisionId != null) {
+    if (input.supersedeProcessing === true && document?.latestSubmissionRevisionId != null) {
       const now = new Date();
-      const pendingRevision = await tx
-        .select({ outcome: sourceDocumentRevisions.outcome })
-        .from(sourceDocumentRevisions)
-        .where(eq(sourceDocumentRevisions.id, document.pendingRevisionId))
-        .then((rows) => rows[0]);
       const supersededRevision = await tx
         .update(sourceDocumentRevisions)
         .set({
-          outcome: pendingRevision?.outcome === "processing" ? "cancelled" : "abandoned",
-          finalizedAt: now,
+          processingStatus: "cancelled",
+          finishedAt: now,
         })
         .where(
           and(
             eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-            eq(sourceDocumentRevisions.id, document.pendingRevisionId),
-            inArray(sourceDocumentRevisions.outcome, ["processing", "completed"])
+            eq(sourceDocumentRevisions.id, document.latestSubmissionRevisionId),
+            eq(sourceDocumentRevisions.processingStatus, "processing")
           )
         )
         .returning({ id: sourceDocumentRevisions.id })
@@ -152,59 +146,55 @@ async function createPendingWithIntentInTransaction(
               inArray(processingAttempts.status, ["queued", "processing"])
             )
           );
-        await tx
-          .update(sourceDocuments)
-          .set({ pendingRevisionId: null, updatedAt: now })
-          .where(
-            and(
-              eq(sourceDocuments.ledgerId, input.ledgerId),
-              eq(sourceDocuments.id, input.sourceDocumentId),
-              eq(sourceDocuments.pendingRevisionId, supersededRevision.id)
-            )
-          );
       }
     }
   }
 
-  const pending = await createPendingRevisionInTransaction(tx, {
+  if (revisionInput == null) throw new ValidationError("Submission input is required");
+  if (
+    (revisionInput.text == null || revisionInput.text.trim() === "") &&
+    revisionInput.storedFileIds.length === 0
+  ) {
+    throw new ValidationError("Submission text and files cannot both be empty");
+  }
+
+  const pending = await createProcessingRevisionInTransaction(tx, {
     ledgerId: input.ledgerId,
     ...(input.sourceDocumentId === undefined ? {} : { sourceDocumentId: input.sourceDocumentId }),
-    ...(submittedText === undefined ? {} : { submittedText }),
-    ...(storedFileIds === undefined ? {} : { storedFileIds }),
-    ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+    input: revisionInput,
   });
-  const intent = {
-    id: intentId,
+  const job = {
+    id: jobId,
     sourceDocumentId: pending.document.id,
     revisionId: pending.revision.id,
     requestedAt: requestedAt.toISOString(),
-    attempt: 1,
+    attemptNumber: 1,
   };
 
   await tx.insert(processingAttempts).values({
     ledgerId: input.ledgerId,
     revisionId: pending.revision.id,
-    attemptNumber: intent.attempt,
+    attemptNumber: job.attemptNumber,
     status: "queued",
   });
   await tx.insert(processingOutbox).values({
-    id: intent.id,
+    id: job.id,
     ledgerId: input.ledgerId,
-    sourceDocumentId: intent.sourceDocumentId,
+    sourceDocumentId: job.sourceDocumentId,
     revisionId: pending.revision.id,
-    attemptNumber: intent.attempt,
+    attemptNumber: job.attemptNumber,
     status: "pending",
     requestedAt,
     availableAt: requestedAt,
   });
 
-  return { ...pending, intent };
+  return { ...pending, job };
 }
 
 async function createIdempotentSubmission(
   idempotency: SourceDocumentIdempotencyInput,
   prepare: () => Promise<SourceDocumentSubmissionInput>
-): Promise<PendingRevisionSubmissionContract> {
+): Promise<SourceDocumentSubmissionResult> {
   const { principalType, principalId, key, contentFingerprint } = idempotency;
   if (key.trim() === "" || key.length > 512) {
     throw new ValidationError("Idempotency key must contain between 1 and 512 characters");
@@ -265,7 +255,7 @@ async function createIdempotentSubmission(
     try {
       const input = await prepare();
       return await db.transaction(async (tx) => {
-        const submission = await createPendingWithIntentInTransaction(tx, input);
+        const submission = await submitInTransaction(tx, input);
         const committed = await tx
           .update(idempotencyRecords)
           .set({
@@ -318,7 +308,7 @@ async function createIdempotentSubmission(
       throw new ConflictError("Idempotency key was already used with different content");
     }
     if (record?.status === "completed") {
-      const submission = (record.result as { value: PendingRevisionSubmissionContract }).value;
+      const submission = (record.result as { value: SourceDocumentSubmissionResult }).value;
       return { ...submission, idempotencyReplay: true };
     }
     if (record == null || (record.leaseExpiresAt != null && record.leaseExpiresAt <= new Date())) {
@@ -330,10 +320,10 @@ async function createIdempotentSubmission(
 }
 
 export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPort = {
-  async createPendingWithIntent(input): Promise<PendingRevisionSubmissionContract> {
-    return db.transaction((tx) => createPendingWithIntentInTransaction(tx, input));
+  async submit(input): Promise<SourceDocumentSubmissionResult> {
+    return db.transaction((tx) => submitInTransaction(tx, input));
   },
-  async createIdempotentPendingWithIntent(idempotency, prepare) {
+  async submitIdempotently(idempotency, prepare) {
     return createIdempotentSubmission(idempotency, prepare);
   },
 };

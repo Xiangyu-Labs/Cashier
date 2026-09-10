@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
-import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
+import { selectRecoverableProcessingJobs } from "@/modules/source-document/application/use-cases/select-recoverable-processing-jobs";
 import { scheduleProcessingAfter } from "@/application/processing/schedule-processing";
 import { serverComposition } from "@/application/server-composition-root";
 
@@ -24,7 +24,7 @@ async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
     cooldownSeconds: runtimeEnv.processingRecoveryCooldownSeconds,
   };
 
-  const recoverable = await selectRecoverableProcessingIntents(
+  const recoverable = await selectRecoverableProcessingJobs(
     ledgerId,
     config,
     serverComposition.processingRecovery
@@ -37,8 +37,8 @@ async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
     "Scheduling processing recovery intents"
   );
 
-  for (const intent of recoverable) {
-    scheduleProcessingAfter(intent);
+  for (const job of recoverable) {
+    scheduleProcessingAfter(job);
   }
 }
 

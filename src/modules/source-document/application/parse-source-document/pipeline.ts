@@ -73,7 +73,7 @@ async function persistAndResolveSuccess({
     return {
       kind: "invalid",
       title: result.title,
-      invalidReason: reconciled.reason,
+      failureMessage: reconciled.reason,
     };
   }
 
@@ -87,7 +87,7 @@ function resolveOutcome(
     return {
       kind: "invalid",
       title: result.title,
-      invalidReason: result.invalid_reason ?? "Document cannot be parsed",
+      failureMessage: result.invalid_reason ?? "Document cannot be parsed",
     };
   }
   return { kind: "continue", result };

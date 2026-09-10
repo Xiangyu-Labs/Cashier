@@ -11,17 +11,13 @@ import {
   calculateCompletedSourceDocumentTotal,
   getTargetSourceDocument,
   getTargetSourceDocumentAccessContext,
-  getSourceDocumentEvidence,
-  getSourceDocumentCandidateReview,
-  PostgresProcessingIntentAdapter,
+  getSourceDocumentInput,
+  PostgresProcessingJobAdapter,
   listTargetSourceDocuments,
   postgresSourceDocumentAggregateAdapter,
 } from "@/application/adapters/postgres";
 import { loadRevisionProcessingContext } from "@/application/adapters/postgres/revision-processing-context";
-import {
-  postgresLedgerProjectionAdapter,
-  storeCandidateRevision,
-} from "@/application/adapters/postgres/ledger-projections";
+import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres/ledger-projections";
 import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { postgresAccountSecurityAdapter } from "@/application/adapters/postgres/account-security";
 import { postgresCredentialSourceDocumentReadAdapter } from "@/application/adapters/postgres/credential-source-document-status";
@@ -29,7 +25,7 @@ import { postgresLedgerChangeReadAdapter } from "@/application/adapters/postgres
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { resendEmailAdapter } from "@/application/adapters/email/resend";
 import {
-  createExecuteSingleProcessingIntent,
+  createExecuteSingleProcessingJob,
   CurrentRevisionProcessor,
   loadStoredFilesForAI,
 } from "@/application/adapters/in-process";
@@ -71,18 +67,17 @@ function createRevisionProcessor(
         storedFileIds
       ),
     getRates: (date) => postgresFxRateBook.getRates(date),
-    preserveTerminalOutcome: (input) => postgresRevisionAdapter.preserveTerminalOutcome(input),
+    recordProcessingFailure: (input) => postgresRevisionAdapter.recordProcessingFailure(input),
     getRevision: (ledgerId, sourceDocumentId) =>
       postgresRevisionAdapter.get(ledgerId, sourceDocumentId),
     activateRevision: (input) => postgresLedgerProjectionAdapter.activateRevision(input),
-    storeCandidateRevision,
   });
 }
 
-const executeSingleProcessingIntent = createExecuteSingleProcessingIntent({
-  createIntentAdapter: () => new PostgresProcessingIntentAdapter(),
+const executeSingleProcessingJob = createExecuteSingleProcessingJob({
+  createProcessingJobAdapter: () => new PostgresProcessingJobAdapter(),
   createRevisionProcessor: () => createRevisionProcessor(),
-  preserveTerminalOutcome: (input) => postgresRevisionAdapter.preserveTerminalOutcome(input),
+  recordProcessingFailure: (input) => postgresRevisionAdapter.recordProcessingFailure(input),
 });
 
 /** Composition root for the PostgreSQL-backed Docker runtime. */
@@ -113,18 +108,17 @@ export const serverComposition = {
   storedFiles: storedFileAdapter,
   sourceDocumentAggregate: postgresSourceDocumentAggregateAdapter,
   sourceDocumentReads: {
-    candidateReview: getSourceDocumentCandidateReview,
     calculateCompletedTotal: calculateCompletedSourceDocumentTotal,
-    getEvidence: getSourceDocumentEvidence,
+    getInput: getSourceDocumentInput,
     get: getTargetSourceDocument,
     getAccessContext: getTargetSourceDocumentAccessContext,
     list: listTargetSourceDocuments,
   },
   credentialSourceDocuments: postgresCredentialSourceDocumentReadAdapter,
   ledgerChanges: postgresLedgerChangeReadAdapter,
-  processingRecovery: new PostgresProcessingIntentAdapter(),
+  processingRecovery: new PostgresProcessingJobAdapter(),
   createRevisionProcessor,
-  executeSingleProcessingIntent,
+  executeSingleProcessingJob,
   userAccounts: postgresUserAccountAdapter,
   userPreferences: postgresUserPreferencesAdapter,
 } as const;

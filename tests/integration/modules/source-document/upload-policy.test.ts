@@ -10,7 +10,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { createStoredFileAdapter, type StoredFileAdapter } from "@/application/adapters/storage";
-import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
+import { createProcessingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import type { StoredFileContract } from "@/application/contracts";
 import { ValidationError } from "@/lib/errors";
 import {
@@ -207,13 +207,16 @@ describe("upload policy integration", () => {
       );
 
       // Try to create a pending revision linking both files — must run inside a
-      // db.transaction since createPendingRevisionInTransaction expects a tx handle.
+      // db.transaction since createProcessingRevisionInTransaction expects a tx handle.
       await expect(
         db.transaction(async (tx) =>
-          createPendingRevisionInTransaction(tx, {
+          createProcessingRevisionInTransaction(tx, {
             ledgerId,
-            storedFileIds: files.map((f) => f.id),
-            entryDate: "2026-07-15",
+            input: {
+              text: null,
+              storedFileIds: files.map((f) => f.id),
+              documentDate: "2026-07-15",
+            },
           })
         )
       ).rejects.toThrow(ValidationError);
@@ -232,10 +235,9 @@ describe("upload policy integration", () => {
       const file = await finalizedFile(adapter, ledgerId, body);
 
       const result = await db.transaction(async (tx) =>
-        createPendingRevisionInTransaction(tx, {
+        createProcessingRevisionInTransaction(tx, {
           ledgerId,
-          storedFileIds: [file.id],
-          entryDate: "2026-07-15",
+          input: { text: null, storedFileIds: [file.id], documentDate: "2026-07-15" },
         })
       );
 
@@ -258,10 +260,13 @@ describe("upload policy integration", () => {
 
       await expect(
         db.transaction(async (tx) =>
-          createPendingRevisionInTransaction(tx, {
+          createProcessingRevisionInTransaction(tx, {
             ledgerId,
-            storedFileIds: files.map((f) => f.id),
-            entryDate: "2026-07-15",
+            input: {
+              text: null,
+              storedFileIds: files.map((f) => f.id),
+              documentDate: "2026-07-15",
+            },
           })
         )
       ).rejects.toThrow(ValidationError);
@@ -282,10 +287,13 @@ describe("upload policy integration", () => {
       );
 
       const result = await db.transaction(async (tx) =>
-        createPendingRevisionInTransaction(tx, {
+        createProcessingRevisionInTransaction(tx, {
           ledgerId,
-          storedFileIds: files.map((f) => f.id),
-          entryDate: "2026-07-15",
+          input: {
+            text: null,
+            storedFileIds: files.map((f) => f.id),
+            documentDate: "2026-07-15",
+          },
         })
       );
 
@@ -302,10 +310,13 @@ describe("upload policy integration", () => {
 
       await expect(
         db.transaction(async (tx) =>
-          createPendingRevisionInTransaction(tx, {
+          createProcessingRevisionInTransaction(tx, {
             ledgerId,
-            storedFileIds: [file.id, file.id],
-            entryDate: "2026-07-15",
+            input: {
+              text: null,
+              storedFileIds: [file.id, file.id],
+              documentDate: "2026-07-15",
+            },
           })
         )
       ).rejects.toThrow(ValidationError);

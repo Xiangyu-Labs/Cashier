@@ -78,7 +78,7 @@ function sourceDocumentPayloadsEqual(
   right: SourceDocumentSubmitPayload
 ): boolean {
   return (
-    left.entryDate === right.entryDate &&
+    left.documentDate === right.documentDate &&
     left.timezone === right.timezone &&
     left.text === right.text &&
     arraysEqual(left.storedFileIds, right.storedFileIds, (leftId, rightId) => leftId === rightId) &&
@@ -93,10 +93,10 @@ function sourceDocumentPayloadsEqual(
 
 function snapshotPayload(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
   return {
-    entryDate: payload.entryDate,
+    documentDate: payload.documentDate,
     ...(payload.timezone === undefined ? {} : { timezone: payload.timezone }),
-    ...(payload.text === undefined ? {} : { text: payload.text }),
-    ...(payload.storedFileIds === undefined ? {} : { storedFileIds: [...payload.storedFileIds] }),
+    text: payload.text,
+    storedFileIds: [...payload.storedFileIds],
     ...(payload.images === undefined
       ? {}
       : { images: payload.images.map((image) => ({ ...image })) }),
@@ -158,7 +158,14 @@ export function useSourceDocumentSubmitMutations({
       setMonotonicProgress({ phase: "submitting", percent: 90 });
       const result = await createSourceDocumentAction(
         ledgerId,
-        uploadedPayload,
+        {
+          ...(uploadedPayload.text == null ? {} : { text: uploadedPayload.text }),
+          storedFileIds: uploadedPayload.storedFileIds,
+          ...(uploadedPayload.documentDate == null
+            ? {}
+            : { documentDate: uploadedPayload.documentDate }),
+          ...(uploadedPayload.timezone == null ? {} : { timezone: uploadedPayload.timezone }),
+        },
         variables.clientSubmissionId
       );
       return result;
@@ -177,7 +184,7 @@ export function useSourceDocumentSubmitMutations({
         await waitForPaint();
         onSuccess?.({
           sourceDocumentId: data.sourceDocumentId,
-          entryDate: variables.payload.entryDate,
+          documentDate: variables.payload.documentDate,
         });
       } finally {
         finishUpload(variables.signal);
@@ -230,7 +237,7 @@ export function useSourceDocumentSubmitMutations({
           await waitForPaint();
           onSuccess?.({
             sourceDocumentId: sourceDocumentId!,
-            entryDate: variables.payload.entryDate,
+            documentDate: variables.payload.documentDate,
           });
         } finally {
           finishUpload(variables.signal);

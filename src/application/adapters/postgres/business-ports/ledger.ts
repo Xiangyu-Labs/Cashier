@@ -113,11 +113,11 @@ export const postgresLedgerAdapter: LedgerPort = {
       const now = new Date();
       await tx
         .update(sourceDocumentRevisions)
-        .set({ outcome: "cancelled", finalizedAt: now })
+        .set({ processingStatus: "cancelled", finishedAt: now })
         .where(
           and(
             eq(sourceDocumentRevisions.ledgerId, ledgerId),
-            eq(sourceDocumentRevisions.outcome, "processing")
+            eq(sourceDocumentRevisions.processingStatus, "processing")
           )
         );
       await tx

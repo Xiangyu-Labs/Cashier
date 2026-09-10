@@ -20,9 +20,7 @@ type RevisionLifecycleUseCase<TResult> = (
 export function sourceDocumentLifecyclePort(): SourceDocumentLifecyclePort {
   const aggregate = serverComposition.sourceDocumentAggregate;
   return {
-    acceptCandidate: aggregate.acceptCandidate,
-    abandonCandidate: aggregate.abandonCandidate,
-    cancelPending: aggregate.cancelProcessing,
+    cancelProcessing: aggregate.cancelProcessing,
   };
 }
 

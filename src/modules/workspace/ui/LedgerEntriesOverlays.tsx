@@ -7,8 +7,6 @@ import dynamic from "next/dynamic";
 
 const loadEditRetryDialog = () =>
   import("@/modules/source-document/ui/SourceDocumentEditRetryDialog");
-const loadCandidateReviewDialog = () =>
-  import("@/modules/source-document/ui/SourceDocumentCandidateReviewDialog");
 
 const SourceDocumentEditRetryDialog = dynamic(
   () => loadEditRetryDialog().then((module) => module.SourceDocumentEditRetryDialog),
@@ -17,10 +15,6 @@ const SourceDocumentEditRetryDialog = dynamic(
 
 export function preloadEditRetryDialog() {
   void loadEditRetryDialog();
-}
-
-export function preloadCandidateReviewDialog() {
-  void loadCandidateReviewDialog();
 }
 
 interface LedgerEntriesOverlaysProps {

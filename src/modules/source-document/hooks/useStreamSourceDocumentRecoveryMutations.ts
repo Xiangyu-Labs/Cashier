@@ -2,10 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
-import {
-  abandonSourceDocumentCandidateAction,
-  cancelSourceDocumentProcessingAction,
-} from "@/modules/source-document/server-actions/candidates";
+import { cancelSourceDocumentProcessingAction } from "@/modules/source-document/server-actions/processing";
 import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { unwrapVersionedCommandResult } from "@/modules/source-document/command-results";
@@ -18,12 +15,11 @@ export interface StreamRecoveryVariables {
 type RecoveryAction = (variables: StreamRecoveryVariables) => Promise<unknown>;
 
 export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
-  const tActions = useTranslations("CandidateAction");
+  const tActions = useTranslations("SourceDocumentAction");
   const tCommon = useTranslations("Common");
   const locksRef = useRef(new Set<string>());
   const [retryingIds, setRetryingIds] = useState<ReadonlySet<string>>(() => new Set());
   const [cancellingIds, setCancellingIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [abandoningIds, setAbandoningIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const updatePending = useCallback(
     (
@@ -61,22 +57,10 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
     errorMessage: tActions("cancelError"),
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
-  const abandonMutation = useLedgerMutation<unknown, StreamRecoveryVariables>(ledgerId, {
-    invalidates: ["documents", "stats"],
-    mutationFn: async ({ sourceDocumentId, expectedVersion }) =>
-      unwrapVersionedCommandResult(
-        await abandonSourceDocumentCandidateAction(ledgerId, sourceDocumentId, expectedVersion)
-      ),
-    successMessage: tActions("abandonSuccess"),
-    errorMessage: tActions("abandonError"),
-    invalidationErrorMessage: tCommon("savedRefreshFailed"),
-  });
   const retryMutationRef = useRef(retryMutation.mutateAsync);
   const cancelMutationRef = useRef(cancelMutation.mutateAsync);
-  const abandonMutationRef = useRef(abandonMutation.mutateAsync);
   retryMutationRef.current = retryMutation.mutateAsync;
   cancelMutationRef.current = cancelMutation.mutateAsync;
-  abandonMutationRef.current = abandonMutation.mutateAsync;
 
   const run = useCallback(
     async (
@@ -109,21 +93,14 @@ export function useStreamSourceDocumentRecoveryMutations(ledgerId: string) {
       run(variables, cancelMutationRef.current, setCancellingIds),
     [run]
   );
-  const abandonCandidate = useCallback(
-    (variables: StreamRecoveryVariables) =>
-      run(variables, abandonMutationRef.current, setAbandoningIds),
-    [run]
-  );
 
   return useMemo(
     () => ({
       retryingIds,
       cancellingIds,
-      abandoningIds,
       retry,
       cancelProcessing,
-      abandonCandidate,
     }),
-    [abandoningIds, abandonCandidate, cancellingIds, cancelProcessing, retry, retryingIds]
+    [cancellingIds, cancelProcessing, retry, retryingIds]
   );
 }

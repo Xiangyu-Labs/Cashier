@@ -4,8 +4,8 @@ import { createAndQueueSourceDocument } from "@/modules/source-document/applicat
 import type { InlineImageUploader } from "@/modules/source-document/application/use-cases/prepare-inline-images";
 
 describe("createAndQueueSourceDocument", () => {
-  const createPendingWithIntent = vi.fn();
-  const createIdempotentPendingWithIntent = vi.fn();
+  const submit = vi.fn();
+  const submitIdempotently = vi.fn();
   const scheduleProcessing = vi.fn();
   const createUploadPlan = vi.fn();
   const uploadTarget = vi.fn();
@@ -18,15 +18,15 @@ describe("createAndQueueSourceDocument", () => {
     finalizeUpload,
     abandonUploadSession,
   };
-  const submissions = { createPendingWithIntent, createIdempotentPendingWithIntent };
+  const submissions = { submit, submitIdempotently };
   const dependencies = { submissions, storedFiles, processImage, scheduleProcessing };
 
   beforeEach(() => {
     vi.resetAllMocks();
-    createPendingWithIntent.mockResolvedValue({
+    submit.mockResolvedValue({
       document: { id: "doc-1" },
-      revision: { id: "revision-1", outcome: "processing" },
-      intent: { id: "intent-1" },
+      revision: { id: "revision-1", processingStatus: "processing" },
+      job: { id: "job-1" },
     });
     processImage.mockImplementation(async (buffer: Buffer, mimeType: string) => ({
       buffer,
@@ -37,45 +37,47 @@ describe("createAndQueueSourceDocument", () => {
   it("rejects empty stored evidence before creating durable state", async () => {
     await expect(
       createAndQueueSourceDocument(
-        { ledgerId: "ledger-1", evidence: { kind: "stored", storedFileIds: [] } },
+        { ledgerId: "ledger-1", input: { kind: "stored", storedFileIds: [] } },
         dependencies
       )
     ).rejects.toThrow(ValidationError);
-    expect(createPendingWithIntent).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
   });
 
-  it("creates stored evidence and dispatches after durable intent creation", async () => {
+  it("creates stored evidence and dispatches after durable job creation", async () => {
     const result = await createAndQueueSourceDocument(
       {
         ledgerId: "ledger-1",
-        evidence: { kind: "stored", text: "Lunch receipt", storedFileIds: ["file-1"] },
-        entryDate: "2026-07-15",
+        input: { kind: "stored", text: "Lunch receipt", storedFileIds: ["file-1"] },
+        documentDate: "2026-07-15",
       },
       dependencies
     );
 
-    expect(createPendingWithIntent).toHaveBeenCalledWith({
+    expect(submit).toHaveBeenCalledWith({
       ledgerId: "ledger-1",
-      submittedText: "Lunch receipt",
-      storedFileIds: ["file-1"],
-      entryDate: "2026-07-15",
+      input: {
+        text: "Lunch receipt",
+        storedFileIds: ["file-1"],
+        documentDate: "2026-07-15",
+      },
     });
-    expect(scheduleProcessing).toHaveBeenCalledWith({ id: "intent-1" });
-    expect(createPendingWithIntent.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(scheduleProcessing).toHaveBeenCalledWith({ id: "job-1" });
+    expect(submit.mock.invocationCallOrder[0]).toBeLessThan(
       scheduleProcessing.mock.invocationCallOrder[0]!
     );
     expect(result).toEqual({
       sourceDocumentId: "doc-1",
       revisionId: "revision-1",
-      revisionState: "processing",
+      processingStatus: "processing",
     });
   });
 
   it("uses the required idempotent path and skips preparation on replay", async () => {
-    createIdempotentPendingWithIntent.mockResolvedValue({
+    submitIdempotently.mockResolvedValue({
       document: { id: "doc-1" },
-      revision: { id: "revision-1", outcome: "processing" },
-      intent: { id: "intent-1" },
+      revision: { id: "revision-1", processingStatus: "processing" },
+      job: { id: "job-1" },
       idempotencyReplay: true,
     });
     const idempotency = {
@@ -88,7 +90,7 @@ describe("createAndQueueSourceDocument", () => {
     await createAndQueueSourceDocument(
       {
         ledgerId: "ledger-1",
-        evidence: {
+        input: {
           kind: "inline",
           images: [{ bytes: Buffer.from("image"), mimeType: "image/jpeg", contentHash: "hash" }],
         },
@@ -97,13 +99,10 @@ describe("createAndQueueSourceDocument", () => {
       dependencies
     );
 
-    expect(createIdempotentPendingWithIntent).toHaveBeenCalledWith(
-      idempotency,
-      expect.any(Function)
-    );
+    expect(submitIdempotently).toHaveBeenCalledWith(idempotency, expect.any(Function));
     expect(processImage).not.toHaveBeenCalled();
     expect(createUploadPlan).not.toHaveBeenCalled();
-    expect(createPendingWithIntent).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     expect(scheduleProcessing).not.toHaveBeenCalled();
   });
 
@@ -120,7 +119,7 @@ describe("createAndQueueSourceDocument", () => {
     await createAndQueueSourceDocument(
       {
         ledgerId: "ledger-1",
-        evidence: {
+        input: {
           kind: "inline",
           images: [{ bytes, mimeType: "image/jpeg", contentHash: "hash" }],
         },
@@ -137,8 +136,10 @@ describe("createAndQueueSourceDocument", () => {
         targetId: "target-1",
       })
     );
-    expect(createPendingWithIntent).toHaveBeenCalledWith(
-      expect.objectContaining({ storedFileIds: ["stored-1"] })
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({ storedFileIds: ["stored-1"] }),
+      })
     );
   });
 
@@ -150,13 +151,13 @@ describe("createAndQueueSourceDocument", () => {
     });
     uploadTarget.mockResolvedValue({ id: "stored-1" });
     finalizeUpload.mockResolvedValue([{ id: "stored-1" }]);
-    createPendingWithIntent.mockRejectedValue(new Error("write failed"));
+    submit.mockRejectedValue(new Error("write failed"));
 
     await expect(
       createAndQueueSourceDocument(
         {
           ledgerId: "ledger-1",
-          evidence: {
+          input: {
             kind: "inline",
             images: [{ bytes: Buffer.from("image"), mimeType: "image/jpeg", contentHash: "hash" }],
           },

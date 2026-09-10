@@ -1,36 +1,15 @@
-const SOURCE_DOCUMENT_STATUSES = [
+export const SOURCE_DOCUMENT_PROCESSING_STATUSES = [
   "processing",
   "completed",
-  "invalid",
   "failed",
   "cancelled",
-  "candidate_pending",
 ] as const;
 
-export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
-  "processing",
-  "completed",
-  "invalid",
-  "failed",
-  "cancelled",
-  "candidate_pending",
-] as const;
+export type SourceDocumentProcessingStatus = (typeof SOURCE_DOCUMENT_PROCESSING_STATUSES)[number];
 
-export const SourceDocumentStatus = {
-  Processing: SOURCE_DOCUMENT_STATUSES[0],
-  Completed: SOURCE_DOCUMENT_STATUSES[1],
-  Invalid: SOURCE_DOCUMENT_STATUSES[2],
-  Failed: SOURCE_DOCUMENT_STATUSES[3],
-  Cancelled: SOURCE_DOCUMENT_STATUSES[4],
-  CandidatePending: SOURCE_DOCUMENT_STATUSES[5],
-} as const;
-
-export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];
-export type ActiveSourceDocumentStatusType = (typeof ACTIVE_SOURCE_DOCUMENT_STATUSES)[number];
-
-export function canonicalizeSourceDocumentStatuses(
-  statuses: readonly SourceDocumentStatusType[] | undefined
-): SourceDocumentStatusType[] | undefined {
+export function canonicalizeSourceDocumentProcessingStatuses(
+  statuses: readonly SourceDocumentProcessingStatus[] | undefined
+): SourceDocumentProcessingStatus[] | undefined {
   if (statuses == null || statuses.length === 0) return undefined;
   return [...new Set(statuses)].sort();
 }

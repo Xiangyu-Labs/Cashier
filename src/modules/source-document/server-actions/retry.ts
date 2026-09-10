@@ -1,5 +1,5 @@
 "use server";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import type {
@@ -35,8 +35,8 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       sourceDocumentId,
       expectedVersion,
     });
-    const scheduleProcessing = (intent: ProcessingIntentContract) => {
-      scheduleProcessingAfter(intent);
+    const scheduleProcessing = (job: ProcessingJobContract) => {
+      scheduleProcessingAfter(job);
     };
 
     const result = await retrySourceDocument(
@@ -47,7 +47,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       },
       {
         submissions: {
-          createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
+          submit: serverComposition.sourceDocumentAggregate.installRetry,
         },
         scheduleProcessing,
       }
@@ -72,18 +72,23 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
     sourceDocumentId: string,
-    input: RetrySourceDocumentInputContract | undefined,
+    input: RetrySourceDocumentInputContract,
     expectedVersion: number
   ): Promise<VersionedCommandResult<RetrySourceDocumentResponseDto>> => {
     const identity = versionedTargetSchema.parse({
       sourceDocumentId,
       expectedVersion,
     });
-    const validatedInput =
-      input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
+    const parsedInput = retrySourceDocumentInputSchema.parse(input);
+    const validatedInput: RetrySourceDocumentInputContract = {
+      text: parsedInput.text,
+      storedFileIds: parsedInput.storedFileIds,
+      documentDate: parsedInput.documentDate,
+      ...omitUndefinedProperties({ timezone: parsedInput.timezone }),
+    };
 
-    const scheduleProcessing = (intent: ProcessingIntentContract) => {
-      scheduleProcessingAfter(intent);
+    const scheduleProcessing = (job: ProcessingJobContract) => {
+      scheduleProcessingAfter(job);
     };
 
     const result = await retrySourceDocument(
@@ -91,11 +96,11 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
         expectedVersion: identity.expectedVersion,
-        ...(validatedInput == null ? {} : { input: validatedInput }),
+        input: validatedInput,
       },
       {
         submissions: {
-          createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
+          submit: serverComposition.sourceDocumentAggregate.installRetry,
         },
         scheduleProcessing,
       }

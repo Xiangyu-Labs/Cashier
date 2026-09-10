@@ -291,7 +291,6 @@ describe("LedgerEntriesUnifiedGroups", () => {
     ] as unknown as UnifiedStreamGroup[];
     const retry = vi.fn(async () => undefined);
     const cancelProcessing = vi.fn(async () => undefined);
-    const abandonCandidate = vi.fn(async () => undefined);
     const commonProps = {
       streamGroups: groups,
       mainCurrency: "CNY",
@@ -311,10 +310,8 @@ describe("LedgerEntriesUnifiedGroups", () => {
         recovery={{
           retryingIds: new Set(),
           cancellingIds: new Set(),
-          abandoningIds: new Set(),
           retry,
           cancelProcessing,
-          abandonCandidate,
         }}
       />
     );
@@ -326,10 +323,8 @@ describe("LedgerEntriesUnifiedGroups", () => {
         recovery={{
           retryingIds: new Set(["document-1"]),
           cancellingIds: new Set(),
-          abandoningIds: new Set(),
           retry,
           cancelProcessing,
-          abandonCandidate,
         }}
       />
     );

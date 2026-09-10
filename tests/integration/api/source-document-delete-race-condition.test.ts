@@ -22,7 +22,7 @@ describe("SourceDocument delete concurrency", () => {
     const db = getTestDb();
     const [document] = await db
       .insert(sourceDocuments)
-      .values({ ledgerId, currentStatus: "completed", entryDate: "2024-03-17" })
+      .values({ ledgerId, documentDate: "2024-03-17" })
       .returning();
     if (document == null) throw new Error("Expected source document");
     await activateTestSourceDocumentProjection(db, document.id);
@@ -35,6 +35,6 @@ describe("SourceDocument delete concurrency", () => {
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, document.id),
     });
-    expect(deleted?.stateVersion).toBe(2);
+    expect(deleted?.version).toBe(2);
   });
 });

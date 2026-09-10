@@ -30,18 +30,15 @@ function request(): NextRequest {
 
 async function createLinkedStoredFile(ledgerId: string) {
   const db = getTestDb();
-  const [document] = await db
-    .insert(sourceDocuments)
-    .values({ ledgerId, currentStatus: "completed" })
-    .returning();
+  const [document] = await db.insert(sourceDocuments).values({ ledgerId }).returning();
   const [revision] = await db
     .insert(sourceDocumentRevisions)
     .values({
       ledgerId,
       sourceDocumentId: document!.id,
       revisionNumber: 1,
-      outcome: "completed",
-      finalizedAt: new Date(),
+      processingStatus: "completed",
+      finishedAt: new Date(),
     })
     .returning();
   const [file] = await db

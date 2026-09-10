@@ -1,6 +1,6 @@
 import { ValidationError } from "@/lib/errors";
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
 import type { LedgerChangeReadPort, SourceDocumentReadPort } from "../ports";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
@@ -115,7 +115,7 @@ export async function listStreamPage(
   const page = await ports.documents.list({
     ledgerId,
     ...(input.statuses != null && input.statuses.length > 0
-      ? { statuses: input.statuses as unknown as SourceDocumentStatusType[] }
+      ? { statuses: input.statuses as unknown as SourceDocumentProcessingStatus[] }
       : {}),
     ...(input.startDate != null && input.startDate !== "" ? { startDate: input.startDate } : {}),
     ...(input.endDate != null && input.endDate !== "" ? { endDate: input.endDate } : {}),

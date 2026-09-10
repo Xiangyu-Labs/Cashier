@@ -62,7 +62,7 @@ export function useBatchSourceDocumentActions(
           sourceDocumentId,
           expectedVersion: versionFor(sourceDocumentId),
         })),
-        data: { entryDate },
+        data: { documentDate: entryDate },
       });
       return unwrapAtomicBatchCommandResult(result);
     },

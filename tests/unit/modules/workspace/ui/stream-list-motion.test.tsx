@@ -30,10 +30,11 @@ function card(
     ledgerId: "ledger-1",
     title: `Doc ${id}`,
     text: null,
-    status: "processing",
+    processingStatus: "processing",
     type: "ai_parsed",
-    invalidReason: null,
-    entryDate: "2026-07-15",
+    failureKind: null,
+    failureMessage: null,
+    documentDate: "2026-07-15",
     createdAt: "2026-07-15T00:00:00.000Z",
     updatedAt: "2026-07-15T00:00:00.000Z",
     hasImages: false,
@@ -119,7 +120,7 @@ describe("stream list motion", () => {
   it("passes the source-document failure code to the card", () => {
     const groups = groupsOf(["doc-1"]);
     groups[0]!.items[0]!.sourceDocument = card("doc-1", {
-      status: "failed",
+      processingStatus: "failed",
       errorCode: "processing_timeout",
     });
 

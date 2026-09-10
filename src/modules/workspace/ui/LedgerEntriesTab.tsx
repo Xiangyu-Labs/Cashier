@@ -10,11 +10,7 @@ import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesStreamBody } from "./LedgerEntriesStreamBody";
-import {
-  LedgerEntriesOverlays,
-  preloadCandidateReviewDialog,
-  preloadEditRetryDialog,
-} from "./LedgerEntriesOverlays";
+import { LedgerEntriesOverlays, preloadEditRetryDialog } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { useLedgerEntriesStreamData } from "@/modules/workspace/hooks/useLedgerEntriesStreamData";
@@ -200,9 +196,6 @@ export function LedgerEntriesTab({
           filters={filters}
           onViewLedgerEntry={handleViewLedgerEntry}
           onViewSourceDetail={handleViewSourceDetail}
-          onViewSourceDetailIntent={(document) => {
-            if (document.status === "candidate_pending") preloadCandidateReviewDialog();
-          }}
           onEditRetry={setRetrySourceDocument}
           onEditRetryIntent={preloadEditRetryDialog}
           onDeleteSourceConfirm={handleDeleteSourceConfirm}

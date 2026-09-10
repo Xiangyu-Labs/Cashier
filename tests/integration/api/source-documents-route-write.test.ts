@@ -157,7 +157,7 @@ describe("API v1 source-documents route", () => {
     expect(created?.ledgerId).toBe(ledgerId);
   });
 
-  it("creates one document, revision, and processing intent for concurrent idempotent requests", async () => {
+  it("creates one document, revision, and processing job for concurrent idempotent requests", async () => {
     const image = await validJpegBase64();
     const makeRequest = () =>
       new NextRequest("http://localhost/api/v1/source-documents", {

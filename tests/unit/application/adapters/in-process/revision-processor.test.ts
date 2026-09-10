@@ -42,12 +42,15 @@ function createProcessor(entryCount: number, overrides: Record<string, unknown> 
   const processor = new CurrentRevisionProcessor({
     createAIContext: () => ({}) as AIContext,
     loadContext: vi.fn().mockResolvedValue({
-      revision: { submittedText: "receipt", outcome: "processing" },
+      revision: {
+        inputText: "receipt",
+        inputDocumentDate: "2026-09-01",
+        processingStatus: "processing",
+      },
       document: {
         activeRevisionId: null,
-        pendingRevisionId: "revision-1",
+        latestSubmissionRevisionId: "revision-1",
         type: "ai_parsed",
-        entryDate: "2026-09-01",
         createdAt: new Date("2026-09-01T00:00:00Z"),
       },
       storedFileIds: [],
@@ -56,10 +59,9 @@ function createProcessor(entryCount: number, overrides: Record<string, unknown> 
     getSettings,
     loadStoredFiles: vi.fn().mockResolvedValue([]),
     getRates,
-    preserveTerminalOutcome: vi.fn().mockResolvedValue(true),
+    recordProcessingFailure: vi.fn().mockResolvedValue(true),
     getRevision: vi.fn().mockResolvedValue(null),
     activateRevision,
-    storeCandidateRevision: vi.fn().mockResolvedValue(true),
     ...overrides,
   });
   return { processor, getSettings, getRates, activateRevision };
@@ -78,7 +80,7 @@ describe("CurrentRevisionProcessor", () => {
     const { processor, getRates, activateRevision } = createProcessor(100);
 
     await expect(processor.process(request)).resolves.toEqual({
-      outcome: "completed",
+      processingStatus: "completed",
       completion: "atomic",
     });
 
@@ -98,7 +100,7 @@ describe("CurrentRevisionProcessor", () => {
     const { processor } = createProcessor(1, { getSettings, activateRevision });
 
     await expect(processor.process(request)).resolves.toEqual({
-      outcome: "completed",
+      processingStatus: "completed",
       completion: "atomic",
     });
 

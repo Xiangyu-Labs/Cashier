@@ -117,7 +117,7 @@ vi.mock("@/modules/source-document/ui/SourceDocumentSplitDialog", () => ({
     onSubmit,
   }: {
     open: boolean;
-    onSubmit: (entryDate: string) => Promise<void>;
+    onSubmit: (documentDate: string) => Promise<void>;
   }) => (open ? <button onClick={() => void onSubmit("2026-09-03")}>submit-split</button> : null),
 }));
 vi.mock("@/modules/source-document/ui/use-diagnostic-messages", () => ({
@@ -158,10 +158,11 @@ const sourceDocument: SourceDocumentLight = {
   title: "Receipt",
   text: null,
   files: [],
-  status: "completed",
+  processingStatus: "completed",
   type: "manual",
-  invalidReason: null,
-  entryDate: "2026-07-28",
+  failureKind: null,
+  failureMessage: null,
+  documentDate: "2026-07-28",
   createdAt: "2026-07-28T00:00:00.000Z",
   hasImages: false,
   supportedActions: [],
@@ -179,13 +180,9 @@ function modal(
     onReload?: () => Promise<void>;
     onSplit?: React.ComponentProps<typeof SourceDocumentDetailModal>["onSplit"];
     onAddEntry?: React.ComponentProps<typeof SourceDocumentDetailModal>["onAddEntry"];
-    onAbandonCandidate?: React.ComponentProps<
-      typeof SourceDocumentDetailModal
-    >["onAbandonCandidate"];
     onCancelProcessing?: React.ComponentProps<
       typeof SourceDocumentDetailModal
     >["onCancelProcessing"];
-    isAbandoning?: boolean;
     isCancelling?: boolean;
   } = {}
 ) {
@@ -206,13 +203,9 @@ function modal(
       onSaveAll={onSaveAll}
       {...(overrides.onSplit !== undefined ? { onSplit: overrides.onSplit } : {})}
       {...(overrides.onAddEntry !== undefined ? { onAddEntry: overrides.onAddEntry } : {})}
-      {...(overrides.onAbandonCandidate !== undefined
-        ? { onAbandonCandidate: overrides.onAbandonCandidate }
-        : {})}
       {...(overrides.onCancelProcessing !== undefined
         ? { onCancelProcessing: overrides.onCancelProcessing }
         : {})}
-      {...(overrides.isAbandoning !== undefined ? { isAbandoning: overrides.isAbandoning } : {})}
       {...(overrides.isCancelling !== undefined ? { isCancelling: overrides.isCancelling } : {})}
       onBatchUpdate={vi.fn(async () => ({ affectedCount: 1 }))}
       onBatchDeleteEntries={vi.fn(async () => ({ succeeded: [], stale: [], failed: [] }))}
@@ -495,26 +488,21 @@ describe("SourceDocumentDetailModal batch mode", () => {
     await waitFor(() => expect(screen.queryByText("submit-split")).not.toBeInTheDocument());
   });
 
-  it("shows pending indicators for abandon and cancel actions", () => {
+  it("shows a pending indicator for cancellation", () => {
     render(
       modal(
         undefined,
         {
           ...sourceDocument,
-          supportedActions: ["abandon_candidate", "cancel_processing"],
+          supportedActions: ["cancel_processing"],
         },
         {
-          onAbandonCandidate: vi.fn(async () => undefined),
           onCancelProcessing: vi.fn(async () => undefined),
-          isAbandoning: true,
           isCancelling: true,
         }
       )
     );
 
-    expect(screen.getByText("abandon").closest("button")?.querySelector("svg")).toHaveClass(
-      "animate-spin"
-    );
     expect(
       screen.getByText("cancelProcessing").closest("button")?.querySelector("svg")
     ).toHaveClass("animate-spin");

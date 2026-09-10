@@ -112,7 +112,7 @@ async function prepareCreateConversion(input: {
   const context = await db
     .select({
       mainCurrency: ledgers.mainCurrency,
-      entryDate: sourceDocuments.entryDate,
+      entryDate: sourceDocuments.documentDate,
     })
     .from(sourceDocuments)
     .innerJoin(
@@ -152,7 +152,7 @@ async function prepareUpdateConversion(input: {
   const context = await db
     .select({
       mainCurrency: ledgers.mainCurrency,
-      entryDate: sourceDocuments.entryDate,
+      entryDate: sourceDocuments.documentDate,
       amount: ledgerEntries.amount,
       currency: ledgerEntries.currency,
     })
@@ -210,7 +210,7 @@ async function prepareBatchConversions(input: {
       id: ledgerEntries.id,
       sourceDocumentId: ledgerEntries.sourceDocumentId,
       mainCurrency: ledgers.mainCurrency,
-      entryDate: sourceDocuments.entryDate,
+      entryDate: sourceDocuments.documentDate,
       amount: ledgerEntries.amount,
       currency: ledgerEntries.currency,
     })
@@ -283,8 +283,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         input.ledgerId,
         input.target.sourceDocumentId
       );
-      if (document.stateVersion !== input.target.expectedVersion) {
-        return stale(input.target, document.stateVersion);
+      if (document.version !== input.target.expectedVersion) {
+        return stale(input.target, document.version);
       }
       if (!hasEditableActiveProjection(document)) {
         throw new NotFoundError("Active source document");
@@ -346,8 +346,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         input.ledgerId,
         input.target.sourceDocumentId
       );
-      if (document.stateVersion !== input.target.expectedVersion) {
-        return stale(input.target, document.stateVersion);
+      if (document.version !== input.target.expectedVersion) {
+        return stale(input.target, document.version);
       }
       if (!hasEditableActiveProjection(document)) {
         throw new NotFoundError("Active source document");
@@ -365,7 +365,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         return {
           ok: true,
           sourceDocumentId: document.id,
-          version: document.stateVersion,
+          version: document.version,
           data: { ledgerEntryId: target.id },
         };
       }
@@ -423,8 +423,8 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         input.ledgerId,
         input.target.sourceDocumentId
       );
-      if (document.stateVersion !== input.target.expectedVersion) {
-        return stale(input.target, document.stateVersion);
+      if (document.version !== input.target.expectedVersion) {
+        return stale(input.target, document.version);
       }
       if (!hasEditableActiveProjection(document)) {
         throw new NotFoundError("Active source document");
@@ -470,9 +470,9 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
       );
       const staleTargets = documents.flatMap((document) => {
         const target = expectedByDocument.get(document.id)!;
-        return document.stateVersion === target.expectedVersion
+        return document.version === target.expectedVersion
           ? []
-          : [{ ...target, currentVersion: document.stateVersion }];
+          : [{ ...target, currentVersion: document.version }];
       });
       if (staleTargets.length > 0) {
         return { ok: false as const, reason: "stale" as const, staleTargets };
@@ -544,7 +544,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
           ok: true as const,
           versions: documents.map((document) => ({
             sourceDocumentId: document.id,
-            version: document.stateVersion,
+            version: document.version,
           })),
           data: { ledgerEntryIds: requestedIds, affectedCount: 0 },
         };
@@ -586,7 +586,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
           ledgerId: input.ledgerId,
           sourceDocumentId: document.id,
           expectedActiveRevisionId: document.activeRevisionId!,
-          expectedStateVersion: document.stateVersion,
+          expectedStateVersion: document.version,
           revisionId: crypto.randomUUID(),
           entries: entries.map((entry) => nextById.get(entry.id) ?? toProjectionEntry(entry)),
         });
@@ -595,7 +595,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         ok: true as const,
         versions: documents.map((document) => ({
           sourceDocumentId: document.id,
-          version: document.stateVersion + (changedDocumentIds.has(document.id) ? 1 : 0),
+          version: document.version + (changedDocumentIds.has(document.id) ? 1 : 0),
         })),
         data: { ledgerEntryIds: requestedIds, affectedCount: changedIds.size },
       };
@@ -648,7 +648,7 @@ export const postgresLedgerEntryCommandAdapter: LedgerEntryCommandPort = {
         const groupResult = await db.transaction(async (tx) => {
           await lockLedgerForUpdate(tx, input.ledgerId);
           const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
-          if (document.stateVersion !== target.expectedVersion) return document.stateVersion;
+          if (document.version !== target.expectedVersion) return document.version;
           if (!hasEditableActiveProjection(document)) {
             throw new NotFoundError("Active source document");
           }

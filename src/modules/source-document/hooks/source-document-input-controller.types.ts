@@ -14,11 +14,11 @@ export interface SourceDocumentUploadImage {
 }
 
 export interface SourceDocumentSubmitPayload {
-  entryDate: string;
+  documentDate: string;
   timezone?: string;
-  text?: string;
+  text: string | null;
   images?: SourceDocumentUploadImage[];
-  storedFileIds?: string[];
+  storedFileIds: string[];
 }
 
 export interface SourceDocumentInputControllerMessages {

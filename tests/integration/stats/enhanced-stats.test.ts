@@ -151,25 +151,23 @@ describe("Enhanced Stats Actions", () => {
     it("should filter by effective date (entry date with createdAt fallback)", async () => {
       const db = getTestDb();
 
-      // Create source document with entryDate in Jan but created in March
+      // Create source document with documentDate in Jan but created in March
       const createdDocA = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-01-15",
+          documentDate: "2024-01-15",
           createdAt: new Date("2024-03-01"),
         })
         .returning();
       const docA = requireFirst(createdDocA, "source document");
 
-      // Create source document with entryDate in March but created in January
+      // Create source document with documentDate in March but created in January
       const createdDocB = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-15",
+          documentDate: "2024-03-15",
           createdAt: new Date("2024-01-01"),
         })
         .returning();
@@ -202,7 +200,7 @@ describe("Enhanced Stats Actions", () => {
         compareRange: { from: "2023-12-01", to: "2023-12-31" },
       });
 
-      // Should only include data from docA (entryDate in January)
+      // Should only include data from docA (documentDate in January)
       expect(result.summary.total).toBe("100");
       expect(result.chart).toHaveLength(1);
       const januaryPoint = requireFirst(result.chart, "chart point");
@@ -216,8 +214,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-05",
+          documentDate: "2024-03-05",
         })
         .returning();
       const doc = requireFirst(createdDoc, "source document");
@@ -263,8 +260,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: null,
+          documentDate: null,
           createdAt: new Date("2024-03-10T22:30:00Z"),
         })
         .returning();
@@ -311,8 +307,7 @@ describe("Enhanced Stats Actions", () => {
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
-            currentStatus: "completed",
-            entryDate: date,
+            documentDate: date,
           })
           .returning();
         const doc = requireFirst(createdDoc, "source document");
@@ -348,8 +343,7 @@ describe("Enhanced Stats Actions", () => {
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
-            currentStatus: "completed",
-            entryDate: date,
+            documentDate: date,
           })
           .returning();
         const doc = requireFirst(createdDoc, "source document");
@@ -383,8 +377,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-01",
+          documentDate: "2024-03-01",
         })
         .returning();
       const doc = requireFirst(createdDoc, "source document");
@@ -439,8 +432,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-15",
+          documentDate: "2024-03-15",
         })
         .returning();
       const currentDoc = requireFirst(createdCurrentDoc, "source document");
@@ -460,8 +452,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-02-15",
+          documentDate: "2024-02-15",
         })
         .returning();
       const prevDoc = requireFirst(createdPrevDoc, "source document");
@@ -495,8 +486,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-01",
+          documentDate: "2024-03-01",
         })
         .returning();
       const doc = requireFirst(createdDoc, "source document");
@@ -528,8 +518,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-01",
+          documentDate: "2024-03-01",
         })
         .returning();
       const doc = requireFirst(createdDoc, "source document");
@@ -579,8 +568,7 @@ describe("Enhanced Stats Actions", () => {
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
-            currentStatus: "completed",
-            entryDate: entry.date,
+            documentDate: entry.date,
           })
           .returning();
         const doc = requireFirst(createdDoc, "source document");
@@ -615,8 +603,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          currentStatus: "completed",
-          entryDate: "2024-03-01",
+          documentDate: "2024-03-01",
         })
         .returning();
       const doc = requireFirst(createdDoc, "source document");

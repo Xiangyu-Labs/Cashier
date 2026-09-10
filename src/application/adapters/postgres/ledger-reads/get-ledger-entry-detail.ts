@@ -30,12 +30,11 @@ export async function getLedgerEntryDetail(
       sourceDocument: {
         columns: {
           id: true,
-          stateVersion: true,
+          version: true,
           ledgerId: true,
           title: true,
-          currentStatus: true,
           type: true,
-          entryDate: true,
+          documentDate: true,
           createdAt: true,
           updatedAt: true,
           deletedAt: true,

@@ -166,7 +166,7 @@ export interface LedgerProjectionPort {
     ledgerId: LedgerId;
     expectedMainCurrency: string;
     sourceDocumentId?: SourceDocumentId;
-    submittedText?: string | null;
+    inputText?: string | null;
     title?: string | null;
     entryDate?: string | null;
     entries: readonly LedgerProjectionEntryContract[];

@@ -1,7 +1,7 @@
 /**
  * Canonical version-invariant suite for every existing-document command on
  * `SourceDocumentAggregateWritePort`. Each command must, against the real
- * database: (a) advance `stateVersion` by exactly +1 when it produces a
+ * database: (a) advance `version` by exactly +1 when it produces a
  * user-observable change, (b) where the command supports replay at the
  * *current* version, either return success with the version unchanged (a
  * true no-op) or fail in a well-defined non-stale way — never silently
@@ -14,12 +14,11 @@
  * is added for it. That is the enforcement mechanism, not a comment.
  */
 import { describe, expect, it } from "vitest";
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { serverComposition } from "@/application/server-composition-root";
 import type { SourceDocumentAggregateWritePort } from "@/modules/source-document/application/ports";
-import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import { ConflictError, NotFoundError, StaleSourceDocumentVersionError } from "@/lib/errors";
-import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
+import { sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
@@ -65,10 +64,10 @@ async function currentVersion(sourceDocumentId: string): Promise<number> {
   const db = getTestDb();
   const row = await db.query.sourceDocuments.findFirst({
     where: eq(sourceDocuments.id, sourceDocumentId),
-    columns: { stateVersion: true },
+    columns: { version: true },
   });
   if (row == null) throw new Error("Source document not found");
-  return row.stateVersion;
+  return row.version;
 }
 
 async function currentTitle(sourceDocumentId: string): Promise<string | null> {
@@ -106,51 +105,9 @@ async function createActiveDocument(ledgerId: string, count = 1) {
 async function createProcessingDocument(ledgerId: string) {
   const pending = await port.createProcessingDocument({
     ledgerId,
-    submittedText: "Processing fixture",
+    input: { text: "Processing fixture", storedFileIds: [], documentDate: null },
   });
   return { sourceDocumentId: pending.document.id, version: pending.document.version };
-}
-
-/** An active document plus its active revision id, for duplicate-review fixtures. */
-async function createActiveDocumentWithRevision(ledgerId: string) {
-  const document = await createActiveDocument(ledgerId);
-  const row = await getTestDb().query.sourceDocuments.findFirst({
-    where: eq(sourceDocuments.id, document.sourceDocumentId),
-    columns: { activeRevisionId: true },
-  });
-  if (row?.activeRevisionId == null) throw new Error("Expected an active revision");
-  return { ...document, revisionId: row.activeRevisionId };
-}
-
-/**
- * A `candidate_pending` document: an active result plus a completed,
- * undecided candidate revision on top of it — returns the version after the
- * candidate is stored.
- */
-async function createCandidatePendingDocument(ledgerId: string) {
-  const active = await createActiveDocument(ledgerId);
-  const db = getTestDb();
-  const pending = await db.transaction((tx) =>
-    createPendingRevisionInTransaction(tx, {
-      ledgerId,
-      sourceDocumentId: active.sourceDocumentId,
-      submittedText: "Retry",
-    })
-  );
-  const { storeCandidateRevision } = await import("@/application/adapters/postgres");
-  const stored = await storeCandidateRevision(
-    ledgerId,
-    active.sourceDocumentId,
-    pending.revision.id,
-    "CNY",
-    "Candidate",
-    [{ ...entry, itemName: "Candidate item" }]
-  );
-  if (!stored) throw new Error("Expected candidate revision to be stored");
-  return {
-    sourceDocumentId: active.sourceDocumentId,
-    version: await currentVersion(active.sourceDocumentId),
-  };
 }
 
 const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
@@ -351,7 +308,7 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
 
     // No no-op case: a deleted entry cannot be deleted again — a replay of
     // the exact same call is necessarily at a stale version (covered below)
-    // since the first delete already advanced stateVersion.
+    // since the first delete already advanced version.
 
     const stale = await port.deleteEntries({
       ledgerId,
@@ -472,7 +429,8 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
       ledgerId,
       sourceDocumentId,
       expectedVersion: 1,
-      inheritEvidence: true,
+      inheritInput: false,
+      input: { text: "retry", storedFileIds: [], documentDate: null },
       supersedeProcessing: true,
     });
     expect(changed.document.version).toBe(2);
@@ -486,7 +444,7 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
       ledgerId,
       sourceDocumentId,
       expectedVersion: 2,
-      inheritEvidence: true,
+      inheritInput: true,
       supersedeProcessing: true,
     });
     expect(superseded.document.version).toBe(3);
@@ -497,58 +455,11 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
         ledgerId,
         sourceDocumentId,
         expectedVersion: 1,
-        inheritEvidence: true,
+        inheritInput: true,
         supersedeProcessing: true,
       })
     ).rejects.toThrow(StaleSourceDocumentVersionError);
     expect(await currentVersion(sourceDocumentId)).toBe(3);
-  },
-
-  async acceptCandidate() {
-    const ledgerId = await newLedger();
-    const { sourceDocumentId, version } = await createCandidatePendingDocument(ledgerId);
-    const staleVersion = version - 1;
-
-    const changed = await port.acceptCandidate(ledgerId, sourceDocumentId, version);
-    expect(changed).toMatchObject({ version: version + 1, status: "completed" });
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    // No no-op case: accepting clears `pendingRevisionId`, so a replay at
-    // the new current version has no candidate left to accept — it is
-    // rejected as a `ConflictError`, not silently re-accepted or mistaken
-    // for a stale-version problem (the version itself matches).
-    await expect(port.acceptCandidate(ledgerId, sourceDocumentId, version + 1)).rejects.toThrow(
-      ConflictError
-    );
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    await expect(port.acceptCandidate(ledgerId, sourceDocumentId, staleVersion)).rejects.toThrow(
-      StaleSourceDocumentVersionError
-    );
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-  },
-
-  async abandonCandidate() {
-    const ledgerId = await newLedger();
-    const { sourceDocumentId, version } = await createCandidatePendingDocument(ledgerId);
-    const staleVersion = version - 1;
-
-    const changed = await port.abandonCandidate(ledgerId, sourceDocumentId, version);
-    expect(changed).toMatchObject({ version: version + 1, status: "completed" });
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    // No no-op case: abandoning clears `pendingRevisionId` the same way
-    // accepting does — a replay at the current version has nothing left to
-    // abandon and is rejected as a `ConflictError`.
-    await expect(port.abandonCandidate(ledgerId, sourceDocumentId, version + 1)).rejects.toThrow(
-      ConflictError
-    );
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
-
-    await expect(port.abandonCandidate(ledgerId, sourceDocumentId, staleVersion)).rejects.toThrow(
-      StaleSourceDocumentVersionError
-    );
-    expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
   },
 
   async cancelProcessing() {
@@ -556,12 +467,10 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
     const { sourceDocumentId, version } = await createProcessingDocument(ledgerId);
 
     const changed = await port.cancelProcessing(ledgerId, sourceDocumentId, version);
-    expect(changed).toMatchObject({ version: version + 1, status: "cancelled" });
+    expect(changed).toMatchObject({ version: version + 1, processingStatus: "cancelled" });
     expect(await currentVersion(sourceDocumentId)).toBe(version + 1);
 
-    // No no-op case: cancelling clears `pendingRevisionId` — a replay at the
-    // current version has no pending revision left and is rejected as a
-    // `ConflictError` ("Source document has no pending revision").
+    // The latest input remains addressable, but its terminal revision cannot be cancelled twice.
     await expect(port.cancelProcessing(ledgerId, sourceDocumentId, version + 1)).rejects.toThrow(
       ConflictError
     );
@@ -597,7 +506,7 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(beforeDelete?.deletedAt).toBeNull();
-    expect(beforeDelete?.stateVersion).toBe(2);
+    expect(beforeDelete?.version).toBe(2);
 
     const changed = await port.deleteDocuments({
       ledgerId,
@@ -608,7 +517,7 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(afterDelete?.deletedAt).not.toBeNull();
-    expect(afterDelete?.stateVersion).toBe(3);
+    expect(afterDelete?.version).toBe(3);
 
     // No no-op case: once deleted, the document is invisible to the locked
     // read every write path uses — a replay is rejected as `NotFoundError`,
@@ -625,132 +534,4 @@ describe("source document aggregate — version invariants", () => {
   >) {
     it(`${name}: +1 on change, no-op or well-defined replay, stale rejected with zero writes`, run);
   }
-
-  it.each(["processing", "candidate_pending", "invalid", "failed", "cancelled"] as const)(
-    "%s documents reject changed and no-op projection writes without side effects",
-    async (status) => {
-      const ledgerId = await newLedger();
-      const active = await createActiveDocumentWithRevision(ledgerId);
-      const db = getTestDb();
-      if (
-        status === "processing" ||
-        status === "candidate_pending" ||
-        status === "invalid" ||
-        status === "failed"
-      ) {
-        const pending = await db.transaction((tx) =>
-          createPendingRevisionInTransaction(tx, {
-            ledgerId,
-            sourceDocumentId: active.sourceDocumentId,
-            submittedText: status,
-          })
-        );
-        if (status !== "processing") {
-          await db
-            .update(sourceDocumentRevisions)
-            .set({ outcome: status === "candidate_pending" ? "completed" : status })
-            .where(eq(sourceDocumentRevisions.id, pending.revision.id));
-          await db
-            .update(sourceDocuments)
-            .set({ currentStatus: status })
-            .where(eq(sourceDocuments.id, active.sourceDocumentId));
-        }
-      } else {
-        await db
-          .update(sourceDocuments)
-          .set({ currentStatus: status })
-          .where(eq(sourceDocuments.id, active.sourceDocumentId));
-      }
-
-      const version = await currentVersion(active.sourceDocumentId);
-      const snapshot = async () => {
-        const document = await db.query.sourceDocuments.findFirst({
-          where: eq(sourceDocuments.id, active.sourceDocumentId),
-          columns: {
-            stateVersion: true,
-            activeRevisionId: true,
-            pendingRevisionId: true,
-            title: true,
-            entryDate: true,
-          },
-        });
-        const entries = await db.query.ledgerEntries.findMany({
-          where: and(
-            eq(ledgerEntries.sourceDocumentId, active.sourceDocumentId),
-            isNull(ledgerEntries.deletedAt)
-          ),
-          columns: { id: true, itemName: true, sourceDocumentRevisionId: true },
-        });
-        const revisions = await db.query.sourceDocumentRevisions.findMany({
-          where: eq(sourceDocumentRevisions.sourceDocumentId, active.sourceDocumentId),
-          columns: { id: true, outcome: true },
-        });
-        return { document, entries, revisions };
-      };
-      const before = await snapshot();
-
-      const save = (title: string) =>
-        port.saveChanges({
-          ledgerId,
-          sourceDocumentId: active.sourceDocumentId,
-          expectedVersion: version,
-          sourceDocument: { title },
-          entries: [],
-        });
-      await expect(save("Changed")).rejects.toThrow(ConflictError);
-      await expect(save("Original")).rejects.toThrow(ConflictError);
-      await expect(
-        port.updateDocuments({
-          ledgerId,
-          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
-          data: { title: "Changed" },
-        })
-      ).rejects.toThrow(ConflictError);
-      await expect(
-        port.updateDocuments({
-          ledgerId,
-          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
-          data: { entryDate: "2026-08-01" },
-        })
-      ).rejects.toThrow(ConflictError);
-      await expect(
-        port.batchUpdateEntries({
-          ledgerId,
-          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
-          ledgerEntryIds: active.entryIds,
-          itemName: "Changed",
-        })
-      ).rejects.toThrow(NotFoundError);
-      await expect(
-        port.batchUpdateEntries({
-          ledgerId,
-          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
-          ledgerEntryIds: active.entryIds,
-          itemName: "Item 1",
-        })
-      ).rejects.toThrow(NotFoundError);
-      await expect(
-        port.batchDeleteEntries({
-          ledgerId,
-          targets: [{ sourceDocumentId: active.sourceDocumentId, expectedVersion: version }],
-          ledgerEntryIds: active.entryIds,
-        })
-      ).resolves.toMatchObject({
-        succeeded: [],
-        stale: [],
-        failed: active.entryIds.map((id) => ({ id, code: "NOT_FOUND" })),
-      });
-      await expect(
-        port.saveChanges({
-          ledgerId,
-          sourceDocumentId: active.sourceDocumentId,
-          expectedVersion: version - 1,
-          sourceDocument: { title: "Stale" },
-          entries: [],
-        })
-      ).resolves.toMatchObject({ ok: false, reason: "stale", currentVersion: version });
-
-      expect(await snapshot()).toEqual(before);
-    }
-  );
 });

@@ -110,20 +110,19 @@ describe("ledger refresh", () => {
 
     const document = await getTestDb().query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, documentId),
-      columns: { pendingRevisionId: true },
+      columns: { latestSubmissionRevisionId: true },
     });
-    const revisionId = document?.pendingRevisionId;
+    const revisionId = document?.latestSubmissionRevisionId;
     if (revisionId == null) throw new Error("Expected processing revision");
     await getTestDb()
       .update(sourceDocumentRevisions)
-      .set({ outcome: "completed", finalizedAt: new Date() })
+      .set({ processingStatus: "completed", finishedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, revisionId));
     await getTestDb()
       .update(sourceDocuments)
       .set({
         activeRevisionId: revisionId,
-        pendingRevisionId: null,
-        currentStatus: "completed",
+        latestSubmissionRevisionId: null,
       })
       .where(eq(sourceDocuments.id, documentId));
     expect((await refresh(processing.version)).hasTransitionalWork).toBe(false);

@@ -45,14 +45,14 @@ describe("createSourceDocumentAction omission semantics", () => {
 
     expect(callInput).toBeDefined();
     expect(callInput.ledgerId).toBe("ledger-1");
-    expect(callInput.evidence).toEqual({
+    expect(callInput.input).toEqual({
       kind: "stored",
       text: "Lunch 12.50",
       storedFileIds: [],
     });
     expect(Object.prototype.hasOwnProperty.call(callInput, "images")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "originalImages")).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(callInput, "entryDate")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(callInput, "documentDate")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "timezone")).toBe(false);
   });
 

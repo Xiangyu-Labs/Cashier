@@ -1,6 +1,6 @@
 "use server";
 
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import type {
   PartialBatchCommandResult,
@@ -95,7 +95,7 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
       stale: [],
       failed: [],
     };
-    const intents: ProcessingIntentContract[] = [];
+    const intents: ProcessingJobContract[] = [];
     for (const target of targets) {
       const id = target.sourceDocumentId;
       try {
@@ -103,9 +103,9 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
           { ledgerId, sourceDocumentId: id, expectedVersion: target.expectedVersion },
           {
             submissions: {
-              createPendingWithIntent: serverComposition.sourceDocumentAggregate.installRetry,
+              submit: serverComposition.sourceDocumentAggregate.installRetry,
             },
-            scheduleProcessing: (intent) => intents.push(intent),
+            scheduleProcessing: (job) => intents.push(job),
           }
         );
         if (retried.ok) {
@@ -124,7 +124,7 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
         result.failed.push({ id, code });
       }
     }
-    for (const intent of intents) scheduleProcessingAfter(intent);
+    for (const job of intents) scheduleProcessingAfter(job);
     return result;
   }
 );

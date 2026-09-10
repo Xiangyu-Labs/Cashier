@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import {
-  createPendingRevisionInTransaction,
+  createProcessingRevisionInTransaction,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres/revisions";
 import { getTargetSourceDocument } from "@/application/adapters/postgres/source-document-reads";
@@ -24,7 +24,7 @@ const activeEntry = {
 async function setupDocumentWithFailedRetry(
   db: ReturnType<typeof getTestDb>,
   ledgerId: string,
-  outcome: "invalid" | "failed"
+  failureKind: "invalid_input" | "processing_error"
 ) {
   // Step 1: Create a document with an active revision and entries
   const created = await postgresLedgerProjectionAdapter.createManual({
@@ -32,32 +32,32 @@ async function setupDocumentWithFailedRetry(
     ledgerId,
     title: "Original",
     entryDate: "2026-07-15",
-    submittedText: "Original text",
+    inputText: "Original text",
     entries: [activeEntry],
   });
 
   // Step 2: Create a pending revision (processing)
   const pending = await db.transaction(async (tx) => {
-    return createPendingRevisionInTransaction(tx, {
+    return createProcessingRevisionInTransaction(tx, {
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
-      submittedText: "Retry text",
+      input: { text: "Retry text", storedFileIds: [], documentDate: null },
     });
   });
 
   // Step 3: Set the pending revision outcome to invalid/failed
-  await postgresRevisionAdapter.preserveTerminalOutcome({
+  await postgresRevisionAdapter.recordProcessingFailure({
     ledgerId,
     sourceDocumentId: created.sourceDocumentId,
     revisionId: pending.revision.id,
-    outcome,
-    ...(outcome === "invalid" ? { invalidReason: "Validation invalid" } : {}),
+    failureKind,
+    failureMessage: failureKind === "invalid_input" ? "Validation invalid" : "Processing failed",
   });
 
   return {
     sourceDocumentId: created.sourceDocumentId,
     activeRevisionId: created.revisionId,
-    pendingRevisionId: pending.revision.id,
+    latestSubmissionRevisionId: pending.revision.id,
   };
 }
 
@@ -68,36 +68,40 @@ async function setupDocumentWithFailedRetry(
 async function setupDocumentWithFirstParseFailure(
   db: ReturnType<typeof getTestDb>,
   ledgerId: string,
-  outcome: "invalid" | "failed"
+  failureKind: "invalid_input" | "processing_error"
 ) {
   const pending = await db.transaction((tx) =>
-    createPendingRevisionInTransaction(tx, { ledgerId })
+    createProcessingRevisionInTransaction(tx, {
+      ledgerId,
+      input: { text: "First parse", storedFileIds: [], documentDate: null },
+    })
   );
-  await postgresRevisionAdapter.preserveTerminalOutcome({
+  await postgresRevisionAdapter.recordProcessingFailure({
     ledgerId,
     sourceDocumentId: pending.document.id,
     revisionId: pending.revision.id,
-    outcome,
-    ...(outcome === "invalid" ? { invalidReason: "First parse invalid" } : {}),
+    failureKind,
+    failureMessage: failureKind === "invalid_input" ? "First parse invalid" : "Processing failed",
   });
-  return { sourceDocumentId: pending.document.id, pendingRevisionId: pending.revision.id };
+  return { sourceDocumentId: pending.document.id, latestSubmissionRevisionId: pending.revision.id };
 }
 
 describe("retry active result summary", () => {
   it("includes the active result summary for terminal retries", async () => {
     const db = getTestDb();
-    for (const outcome of ["invalid", "failed"] as const) {
+    for (const failureKind of ["invalid_input", "processing_error"] as const) {
       const { ledgerId } = await createTestUserWithLedger(
         db,
-        `retry-${outcome}-detail@example.com`,
+        `retry-${failureKind}-detail@example.com`,
         undefined,
         crypto.randomUUID()
       );
-      const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, outcome);
+      const { sourceDocumentId } = await setupDocumentWithFailedRetry(db, ledgerId, failureKind);
 
       const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
       expect(detail).toMatchObject({
-        status: outcome,
+        processingStatus: "failed",
+        failureKind,
         activeResultSummary: { entryCount: 1, total: "12.50" },
       });
     }
@@ -105,17 +109,21 @@ describe("retry active result summary", () => {
 
   it("omits the active result summary when the first parse has no active revision", async () => {
     const db = getTestDb();
-    for (const outcome of ["invalid", "failed"] as const) {
+    for (const failureKind of ["invalid_input", "processing_error"] as const) {
       const { ledgerId } = await createTestUserWithLedger(
         db,
-        `retry-first-${outcome}@example.com`,
+        `retry-first-${failureKind}@example.com`,
         undefined,
         crypto.randomUUID()
       );
-      const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(db, ledgerId, outcome);
+      const { sourceDocumentId } = await setupDocumentWithFirstParseFailure(
+        db,
+        ledgerId,
+        failureKind
+      );
 
       const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
-      expect(detail).toMatchObject({ status: outcome });
+      expect(detail).toMatchObject({ processingStatus: "failed", failureKind });
       expect(detail?.activeResultSummary).toBeUndefined();
     }
   });
@@ -130,7 +138,7 @@ describe("retry active result summary", () => {
       ledgerId,
       title: "Multi-entry",
       entryDate: "2026-07-15",
-      submittedText: "Multi entry doc",
+      inputText: "Multi entry doc",
       entries: [
         {
           categoryId: null,
@@ -164,21 +172,22 @@ describe("retry active result summary", () => {
 
     // Create a failed pending revision
     const pending = await db.transaction(async (tx) => {
-      return createPendingRevisionInTransaction(tx, {
+      return createProcessingRevisionInTransaction(tx, {
         ledgerId,
         sourceDocumentId: created.sourceDocumentId,
-        submittedText: "Failed retry",
+        input: { text: "Failed retry", storedFileIds: [], documentDate: null },
       });
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
       revisionId: pending.revision.id,
-      outcome: "failed",
+      failureKind: "processing_error",
+      failureMessage: "Processing failed",
     });
 
     const detail = await getTargetSourceDocument(ledgerId, created.sourceDocumentId);
-    expect(detail?.status).toBe("failed");
+    expect(detail?.processingStatus).toBe("failed");
     expect(detail?.activeResultSummary).toBeDefined();
     expect(detail?.activeResultSummary?.entryCount).toBe(3);
     expect(detail?.activeResultSummary?.total).toBe("9007199254740992.03");

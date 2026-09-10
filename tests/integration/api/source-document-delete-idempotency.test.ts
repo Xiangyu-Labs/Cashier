@@ -22,7 +22,7 @@ describe("SourceDocument delete CAS", () => {
     const db = getTestDb();
     const [document] = await db
       .insert(sourceDocuments)
-      .values({ ledgerId, currentStatus: "completed", entryDate: "2024-03-17" })
+      .values({ ledgerId, documentDate: "2024-03-17" })
       .returning();
     if (document == null) throw new Error("Expected source document");
     await activateTestSourceDocumentProjection(db, document.id);
@@ -41,7 +41,7 @@ describe("SourceDocument delete CAS", () => {
       where: eq(sourceDocuments.id, document.id),
     });
     expect(deleted?.deletedAt).not.toBeNull();
-    expect(deleted?.stateVersion).toBe(2);
+    expect(deleted?.version).toBe(2);
   });
 
   it("does not durably replay a lost delete response", async () => {
@@ -51,6 +51,6 @@ describe("SourceDocument delete CAS", () => {
     const deleted = await getTestDb().query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, document.id),
     });
-    expect(deleted?.stateVersion).toBe(2);
+    expect(deleted?.version).toBe(2);
   });
 });

@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import type { SourceDocumentFullDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentInputDto } from "@/modules/source-document/contracts";
 import {
   revisionFiles,
   sourceDocumentRevisions,
@@ -9,23 +9,21 @@ import {
 } from "@/persistence";
 import { mapStoredFileDto } from "./mappers";
 
-/** Read only the evidence required to seed an edit-and-retry draft. */
-export async function getSourceDocumentEvidence(
+/** Read only the latest submitted input required to seed an edit-and-retry draft. */
+export async function getSourceDocumentInput(
   ledgerId: string,
   sourceDocumentId: string
-): Promise<SourceDocumentFullDto | null> {
+): Promise<SourceDocumentInputDto | null> {
   return db.transaction(
     async (tx) => {
       const document = await tx
         .select({
           id: sourceDocuments.id,
-          status: sourceDocuments.currentStatus,
+          processingStatus: sourceDocumentRevisions.processingStatus,
+          documentDate: sourceDocumentRevisions.inputDocumentDate,
           createdAt: sourceDocuments.createdAt,
-          revisionId: sql<string | null>`COALESCE(
-            ${sourceDocuments.pendingRevisionId},
-            ${sourceDocuments.activeRevisionId}
-          )`,
-          text: sourceDocumentRevisions.submittedText,
+          revisionId: sourceDocuments.latestSubmissionRevisionId,
+          text: sourceDocumentRevisions.inputText,
         })
         .from(sourceDocuments)
         .leftJoin(
@@ -33,13 +31,7 @@ export async function getSourceDocumentEvidence(
           and(
             eq(sourceDocumentRevisions.ledgerId, sourceDocuments.ledgerId),
             eq(sourceDocumentRevisions.sourceDocumentId, sourceDocuments.id),
-            eq(
-              sourceDocumentRevisions.id,
-              sql`COALESCE(
-                ${sourceDocuments.pendingRevisionId},
-                ${sourceDocuments.activeRevisionId}
-              )`
-            )
+            eq(sourceDocumentRevisions.id, sourceDocuments.latestSubmissionRevisionId)
           )
         )
         .where(
@@ -84,7 +76,8 @@ export async function getSourceDocumentEvidence(
         id: document.id,
         text: document.text,
         files: files.map(mapStoredFileDto),
-        status: document.status,
+        processingStatus: document.processingStatus,
+        documentDate: document.documentDate,
         createdAt: document.createdAt.toISOString(),
       };
     },

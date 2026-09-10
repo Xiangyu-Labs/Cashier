@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import {
-  acceptSourceDocumentCandidateAction,
-  abandonSourceDocumentCandidateAction,
-  cancelSourceDocumentProcessingAction,
-} from "@/modules/source-document/server-actions/candidates";
+import { cancelSourceDocumentProcessingAction } from "@/modules/source-document/server-actions/processing";
 import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
 import { useTranslations } from "next-intl";
 import { useVersionedSourceDocumentMutation } from "./useVersionedSourceDocumentMutation";
@@ -20,8 +16,6 @@ interface UseSourceDocumentRecoveryMutationsOptions {
 
 /**
  * Provides mutations for source document recovery actions:
- * - Accept candidate
- * - Abandon candidate
  * - Direct retry
  *
  * Cached server data remains unchanged until an action succeeds.
@@ -33,35 +27,7 @@ export function useSourceDocumentRecoveryMutations({
   onSuccess,
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const actionLockRef = useRef(false);
-  const tActions = useTranslations("CandidateAction");
-
-  // -----------------------------------------------------------------------
-  // Accept candidate
-  // -----------------------------------------------------------------------
-
-  const acceptMutation = useVersionedSourceDocumentMutation({
-    ledgerId,
-    sourceDocumentId,
-    expectedVersion: version,
-    action: acceptSourceDocumentCandidateAction,
-    successMessage: tActions("acceptSuccess"),
-    errorMessage: tActions("acceptError"),
-    ...(onSuccess === undefined ? {} : { onSuccess }),
-  });
-
-  // -----------------------------------------------------------------------
-  // Abandon candidate
-  // -----------------------------------------------------------------------
-
-  const abandonMutation = useVersionedSourceDocumentMutation({
-    ledgerId,
-    sourceDocumentId,
-    expectedVersion: version,
-    action: abandonSourceDocumentCandidateAction,
-    successMessage: tActions("abandonSuccess"),
-    errorMessage: tActions("abandonError"),
-    ...(onSuccess === undefined ? {} : { onSuccess }),
-  });
+  const tActions = useTranslations("SourceDocumentAction");
 
   // -----------------------------------------------------------------------
   // Direct retry
@@ -95,26 +61,6 @@ export function useSourceDocumentRecoveryMutations({
   // Public API
   // -----------------------------------------------------------------------
 
-  const acceptCandidate = useCallback(async () => {
-    if (actionLockRef.current) return;
-    actionLockRef.current = true;
-    try {
-      await acceptMutation.mutateAsync();
-    } finally {
-      actionLockRef.current = false;
-    }
-  }, [acceptMutation]);
-
-  const abandonCandidate = useCallback(async () => {
-    if (actionLockRef.current) return;
-    actionLockRef.current = true;
-    try {
-      await abandonMutation.mutateAsync();
-    } finally {
-      actionLockRef.current = false;
-    }
-  }, [abandonMutation]);
-
   const retry = useCallback(async () => {
     if (actionLockRef.current) return;
     actionLockRef.current = true;
@@ -136,14 +82,9 @@ export function useSourceDocumentRecoveryMutations({
   }, [cancelMutation]);
 
   return {
-    acceptCandidate,
-    abandonCandidate,
     retry,
     cancelProcessing,
-    isAccepting: acceptMutation.isPending,
-    isAbandoning: abandonMutation.isPending,
     isRetrying: retryMutation.isPending,
     isCancelling: cancelMutation.isPending,
-    isReviewing: acceptMutation.isPending || abandonMutation.isPending,
   };
 }

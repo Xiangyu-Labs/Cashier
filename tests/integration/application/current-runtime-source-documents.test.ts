@@ -36,13 +36,17 @@ describe("current-runtime target adapters", () => {
       crypto.randomUUID()
     );
 
-    const first = await postgresRevisionAdapter.createPending({
+    const first = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      submittedText: "first",
+      input: { text: "first", storedFileIds: [], documentDate: null },
     });
     await expect(postgresRevisionAdapter.get(otherLedgerId, first.document.id)).resolves.toBeNull();
     await expect(
-      postgresRevisionAdapter.createPending({ ledgerId, sourceDocumentId: first.document.id })
+      postgresRevisionAdapter.createProcessingRevision({
+        ledgerId,
+        sourceDocumentId: first.document.id,
+        input: { text: "duplicate", storedFileIds: [], documentDate: null },
+      })
     ).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(
       postgresRevisionAdapter.markProcessing({
@@ -52,19 +56,20 @@ describe("current-runtime target adapters", () => {
       })
     ).resolves.toBe(true);
     await expect(
-      postgresRevisionAdapter.preserveTerminalOutcome({
+      postgresRevisionAdapter.recordProcessingFailure({
         ledgerId,
         sourceDocumentId: first.document.id,
         revisionId: first.revision.id,
-        outcome: "failed",
+        failureKind: "processing_error",
+        failureMessage: "processing failed",
         failureCode: "PROCESSING_UNAVAILABLE",
       })
     ).resolves.toBe(true);
 
-    const retry = await postgresRevisionAdapter.createPending({
+    const retry = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
       sourceDocumentId: first.document.id,
-      submittedText: "retry",
+      input: { text: "retry", storedFileIds: [], documentDate: null },
     });
     await postgresRevisionAdapter.markProcessing({
       ledgerId,
@@ -81,27 +86,27 @@ describe("current-runtime target adapters", () => {
       })
     ).resolves.toBe(true);
 
-    const failedRetry = await postgresRevisionAdapter.createPending({
+    const failedRetry = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
       sourceDocumentId: first.document.id,
-      submittedText: "bad retry",
+      input: { text: "bad retry", storedFileIds: [], documentDate: null },
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: first.document.id,
       revisionId: failedRetry.revision.id,
-      outcome: "invalid",
-      invalidReason: "unreadable",
+      failureKind: "invalid_input",
+      failureMessage: "unreadable",
     });
     const preserved = await postgresRevisionAdapter.get(ledgerId, first.document.id);
     expect(preserved).toMatchObject({
       activeRevisionId: retry.revision.id,
-      pendingRevisionId: failedRetry.revision.id,
+      latestSubmissionRevisionId: failedRetry.revision.id,
     });
 
-    const second = await postgresRevisionAdapter.createPending({
+    const second = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      submittedText: "second",
+      input: { text: "second", storedFileIds: [], documentDate: null },
     });
     const page1 = await postgresRevisionAdapter.list({ ledgerId, limit: 1 });
     const page2 = await postgresRevisionAdapter.list({
@@ -127,7 +132,10 @@ describe("current-runtime target adapters", () => {
       .insert(entryCategories)
       .values({ ledgerId: otherLedgerId, name: "Other" })
       .returning();
-    const pending = await postgresRevisionAdapter.createPending({ ledgerId });
+    const pending = await postgresRevisionAdapter.createProcessingRevision({
+      ledgerId,
+      input: { text: "receipt", storedFileIds: [], documentDate: null },
+    });
 
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
@@ -147,9 +155,9 @@ describe("current-runtime target adapters", () => {
     });
     expect(document).toMatchObject({
       activeRevisionId: null,
-      pendingRevisionId: pending.revision.id,
+      latestSubmissionRevisionId: pending.revision.id,
     });
-    expect(revision?.outcome).toBe("processing");
+    expect(revision?.processingStatus).toBe("processing");
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 
@@ -160,13 +168,16 @@ describe("current-runtime target adapters", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
         deletedAt: new Date(),
       })
       .returning();
 
     await expect(
-      postgresRevisionAdapter.createPending({ ledgerId, sourceDocumentId: legacy!.id })
+      postgresRevisionAdapter.createProcessingRevision({
+        ledgerId,
+        sourceDocumentId: legacy!.id,
+        input: { text: "receipt", storedFileIds: [], documentDate: null },
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(0);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
@@ -191,10 +202,10 @@ describe("current-runtime target adapters", () => {
         finalizedAt: new Date(),
       })
       .returning();
-    const pending = await postgresRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
-      storedFileIds: [file!.id],
+      input: { text: null, storedFileIds: [file!.id], documentDate: null },
     });
     expect(pending.document.supportedActions).toEqual([
       "cancel_processing",
@@ -232,10 +243,9 @@ describe("current-runtime target adapters", () => {
       where: eq(sourceDocuments.id, active.sourceDocumentId),
     });
     expect(deleted).toMatchObject({
-      currentStatus: "cancelled",
       deletedAt: expect.any(Date),
       activeRevisionId: active.revisionId,
-      pendingRevisionId: null,
+      latestSubmissionRevisionId: pending.revision.id,
     });
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(revisionCount);
     expect(await db.select().from(revisionFiles)).toHaveLength(fileLinkCount);

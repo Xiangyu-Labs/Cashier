@@ -126,7 +126,7 @@ describe("PostgreSQL schema contract", () => {
       "fk_upload_session_files_session_ledger",
       "fk_upload_session_files_stored_file_ledger",
       "fk_source_documents_active_revision",
-      "fk_source_documents_pending_revision",
+      "fk_source_documents_latest_submission_revision",
     ];
     for (const name of expected) {
       expect(byName.has(name), `missing foreign key ${name}`).toBe(true);
@@ -186,7 +186,7 @@ describe("PostgreSQL schema contract", () => {
     );
     expect(effective).toBeDefined();
     expect(effective?.isGenerated).toBe("ALWAYS");
-    expect(effective?.generationExpression ?? "").toContain("entry_date");
+    expect(effective?.generationExpression ?? "").toContain("document_date");
     expect(effective?.generationExpression ?? "").toContain("created_at");
     expect(effective?.generationExpression ?? "").toContain("UTC");
   });

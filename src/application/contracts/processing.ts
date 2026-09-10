@@ -2,22 +2,22 @@ import type {
   LedgerId,
   ProcessingClaimContract,
   ProcessingCompletionContract,
-  ProcessingIntentContract,
-  ProcessingIntentId,
+  ProcessingJobContract,
+  ProcessingJobId,
   ProcessingLeaseContract,
   RevisionId,
-  RevisionOutcome,
+  RevisionProcessingStatus,
   SourceDocumentId,
 } from "./source-documents";
 
 export interface ProcessingPort {
-  dispatch(intent: ProcessingIntentContract): Promise<void>;
-  claim(intentId: ProcessingIntentId): Promise<ProcessingClaimContract | null>;
-  renew(intentId: ProcessingIntentId, claimToken: string): Promise<string | null>;
+  dispatch(job: ProcessingJobContract): Promise<void>;
+  claim(jobId: ProcessingJobId): Promise<ProcessingClaimContract | null>;
+  renew(jobId: ProcessingJobId, claimToken: string): Promise<string | null>;
   complete(result: ProcessingCompletionContract): Promise<boolean>;
 }
 
-export interface RecoverableProcessingIntentContract extends ProcessingIntentContract {
+export interface RecoverableProcessingJobContract extends ProcessingJobContract {
   scheduleAttemptCount: number;
   nextAvailableAt: string;
 }
@@ -38,17 +38,20 @@ export interface RevisionProcessingRequestContract {
 
 export interface RevisionProcessingResultContract {
   completion: "atomic" | "residual";
-  outcome: Extract<RevisionOutcome, "completed" | "invalid">;
-  invalidReason?: string;
+  processingStatus: Extract<RevisionProcessingStatus, "completed" | "failed">;
+  failureMessage?: string;
 }
 
 export interface RevisionProcessingContextContract {
-  revision: { submittedText: string | null; outcome: RevisionOutcome } | null;
+  revision: {
+    inputText: string | null;
+    inputDocumentDate: string | null;
+    processingStatus: RevisionProcessingStatus | null;
+  } | null;
   document: {
     activeRevisionId: RevisionId | null;
-    pendingRevisionId: RevisionId | null;
+    latestSubmissionRevisionId: RevisionId | null;
     type: "ai_parsed" | "manual";
-    entryDate: string | null;
     createdAt: Date;
   } | null;
   storedFileIds: string[];

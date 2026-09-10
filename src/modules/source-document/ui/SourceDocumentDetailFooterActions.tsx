@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCheck, RefreshCw, Trash2, X, Save, XCircle, Pencil } from "lucide-react";
+import { RefreshCw, Trash2, X, Save, XCircle, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,7 @@ interface SourceDocumentDetailFooterActionsProps {
   interactionDisabled: boolean;
   hasPendingChanges: boolean;
   pendingChangesCount: number;
-  isAccepting: boolean;
-  isAbandoning: boolean;
   isCancelling: boolean;
-  onAcceptCandidate?: () => void;
-  onAbandonCandidate?: () => void;
   onCancelProcessing?: () => void;
   onOpenRetryDialog: () => void;
   onRequestDelete: () => void;
@@ -27,7 +23,7 @@ interface SourceDocumentDetailFooterActionsProps {
   onEnterEditMode: () => void;
 }
 
-/** Non-selection-mode footer bar: candidate actions, edit/retry/delete, and the edit-mode save controls. */
+/** Non-selection-mode footer bar for processing, edit, retry, and delete actions. */
 export function SourceDocumentDetailFooterActions({
   sourceDocument,
   isEditMode,
@@ -36,11 +32,7 @@ export function SourceDocumentDetailFooterActions({
   interactionDisabled,
   hasPendingChanges,
   pendingChangesCount,
-  isAccepting,
-  isAbandoning,
   isCancelling,
-  onAcceptCandidate,
-  onAbandonCandidate,
   onCancelProcessing,
   onOpenRetryDialog,
   onRequestDelete,
@@ -50,56 +42,11 @@ export function SourceDocumentDetailFooterActions({
 }: SourceDocumentDetailFooterActionsProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
-  const tActions = useTranslations("CandidateAction");
+  const tActions = useTranslations("SourceDocumentAction");
 
   return (
     <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:bg-surface2/30 sm:py-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        {/* Candidate actions: Accept / Abandon */}
-        {sourceDocument?.supportedActions.includes("accept_candidate") &&
-          onAcceptCandidate != null && (
-            <>
-              <Button
-                variant="default"
-                size="sm"
-                className="h-9 px-3 gap-1.5"
-                onClick={onAcceptCandidate}
-                disabled={interactionDisabled}
-              >
-                <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
-                <span className="hidden sm:inline">{tActions("accept")}</span>
-              </Button>
-              {sourceDocument.supportedActions.includes("abandon_candidate") &&
-                onAbandonCandidate != null && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3 gap-1.5 text-muted-foreground"
-                    onClick={onAbandonCandidate}
-                    disabled={interactionDisabled}
-                  >
-                    <XCircle className={cn("h-3.5 w-3.5", isAbandoning && "animate-spin")} />
-                    <span className="hidden sm:inline">{tActions("abandon")}</span>
-                  </Button>
-                )}
-            </>
-          )}
-
-        {sourceDocument?.supportedActions.includes("abandon_candidate") &&
-          !sourceDocument.supportedActions.includes("accept_candidate") &&
-          onAbandonCandidate != null && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 px-3 text-muted-foreground"
-              onClick={onAbandonCandidate}
-              disabled={interactionDisabled}
-            >
-              <XCircle className={cn("h-3.5 w-3.5", isAbandoning && "animate-spin")} />
-              <span className="hidden sm:inline">{tActions("abandon")}</span>
-            </Button>
-          )}
-
         {sourceDocument?.supportedActions.includes("cancel_processing") &&
           onCancelProcessing != null && (
             <Button

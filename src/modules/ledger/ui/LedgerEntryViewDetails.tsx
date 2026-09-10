@@ -74,7 +74,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   );
 
   const entryDate =
-    ledgerEntry.sourceDocument?.entryDate ??
+    ledgerEntry.sourceDocument?.documentDate ??
     (ledgerEntry.createdAt !== undefined
       ? formatDateTimeForApi(new Date(ledgerEntry.createdAt))
       : "");

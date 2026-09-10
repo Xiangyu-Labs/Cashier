@@ -254,7 +254,11 @@ describe("API v1 source-documents route", () => {
       const document = await getTestDb().query.sourceDocuments.findFirst({
         where: eq(sourceDocuments.id, body.sourceDocumentId),
       });
-      expect(document?.entryDate).toBe("2026-07-27");
+      const revision = await getTestDb().query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, document!.latestSubmissionRevisionId!),
+      });
+      expect(document?.documentDate).toBeNull();
+      expect(revision?.inputDocumentDate).toBe("2026-07-27");
     });
 
     it("reports an invalid entryDate separately from valid image data", async () => {

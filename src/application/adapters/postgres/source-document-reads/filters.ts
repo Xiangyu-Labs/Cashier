@@ -1,13 +1,13 @@
 import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { escapedLikeContains } from "@/lib/db/like-pattern";
-import type { SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/contracts";
 import { normalize as decimalNormalize } from "@/lib/money/decimal";
-import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 
 export interface TargetSourceDocumentFilterInput {
   ledgerId: string;
-  statuses?: readonly SourceDocumentStatusType[];
+  statuses?: readonly SourceDocumentProcessingStatus[];
   startDate?: string | null;
   endDate?: string | null;
   minAmount?: string;
@@ -26,7 +26,14 @@ export function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unkn
     isNull(sourceDocuments.deletedAt),
   ];
   if (input.statuses != null && input.statuses.length > 0) {
-    conditions.push(inArray(sourceDocuments.currentStatus, input.statuses));
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM ${sourceDocumentRevisions}
+        WHERE ${sourceDocumentRevisions.id} = ${sourceDocuments.latestSubmissionRevisionId}
+          AND ${sourceDocumentRevisions.ledgerId} = ${input.ledgerId}
+          AND ${inArray(sourceDocumentRevisions.processingStatus, input.statuses)}
+      )`
+    );
   }
   if (input.startDate != null && input.startDate !== "") {
     conditions.push(sql`${sourceDocuments.effectiveDate} >= ${input.startDate}::date`);
@@ -103,7 +110,7 @@ export async function calculateCompletedSourceDocumentTotal(
         ...matchedEntryConditions
       )
     )
-    .where(and(...baseConditions(input), eq(sourceDocuments.currentStatus, "completed")))
+    .where(and(...baseConditions(input)))
     .then((rows) => rows[0]);
 
   return {

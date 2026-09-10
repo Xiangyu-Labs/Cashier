@@ -10,7 +10,7 @@ interface TabNavigationProps {
   onTabChange: (tab: LedgerTab) => void;
   onOpenInput: () => void;
   onInputIntent?: () => void;
-  /** Called when an inactive destination receives pointer or keyboard intent. */
+  /** Called when an inactive destination receives pointer or keyboard job. */
   onTabIntent?: (tab: LedgerTab) => void;
 }
 

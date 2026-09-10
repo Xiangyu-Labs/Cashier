@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   AuthorizedFileReadContract,
   ProcessingCompletionContract,
-  ProcessingIntentContract,
+  ProcessingJobContract,
   ProcessingPort,
   StoredFileContract,
   StoredFilePort,
@@ -12,14 +12,16 @@ import type {
 export interface ApplicationContractHarness {
   sourceDocumentActions(input: {
     activeRevisionId: string | null;
-    pendingOutcome: "failed" | "processing";
+    latestSubmissionStatus: "processing" | "completed" | "failed" | "cancelled" | null;
+    hasSubmissionInput: boolean;
+    deleted?: boolean;
   }): readonly string[];
   files: StoredFilePort;
   processing: ProcessingPort;
   plan(): Promise<UploadPlanContract>;
   finalize(plan: UploadPlanContract): Promise<readonly StoredFileContract[]>;
   read(file: StoredFileContract): Promise<AuthorizedFileReadContract | null>;
-  dispatch(intent: ProcessingIntentContract): Promise<void>;
+  dispatch(job: ProcessingJobContract): Promise<void>;
   completions(): readonly ProcessingCompletionContract[];
 }
 
@@ -32,12 +34,17 @@ export function applicationContractSuite(
     it("preserves active revisions and only exposes actions for a terminal pending revision", async () => {
       const harness = await create();
       expect(
-        harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" })
+        harness.sourceDocumentActions({
+          activeRevisionId: "revision-1",
+          latestSubmissionStatus: "failed",
+          hasSubmissionInput: true,
+        })
       ).toContain("retry");
       expect(
         harness.sourceDocumentActions({
           activeRevisionId: "revision-1",
-          pendingOutcome: "processing",
+          latestSubmissionStatus: "processing",
+          hasSubmissionInput: true,
         })
       ).toEqual(["cancel_processing", "retry", "edit_retry", "delete"]);
     });
@@ -61,26 +68,26 @@ export function applicationContractSuite(
 
     it("makes duplicate processing dispatch and recovery completion harmless", async () => {
       const harness = await create();
-      const intent: ProcessingIntentContract = {
-        id: "intent-1",
+      const job: ProcessingJobContract = {
+        id: "job-1",
         sourceDocumentId: "document-1",
         revisionId: "revision-1",
         requestedAt: "2026-07-13T00:00:00.000Z",
-        attempt: 1,
+        attemptNumber: 1,
       };
-      await harness.dispatch(intent);
-      await harness.dispatch(intent);
-      const claim = await harness.processing.claim(intent.id);
+      await harness.dispatch(job);
+      await harness.dispatch(job);
+      const claim = await harness.processing.claim(job.id);
       expect(claim).not.toBeNull();
       await harness.processing.complete({
-        intentId: intent.id,
+        jobId: job.id,
         claimToken: claim!.claimToken,
-        outcome: "completed",
+        processingStatus: "completed",
       });
       await harness.processing.complete({
-        intentId: intent.id,
+        jobId: job.id,
         claimToken: claim!.claimToken,
-        outcome: "completed",
+        processingStatus: "completed",
       });
       expect(harness.completions()).toHaveLength(1);
     });

@@ -1,5 +1,5 @@
 import type {
-  RecoverableProcessingIntentContract,
+  RecoverableProcessingJobContract,
   CategoryPort,
   DirectStoredFilePort,
   LedgerProjectionPort,
@@ -16,11 +16,10 @@ import type {
 import type {
   BatchUpdateSourceDocumentsResultDto,
   SaveSourceDocumentChangesResultDto,
-  SourceDocumentCandidateReviewDto,
   SplitSourceDocumentResultDto,
-  SourceDocumentDto,
+  SourceDocumentDetailDto,
   SourceDocumentListItemDto,
-  SourceDocumentStatusType,
+  SourceDocumentProcessingStatus,
   AtomicBatchCommandResult,
   VersionedCommandResult,
   VersionedTarget,
@@ -28,7 +27,7 @@ import type {
 
 interface SourceDocumentFilterInput {
   ledgerId: string;
-  statuses?: readonly SourceDocumentStatusType[];
+  statuses?: readonly SourceDocumentProcessingStatus[];
   startDate?: string | null;
   endDate?: string | null;
   minAmount?: string;
@@ -46,15 +45,11 @@ export interface SourceDocumentReadPort {
     total: string;
     unconvertedCount: number;
   }>;
-  candidateReview(
+  getInput(
     ledgerId: string,
     sourceDocumentId: string
-  ): Promise<SourceDocumentCandidateReviewDto>;
-  getEvidence(
-    ledgerId: string,
-    sourceDocumentId: string
-  ): Promise<import("../contracts").SourceDocumentFullDto | null>;
-  get(ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentDto | null>;
+  ): Promise<import("../contracts").SourceDocumentInputDto | null>;
+  get(ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentDetailDto | null>;
   getAccessContext(
     sourceDocumentId: string
   ): Promise<{ ledgerId: string; hasImages: boolean } | null>;
@@ -66,11 +61,11 @@ export interface SourceDocumentReadPort {
 
 /** The only application-facing boundary for writes that change a document's visible projection. */
 export interface SourceDocumentAggregateWritePort {
-  createProcessingDocument: SourceDocumentSubmissionPort["createPendingWithIntent"];
+  createProcessingDocument: SourceDocumentSubmissionPort["submit"];
   createIdempotentProcessingDocument: (
     idempotency: SourceDocumentIdempotencyInput,
     prepare: () => Promise<SourceDocumentSubmissionInput>
-  ) => ReturnType<SourceDocumentSubmissionPort["createIdempotentPendingWithIntent"]>;
+  ) => ReturnType<SourceDocumentSubmissionPort["submitIdempotently"]>;
   createManualDocument: LedgerProjectionPort["createManual"];
   updateDocuments(input: {
     ledgerId: string;
@@ -111,10 +106,8 @@ export interface SourceDocumentAggregateWritePort {
   batchDeleteEntries: LedgerEntryCommandPort["batchDelete"];
   installRetry(
     input: SourceDocumentSubmissionInput & { sourceDocumentId: string; expectedVersion: number }
-  ): ReturnType<SourceDocumentSubmissionPort["createPendingWithIntent"]>;
-  acceptCandidate: SourceDocumentLifecyclePort["acceptCandidate"];
-  abandonCandidate: SourceDocumentLifecyclePort["abandonCandidate"];
-  cancelProcessing: SourceDocumentLifecyclePort["cancelPending"];
+  ): ReturnType<SourceDocumentSubmissionPort["submit"]>;
+  cancelProcessing: SourceDocumentLifecyclePort["cancelProcessing"];
   deleteDocuments(input: {
     ledgerId: string;
     target: VersionedTarget;
@@ -147,23 +140,13 @@ export interface QuickEntryPorts {
 }
 
 export interface SourceDocumentLifecyclePort {
-  acceptCandidate(
-    ledgerId: string,
-    sourceDocumentId: string,
-    expectedVersion: number
-  ): Promise<{ version: number; status: "completed" }>;
-  abandonCandidate(
-    ledgerId: string,
-    sourceDocumentId: string,
-    expectedVersion: number
-  ): Promise<{ version: number; status: "completed" } | null>;
-  cancelPending(
+  cancelProcessing(
     ledgerId: string,
     sourceDocumentId: string,
     expectedVersion: number
   ): Promise<{
     version: number;
-    status: "cancelled" | "completed";
+    processingStatus: "cancelled";
   }>;
 }
 
@@ -171,7 +154,7 @@ export interface ProcessingRecoveryPort {
   recoverBatch(
     ledgerId: string,
     config: import("@/application/contracts").ProcessingRecoveryConfig
-  ): Promise<readonly RecoverableProcessingIntentContract[]>;
+  ): Promise<readonly RecoverableProcessingJobContract[]>;
 }
 
 export interface CredentialSourceDocumentStatusResult {

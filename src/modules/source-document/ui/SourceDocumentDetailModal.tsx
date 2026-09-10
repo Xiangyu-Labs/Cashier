@@ -62,12 +62,7 @@ interface SourceDocumentDetailModalProps {
   onAddEntry?: (data: AddEntryData) => Promise<void>;
   onDeleteEntry?: (entryId: string, onCommitted?: () => void) => Promise<void>;
   onDelete?: (onCommitted?: () => void) => void | Promise<void>;
-  // Recovery action callbacks
-  onAcceptCandidate?: () => Promise<void>;
-  onAbandonCandidate?: () => Promise<void>;
   onCancelProcessing?: () => Promise<void>;
-  isAccepting?: boolean;
-  isAbandoning?: boolean;
   isCancelling?: boolean;
 }
 
@@ -93,11 +88,7 @@ function SourceDocumentDetailEditor({
   onAddEntry,
   onDeleteEntry,
   onDelete,
-  onAcceptCandidate,
-  onAbandonCandidate,
   onCancelProcessing,
-  isAccepting = false,
-  isAbandoning = false,
   isCancelling = false,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
@@ -109,8 +100,6 @@ function SourceDocumentDetailEditor({
     sourceDocument,
     ledgerEntries,
     open,
-    isAccepting,
-    isAbandoning,
     isCancelling,
     onClose,
     onReload,
@@ -121,8 +110,6 @@ function SourceDocumentDetailEditor({
     onAddEntry,
     onDeleteEntry,
     onDelete,
-    onAcceptCandidate,
-    onAbandonCandidate,
     onCancelProcessing,
     t,
     tCommon,
@@ -240,15 +227,7 @@ function SourceDocumentDetailEditor({
             interactionDisabled={status.interactionDisabled}
             hasPendingChanges={editor.hasPendingChanges}
             pendingChangesCount={editor.pendingChangesCount}
-            isAccepting={isAccepting}
-            isAbandoning={isAbandoning}
             isCancelling={isCancelling}
-            {...(onAcceptCandidate != null
-              ? { onAcceptCandidate: actions.handleAcceptCandidate }
-              : {})}
-            {...(onAbandonCandidate != null
-              ? { onAbandonCandidate: actions.handleAbandonCandidate }
-              : {})}
             {...(onCancelProcessing != null
               ? { onCancelProcessing: actions.handleCancelProcessing }
               : {})}

@@ -36,9 +36,8 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
     .values({
       id: uuidv4(),
       ledgerId,
-      currentStatus: "completed",
       type: "ai_parsed",
-      entryDate: entryDate ?? null,
+      documentDate: entryDate ?? null,
     })
     .returning();
   expect(doc).toBeDefined();
@@ -99,7 +98,7 @@ describe("batchUpdateLedgerEntriesAction", () => {
     });
     await batchUpdateLedgerEntriesAction(
       ledgerId,
-      [{ sourceDocumentId: doc.id, expectedVersion: before!.stateVersion }],
+      [{ sourceDocumentId: doc.id, expectedVersion: before!.version }],
       ids,
       { categoryId: catId }
     );
@@ -237,7 +236,7 @@ describe("batchUpdateLedgerEntriesAction", () => {
     );
     await db
       .update(sourceDocuments)
-      .set({ stateVersion: 2 })
+      .set({ version: 2 })
       .where(eq(sourceDocuments.id, documents[1]!.id));
     const before = await db.query.sourceDocuments.findMany({
       where: inArray(
@@ -281,14 +280,14 @@ describe("batchUpdateLedgerEntriesAction", () => {
       after.map((document) => ({
         id: document.id,
         activeRevisionId: document.activeRevisionId,
-        stateVersion: document.stateVersion,
+        version: document.version,
         updatedAt: document.updatedAt,
       }))
     ).toEqual(
       before.map((document) => ({
         id: document.id,
         activeRevisionId: document.activeRevisionId,
-        stateVersion: document.stateVersion,
+        version: document.version,
         updatedAt: document.updatedAt,
       }))
     );
@@ -346,7 +345,7 @@ describe("batchUpdateLedgerEntriesAction", () => {
     const updatedDocument = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, doc.id),
     });
-    expect(updatedDocument?.entryDate).toBe("2026-01-02");
+    expect(updatedDocument?.documentDate).toBe("2026-01-02");
     expect(updatedDocument?.activeRevisionId).not.toBe(activeRevisionId);
   });
 });

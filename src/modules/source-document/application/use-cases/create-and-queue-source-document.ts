@@ -1,7 +1,7 @@
 import { ValidationError } from "@/lib/errors";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import type {
-  ProcessingIntentContract,
+  ProcessingJobContract,
   SourceDocumentSubmissionContract,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
@@ -14,10 +14,10 @@ import type { InlineImageUploader } from "./prepare-inline-images";
 
 export interface CreateAndQueueSourceDocumentInput {
   ledgerId: string;
-  evidence:
+  input:
     | { kind: "stored"; text?: string; storedFileIds: string[] }
     | { kind: "inline"; images: PreparedInlineImage[] };
-  entryDate?: string;
+  documentDate?: string;
   timezone?: string;
   idempotency?: {
     principalType: "credential" | "user";
@@ -31,11 +31,11 @@ interface CreateAndQueueSourceDocumentDependencies {
   submissions: SourceDocumentSubmissionPort;
   storedFiles: InlineImageUploader;
   processImage: typeof processImageFn;
-  scheduleProcessing: (intent: ProcessingIntentContract) => void;
+  scheduleProcessing: (job: ProcessingJobContract) => void;
 }
 
-function resolveEntryDate(entryDate?: string, timezone?: string): string {
-  if (entryDate != null && entryDate !== "") return entryDate;
+function resolveDocumentDate(documentDate?: string, timezone?: string): string {
+  if (documentDate != null && documentDate !== "") return documentDate;
   return getDateInTimezone(timezone) ?? formatDateTimeForApi(new Date());
 }
 
@@ -44,17 +44,17 @@ export async function createAndQueueSourceDocument(
   dependencies: CreateAndQueueSourceDocumentDependencies
 ): Promise<SourceDocumentSubmissionContract> {
   let createdUploadSessionId: string | null = null;
-  const storedEvidence = input.evidence.kind === "stored" ? input.evidence : null;
-  const inlineImages = input.evidence.kind === "inline" ? input.evidence.images : [];
-  validateAggregateFileCount(storedEvidence?.storedFileIds.length ?? inlineImages.length, 0);
+  const storedInput = input.input.kind === "stored" ? input.input : null;
+  const inlineImages = input.input.kind === "inline" ? input.input.images : [];
+  validateAggregateFileCount(storedInput?.storedFileIds.length ?? inlineImages.length, 0);
   if (
-    storedEvidence != null &&
-    (storedEvidence.text == null || storedEvidence.text === "") &&
-    storedEvidence.storedFileIds.length === 0
+    storedInput != null &&
+    (storedInput.text == null || storedInput.text === "") &&
+    storedInput.storedFileIds.length === 0
   ) {
     throw new ValidationError("Content (text or images) is required");
   }
-  if (input.evidence.kind === "inline" && inlineImages.length === 0) {
+  if (input.input.kind === "inline" && inlineImages.length === 0) {
     throw new ValidationError("Content (text or images) is required");
   }
 
@@ -73,20 +73,19 @@ export async function createAndQueueSourceDocument(
 
     return {
       ledgerId: input.ledgerId,
-      submittedText: storedEvidence?.text ?? null,
-      storedFileIds: [...(storedEvidence?.storedFileIds ?? []), ...processedImageIds],
-      entryDate: resolveEntryDate(input.entryDate, input.timezone),
+      input: {
+        text: storedInput?.text ?? null,
+        storedFileIds: [...(storedInput?.storedFileIds ?? []), ...processedImageIds],
+        documentDate: resolveDocumentDate(input.documentDate, input.timezone),
+      },
     };
   };
 
   let pending;
   try {
     pending = input.idempotency
-      ? await dependencies.submissions.createIdempotentPendingWithIntent(
-          input.idempotency,
-          prepareSubmission
-        )
-      : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+      ? await dependencies.submissions.submitIdempotently(input.idempotency, prepareSubmission)
+      : await dependencies.submissions.submit(await prepareSubmission());
   } catch (error) {
     if (createdUploadSessionId != null) {
       try {
@@ -97,6 +96,6 @@ export async function createAndQueueSourceDocument(
     }
     throw error;
   }
-  if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
+  if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.job);
   return toSourceDocumentSubmissionContract(pending.document, pending.revision);
 }

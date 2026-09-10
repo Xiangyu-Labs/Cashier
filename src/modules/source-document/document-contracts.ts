@@ -1,8 +1,9 @@
-import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
-import type { EntryCategoryDto, LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
+import type { SourceDocumentProcessingStatus, SourceDocumentTypeValue } from "./types";
+import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type {
   ApplicationErrorCode,
   ProcessingFailureCode,
+  RevisionFailureKind,
   SupportedSourceDocumentAction,
 } from "@/application/contracts";
 
@@ -20,10 +21,11 @@ interface SourceDocumentSummaryDto {
   version: number;
   ledgerId: string;
   title: string | null;
-  status: SourceDocumentStatusType;
+  processingStatus: SourceDocumentProcessingStatus | null;
   type: SourceDocumentTypeValue;
-  invalidReason: string | null;
-  entryDate: string | null;
+  failureKind: RevisionFailureKind | null;
+  failureMessage: string | null;
+  documentDate: string | null;
   createdAt: string;
   updatedAt: string;
   supportedActions: SupportedSourceDocumentAction[];
@@ -31,45 +33,23 @@ interface SourceDocumentSummaryDto {
   errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
 }
 
-interface SourceDocumentEvidenceDto {
+interface SourceDocumentInputDataDto {
   text: string | null;
   files: SourceDocumentStoredFileDto[];
 }
 
-export interface SourceDocumentDto extends SourceDocumentSummaryDto, SourceDocumentEvidenceDto {
+export interface SourceDocumentDetailDto
+  extends SourceDocumentSummaryDto, SourceDocumentInputDataDto {
   metadata: Record<string, unknown>;
   deletedAt: string | null;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
-  activeResultSummary?: SourceDocumentCandidateProjectionSummary;
+  activeResultSummary?: SourceDocumentActiveResultSummary;
 }
 
-export interface SourceDocumentCandidateProjectionSummary {
+export interface SourceDocumentActiveResultSummary {
   entryCount: number;
   total: string;
-}
-
-export interface SourceDocumentCandidateReviewEntryDto {
-  id: string;
-  itemName: string;
-  description: string | null;
-  category: EntryCategoryDto | null;
-  amount: string;
-  currency: string | null;
-  convertedAmount: string | null;
-}
-
-export interface SourceDocumentCandidateReviewRevisionDto {
-  entries: SourceDocumentCandidateReviewEntryDto[];
-  entryCount: number;
-  total: string;
-}
-
-export interface SourceDocumentCandidateReviewDto {
-  sourceDocumentId: string;
-  version: number;
-  active: SourceDocumentCandidateReviewRevisionDto;
-  candidate: SourceDocumentCandidateReviewRevisionDto;
 }
 
 export interface SourceDocumentListItemDto extends SourceDocumentSummaryDto {
@@ -78,10 +58,10 @@ export interface SourceDocumentListItemDto extends SourceDocumentSummaryDto {
   hasImages: boolean;
 }
 
-export interface SourceDocumentLightDto
-  extends Omit<SourceDocumentSummaryDto, "updatedAt">, SourceDocumentEvidenceDto {
+export interface SourceDocumentDetailPreviewDto
+  extends Omit<SourceDocumentSummaryDto, "updatedAt">, SourceDocumentInputDataDto {
   hasImages: boolean;
-  activeResultSummary?: SourceDocumentCandidateProjectionSummary;
+  activeResultSummary?: SourceDocumentActiveResultSummary;
 }
 
 export interface StreamPage {
@@ -99,12 +79,13 @@ export interface StreamTotalDto {
   unconvertedCount: number;
 }
 
-export interface SourceDocumentFullDto extends SourceDocumentEvidenceDto {
+export interface SourceDocumentInputDto extends SourceDocumentInputDataDto {
   id: string;
-  status: SourceDocumentStatusType;
+  processingStatus: SourceDocumentProcessingStatus | null;
+  documentDate: string | null;
   createdAt: string;
 }
 
-export interface SourceDocumentLightWithEntriesDto extends SourceDocumentLightDto {
+export interface SourceDocumentResultDto extends SourceDocumentDetailPreviewDto {
   ledgerEntries: SourceDocumentLedgerEntryDto[];
 }

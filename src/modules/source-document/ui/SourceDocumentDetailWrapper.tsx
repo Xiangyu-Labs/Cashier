@@ -2,7 +2,6 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useCallback } from "react";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
-import { SourceDocumentCandidateReviewDialog } from "./SourceDocumentCandidateReviewDialog";
 import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
 import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
@@ -63,29 +62,12 @@ export function SourceDocumentDetailWrapper({
     onClose,
   });
 
-  const {
-    acceptCandidate,
-    abandonCandidate,
-    cancelProcessing,
-    isAccepting,
-    isAbandoning,
-    isCancelling,
-  } = useSourceDocumentRecoveryMutations({
+  const { cancelProcessing, isCancelling } = useSourceDocumentRecoveryMutations({
     ledgerId: detailLedgerId ?? ledgerId,
     sourceDocumentId: id,
     version: sourceDocument?.version ?? null,
     onSuccess: onClose,
   });
-
-  const handleAcceptCandidate = useCallback(async () => {
-    if (sourceDocument == null) return;
-    await acceptCandidate();
-  }, [sourceDocument, acceptCandidate]);
-
-  const handleAbandonCandidate = useCallback(async () => {
-    if (sourceDocument == null) return;
-    await abandonCandidate();
-  }, [sourceDocument, abandonCandidate]);
 
   const handleReload = useCallback(async () => {
     const result = await refetch();
@@ -93,22 +75,6 @@ export function SourceDocumentDetailWrapper({
       throw result.error ?? new Error("Source document is unavailable");
     }
   }, [refetch]);
-
-  if (sourceDocument?.status === "candidate_pending") {
-    return (
-      <SourceDocumentCandidateReviewDialog
-        ledgerId={detailLedgerId ?? ledgerId}
-        sourceDocumentId={id}
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) onClose();
-        }}
-        {...(onBack !== undefined ? { onBack } : {})}
-        {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-        mainCurrency={mainCurrency}
-      />
-    );
-  }
 
   return (
     <SourceDocumentDetailModal
@@ -134,11 +100,7 @@ export function SourceDocumentDetailWrapper({
       onBatchUpdate={batchUpdate}
       onBatchDeleteEntries={batchDeleteEntries}
       onDelete={deleteDocument}
-      onAcceptCandidate={handleAcceptCandidate}
-      onAbandonCandidate={handleAbandonCandidate}
       onCancelProcessing={cancelProcessing}
-      isAccepting={isAccepting}
-      isAbandoning={isAbandoning}
       isCancelling={isCancelling}
     />
   );

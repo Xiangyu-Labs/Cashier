@@ -1,6 +1,6 @@
 export * from "./business-ports";
 export * from "./ledger-projections";
-export * from "./processing-intents";
+export * from "./processing-jobs";
 export * from "./source-document-reads";
 export * from "./revisions";
 export * from "./submissions";

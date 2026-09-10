@@ -131,12 +131,11 @@ export async function listLedgerEntryPage({
                   sourceDocument: {
                     columns: {
                       id: true,
-                      stateVersion: true,
+                      version: true,
                       ledgerId: true,
                       title: true,
-                      currentStatus: true,
                       type: true,
-                      entryDate: true,
+                      documentDate: true,
                       createdAt: true,
                       updatedAt: true,
                       deletedAt: true,

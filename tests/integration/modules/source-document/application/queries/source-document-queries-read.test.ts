@@ -25,7 +25,6 @@ describe("source-document full query", () => {
   it("returns full evidence without leaking storage locations", async () => {
     const docId = await createTestSourceDocument(getTestDb(), ledgerId, {
       text: "full payload",
-      status: "processing",
       imageUrls: ["/api/uploads/a.jpg"],
       entryDate: "2026-03-22",
     });
@@ -36,7 +35,7 @@ describe("source-document full query", () => {
       id: docId,
       text: "full payload",
       files: [expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" })],
-      status: "processing",
+      processingStatus: "completed",
       createdAt: expect.any(String),
     });
     expect(existing).not.toHaveProperty("imageUrls");
@@ -51,9 +50,8 @@ describe("source-document full query", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
         deletedAt: new Date(),
-        entryDate: "2026-03-22",
+        documentDate: "2026-03-22",
       })
       .returning();
 

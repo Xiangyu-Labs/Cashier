@@ -1,5 +1,5 @@
 "use server";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
@@ -29,19 +29,19 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     const validatedClientSubmissionId = clientSubmissionIdSchema.parse(clientSubmissionId);
     const payload = omitUndefinedProperties(validated);
     const timezone = payload.timezone ?? ledger.settings.timeZone ?? undefined;
-    const scheduleProcessing = (intent: ProcessingIntentContract) => {
-      scheduleProcessingAfter(intent);
+    const scheduleProcessing = (job: ProcessingJobContract) => {
+      scheduleProcessingAfter(job);
     };
 
     const result = await createAndQueueSourceDocument(
       {
         ledgerId,
-        evidence: {
+        input: {
           kind: "stored",
           ...(payload.text == null ? {} : { text: payload.text }),
           storedFileIds: payload.storedFileIds ?? [],
         },
-        ...(payload.entryDate == null ? {} : { entryDate: payload.entryDate }),
+        ...(payload.documentDate == null ? {} : { documentDate: payload.documentDate }),
         ...(timezone === undefined ? {} : { timezone }),
         idempotency: {
           principalType: "user",
@@ -52,9 +52,8 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
       },
       {
         submissions: {
-          createPendingWithIntent:
-            serverComposition.sourceDocumentAggregate.createProcessingDocument,
-          createIdempotentPendingWithIntent:
+          submit: serverComposition.sourceDocumentAggregate.createProcessingDocument,
+          submitIdempotently:
             serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument,
         },
         storedFiles: serverComposition.storedFiles,

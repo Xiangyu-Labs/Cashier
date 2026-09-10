@@ -83,8 +83,7 @@ export async function createTestSourceDocument(
           .insert(schema.sourceDocuments)
           .values({
             ledgerId,
-            currentStatus: status === "deleted" ? "completed" : status,
-            entryDate: overrides.entryDate,
+            documentDate: overrides.entryDate,
             title: overrides.title,
           })
           .returning()
@@ -99,12 +98,20 @@ export async function createTestSourceDocument(
             ledgerId,
             sourceDocumentId: doc.id,
             revisionNumber: 1,
-            submittedText: overrides.text ?? "Test document",
-            outcome:
-              status === "processing" || status === "invalid" || status === "failed"
-                ? status
-                : "completed",
-            finalizedAt: status === "processing" ? null : new Date(),
+            inputText: overrides.text ?? "Test document",
+            processingStatus:
+              status === "processing"
+                ? "processing"
+                : status === "invalid" || status === "failed"
+                  ? "failed"
+                  : "completed",
+            failureKind:
+              status === "invalid"
+                ? "invalid_input"
+                : status === "failed"
+                  ? "processing_error"
+                  : null,
+            finishedAt: status === "processing" ? null : new Date(),
           })
           .returning()
       )[0],
@@ -113,9 +120,9 @@ export async function createTestSourceDocument(
     await tx
       .update(schema.sourceDocuments)
       .set(
-        revision.outcome === "completed"
-          ? { activeRevisionId: revision.id, pendingRevisionId: null }
-          : { activeRevisionId: null, pendingRevisionId: revision.id }
+        revision.processingStatus === "completed"
+          ? { activeRevisionId: revision.id, latestSubmissionRevisionId: revision.id }
+          : { activeRevisionId: null, latestSubmissionRevisionId: revision.id }
       )
       .where(eq(schema.sourceDocuments.id, doc.id));
     for (const [position] of (overrides.imageUrls ?? []).entries()) {
@@ -166,10 +173,8 @@ export async function activateTestSourceDocumentProjection(
       .limit(1);
     const document = documents[0];
     if (document == null) throw new Error("Expected source document fixture");
-    let revisionId = document.activeRevisionId ?? document.pendingRevisionId;
+    let revisionId = document.activeRevisionId ?? document.latestSubmissionRevisionId;
     if (revisionId == null) {
-      const outcome =
-        document.currentStatus === "candidate_pending" ? "completed" : document.currentStatus;
       const revision = requireDefined(
         (
           await tx
@@ -178,9 +183,10 @@ export async function activateTestSourceDocumentProjection(
               ledgerId: document.ledgerId,
               sourceDocumentId: document.id,
               revisionNumber: 1,
-              submittedText: content.text,
-              outcome,
-              finalizedAt: outcome === "processing" ? null : new Date(),
+              inputText: content.text,
+              origin: "submission",
+              processingStatus: "completed",
+              finishedAt: new Date(),
             })
             .returning()
         )[0],
@@ -189,11 +195,7 @@ export async function activateTestSourceDocumentProjection(
       revisionId = revision.id;
       await tx
         .update(schema.sourceDocuments)
-        .set(
-          outcome === "completed"
-            ? { activeRevisionId: revisionId, pendingRevisionId: null }
-            : { activeRevisionId: null, pendingRevisionId: revisionId }
-        )
+        .set({ activeRevisionId: revisionId, latestSubmissionRevisionId: revisionId })
         .where(eq(schema.sourceDocuments.id, sourceDocumentId));
       for (const [position] of (content.imageUrls ?? []).entries()) {
         const file = requireDefined(

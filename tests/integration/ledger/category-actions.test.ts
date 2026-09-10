@@ -172,7 +172,6 @@ describe("deleteEntryCategoryAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        currentStatus: "completed",
         type: "ai_parsed",
       })
       .returning();
@@ -311,7 +310,6 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        currentStatus: "completed",
         type: "ai_parsed",
       })
       .returning();
@@ -362,7 +360,6 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        currentStatus: "completed",
         type: "ai_parsed",
       })
       .returning();
@@ -376,7 +373,6 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        currentStatus: "completed",
         deletedAt: new Date(),
         type: "ai_parsed",
       })

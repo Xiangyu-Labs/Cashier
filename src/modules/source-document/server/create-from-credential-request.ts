@@ -1,4 +1,4 @@
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import type { AuthenticatedServiceCredentialContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
@@ -20,8 +20,8 @@ export async function createSourceDocumentFromCredentialRequest(input: {
   requestId?: string;
   payload: PreparedApiV1SourceDocumentInput;
 }): Promise<SourceDocumentSubmissionContract> {
-  const scheduleProcessing = (intent: ProcessingIntentContract) => {
-    scheduleProcessingAfter(intent, input.requestId);
+  const scheduleProcessing = (job: ProcessingJobContract) => {
+    scheduleProcessingAfter(job, input.requestId);
   };
 
   const result = await createSourceDocumentFromCredential(
@@ -33,8 +33,8 @@ export async function createSourceDocumentFromCredentialRequest(input: {
     scheduleProcessing,
     {
       submissions: {
-        createPendingWithIntent: serverComposition.sourceDocumentAggregate.createProcessingDocument,
-        createIdempotentPendingWithIntent:
+        submit: serverComposition.sourceDocumentAggregate.createProcessingDocument,
+        submitIdempotently:
           serverComposition.sourceDocumentAggregate.createIdempotentProcessingDocument,
       },
       storedFiles: serverComposition.storedFiles,

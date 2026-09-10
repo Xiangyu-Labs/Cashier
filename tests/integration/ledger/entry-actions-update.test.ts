@@ -24,7 +24,6 @@ describe("updateLedgerEntryAction version CAS", () => {
     await db.insert(sourceDocuments).values({
       id: sourceDocumentId,
       ledgerId,
-      currentStatus: "completed",
       type: "manual",
     });
     await db.insert(ledgerEntries).values({
@@ -71,13 +70,13 @@ describe("updateLedgerEntryAction version CAS", () => {
     const document = await getTestDb().query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
-    expect(document?.stateVersion).toBe(1);
+    expect(document?.version).toBe(1);
   });
 
   it("returns stale without changing the entry", async () => {
     await getTestDb()
       .update(sourceDocuments)
-      .set({ stateVersion: 2 })
+      .set({ version: 2 })
       .where(eq(sourceDocuments.id, sourceDocumentId));
     await expect(
       updateLedgerEntryAction(ledgerId, { sourceDocumentId, expectedVersion: 1 }, entryId, {
@@ -119,7 +118,7 @@ describe("updateLedgerEntryAction version CAS", () => {
         where: eq(sourceDocuments.id, sourceDocumentId),
       }),
     ]);
-    expect(document?.stateVersion).toBe(2);
+    expect(document?.version).toBe(2);
     expect(
       (entry?.itemName === "Dinner" && entry.description == null) ||
         (entry?.itemName === "Lunch" && entry.description === "Team meal")

@@ -72,13 +72,7 @@
     "openCalculator": "Open calculator",
     "invalidValue": "Enter a valid amount."
   },
-  "CandidateAction": {
-    "accept": "Accept",
-    "acceptSuccess": "Candidate accepted",
-    "acceptError": "Failed to accept candidate",
-    "abandon": "Abandon",
-    "abandonSuccess": "Candidate abandoned",
-    "abandonError": "Failed to abandon candidate",
+  "SourceDocumentAction": {
     "cancelProcessing": "Cancel processing",
     "cancelSuccess": "Processing cancelled",
     "cancelError": "Could not cancel processing. The latest result has been refreshed.",
@@ -187,7 +181,6 @@
     "statusInvalid": "Invalid",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
-    "statusCandidatePending": "Candidate Pending",
     "statusSummary": "Status: {label}",
     "search": "Search",
     "searchPlaceholder": "Search title, name, or description",
@@ -559,7 +552,6 @@
     "processing": "Processing",
     "completed": "Completed",
     "cancelled": "Cancelled",
-    "candidatePendingTitle": "New result ready for review",
     "invalidNeedsCorrection": "Needs manual correction",
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
@@ -679,11 +671,5 @@
     "pendingChangesCloseDescription": "Save or discard the current edit before closing.",
     "pendingChangesLeaveDescription": "Save or discard the current edit before returning to preview.",
     "continueEditing": "Continue editing"
-  },
-  "ReviewDialog": {
-    "loading": "Loading comparison",
-    "loadError": "The review is no longer available.",
-    "reload": "Reload",
-    "noEntries": "No entries"
   }
 }

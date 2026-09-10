@@ -29,19 +29,16 @@ describe("source-document delete tolerance", () => {
 
   it("returns deleted false instead of throwing when the document is already soft deleted", async () => {
     const db = getTestDb();
-    const [document] = await db
-      .insert(sourceDocuments)
-      .values({ ledgerId, currentStatus: "completed" })
-      .returning();
+    const [document] = await db.insert(sourceDocuments).values({ ledgerId }).returning();
     await expect(
-      deleteSourceDocumentAction(ledgerId, document!.id, document!.stateVersion)
+      deleteSourceDocumentAction(ledgerId, document!.id, document!.version)
     ).resolves.toMatchObject({
       ok: true,
       sourceDocumentId: document!.id,
       data: { deleted: true },
     });
     await expect(
-      deleteSourceDocumentAction(ledgerId, document!.id, document!.stateVersion)
+      deleteSourceDocumentAction(ledgerId, document!.id, document!.version)
     ).rejects.toThrow();
   });
 });

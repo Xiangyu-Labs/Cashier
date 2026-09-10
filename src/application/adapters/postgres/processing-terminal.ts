@@ -3,12 +3,12 @@ import type { ProcessingLeaseContract } from "@/application/contracts";
 import { processingAttempts, processingOutbox } from "@/persistence";
 import type { PostgresTransaction } from "./transaction-locks";
 
-export type ProcessingTerminalOutcome = "completed" | "invalid" | "failed";
+export type ProcessingTerminalStatus = "completed" | "failed";
 
 export async function completeProcessingLeaseInTransaction(
   tx: PostgresTransaction,
   lease: ProcessingLeaseContract | null | undefined,
-  outcome: ProcessingTerminalOutcome,
+  processingStatus: ProcessingTerminalStatus,
   diagnostic?: { code?: string | null; correlationId?: string | null }
 ): Promise<boolean> {
   if (lease == null) return true;
@@ -16,14 +16,14 @@ export async function completeProcessingLeaseInTransaction(
   const row = await tx
     .update(processingOutbox)
     .set({
-      status: outcome === "failed" ? "failed" : "completed",
+      status: processingStatus,
       completedAt: now,
       claimToken: null,
       claimExpiresAt: null,
     })
     .where(
       and(
-        eq(processingOutbox.id, lease.intentId),
+        eq(processingOutbox.id, lease.jobId),
         eq(processingOutbox.status, "claimed"),
         eq(processingOutbox.claimToken, lease.claimToken),
         sql`${processingOutbox.claimExpiresAt} > now()`
@@ -39,10 +39,9 @@ export async function completeProcessingLeaseInTransaction(
   await tx
     .update(processingAttempts)
     .set({
-      status: outcome,
+      status: processingStatus,
       completedAt: now,
-      retryClassification:
-        outcome === "invalid" ? "invalid" : outcome === "failed" ? "retryable" : null,
+      retryClassification: processingStatus === "failed" ? "retryable" : null,
       diagnosticCode: diagnostic?.code ?? null,
       correlationId: diagnostic?.correlationId ?? null,
     })

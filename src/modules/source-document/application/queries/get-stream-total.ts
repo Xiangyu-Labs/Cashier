@@ -1,5 +1,5 @@
 import type { SourceDocumentReadPort } from "../ports";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import type { StreamTotalDto } from "../../contracts";
 import { normalizeSearchTerm } from "@/lib/search";
 
@@ -8,7 +8,7 @@ export interface GetStreamTotalInput {
   endDate?: string | null;
   minAmount?: string;
   maxAmount?: string;
-  statuses?: readonly SourceDocumentStatusType[];
+  statuses?: readonly SourceDocumentProcessingStatus[];
   search?: string;
 }
 

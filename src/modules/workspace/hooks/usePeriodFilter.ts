@@ -7,7 +7,7 @@ import {
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import {
   getScopedLedgerSearchParams,
   type LedgerFilterScope,
@@ -29,7 +29,7 @@ interface FilterParams {
   currency: string | null;
   minAmount: string | null;
   maxAmount: string | null;
-  statuses: SourceDocumentStatusType[];
+  statuses: SourceDocumentProcessingStatus[];
   search: string | null;
 }
 
@@ -46,7 +46,7 @@ interface UsePeriodFilterReturn {
   dateRange: { startDate: string | null; endDate: string | null };
   filters: EntryFilters;
   filterParams: FilterParams;
-  statuses: SourceDocumentStatusType[];
+  statuses: SourceDocumentProcessingStatus[];
   handlePeriodChange: (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
   handleAdvancedFiltersChange: (newFilters: LedgerAdvancedFilters) => void;
   handleFiltersChange: (newFilters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
@@ -104,7 +104,7 @@ export function usePeriodFilter({
     [filterParams, periodParams, timeZone]
   );
 
-  const statuses: SourceDocumentStatusType[] = useMemo(
+  const statuses: SourceDocumentProcessingStatus[] = useMemo(
     () => filterParams.statuses ?? [],
     [filterParams.statuses]
   );

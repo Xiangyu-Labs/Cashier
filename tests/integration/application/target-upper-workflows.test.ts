@@ -32,10 +32,10 @@ async function currentVersion(sourceDocumentId: string): Promise<number> {
   const db = getTestDb();
   const row = await db.query.sourceDocuments.findFirst({
     where: eq(sourceDocuments.id, sourceDocumentId),
-    columns: { stateVersion: true },
+    columns: { version: true },
   });
   if (row == null) throw new Error("Source document not found");
-  return row.stateVersion;
+  return row.version;
 }
 const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
   listStreamPageUseCase(ledgerId, input, {
@@ -64,19 +64,27 @@ describe("target upper workflows", () => {
       entryDate: "2026-07-15",
       entries: [entry],
     });
-    const pending = await postgresRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      submittedText: "pending",
+      input: { text: "pending", storedFileIds: [], documentDate: null },
     });
     await postgresRevisionAdapter.markProcessing({
       ledgerId,
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
     });
-    await db
-      .update(sourceDocuments)
-      .set({ currentStatus: "failed" })
-      .where(eq(sourceDocuments.id, completed.sourceDocumentId));
+    const failedSubmission = await postgresRevisionAdapter.createProcessingRevision({
+      ledgerId,
+      sourceDocumentId: completed.sourceDocumentId,
+      input: { text: "failed retry", storedFileIds: [], documentDate: null },
+    });
+    await postgresRevisionAdapter.recordProcessingFailure({
+      ledgerId,
+      sourceDocumentId: completed.sourceDocumentId,
+      revisionId: failedSubmission.revision.id,
+      failureKind: "processing_error",
+      failureMessage: "processing failed",
+    });
 
     const first = await listStreamPage(ledgerId, { limit: 1 });
     const second = await listStreamPage(ledgerId, {
@@ -89,10 +97,11 @@ describe("target upper workflows", () => {
     );
     expect(
       [...first.items, ...second.items].find((item) => item.id === completed.sourceDocumentId)
-        ?.status
+        ?.processingStatus
     ).toBe("failed");
     expect(
-      [...first.items, ...second.items].find((item) => item.id === pending.document.id)?.status
+      [...first.items, ...second.items].find((item) => item.id === pending.document.id)
+        ?.processingStatus
     ).toBe("processing");
   });
 
@@ -112,16 +121,17 @@ describe("target upper workflows", () => {
     const activeEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentRevisionId, created.revisionId),
     });
-    const failedPending = await postgresRevisionAdapter.createPending({
+    const failedPending = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
-      submittedText: "failed replacement",
+      input: { text: "failed replacement", storedFileIds: [], documentDate: null },
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
       revisionId: failedPending.revision.id,
-      outcome: "failed",
+      failureKind: "processing_error",
+      failureMessage: "processing failed",
     });
 
     const stream = await listLedgerEntries(ledgerId, { limit: 20 });
@@ -154,7 +164,7 @@ describe("target upper workflows", () => {
       convertedAmount: stream.items[0]!.convertedAmount,
       exchangeRate: stream.items[0]!.exchangeRate,
       categoryId: stream.items[0]!.categoryId,
-      sourceDocument: expect.objectContaining({ status: "completed" }),
+      sourceDocument: expect.objectContaining({ id: created.sourceDocumentId }),
     });
     expect(stream.items[0]?.sourceDocument).not.toHaveProperty("text");
     expect(summary.convertedTotal).toEqual({ total: "12.5", currency: "CNY" });
@@ -231,7 +241,7 @@ describe("target upper workflows", () => {
           currency: "USD",
           convertedAmount: "98.720",
           exchangeRate: "8.000000000000",
-          sourceDocument: expect.objectContaining({ entryDate: "2026-07-14" }),
+          sourceDocument: expect.objectContaining({ documentDate: "2026-07-14" }),
         }),
         expect.objectContaining({ id: ids[1], itemName: "Order discount", amount: "-1.110" }),
         expect.objectContaining({ id: ids[2], itemName: "Service fee", amount: "0.500" }),
@@ -244,7 +254,7 @@ describe("target upper workflows", () => {
       currency: "USD",
       convertedAmount: "98.720",
       exchangeRate: "8.000000000000",
-      sourceDocument: { id: created.sourceDocumentId, entryDate: "2026-07-14" },
+      sourceDocument: { id: created.sourceDocumentId, documentDate: "2026-07-14" },
     });
     expect(detail?.createdAt).toBe(transactionAt);
     expect(stats.convertedTotal).toEqual({ total: "93.84", currency: "CNY" });
@@ -328,7 +338,7 @@ describe("target upper workflows", () => {
       serverComposition.sourceDocumentAggregate.saveChanges({
         ledgerId,
         sourceDocumentId: created.sourceDocumentId,
-        expectedVersion: beforeDocument!.stateVersion,
+        expectedVersion: beforeDocument!.version,
         entries: [
           { ledgerEntryId: beforeEntryCount[0]!.id, data: { categoryId: otherCategory!.id } },
         ],
@@ -386,7 +396,7 @@ describe("target upper workflows", () => {
 
     expect(updated).toMatchObject({ ok: true, data: { ledgerEntryId: original!.id } });
     expect(document?.activeRevisionId).not.toBe(created.revisionId);
-    expect(document?.stateVersion).toBe(initialVersion + 1);
+    expect(document?.version).toBe(initialVersion + 1);
     expect(revisions).toHaveLength(2);
     expect(active).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(archived).toHaveLength(1);
@@ -406,9 +416,9 @@ describe("target upper workflows", () => {
       .insert(entryCategories)
       .values({ ledgerId: otherLedgerId, name: "Other" })
       .returning();
-    const pending = await postgresRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      submittedText: "Lunch",
+      input: { text: "Lunch", storedFileIds: [], documentDate: null },
     });
     await postgresLedgerProjectionAdapter.activateRevision({
       ledgerId,
@@ -447,7 +457,7 @@ describe("target upper workflows", () => {
         ledgerId,
         target: {
           sourceDocumentId: pending.document.id,
-          expectedVersion: afterUpdate!.stateVersion,
+          expectedVersion: afterUpdate!.version,
         },
         ledgerEntryId: original!.id,
         categoryId: otherCategory!.id,
@@ -463,7 +473,7 @@ describe("target upper workflows", () => {
         ledgerId: otherLedgerId,
         target: {
           sourceDocumentId: pending.document.id,
-          expectedVersion: afterUpdate!.stateVersion,
+          expectedVersion: afterUpdate!.version,
         },
         ledgerEntryId: original!.id,
         amount: "99",
@@ -475,7 +485,7 @@ describe("target upper workflows", () => {
         ledgerId,
         target: {
           sourceDocumentId: pending.document.id,
-          expectedVersion: afterUpdate!.stateVersion,
+          expectedVersion: afterUpdate!.version,
         },
         ledgerEntryId: original!.id,
       })

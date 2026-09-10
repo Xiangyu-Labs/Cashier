@@ -1,14 +1,11 @@
 import { and, desc, eq, inArray, isNotNull, isNull, lt, max, or, sql } from "drizzle-orm";
 import type {
-  RevisionOutcome,
+  RevisionProcessingStatus,
   SourceDocumentContract,
   SourceDocumentPort,
   SourceDocumentRevisionContract,
 } from "@/application/contracts";
-import {
-  deriveSourceDocumentCapabilities,
-  transitionSourceDocument,
-} from "@/modules/source-document/application/source-document-state";
+import { deriveSourceDocumentCapabilities } from "@/modules/source-document/application/source-document-state";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { MAX_FILES, MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
@@ -30,9 +27,11 @@ const MAX_PAGE_SIZE = 100;
 export interface CreatePendingRevisionInput {
   ledgerId: string;
   sourceDocumentId?: string;
-  submittedText?: string | null;
-  storedFileIds?: readonly string[];
-  entryDate?: string | null;
+  input: {
+    text: string | null;
+    storedFileIds: readonly string[];
+    documentDate: string | null;
+  };
 }
 
 function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
@@ -49,27 +48,29 @@ function mapRevision(
   return {
     id: row.id,
     sourceDocumentId: row.sourceDocumentId,
-    outcome: row.outcome as RevisionOutcome,
+    origin: row.origin,
+    processingStatus: row.processingStatus,
     submittedAt: row.submittedAt.toISOString(),
-    finalizedAt: row.finalizedAt?.toISOString() ?? null,
+    finishedAt: row.finishedAt?.toISOString() ?? null,
   };
 }
 
 function mapDocument(
   row: typeof sourceDocuments.$inferSelect,
-  _pendingOutcome: RevisionOutcome | null
+  latestSubmissionStatus: RevisionProcessingStatus | null
 ): SourceDocumentContract {
   return {
     id: row.id,
     ledgerId: row.ledgerId,
-    version: row.stateVersion,
+    version: row.version,
     activeRevisionId: row.activeRevisionId,
-    pendingRevisionId: row.pendingRevisionId,
+    latestSubmissionRevisionId: row.latestSubmissionRevisionId,
     supportedActions:
       row.deletedAt == null
         ? deriveSourceDocumentCapabilities({
-            status: row.currentStatus,
-            hasActiveResult: row.activeRevisionId != null,
+            activeRevisionId: row.activeRevisionId,
+            latestSubmissionStatus,
+            hasSubmissionInput: row.latestSubmissionRevisionId != null,
           }).supportedActions
         : [],
   };
@@ -96,35 +97,37 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } {
   }
 }
 
-async function pendingOutcomes(rows: readonly (typeof sourceDocuments.$inferSelect)[]) {
-  const result = new Map<string, RevisionOutcome>();
-  const pendingRevisionIds = rows.flatMap((row) =>
-    row.pendingRevisionId == null ? [] : [row.pendingRevisionId]
+async function latestSubmissionStatuses(rows: readonly (typeof sourceDocuments.$inferSelect)[]) {
+  const result = new Map<string, RevisionProcessingStatus>();
+  const latestSubmissionRevisionIds = rows.flatMap((row) =>
+    row.latestSubmissionRevisionId == null ? [] : [row.latestSubmissionRevisionId]
   );
-  if (pendingRevisionIds.length === 0) return result;
+  if (latestSubmissionRevisionIds.length === 0) return result;
 
   const revisions = await db
     .select({
       id: sourceDocumentRevisions.id,
       sourceDocumentId: sourceDocumentRevisions.sourceDocumentId,
-      outcome: sourceDocumentRevisions.outcome,
+      processingStatus: sourceDocumentRevisions.processingStatus,
     })
     .from(sourceDocumentRevisions)
-    .where(inArray(sourceDocumentRevisions.id, pendingRevisionIds));
+    .where(inArray(sourceDocumentRevisions.id, latestSubmissionRevisionIds));
   const expectedRevisionByDocument = new Map(
     rows.flatMap((row) =>
-      row.pendingRevisionId == null ? [] : [[row.id, row.pendingRevisionId] as const]
+      row.latestSubmissionRevisionId == null
+        ? []
+        : [[row.id, row.latestSubmissionRevisionId] as const]
     )
   );
   for (const revision of revisions) {
     if (expectedRevisionByDocument.get(revision.sourceDocumentId) === revision.id) {
-      result.set(revision.sourceDocumentId, revision.outcome as RevisionOutcome);
+      result.set(revision.sourceDocumentId, revision.processingStatus as RevisionProcessingStatus);
     }
   }
   return result;
 }
 
-export async function createPendingRevisionInTransaction(
+export async function createProcessingRevisionInTransaction(
   tx: PostgresTransaction,
   input: CreatePendingRevisionInput
 ): Promise<{ document: SourceDocumentContract; revision: SourceDocumentRevisionContract }> {
@@ -155,29 +158,25 @@ export async function createPendingRevisionInTransaction(
             id: sourceDocumentId,
             ledgerId: input.ledgerId,
             type: "ai_parsed",
-            ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
           })
           .returning()
           .then((rows) => rows[0]!)
       : await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
 
-  if (document.pendingRevisionId != null) {
+  if (document.latestSubmissionRevisionId != null) {
     const currentPending = await tx
-      .select({ outcome: sourceDocumentRevisions.outcome })
+      .select({ processingStatus: sourceDocumentRevisions.processingStatus })
       .from(sourceDocumentRevisions)
       .where(
         and(
           eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-          eq(sourceDocumentRevisions.id, document.pendingRevisionId),
+          eq(sourceDocumentRevisions.id, document.latestSubmissionRevisionId),
           eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId)
         )
       )
       .then((rows) => rows[0]);
-    if (
-      currentPending?.outcome === "processing" ||
-      (currentPending?.outcome === "completed" && document.activeRevisionId != null)
-    ) {
-      throw new ConflictError("Source document already has a pending revision");
+    if (currentPending?.processingStatus === "processing") {
+      throw new ConflictError("Source document is already processing a submission");
     }
   }
 
@@ -192,15 +191,17 @@ export async function createPendingRevisionInTransaction(
       ledgerId: input.ledgerId,
       sourceDocumentId,
       revisionNumber: (aggregate?.value ?? 0) + 1,
-      submittedText: input.submittedText ?? null,
-      outcome: "processing",
+      origin: "submission",
+      inputText: input.input.text,
+      inputDocumentDate: input.input.documentDate,
+      processingStatus: "processing",
     })
     .returning()
     .then((rows) => rows[0]);
   if (revision == null) throw new ConflictError("Failed to create source document revision");
 
-  const fileIds = [...new Set(input.storedFileIds ?? [])];
-  if (fileIds.length !== (input.storedFileIds?.length ?? 0)) {
+  const fileIds = [...new Set(input.input.storedFileIds)];
+  if (fileIds.length !== input.input.storedFileIds.length) {
     throw new ValidationError("A stored file may only appear once in a revision");
   }
   const foundStoredFiles =
@@ -251,12 +252,8 @@ export async function createPendingRevisionInTransaction(
   const updatedDocument = await tx
     .update(sourceDocuments)
     .set({
-      pendingRevisionId: revision.id,
-      currentStatus: "processing",
-      ...(existingDocument == null
-        ? {}
-        : { stateVersion: sql`${sourceDocuments.stateVersion} + 1` }),
-      ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+      latestSubmissionRevisionId: revision.id,
+      ...(existingDocument == null ? {} : { version: sql`${sourceDocuments.version} + 1` }),
       updatedAt: new Date(),
     })
     .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
@@ -273,7 +270,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
       where: activeDocumentWhere(ledgerId, id),
     });
     if (document == null) return null;
-    const outcomes = await pendingOutcomes([document]);
+    const outcomes = await latestSubmissionStatuses([document]);
     return mapDocument(document, outcomes.get(document.id) ?? null);
   },
 
@@ -304,7 +301,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
       .limit(boundedLimit + 1);
     const hasNext = rows.length > boundedLimit;
     const pageRows = hasNext ? rows.slice(0, boundedLimit) : rows;
-    const outcomes = await pendingOutcomes(pageRows);
+    const outcomes = await latestSubmissionStatuses(pageRows);
     const last = pageRows.at(-1);
     return {
       items: pageRows.map((row) => mapDocument(row, outcomes.get(row.id) ?? null)),
@@ -312,8 +309,8 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
     };
   },
 
-  async createPending(input) {
-    return db.transaction(async (tx) => createPendingRevisionInTransaction(tx, input));
+  async createProcessingRevision(input) {
+    return db.transaction(async (tx) => createProcessingRevisionInTransaction(tx, input));
   },
 
   async markProcessing(input) {
@@ -325,16 +322,16 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
-      if (document.pendingRevisionId !== input.revisionId) return false;
+      if (document.latestSubmissionRevisionId !== input.revisionId) return false;
       const updated = await tx
         .update(sourceDocumentRevisions)
-        .set({ outcome: "processing" })
+        .set({ processingStatus: "processing" })
         .where(
           and(
             eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
             eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
             eq(sourceDocumentRevisions.id, input.revisionId),
-            eq(sourceDocumentRevisions.outcome, "processing")
+            eq(sourceDocumentRevisions.processingStatus, "processing")
           )
         )
         .returning({ id: sourceDocumentRevisions.id });
@@ -343,7 +340,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
     });
   },
 
-  async preserveTerminalOutcome(input) {
+  async recordProcessingFailure(input) {
     return db.transaction(async (tx) => {
       await lockLedgerForUpdate(tx, input.ledgerId);
       let document;
@@ -353,9 +350,9 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
-      if (document.pendingRevisionId !== input.revisionId) return false;
+      if (document.latestSubmissionRevisionId !== input.revisionId) return false;
       const revision = await tx
-        .select({ outcome: sourceDocumentRevisions.outcome })
+        .select({ processingStatus: sourceDocumentRevisions.processingStatus })
         .from(sourceDocumentRevisions)
         .where(
           and(
@@ -366,9 +363,9 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         )
         .for("update")
         .then((rows) => rows[0]);
-      if (revision?.outcome !== "processing") return false;
+      if (revision?.processingStatus !== "processing") return false;
       if (
-        !(await completeProcessingLeaseInTransaction(tx, input.lease, input.outcome, {
+        !(await completeProcessingLeaseInTransaction(tx, input.lease, "failed", {
           code: input.failureCode ?? null,
         }))
       ) {
@@ -377,36 +374,32 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
       const updated = await tx
         .update(sourceDocumentRevisions)
         .set({
-          outcome: input.outcome,
-          invalidReason: input.invalidReason ?? null,
+          processingStatus: "failed",
+          failureKind: input.failureKind,
+          failureMessage: input.failureMessage,
           failureCode: input.failureCode ?? null,
-          finalizedAt: new Date(),
+          finishedAt: new Date(),
         })
         .where(
           and(
             eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
             eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
             eq(sourceDocumentRevisions.id, input.revisionId),
-            or(eq(sourceDocumentRevisions.outcome, "processing"))
+            eq(sourceDocumentRevisions.processingStatus, "processing")
           )
         )
         .returning({ id: sourceDocumentRevisions.id });
       if (updated.length === 0) return false;
-      const { state } = transitionSourceDocument(
-        { status: "processing", hasActiveResult: document.activeRevisionId != null },
-        { type: "processing_failed", outcome: input.outcome }
-      );
       await tx
         .update(sourceDocuments)
         .set({
-          currentStatus: state.status,
-          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          version: sql`${sourceDocuments.version} + 1`,
           updatedAt: new Date(),
         })
         .where(
           and(
             activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
-            eq(sourceDocuments.pendingRevisionId, input.revisionId)
+            eq(sourceDocuments.latestSubmissionRevisionId, input.revisionId)
           )
         );
       return true;

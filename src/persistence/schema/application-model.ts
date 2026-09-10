@@ -21,13 +21,20 @@ import { sourceDocuments } from "./source-document";
 
 const requiredTimestamp = (name: string) => timestamp(name, { withTimezone: true }).notNull();
 
-export const revisionOutcomeEnum = pgEnum("revision_outcome", [
+export const revisionProcessingStatusEnum = pgEnum("revision_processing_status", [
   "processing",
   "completed",
-  "invalid",
   "failed",
   "cancelled",
-  "abandoned",
+]);
+export const revisionOriginEnum = pgEnum("revision_origin", [
+  "submission",
+  "manual_edit",
+  "manual_entry",
+]);
+export const revisionFailureKindEnum = pgEnum("revision_failure_kind", [
+  "invalid_input",
+  "processing_error",
 ]);
 export const processingAttemptStatusEnum = pgEnum("processing_attempt_status", [
   "queued",
@@ -73,12 +80,15 @@ export const sourceDocumentRevisions = pgTable(
     sourceDocumentId: uuid("source_document_id").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     title: text("title"),
-    submittedText: text("submitted_text"),
-    outcome: revisionOutcomeEnum("outcome").notNull().default("processing"),
-    invalidReason: text("invalid_reason"),
+    origin: revisionOriginEnum("origin").notNull().default("submission"),
+    inputText: text("input_text"),
+    inputDocumentDate: text("input_document_date"),
+    processingStatus: revisionProcessingStatusEnum("processing_status"),
+    failureKind: revisionFailureKindEnum("failure_kind"),
     failureCode: text("failure_code"),
+    failureMessage: text("failure_message"),
     submittedAt: requiredTimestamp("submitted_at").$defaultFn(() => new Date()),
-    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
@@ -97,7 +107,10 @@ export const sourceDocumentRevisions = pgTable(
       table.sourceDocumentId,
       table.revisionNumber
     ),
-    index("idx_source_document_revisions_ledger_outcome").on(table.ledgerId, table.outcome),
+    index("idx_source_document_revisions_ledger_processing_status").on(
+      table.ledgerId,
+      table.processingStatus
+    ),
     index("idx_source_document_revisions_document_created").on(
       table.sourceDocumentId,
       table.createdAt

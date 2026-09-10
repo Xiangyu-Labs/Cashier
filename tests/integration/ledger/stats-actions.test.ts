@@ -26,9 +26,8 @@ async function seedEntry(
     .values({
       id: uuidv4(),
       ledgerId,
-      currentStatus: "completed",
       type: "ai_parsed",
-      entryDate: opts.entryDate ?? null,
+      documentDate: opts.entryDate ?? null,
     })
     .returning();
   expect(doc).toBeDefined();

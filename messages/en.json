@@ -25,39 +25,6 @@
     "processing_timeout": "Processing Timed Out",
     "processing_timeout_desc": "Processing took too long and was stopped. Please retry."
   },
-  "CandidateAction": {
-    "accept": "Accept",
-    "acceptSuccess": "Candidate accepted",
-    "acceptError": "Failed to accept candidate",
-    "abandon": "Abandon",
-    "abandonSuccess": "Candidate abandoned",
-    "abandonError": "Failed to abandon candidate",
-    "cancelProcessing": "Cancel processing",
-    "cancelSuccess": "Processing cancelled",
-    "cancelError": "Could not cancel processing. The latest result has been refreshed.",
-    "retry": "Retry",
-    "editRetry": "Edit & Retry",
-    "retrySuccess": "Retry started",
-    "retrySuccessDescription": "The document is being parsed again.",
-    "retryError": "Retry failed",
-    "retryErrorDescription": "The original result was kept. Please try again."
-  },
-  "CandidateReview": {
-    "title": "Review parsing result",
-    "original": "Original parsing result",
-    "candidate": "New parsing result",
-    "entryCount": "{count} entries",
-    "keepOriginal": "Keep original result",
-    "acceptCandidate": "Accept new result",
-    "abandonConfirmTitle": "Keep the original result?",
-    "abandonConfirmDescription": "The new parsing result will be discarded. The current ledger entries will remain unchanged."
-  },
-  "ReviewDialog": {
-    "loading": "Loading comparison",
-    "loadError": "The review is no longer available.",
-    "reload": "Reload",
-    "noEntries": "No entries"
-  },
   "LedgerPage": {
     "notFound": "Ledger not found",
     "settings": "Settings",
@@ -158,7 +125,6 @@
     "statusInvalid": "Invalid",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
-    "statusCandidatePending": "Candidate Pending",
     "statusSummary": "Status: {label}",
     "search": "Search",
     "searchPlaceholder": "Search title, name, or description",
@@ -257,7 +223,6 @@
     "processing": "Processing",
     "completed": "Completed",
     "cancelled": "Cancelled",
-    "candidatePendingTitle": "New result ready for review",
     "invalidNeedsCorrection": "Needs manual correction",
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
@@ -583,7 +548,7 @@
     "validationFailed": "The settings are invalid. Check them and try again.",
     "updateConflict": "Not saved. The settings have changed. Cancel editing and make your changes again.",
     "save": "Save",
-    "saving": "Saving…",
+    "saving": "(Saving...)",
     "serverChangedWhileEditing": "Server settings changed. Saving will apply this draft to the latest version.",
     "mainCurrencyMustBeEnabled": "The main currency must be included in preferred currencies.",
     "categoryCreated": "Category created successfully",
@@ -605,7 +570,6 @@
     "createFailed": "Create failed",
     "deleteFailed": "Delete failed",
     "categoryDescription": "Category Description",
-    "saving": "(Saving...)",
     "generatingMetadata": "Generating description and icon...",
     "retryMetadata": "Retry metadata",
     "categoryItemCount": "{count} {count, plural, one {item} other {items}}",
@@ -948,5 +912,16 @@
   },
   "Currency": {
     "conversionUnavailable": "Conversion unavailable"
+  },
+  "SourceDocumentAction": {
+    "cancelProcessing": "Cancel processing",
+    "cancelSuccess": "Processing cancelled",
+    "cancelError": "Could not cancel processing. The latest result has been refreshed.",
+    "retry": "Retry",
+    "editRetry": "Edit & Retry",
+    "retrySuccess": "Retry started",
+    "retrySuccessDescription": "The document is being parsed again.",
+    "retryError": "Retry failed",
+    "retryErrorDescription": "The original result was kept. Please try again."
   }
 }

@@ -59,14 +59,14 @@ export function buildSubmitPayload(
     image.storedFileId == null ? [] : [image.storedFileId]
   );
   return {
-    entryDate: formatDateTimeForApi(entryDate),
+    documentDate: formatDateTimeForApi(entryDate),
     ...(timeZone != null
       ? { timezone: timeZone }
       : typeof Intl !== "undefined"
         ? { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
         : {}),
-    ...(text !== "" ? { text } : {}),
+    text: text === "" ? null : text,
     ...(newImages.length > 0 ? { images: newImages } : {}),
-    ...(storedFileIds.length > 0 ? { storedFileIds } : {}),
+    storedFileIds,
   };
 }

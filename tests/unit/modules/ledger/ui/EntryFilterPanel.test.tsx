@@ -85,7 +85,7 @@ describe("EntryFilterPanel", () => {
     expect(screen.queryByRole("dialog", { name: "筛选" })).not.toBeInTheDocument();
   });
 
-  it("renders status checkboxes for all five active statuses", () => {
+  it("renders status checkboxes for all processing statuses", () => {
     render(
       <EntryFilterPanel
         filters={{}}
@@ -98,13 +98,12 @@ describe("EntryFilterPanel", () => {
     // Check that the status section header is rendered
     expect(screen.getByText("状态")).toBeDefined();
 
-    // Check that all five status checkbox labels are rendered
+    // Check that all processing status checkbox labels are rendered
     // "处理中" appears as a checkbox label, and "进行中" as a preset button
     expect(screen.getByText("处理中")).toBeDefined(); // checkbox label
     expect(screen.getByText("已完成")).toBeDefined();
-    expect(screen.getByText("无效")).toBeDefined();
     expect(screen.getByText("失败")).toBeDefined();
-    expect(screen.getByText("待核准")).toBeDefined();
+    expect(screen.getByText("已取消")).toBeDefined();
   });
 
   it("keeps needs_attention preset in the draft until Apply", async () => {
@@ -127,11 +126,7 @@ describe("EntryFilterPanel", () => {
     expect(onFiltersChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
     expect(onFiltersChange).toHaveBeenCalledTimes(1);
-    expect(onFiltersChange.mock.calls[0]?.[0].statuses).toEqual([
-      "candidate_pending",
-      "invalid",
-      "failed",
-    ]);
+    expect(onFiltersChange.mock.calls[0]?.[0].statuses).toEqual(["failed", "cancelled"]);
   });
 
   it("keeps in_progress preset in the draft until Apply", async () => {

@@ -242,13 +242,13 @@ describe("toParseSourceDocumentOutput", () => {
     const result: ParsePipelineResult = {
       kind: "invalid",
       title: "Blurred receipt",
-      invalidReason: "Results inconsistent",
+      failureMessage: "Results inconsistent",
     };
 
     expect(toParseSourceDocumentOutput(result)).toEqual({
       ledgerEntries: [],
       title: "Blurred receipt",
-      invalidReason: "Results inconsistent",
+      failureMessage: "Results inconsistent",
       verificationStatus: "invalid",
     });
   });

@@ -1,6 +1,6 @@
 import type {
   ProcessingFailureCode,
-  ProcessingIntentContract,
+  ProcessingJobContract,
   ProcessingPort,
   RevisionProcessorPort,
   SourceDocumentPort,
@@ -37,19 +37,19 @@ function toFailureCode(error: unknown): ProcessingFailureCode {
   return "processing_unavailable";
 }
 
-export interface ExecuteSingleProcessingIntentDependencies {
-  createIntentAdapter: () => Pick<ProcessingPort, "claim" | "renew" | "complete">;
+export interface ExecuteSingleProcessingJobDependencies {
+  createProcessingJobAdapter: () => Pick<ProcessingPort, "claim" | "renew" | "complete">;
   createRevisionProcessor: () => RevisionProcessorPort;
-  preserveTerminalOutcome: SourceDocumentPort["preserveTerminalOutcome"];
+  recordProcessingFailure: SourceDocumentPort["recordProcessingFailure"];
 }
 
-export function createExecuteSingleProcessingIntent(
-  dependencies: ExecuteSingleProcessingIntentDependencies
-): (intent: ProcessingIntentContract) => Promise<boolean> {
-  return async (intent) => {
-    const adapter = dependencies.createIntentAdapter();
+export function createExecuteSingleProcessingJob(
+  dependencies: ExecuteSingleProcessingJobDependencies
+): (job: ProcessingJobContract) => Promise<boolean> {
+  return async (job) => {
+    const adapter = dependencies.createProcessingJobAdapter();
     const processor = dependencies.createRevisionProcessor();
-    const claim = await adapter.claim(intent.id);
+    const claim = await adapter.claim(job.id);
     if (claim == null) return false;
 
     const controller = new AbortController();
@@ -59,10 +59,10 @@ export function createExecuteSingleProcessingIntent(
     const renewLease = async (): Promise<void> => {
       if (stopped || controller.signal.aborted) return;
       try {
-        const renewedUntil = await adapter.renew(claim.intent.id, claim.claimToken);
+        const renewedUntil = await adapter.renew(claim.job.id, claim.claimToken);
         if (renewedUntil == null) {
           logger.warn(
-            { processingIntentSubject: logIdentifier("processing-intent", claim.intent.id) },
+            { processingJobSubject: logIdentifier("processing-job", claim.job.id) },
             "Processing lease was lost or cancelled; aborting worker"
           );
           controller.abort();
@@ -71,7 +71,7 @@ export function createExecuteSingleProcessingIntent(
       } catch (error) {
         logger.warn(
           {
-            processingIntentSubject: logIdentifier("processing-intent", claim.intent.id),
+            processingJobSubject: logIdentifier("processing-job", claim.job.id),
             errorCode: error instanceof AppError ? error.code : "UNKNOWN",
           },
           "Processing lease renewal failed; aborting worker"
@@ -88,27 +88,28 @@ export function createExecuteSingleProcessingIntent(
     try {
       const result = await processor.process({
         ledgerId: claim.ledgerId,
-        sourceDocumentId: claim.intent.sourceDocumentId,
-        revisionId: claim.intent.revisionId,
+        sourceDocumentId: claim.job.sourceDocumentId,
+        revisionId: claim.job.revisionId,
         signal: controller.signal,
-        lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
+        lease: { jobId: claim.job.id, claimToken: claim.claimToken },
       });
       if (result.completion === "residual") {
         await adapter.complete({
-          intentId: claim.intent.id,
+          jobId: claim.job.id,
           claimToken: claim.claimToken,
-          outcome: result.outcome,
+          processingStatus: result.processingStatus,
         });
       }
     } catch (error) {
       if (error instanceof ProcessingCancelledError || controller.signal.aborted) return true;
-      await dependencies.preserveTerminalOutcome({
+      await dependencies.recordProcessingFailure({
         ledgerId: claim.ledgerId,
-        sourceDocumentId: claim.intent.sourceDocumentId,
-        revisionId: claim.intent.revisionId,
-        outcome: "failed",
+        sourceDocumentId: claim.job.sourceDocumentId,
+        revisionId: claim.job.revisionId,
+        failureKind: "processing_error",
+        failureMessage: error instanceof Error ? error.message : "Processing failed",
         failureCode: toFailureCode(error),
-        lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
+        lease: { jobId: claim.job.id, claimToken: claim.claimToken },
       });
     } finally {
       stopped = true;

@@ -47,7 +47,7 @@ describe("createSourceDocumentFromCredential", () => {
     const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0];
     expect(callInput).toEqual({
       ledgerId: "ledger-1",
-      evidence: { kind: "inline", images: [preparedImage] },
+      input: { kind: "inline", images: [preparedImage] },
     });
     expect(callInput).not.toHaveProperty("ledger");
   });

@@ -281,10 +281,10 @@ describe("ledger-url-params", () => {
   describe("statuses in updateLedgerSearchParams", () => {
     it("sets statuses parameter when provided", () => {
       const params = updateLedgerSearchParams(new URLSearchParams(""), {
-        statuses: ["failed", "invalid"],
+        statuses: ["failed", "failed"],
       });
 
-      expect(params.get("statuses")).toBe("invalid,failed");
+      expect(params.get("statuses")).toBe("failed");
     });
 
     it("deletes statuses parameter when the filter is cleared", () => {
@@ -311,7 +311,7 @@ describe("ledger-url-params", () => {
           period: "all",
           minAmount: null,
           maxAmount: null,
-          statuses: ["candidate_pending", "invalid", "failed"],
+          statuses: ["cancelled", "failed", "failed"],
           tab: "stream",
         }
       );
@@ -321,7 +321,7 @@ describe("ledger-url-params", () => {
       expect(params.get("endDate")).toBeNull();
       expect(params.get("minAmount")).toBeNull();
       expect(params.get("maxAmount")).toBeNull();
-      expect(params.get("statuses")).toBe("invalid,failed,candidate_pending");
+      expect(params.get("statuses")).toBe("failed,cancelled");
       expect(params.get("tab")).toBe("stream");
     });
   });

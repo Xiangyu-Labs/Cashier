@@ -267,6 +267,13 @@
       "when": 1789011961222,
       "tag": "0037_remove_duplicate_detection",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1789019577559,
+      "tag": "0038_source_document_lifecycle",
+      "breakpoints": true
     }
   ]
 }

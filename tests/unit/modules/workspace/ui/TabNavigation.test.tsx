@@ -66,7 +66,7 @@ describe("TabNavigation", () => {
     expect(onTabIntent).toHaveBeenCalledWith("details");
   });
 
-  it("preloads new-record code on pointer and keyboard intent without opening", async () => {
+  it("preloads new-record code on pointer and keyboard job without opening", async () => {
     const user = userEvent.setup();
     const onInputIntent = vi.fn();
     const onOpenInput = vi.fn();

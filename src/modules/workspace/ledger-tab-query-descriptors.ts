@@ -1,6 +1,6 @@
 import {
-  canonicalizeSourceDocumentStatuses,
-  type SourceDocumentStatusType,
+  canonicalizeSourceDocumentProcessingStatuses,
+  type SourceDocumentProcessingStatus,
 } from "@/modules/source-document/types";
 import type { GetStreamTotalInput } from "@/modules/source-document/application/queries/get-stream-total";
 import type { ListStreamPageInput } from "@/modules/source-document/application/queries/list-stream-page";
@@ -32,10 +32,10 @@ export function buildStreamQueryDescriptor(input: {
   endDate?: string | null | undefined;
   minAmount?: string | null | undefined;
   maxAmount?: string | null | undefined;
-  statuses?: readonly SourceDocumentStatusType[] | null | undefined;
+  statuses?: readonly SourceDocumentProcessingStatus[] | null | undefined;
   search?: string | null | undefined;
 }): StreamQueryDescriptor {
-  const canonicalStatuses = canonicalizeSourceDocumentStatuses(
+  const canonicalStatuses = canonicalizeSourceDocumentProcessingStatuses(
     input.statuses == null ? undefined : [...input.statuses]
   );
   const statusesKey = canonicalStatuses?.join(",") ?? null;

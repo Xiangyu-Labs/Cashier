@@ -15,8 +15,6 @@ export interface UseSourceDocumentDetailControllerOptions {
   sourceDocument: SourceDocument | SourceDocumentLight | null;
   ledgerEntries: LedgerEntry[];
   open: boolean;
-  isAccepting: boolean;
-  isAbandoning: boolean;
   isCancelling: boolean;
   onClose: () => void;
   onReload?: (() => Promise<void>) | undefined;
@@ -47,8 +45,6 @@ export interface UseSourceDocumentDetailControllerOptions {
   onAddEntry?: ((data: AddEntryData) => Promise<void>) | undefined;
   onDeleteEntry?: ((entryId: string, onCommitted?: () => void) => Promise<void>) | undefined;
   onDelete?: ((onCommitted?: () => void) => void | Promise<void>) | undefined;
-  onAcceptCandidate?: (() => Promise<void>) | undefined;
-  onAbandonCandidate?: (() => Promise<void>) | undefined;
   onCancelProcessing?: (() => Promise<void>) | undefined;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;

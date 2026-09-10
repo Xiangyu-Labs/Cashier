@@ -22,7 +22,7 @@ describe("ledger summary soft-delete regression", () => {
     const db = getTestDb();
     const [sourceDocument] = await db
       .insert(sourceDocuments)
-      .values({ ledgerId, entryDate: "2024-01-01", currentStatus: "completed" })
+      .values({ ledgerId, documentDate: "2024-01-01" })
       .returning();
     if (sourceDocument == null) throw new Error("Expected source document");
 

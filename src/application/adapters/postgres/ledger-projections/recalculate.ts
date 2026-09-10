@@ -3,7 +3,6 @@ import type { LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { compare as compareDecimal } from "@/lib/money/decimal";
-import { transitionSourceDocument } from "@/modules/source-document/application/source-document-state";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import {
   lockLedgerForUpdate,
@@ -20,8 +19,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
   async activateRevision(input) {
     return db.transaction(async (tx) => {
       // Lock the ledger row to serialise with concurrent main-currency changes.
-      // This is the first-active-projection path; the lock prevents a settings
-      // main-currency change from interleaving with entry creation.
+      // The lock prevents a main-currency change from interleaving with result activation.
       const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
       if (ledger.mainCurrency !== input.expectedMainCurrency) {
         throw new LedgerMainCurrencyChangedError();
@@ -36,7 +34,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
-      if (document.pendingRevisionId !== input.revisionId) return false;
+      if (document.latestSubmissionRevisionId !== input.revisionId) return false;
       const revision = await tx
         .select()
         .from(sourceDocumentRevisions)
@@ -49,7 +47,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         )
         .for("update")
         .then((rows) => rows[0]);
-      if (revision == null || revision.outcome !== "processing") {
+      if (revision == null || revision.processingStatus !== "processing") {
         return false;
       }
       if (!(await completeProcessingLeaseInTransaction(tx, input.lease, "completed"))) {
@@ -58,17 +56,14 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
       await replaceProjection(tx, input);
       const now = new Date();
-      const { state } = transitionSourceDocument(
-        { status: "processing", hasActiveResult: false },
-        { type: "processing_succeeded" }
-      );
       await tx
         .update(sourceDocumentRevisions)
         .set({
           title: input.title ?? null,
-          outcome: "completed",
-          finalizedAt: now,
-          invalidReason: null,
+          processingStatus: "completed",
+          finishedAt: now,
+          failureKind: null,
+          failureMessage: null,
           failureCode: null,
         })
         .where(eq(sourceDocumentRevisions.id, input.revisionId));
@@ -76,9 +71,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .update(sourceDocuments)
         .set({
           activeRevisionId: input.revisionId,
-          pendingRevisionId: null,
-          currentStatus: state.status,
-          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          version: sql`${sourceDocuments.version} + 1`,
+          documentDate: revision.inputDocumentDate,
           ...(input.title == null || input.title === "" ? {} : { title: input.title }),
           updatedAt: now,
         })
@@ -104,7 +98,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         type: "manual",
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.entryDate !== undefined ? { entryDate: input.entryDate } : {}),
-        ...(input.submittedText !== undefined ? { submittedText: input.submittedText } : {}),
+        ...(input.inputText !== undefined ? { inputText: input.inputText } : {}),
         entries: input.entries,
       });
       return { sourceDocumentId, revisionId };
@@ -204,7 +198,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       await tx
         .update(sourceDocuments)
         .set({
-          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          version: sql`${sourceDocuments.version} + 1`,
           updatedAt: now,
         })
         .where(

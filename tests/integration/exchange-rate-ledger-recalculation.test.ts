@@ -75,7 +75,7 @@ async function seedLedgerWithEntry(input: {
   await db.insert(sourceDocuments).values({
     id: sourceDocumentId,
     ledgerId,
-    entryDate: input.entryDate,
+    documentDate: input.entryDate,
     ...(input.deleted === true ? { deletedAt: new Date() } : {}),
   });
   await db.insert(sourceDocumentRevisions).values({
@@ -88,7 +88,7 @@ async function seedLedgerWithEntry(input: {
     .update(sourceDocuments)
     .set(
       input.pendingOnly === true
-        ? { pendingRevisionId: revisionId }
+        ? { latestSubmissionRevisionId: revisionId }
         : { activeRevisionId: revisionId }
     )
     .where(eq(sourceDocuments.id, sourceDocumentId));
@@ -277,7 +277,14 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       "src/persistence/postgres-migrations/0035_maintenance_work_lifecycle.sql",
       "utf8"
     );
-    const backfill = migration.split("--> statement-breakpoint").at(-1)!;
+    const backfill = migration
+      .split("--> statement-breakpoint")
+      .at(-1)!
+      .replaceAll("documents.entry_date", "documents.document_date")
+      .replace(
+        "entries.source_document_revision_id IN (documents.active_revision_id, documents.pending_revision_id)",
+        "entries.source_document_revision_id = documents.active_revision_id"
+      );
     await db.execute(sql.raw(backfill));
     const rows = await db.query.exchangeRateRecalculationJobs.findMany();
     expect(rows).toHaveLength(3);
@@ -444,12 +451,12 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       {
         id: sourceDocumentId,
         ledgerId,
-        entryDate: "2026-03-01",
+        documentDate: "2026-03-01",
       },
       {
         id: secondSourceDocumentId,
         ledgerId: secondLedgerId,
-        entryDate: "2026-03-01",
+        documentDate: "2026-03-01",
       },
     ]);
     await db.insert(sourceDocumentRevisions).values([
@@ -576,8 +583,8 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     });
 
     await db.insert(sourceDocuments).values([
-      { id: datedSourceDocumentId, ledgerId, entryDate: "2026-06-01" },
-      { id: undatedSourceDocumentId, ledgerId, entryDate: null },
+      { id: datedSourceDocumentId, ledgerId, documentDate: "2026-06-01" },
+      { id: undatedSourceDocumentId, ledgerId, documentDate: null },
     ]);
     await db.insert(sourceDocumentRevisions).values([
       {
@@ -644,7 +651,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     // Undated entries use the latest stored rate (2026-06-01), not 7.0.
     expect(byName.get("Undated")?.convertedAmount).toBe("1416.670");
     expect(byName.get("Undated")?.exchangeRate).toBe("7.083333333333");
-    expect(documentsAfterChange.every((document) => document.stateVersion === 2)).toBe(true);
+    expect(documentsAfterChange.every((document) => document.version === 2)).toBe(true);
 
     await expect(
       postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "2026-06-01")
@@ -655,13 +662,13 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     expect(
       documentsAfterNoop.map((document) => ({
         id: document.id,
-        stateVersion: document.stateVersion,
+        version: document.version,
         updatedAt: document.updatedAt,
       }))
     ).toEqual(
       documentsAfterChange.map((document) => ({
         id: document.id,
-        stateVersion: document.stateVersion,
+        version: document.version,
         updatedAt: document.updatedAt,
       }))
     );

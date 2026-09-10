@@ -35,8 +35,7 @@ describe("Stats Currency Conversion", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        entryDate: "2024-01-01",
-        currentStatus: "completed",
+        documentDate: "2024-01-01",
       })
       .returning();
     expect(sourceDoc).toBeDefined();

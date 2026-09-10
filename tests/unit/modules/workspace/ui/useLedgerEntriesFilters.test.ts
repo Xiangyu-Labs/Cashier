@@ -21,7 +21,7 @@ describe("buildStreamTotalQuery", () => {
         {
           minAmount: "10",
           maxAmount: "20",
-          statuses: ["failed", "candidate_pending", "failed"],
+          statuses: ["failed", "cancelled", "failed"],
         },
         undefined,
         undefined
@@ -30,9 +30,9 @@ describe("buildStreamTotalQuery", () => {
       input: {
         minAmount: "10",
         maxAmount: "20",
-        statuses: ["candidate_pending", "failed"],
+        statuses: ["cancelled", "failed"],
       },
-      statusesKey: "candidate_pending,failed",
+      statusesKey: "cancelled,failed",
     });
   });
 });

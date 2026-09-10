@@ -189,7 +189,7 @@ describe("projection write shape", () => {
         .from(sourceDocumentRevisions)
         .where(eq(sourceDocumentRevisions.id, created.revisionId))
     )[0];
-    expect(oldRevision?.outcome).toBe("completed");
+    expect(oldRevision?.processingStatus).toBeNull();
     const oldFiles = await db
       .select({ id: revisionFiles.id })
       .from(revisionFiles)

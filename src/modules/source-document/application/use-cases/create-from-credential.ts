@@ -1,6 +1,6 @@
 import type {
   AuthenticatedServiceCredentialContract,
-  ProcessingIntentContract,
+  ProcessingJobContract,
   SourceDocumentSubmissionContract,
 } from "@/application/contracts";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
@@ -34,15 +34,15 @@ export async function createSourceDocumentFromCredential(
     idempotencyKey?: string;
     payload: PreparedApiV1SourceDocumentInput;
   },
-  scheduleProcessing: (intent: ProcessingIntentContract) => void,
+  scheduleProcessing: (job: ProcessingJobContract) => void,
   ports: SourceDocumentCredentialPorts
 ): Promise<SourceDocumentSubmissionContract> {
   const payload = input.payload;
   return createAndQueueSourceDocument(
     {
       ledgerId: input.credential.ledgerId,
-      evidence: { kind: "inline", images: payload.images },
-      ...(payload.entryDate == null ? {} : { entryDate: payload.entryDate }),
+      input: { kind: "inline", images: payload.images },
+      ...(payload.entryDate == null ? {} : { documentDate: payload.entryDate }),
       ...(input.idempotencyKey == null
         ? {}
         : {

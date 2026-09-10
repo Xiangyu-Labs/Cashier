@@ -2,8 +2,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
-type ProcessingStatusType =
-  "processing" | "completed" | "error" | "candidate_pending" | "cancelled";
+type ProcessingStatusType = "processing" | "completed" | "error" | "cancelled";
 
 interface ProcessingStatusProps {
   status: ProcessingStatusType;
@@ -31,11 +30,6 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       label: tCommon("error"),
       colorClass: "text-danger",
       bgClass: "bg-danger",
-    },
-    candidate_pending: {
-      label: t("candidatePendingTitle"),
-      colorClass: "text-warning",
-      bgClass: "bg-warning",
     },
     cancelled: {
       label: t("cancelled"),

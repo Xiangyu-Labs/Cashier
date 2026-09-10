@@ -35,8 +35,7 @@ describe("source-document-queries", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId,
-          currentStatus: "completed",
-          entryDate: `2026-03-${String(day).padStart(2, "0")}`,
+          documentDate: `2026-03-${String(day).padStart(2, "0")}`,
           createdAt: new Date(`2026-03-${String(day).padStart(2, "0")}T12:00:00Z`),
         })
         .returning();

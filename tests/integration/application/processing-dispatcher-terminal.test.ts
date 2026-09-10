@@ -4,10 +4,10 @@ import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { serverComposition } from "@/application/server-composition-root";
 import {
-  PostgresProcessingIntentAdapter,
+  PostgresProcessingJobAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import {
   ledgerEntries,
   processingOutbox,
@@ -26,40 +26,40 @@ afterEach(() => {
 });
 
 /**
- * Creates a pending revision + intent for a single source document.
+ * Creates a pending revision + job for a single source document.
  * Each call uses a fresh user+ledger pair to avoid unique-constraint collisions
  * when called multiple times within one test.
  */
 async function pendingIntent(
   requestedAt = "2026-07-15T00:00:00.000Z",
   userId = crypto.randomUUID()
-): Promise<{ ledgerId: string; intent: ProcessingIntentContract }> {
+): Promise<{ ledgerId: string; job: ProcessingJobContract }> {
   const db = getTestDb();
   const { ledgerId } = await createTestUserWithLedger(db, undefined, undefined, userId);
-  const pending = await postgresRevisionAdapter.createPending({
+  const pending = await postgresRevisionAdapter.createProcessingRevision({
     ledgerId,
-    submittedText: "Lunch 12.50 CNY",
+    input: { text: "Lunch 12.50 CNY", storedFileIds: [], documentDate: null },
   });
   return {
     ledgerId,
-    intent: {
+    job: {
       id: crypto.randomUUID(),
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
       requestedAt,
-      attempt: 1,
+      attemptNumber: 1,
     },
   };
 }
 
-describe("executeSingleProcessingIntent — standalone function with real adapter/processor", () => {
+describe("executeSingleProcessingJob — standalone function with real adapter/processor", () => {
   it.each([
     ["returns null", "null"],
     ["throws", "throw"],
   ] as const)("aborts the worker when lease renewal %s", async (_label, mode) => {
     vi.useFakeTimers();
     const db = getTestDb();
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     let releaseGeneration!: (value: { content: string }) => void;
     let markGenerationStarted!: () => void;
@@ -80,15 +80,15 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     });
 
     const renew = vi
-      .spyOn(PostgresProcessingIntentAdapter.prototype, "renew")
+      .spyOn(PostgresProcessingJobAdapter.prototype, "renew")
       .mockImplementation(async () => {
         if (mode === "null") return null;
         throw new Error("lease backend unavailable");
       });
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
+    const adapter = new PostgresProcessingJobAdapter();
+    await adapter.dispatch(job);
 
-    const execution = serverComposition.executeSingleProcessingIntent(intent);
+    const execution = serverComposition.executeSingleProcessingJob(job);
     await generationStarted;
     await vi.advanceTimersByTimeAsync(15_000);
 
@@ -97,7 +97,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
 
     releaseGeneration({
       content: JSON.stringify({
-        outcome: "success",
+        processingStatus: "success",
         invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
@@ -119,24 +119,24 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
 
     await expect(execution).resolves.toBe(true);
     const document = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+      where: eq(sourceDocuments.id, job.sourceDocumentId),
     });
     const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+      where: eq(sourceDocumentRevisions.id, job.revisionId),
     });
     expect(document?.activeRevisionId).toBeNull();
-    expect(document?.pendingRevisionId).toBe(intent.revisionId);
-    expect(revision?.outcome).toBe("processing");
+    expect(document?.latestSubmissionRevisionId).toBe(job.revisionId);
+    expect(revision?.processingStatus).toBe("processing");
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 
   it("processes successfully, setting outbox and revision outcomes to completed", async () => {
     const db = getTestDb();
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
-        outcome: "success",
+        processingStatus: "success",
         invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
@@ -157,72 +157,69 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     }));
     vi.mocked(createAIContext).mockReturnValue({ generate });
 
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
+    const adapter = new PostgresProcessingJobAdapter();
+    await adapter.dispatch(job);
 
-    const result = await serverComposition.executeSingleProcessingIntent(intent);
+    const result = await serverComposition.executeSingleProcessingJob(job);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, intent.id),
+      where: eq(processingOutbox.id, job.id),
     });
     expect(row?.status).toBe("completed");
 
     const doc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+      where: eq(sourceDocuments.id, job.sourceDocumentId),
     });
-    expect(doc?.activeRevisionId).toBe(intent.revisionId);
-    expect(doc?.pendingRevisionId).toBeNull();
-    expect(doc?.stateVersion).toBe(2);
+    expect(doc?.activeRevisionId).toBe(job.revisionId);
+    expect(doc?.latestSubmissionRevisionId).toBe(job.revisionId);
+    expect(doc?.version).toBe(2);
 
     const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+      where: eq(sourceDocumentRevisions.id, job.revisionId),
     });
-    expect(revision?.outcome).toBe("completed");
+    expect(revision?.processingStatus).toBe("completed");
 
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
   });
 
-  it("handles processing failure: preserveTerminalOutcome guard on stale revision", async () => {
+  it("handles processing failure: recordProcessingFailure guard on stale revision", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent(
-      "2026-07-15T00:00:00.000Z",
-      crypto.randomUUID()
-    );
+    const { ledgerId, job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     const generate = vi.fn().mockRejectedValue(new Error("AI service unavailable"));
     vi.mocked(createAIContext).mockReturnValue({ generate });
 
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
+    const adapter = new PostgresProcessingJobAdapter();
+    await adapter.dispatch(job);
 
-    // Simulate stale revision: change pendingRevisionId so preserveTerminalOutcome guard fails
+    // Simulate stale revision: change latestSubmissionRevisionId so recordProcessingFailure guard fails
     const staleRevisionId = crypto.randomUUID();
     await db.insert(sourceDocumentRevisions).values({
       id: staleRevisionId,
       ledgerId,
-      sourceDocumentId: intent.sourceDocumentId,
+      sourceDocumentId: job.sourceDocumentId,
       revisionNumber: 2,
-      outcome: "processing",
+      processingStatus: "processing",
     });
     await db
       .update(sourceDocuments)
-      .set({ pendingRevisionId: staleRevisionId })
-      .where(eq(sourceDocuments.id, intent.sourceDocumentId));
+      .set({ latestSubmissionRevisionId: staleRevisionId })
+      .where(eq(sourceDocuments.id, job.sourceDocumentId));
 
-    const result = await serverComposition.executeSingleProcessingIntent(intent);
+    const result = await serverComposition.executeSingleProcessingJob(job);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, intent.id),
+      where: eq(processingOutbox.id, job.id),
     });
     expect(row?.status).toBe("claimed");
 
     // The stale worker cannot terminally update either side; lease recovery owns the retry.
     const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+      where: eq(sourceDocumentRevisions.id, job.revisionId),
     });
-    expect(revision?.outcome).toBe("processing");
+    expect(revision?.processingStatus).toBe("processing");
 
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });

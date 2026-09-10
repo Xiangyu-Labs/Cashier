@@ -9,7 +9,7 @@ export type LogIdentifierKind =
   | "source-document"
   | "revision"
   | "stored-file"
-  | "processing-intent"
+  | "processing-job"
   | "upload-session";
 
 export function logIdentifier(kind: LogIdentifierKind, value: string): string {

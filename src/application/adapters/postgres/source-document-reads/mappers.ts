@@ -1,8 +1,8 @@
 import type {
-  SourceDocumentDto,
+  SourceDocumentDetailDto,
   SourceDocumentStoredFileDto,
   SourceDocumentListItemDto,
-  SourceDocumentCandidateProjectionSummary,
+  SourceDocumentActiveResultSummary,
   SourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/contracts";
 import {
@@ -13,7 +13,7 @@ import {
 import { deriveSourceDocumentCapabilities } from "@/modules/source-document/application/source-document-state";
 import { compare as decimalCompare, round as decimalRound } from "@/lib/money/decimal";
 import type {
-  SourceDocumentStatusType,
+  SourceDocumentProcessingStatus,
   SourceDocumentTypeValue,
 } from "@/modules/source-document/types";
 
@@ -21,13 +21,12 @@ export interface SourceDocumentRow {
   id: string;
   ledgerId: string;
   title: string | null;
-  currentStatus: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
-  entryDate: string | null;
+  documentDate: string | null;
   effectiveDate: string;
   activeRevisionId: string | null;
-  pendingRevisionId: string | null;
-  stateVersion: number;
+  latestSubmissionRevisionId: string | null;
+  version: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -38,14 +37,15 @@ export interface SourceDocumentHydrationRow {
   selectedRevisionId: string | null;
   activeRevisionId: string | null;
   revisionTitle: string | null;
-  submittedText: string | null;
-  revisionOutcome: string | null;
-  invalidReason: string | null;
+  inputText: string | null;
+  processingStatus: SourceDocumentProcessingStatus | null;
+  failureKind: "invalid_input" | "processing_error" | null;
+  failureMessage: string | null;
   failureCode: string | null;
   hasImages: boolean;
   files: SourceDocumentStoredFileAggregateRow[];
   ledgerEntries: SourceDocumentLedgerEntryAggregateRow[];
-  activeResultSummary: SourceDocumentCandidateProjectionSummary | null;
+  activeResultSummary: SourceDocumentActiveResultSummary | null;
 }
 
 export interface SourceDocumentStoredFileAggregateRow {
@@ -138,25 +138,31 @@ export function mapListItem(
   hydration: SourceDocumentHydrationRow
 ): SourceDocumentListItemDto {
   const capabilities = deriveSourceDocumentCapabilities({
-    status: row.currentStatus,
-    hasActiveResult: row.activeRevisionId != null,
+    activeRevisionId: row.activeRevisionId,
+    latestSubmissionStatus: hydration.processingStatus,
+    hasSubmissionInput: row.latestSubmissionRevisionId != null,
   });
   const item: SourceDocumentListItemDto = {
     id: row.id,
-    version: row.stateVersion,
+    version: row.version,
     ledgerId: row.ledgerId,
     title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
     text: null,
-    status: row.currentStatus,
+    processingStatus: hydration.processingStatus,
     type: row.type,
-    invalidReason: hydration.invalidReason,
-    entryDate: row.entryDate,
+    failureKind: hydration.failureKind,
+    failureMessage: hydration.failureMessage,
+    documentDate: row.documentDate,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     hasImages: hydration.hasImages,
-    supportedActions: capabilities.supportedActions,
+    supportedActions: [...capabilities.supportedActions],
     canEdit: capabilities.canEdit,
-    errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
+    errorCode: sanitizedErrorCode(
+      hydration.processingStatus,
+      hydration.failureKind,
+      hydration.failureCode
+    ),
   };
   return item;
 }
@@ -164,7 +170,7 @@ export function mapListItem(
 export function mapSourceDocumentDetail(
   row: SourceDocumentRow,
   hydration: SourceDocumentHydrationRow
-): SourceDocumentDto {
+): SourceDocumentDetailDto {
   const activeResultSummary =
     hydration.activeResultSummary == null
       ? null
@@ -173,39 +179,46 @@ export function mapSourceDocumentDetail(
           total: decimalRound(String(hydration.activeResultSummary.total), 2),
         };
   const capabilities = deriveSourceDocumentCapabilities({
-    status: row.currentStatus,
-    hasActiveResult: row.activeRevisionId != null,
+    activeRevisionId: row.activeRevisionId,
+    latestSubmissionStatus: hydration.processingStatus,
+    hasSubmissionInput: row.latestSubmissionRevisionId != null,
   });
   return {
     id: row.id,
-    version: row.stateVersion,
+    version: row.version,
     ledgerId: row.ledgerId,
     title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
-    text: hydration.submittedText,
+    text: hydration.inputText,
     files: hydration.files.map(mapStoredFileDto),
     ledgerEntries: hydration.ledgerEntries.map(mapLedgerEntryAggregateDto),
-    status: row.currentStatus,
+    processingStatus: hydration.processingStatus,
     type: row.type,
-    invalidReason: hydration.invalidReason,
-    entryDate: row.entryDate,
+    failureKind: hydration.failureKind,
+    failureMessage: hydration.failureMessage,
+    documentDate: row.documentDate,
     metadata: {},
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
     hasImages: hydration.hasImages,
-    supportedActions: capabilities.supportedActions,
+    supportedActions: [...capabilities.supportedActions],
     canEdit: capabilities.canEdit,
-    errorCode: sanitizedErrorCode(hydration.revisionOutcome ?? undefined, hydration.failureCode),
+    errorCode: sanitizedErrorCode(
+      hydration.processingStatus,
+      hydration.failureKind,
+      hydration.failureCode
+    ),
     ...(activeResultSummary == null ? {} : { activeResultSummary }),
   };
 }
 
 function sanitizedErrorCode(
-  outcome: string | undefined,
+  processingStatus: string | null | undefined,
+  failureKind: "invalid_input" | "processing_error" | null | undefined,
   failureCode: string | null | undefined
 ): ApplicationErrorCode | ProcessingFailureCode | null {
-  if (outcome === "invalid") return "VALIDATION_FAILED";
-  if (outcome !== "failed") return null;
+  if (processingStatus !== "failed") return null;
+  if (failureKind === "invalid_input") return "VALIDATION_FAILED";
   const allowed: readonly ApplicationErrorCode[] = [
     "VALIDATION_FAILED",
     "UNAUTHENTICATED",

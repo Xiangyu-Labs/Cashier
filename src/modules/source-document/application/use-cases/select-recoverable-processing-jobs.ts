@@ -1,5 +1,5 @@
 import type {
-  RecoverableProcessingIntentContract,
+  RecoverableProcessingJobContract,
   ProcessingRecoveryConfig,
 } from "@/application/contracts";
 import { logger } from "@/lib/logger";
@@ -10,7 +10,7 @@ import type { ProcessingRecoveryPort } from "../ports";
  * Selects recoverable processing intents for the given ledger and atomically
  * advances their scheduling metadata to mark them as re-dispatched.
  *
- * Each returned intent has had its schedule_attempt_count incremented and
+ * Each returned job has had its schedule_attempt_count incremented and
  * next_available_at advanced by the cooldown, so that a concurrent request that
  * runs this selector simultaneously will pick a non-overlapping subset (or none
  * if all rows were claimed).
@@ -21,11 +21,11 @@ import type { ProcessingRecoveryPort } from "../ports";
  * request are still returned for execution — exhaustion only happens on a
  * subsequent request after the cooldown expires.
  */
-export async function selectRecoverableProcessingIntents(
+export async function selectRecoverableProcessingJobs(
   ledgerId: string,
   config: ProcessingRecoveryConfig,
   adapter: ProcessingRecoveryPort
-): Promise<readonly RecoverableProcessingIntentContract[]> {
+): Promise<readonly RecoverableProcessingJobContract[]> {
   const scheduled = await adapter.recoverBatch(ledgerId, config);
 
   logger.debug(
@@ -33,7 +33,7 @@ export async function selectRecoverableProcessingIntents(
       ledgerSubject: logIdentifier("ledger", ledgerId),
       scheduled: scheduled.length,
     },
-    "selectRecoverableProcessingIntents completed"
+    "selectRecoverableProcessingJobs completed"
   );
 
   // Return ALL successfully scheduled intents for execution.

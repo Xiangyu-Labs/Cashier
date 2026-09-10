@@ -1,10 +1,13 @@
-import { and, eq, inArray, isNull, max, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, max, or, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import type { PostgresTransaction } from "../transaction-locks";
-import { hasEditableActiveProjection } from "../source-document-write-guards";
+import {
+  assertSourceDocumentNotProcessing,
+  hasEditableActiveProjection,
+} from "../source-document-write-guards";
 
 import {
   activeDocumentWhere,
@@ -184,13 +187,14 @@ async function nextRevisionNumber(
   return (aggregate?.value ?? 0) + 1;
 }
 
-export async function createCompletedRevision(
+export async function createManualRevision(
   tx: PostgresTransaction,
   input: {
     ledgerId: string;
     sourceDocumentId: string;
-    submittedText?: string | null;
+    inputText?: string | null;
     revisionId?: string;
+    origin: "manual_edit" | "manual_entry";
   }
 ) {
   const now = new Date();
@@ -202,9 +206,9 @@ export async function createCompletedRevision(
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
       revisionNumber,
-      submittedText: input.submittedText ?? null,
-      outcome: "completed",
-      finalizedAt: now,
+      origin: input.origin,
+      inputText: input.inputText ?? null,
+      processingStatus: null,
       submittedAt: now,
     })
     .returning()
@@ -229,7 +233,7 @@ export async function replaceActiveProjectionInTransaction(
   }
 ): Promise<string> {
   const document = input.document;
-  if (document.stateVersion !== input.expectedStateVersion) {
+  if (document.version !== input.expectedStateVersion) {
     throw new ConflictError("Source document changed during the edit");
   }
   if (!hasEditableActiveProjection(document)) {
@@ -238,25 +242,30 @@ export async function replaceActiveProjectionInTransaction(
   if (document.activeRevisionId !== input.expectedActiveRevisionId) {
     throw new ConflictError("Source document active revision changed");
   }
+  await assertSourceDocumentNotProcessing(tx, document);
 
   const activeRevision = await tx
-    .select({ submittedText: sourceDocumentRevisions.submittedText })
+    .select({ inputText: sourceDocumentRevisions.inputText })
     .from(sourceDocumentRevisions)
     .where(
       and(
         eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
         eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
         eq(sourceDocumentRevisions.id, input.expectedActiveRevisionId),
-        eq(sourceDocumentRevisions.outcome, "completed")
+        or(
+          eq(sourceDocumentRevisions.processingStatus, "completed"),
+          isNull(sourceDocumentRevisions.processingStatus)
+        )
       )
     )
     .then((rows) => rows[0]);
   if (activeRevision == null) throw new ConflictError("Active revision is not completed");
 
-  const revision = await createCompletedRevision(tx, {
+  const revision = await createManualRevision(tx, {
     ledgerId: input.ledgerId,
     sourceDocumentId: input.sourceDocumentId,
-    submittedText: activeRevision.submittedText,
+    inputText: activeRevision.inputText,
+    origin: "manual_edit",
     revisionId: input.revisionId,
   });
   await copyRevisionFiles(tx, {
@@ -275,18 +284,16 @@ export async function replaceActiveProjectionInTransaction(
     .update(sourceDocuments)
     .set({
       activeRevisionId: revision.id,
-      pendingRevisionId: null,
-      currentStatus: "completed",
-      stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+      version: sql`${sourceDocuments.version} + 1`,
       ...(input.title === undefined ? {} : { title: input.title }),
-      ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+      ...(input.entryDate === undefined ? {} : { documentDate: input.entryDate }),
       updatedAt: new Date(),
     })
     .where(
       and(
         activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
         eq(sourceDocuments.activeRevisionId, input.expectedActiveRevisionId),
-        eq(sourceDocuments.stateVersion, input.expectedStateVersion)
+        eq(sourceDocuments.version, input.expectedStateVersion)
       )
     )
     .returning({ id: sourceDocuments.id })
@@ -318,7 +325,7 @@ export async function createCompletedProjectionInTransaction(
     revisionId?: string;
     title?: string | null;
     entryDate?: string | null;
-    submittedText?: string | null;
+    inputText?: string | null;
     copyFilesFromRevisionId?: string;
     type: SourceDocumentTypeValue;
     entries: readonly LedgerProjectionEntryContract[];
@@ -336,14 +343,14 @@ export async function createCompletedProjectionInTransaction(
     ledgerId: input.ledgerId,
     title: input.title ?? null,
     type: input.type,
-    currentStatus: "completed",
-    entryDate: input.entryDate ?? null,
+    documentDate: input.entryDate ?? null,
   });
-  const revision = await createCompletedRevision(tx, {
+  const revision = await createManualRevision(tx, {
     ledgerId: input.ledgerId,
     sourceDocumentId: input.sourceDocumentId,
+    origin: "manual_entry",
     ...(input.revisionId === undefined ? {} : { revisionId: input.revisionId }),
-    ...(input.submittedText !== undefined ? { submittedText: input.submittedText } : {}),
+    ...(input.inputText !== undefined ? { inputText: input.inputText } : {}),
   });
   if (input.copyFilesFromRevisionId !== undefined) {
     await copyRevisionFiles(tx, {
@@ -360,7 +367,7 @@ export async function createCompletedProjectionInTransaction(
   });
   await tx
     .update(sourceDocuments)
-    .set({ activeRevisionId: revision.id, pendingRevisionId: null })
+    .set({ activeRevisionId: revision.id })
     .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
   return revision.id;
 }

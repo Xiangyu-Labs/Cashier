@@ -94,13 +94,12 @@ export function SourceDocumentDetailStatusPanels({
 
       {sourceDocument && (
         <>
-          {/* Diagnostic code display for invalid/failed states */}
-          {(sourceDocument.status === "invalid" || sourceDocument.status === "failed") && (
+          {sourceDocument.processingStatus === "failed" && (
             <div className="mb-3 px-1">
               {(() => {
                 const stableCode: InvalidCode | ProcessingFailureCode =
-                  sourceDocument.status === "invalid"
-                    ? toStableInvalidCode(sourceDocument.invalidReason)
+                  sourceDocument.failureKind === "invalid_input"
+                    ? toStableInvalidCode(sourceDocument.failureMessage)
                     : toStableFailureCode((sourceDocument as SourceDocument).errorCode);
                 return (
                   <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
@@ -119,7 +118,7 @@ export function SourceDocumentDetailStatusPanels({
             </div>
           )}
           {/* Retained active result notice */}
-          {(sourceDocument.status === "invalid" || sourceDocument.status === "failed") &&
+          {sourceDocument.processingStatus === "failed" &&
             sourceDocument.activeResultSummary != null && (
               <div className="mb-3 px-1">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">

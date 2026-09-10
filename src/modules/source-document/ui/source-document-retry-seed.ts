@@ -7,7 +7,7 @@ export interface RetrySeedSourceDocument {
   version: number;
   text?: string | null;
   files?: SourceDocumentStoredFileDto[];
-  entryDate?: string | null;
+  documentDate?: string | null;
   hasImages?: boolean;
 }
 
@@ -30,6 +30,6 @@ export function buildSourceDocumentRetrySeed(
       storedFileId: file.id,
     })),
     ...(text != null ? { text } : {}),
-    ...(sourceDocument.entryDate != null ? { entryDate: sourceDocument.entryDate } : {}),
+    ...(sourceDocument.documentDate != null ? { entryDate: sourceDocument.documentDate } : {}),
   };
 }

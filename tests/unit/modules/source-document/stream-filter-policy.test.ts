@@ -13,10 +13,11 @@ function makeItem(overrides: Partial<SourceDocumentListItemDto> = {}): SourceDoc
     version: 1,
     title: "Coffee receipt",
     text: null,
-    status: "completed",
+    processingStatus: "completed",
     type: "ai_parsed",
-    invalidReason: null,
-    entryDate: "2026-08-05",
+    failureKind: null,
+    failureMessage: null,
+    documentDate: "2026-08-05",
     createdAt: "2026-08-06T00:00:00.000Z",
     updatedAt: "2026-08-06T00:00:00.000Z",
     hasImages: false,
@@ -96,10 +97,10 @@ describe("stream filter policy", () => {
   });
 
   it("uses entryDate and then the UTC created-at date as the effective date", () => {
-    expect(getStreamEffectiveDate(makeItem({ entryDate: "2026-08-01" }))).toBe("2026-08-01");
+    expect(getStreamEffectiveDate(makeItem({ documentDate: "2026-08-01" }))).toBe("2026-08-01");
     expect(
       getStreamEffectiveDate({
-        entryDate: null,
+        documentDate: null,
         createdAt: "2026-08-06T23:00:00.000Z",
       })
     ).toBe("2026-08-06");

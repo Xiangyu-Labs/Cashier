@@ -32,9 +32,8 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
     .values({
       id: uuidv4(),
       ledgerId,
-      currentStatus: "completed",
       type: "ai_parsed",
-      entryDate: entryDate ?? null,
+      documentDate: entryDate ?? null,
     })
     .returning();
   expect(doc).toBeDefined();
@@ -120,9 +119,8 @@ describe("batchDeleteLedgerEntriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        currentStatus: "completed",
         type: "ai_parsed",
-        entryDate: null,
+        documentDate: null,
       })
       .returning();
     expect(doc).toBeDefined();
@@ -195,13 +193,13 @@ describe("batchDeleteLedgerEntriesAction", () => {
     const okDocument = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, okDoc.id),
     });
-    expect(okDocument?.stateVersion).toBe(2);
+    expect(okDocument?.version).toBe(2);
     const badDocument = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, badDoc.id),
     });
     // `badDoc` was never targeted by a real write — its own group failed
     // before touching its document row.
-    expect(badDocument?.stateVersion).toBe(1);
+    expect(badDocument?.version).toBe(1);
   });
 
   it("rolls back every entry in one document's group when part of that group fails", async () => {
@@ -233,7 +231,7 @@ describe("batchDeleteLedgerEntriesAction", () => {
         ledgerId,
         sourceDocumentId: doc.id,
         revisionNumber: 2,
-        outcome: "abandoned",
+        processingStatus: "cancelled",
       })
       .returning();
     const [inactiveEntry] = await db
@@ -266,7 +264,7 @@ describe("batchDeleteLedgerEntriesAction", () => {
       where: eq(sourceDocuments.id, doc.id),
     });
     // Zero writes: the document's version and active entries are untouched.
-    expect(document?.stateVersion).toBe(1);
+    expect(document?.version).toBe(1);
     const activeEntries = await db.query.ledgerEntries.findMany({
       where: and(
         eq(ledgerEntries.sourceDocumentId, doc.id),

@@ -73,7 +73,7 @@ describe("current-runtime target adapters", () => {
     const afterRecalculation = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(afterRecalculation?.stateVersion).toBe(beforeRecalculation!.stateVersion + 1);
+    expect(afterRecalculation?.version).toBe(beforeRecalculation!.version + 1);
     expect(afterRecalculation!.updatedAt.getTime()).toBeGreaterThan(
       beforeRecalculation!.updatedAt.getTime()
     );
@@ -93,7 +93,7 @@ describe("current-runtime target adapters", () => {
     const afterNoopRecalculation = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(afterNoopRecalculation?.stateVersion).toBe(afterRecalculation?.stateVersion);
+    expect(afterNoopRecalculation?.version).toBe(afterRecalculation?.version);
     expect(afterNoopRecalculation?.updatedAt).toEqual(afterRecalculation?.updatedAt);
 
     await expect(
@@ -102,7 +102,7 @@ describe("current-runtime target adapters", () => {
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(deleted).toMatchObject({ currentStatus: "cancelled", deletedAt: expect.any(Date) });
+    expect(deleted).toMatchObject({ deletedAt: expect.any(Date) });
     expect(
       (
         await db.query.ledgerEntries.findFirst({

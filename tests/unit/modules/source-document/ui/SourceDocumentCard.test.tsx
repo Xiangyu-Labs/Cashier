@@ -20,10 +20,11 @@ const sourceDocument: SourceDocument = {
   title: "Receipt",
   text: "Lunch",
   files: [],
-  status: "completed",
+  processingStatus: "completed",
   type: "ai_parsed",
-  invalidReason: null,
-  entryDate: "2026-07-28",
+  failureKind: null,
+  failureMessage: null,
+  documentDate: "2026-07-28",
   metadata: {},
   createdAt: "2026-07-28T00:00:00.000Z",
   updatedAt: "2026-07-28T00:00:00.000Z",
@@ -57,7 +58,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[ledgerEntry]}
-        status="completed"
+        processingStatus="completed"
         onViewDetails={onViewDetails}
       />
     );
@@ -74,7 +75,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[ledgerEntry]}
-        status="completed"
+        processingStatus="completed"
         defaultExpanded={false}
       />
     );
@@ -96,7 +97,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[ledgerEntry]}
-        status="completed"
+        processingStatus="completed"
         onViewDetails={onViewDetails}
         onViewLedgerEntry={onViewLedgerEntry}
       />
@@ -114,7 +115,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[]}
-        status="completed"
+        processingStatus="completed"
         onViewDetails={onViewDetails}
       />
     );
@@ -129,9 +130,9 @@ describe("SourceDocumentCard interactions", () => {
     const onRetry = vi.fn();
     render(
       <SourceDocumentCard
-        sourceDocument={{ ...sourceDocument, status: "failed" }}
+        sourceDocument={{ ...sourceDocument, processingStatus: "failed" }}
         ledgerEntries={[]}
-        status="failed"
+        processingStatus="failed"
         onRetry={onRetry}
         isRetrying
       />
@@ -148,7 +149,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[]}
-        status="completed"
+        processingStatus="completed"
         onDelete={vi.fn()}
       />
     );
@@ -166,7 +167,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[]}
-        status="completed"
+        processingStatus="completed"
         onDelete={vi.fn()}
       />
     );
@@ -191,7 +192,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[ledgerEntry]}
-        status="completed"
+        processingStatus="completed"
         onViewDetails={onViewDetails}
         selectionMode
         onToggleSelect={onToggleSelect}
@@ -219,7 +220,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[ledgerEntry]}
-        status="completed"
+        processingStatus="completed"
         onViewDetails={onViewDetails}
       />
     );
@@ -235,9 +236,9 @@ describe("SourceDocumentCard interactions", () => {
     (status) => {
       render(
         <SourceDocumentCard
-          sourceDocument={{ ...sourceDocument, title: null, status }}
+          sourceDocument={{ ...sourceDocument, title: null }}
           ledgerEntries={[]}
-          status={status}
+          processingStatus={status}
         />
       );
 
@@ -250,12 +251,12 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={{
           ...sourceDocument,
-          status: "processing",
+          processingStatus: "processing",
           text: "Lunch at the canteen",
           files: [{ id: "file-1", contentType: "image/png", byteSize: 10, originalFilename: null }],
         }}
         ledgerEntries={[]}
-        status="processing"
+        processingStatus="processing"
       />
     );
 
@@ -266,9 +267,9 @@ describe("SourceDocumentCard interactions", () => {
   it("hides the expansion toggle when the card has no expandable entries", () => {
     render(
       <SourceDocumentCard
-        sourceDocument={{ ...sourceDocument, status: "cancelled" }}
+        sourceDocument={{ ...sourceDocument, processingStatus: "cancelled" }}
         ledgerEntries={[]}
-        status="cancelled"
+        processingStatus="cancelled"
       />
     );
 
@@ -283,7 +284,7 @@ describe("SourceDocumentCard interactions", () => {
       <SourceDocumentCard
         sourceDocument={sourceDocument}
         ledgerEntries={[ledgerEntry]}
-        status="completed"
+        processingStatus="completed"
         defaultExpanded={false}
       />
     );

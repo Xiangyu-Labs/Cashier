@@ -19,7 +19,7 @@ export function toApiV1SourceDocumentCreateResponse(
   return {
     sourceDocumentId: result.sourceDocumentId,
     revisionId: result.revisionId,
-    revisionState: result.revisionState,
-    status: result.revisionState,
+    revisionState: result.processingStatus,
+    status: result.processingStatus,
   };
 }

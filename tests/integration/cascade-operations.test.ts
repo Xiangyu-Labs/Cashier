@@ -108,15 +108,10 @@ async function createTestEntry(
   return entry;
 }
 
-async function createTestSourceDocument(
-  db: ReturnType<typeof getTestDb>,
-  ledgerId: string,
-  status = "completed"
-) {
+async function createTestSourceDocument(db: ReturnType<typeof getTestDb>, ledgerId: string) {
   const doc = createSourceDocumentData(ledgerId);
   await db.insert(sourceDocuments).values({
     ...doc,
-    currentStatus: status as "processing" | "processing" | "completed" | "invalid",
   });
   await activateTestSourceDocumentProjection(db, doc.id);
   return doc;
@@ -305,7 +300,7 @@ describe("E2: Delete Entry → Related Counts Update", () => {
 
     // Use current user (TEST_USER_ID) because this test uses auth-dependent actions
     const ledger = await createTestLedger(db, true);
-    const sourceDoc = await createTestSourceDocument(db, ledger.id, "completed");
+    const sourceDoc = await createTestSourceDocument(db, ledger.id);
     const entry = await createTestEntry(db, ledger.id, { sourceDocumentId: sourceDoc.id });
 
     // Delete entry
@@ -320,7 +315,7 @@ describe("E2: Delete Entry → Related Counts Update", () => {
       where: and(eq(sourceDocuments.id, sourceDoc.id), isNull(sourceDocuments.deletedAt)),
     });
     expect(doc).not.toBeNull();
-    expect(doc?.currentStatus).toBe("completed");
+    expect(doc?.activeRevisionId).not.toBeNull();
   });
 });
 
@@ -393,7 +388,7 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
 
     // Use current user (TEST_USER_ID) because this test uses auth-dependent actions
     const ledger = await createTestLedger(db, true);
-    const sourceDoc = await createTestSourceDocument(db, ledger.id, "completed");
+    const sourceDoc = await createTestSourceDocument(db, ledger.id);
 
     // Create entries linked to this source document
     const entry1 = await createTestEntry(db, ledger.id, { sourceDocumentId: sourceDoc.id });
@@ -426,8 +421,8 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
 
     // Use current user (TEST_USER_ID) because this test uses auth-dependent actions
     const ledger = await createTestLedger(db, true);
-    const docA = await createTestSourceDocument(db, ledger.id, "completed");
-    const docB = await createTestSourceDocument(db, ledger.id, "completed");
+    const docA = await createTestSourceDocument(db, ledger.id);
+    const docB = await createTestSourceDocument(db, ledger.id);
 
     await createTestEntry(db, ledger.id, { sourceDocumentId: docA.id });
     const entryB = await createTestEntry(db, ledger.id, { sourceDocumentId: docB.id });

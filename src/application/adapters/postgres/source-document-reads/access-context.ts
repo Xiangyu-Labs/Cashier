@@ -22,7 +22,7 @@ export async function getTargetSourceDocumentAccessContext(sourceDocumentId: str
         eq(revisionFiles.ledgerId, accessDocument.ledgerId),
         eq(
           revisionFiles.revisionId,
-          sql`COALESCE(${accessDocument.pendingRevisionId}, ${accessDocument.activeRevisionId})`
+          sql`COALESCE(${accessDocument.latestSubmissionRevisionId}, ${accessDocument.activeRevisionId})`
         )
       )
     )

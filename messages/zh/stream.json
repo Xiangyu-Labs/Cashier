@@ -72,23 +72,7 @@
     "productName": "商品名称",
     "notes": "备注"
   },
-  "CandidateReview": {
-    "title": "审核解析结果",
-    "original": "原来的解析结果",
-    "candidate": "新的解析结果",
-    "entryCount": "共 {count} 条",
-    "keepOriginal": "保留原结果",
-    "acceptCandidate": "接受新结果",
-    "abandonConfirmTitle": "保留原解析结果？",
-    "abandonConfirmDescription": "新的解析结果将被丢弃，当前账目不会改变。"
-  },
-  "CandidateAction": {
-    "accept": "确认候选",
-    "acceptSuccess": "候选已确认",
-    "acceptError": "确认候选失败",
-    "abandon": "放弃候选",
-    "abandonSuccess": "候选已放弃",
-    "abandonError": "放弃候选失败",
+  "SourceDocumentAction": {
     "cancelProcessing": "取消处理",
     "cancelSuccess": "已取消处理",
     "cancelError": "无法取消处理，已刷新为最新结果。",
@@ -98,12 +82,6 @@
     "retrySuccessDescription": "正在重新解析此凭证。",
     "retryError": "重试失败",
     "retryErrorDescription": "原结果未改变，请稍后重试。"
-  },
-  "ReviewDialog": {
-    "loading": "正在加载对比",
-    "loadError": "该审核已不可用。",
-    "reload": "重新加载",
-    "noEntries": "暂无条目"
   },
   "DateFilter": {
     "selectDate": "选择日期",
@@ -179,7 +157,6 @@
     "statusInvalid": "无效",
     "statusFailed": "失败",
     "statusCancelled": "已取消",
-    "statusCandidatePending": "待核准",
     "statusSummary": "状态：{label}",
     "search": "搜索",
     "searchPlaceholder": "搜索标题、名称或描述",
@@ -545,7 +522,6 @@
     "processing": "处理中",
     "completed": "已完成",
     "cancelled": "已取消",
-    "candidatePendingTitle": "新解析结果待确认",
     "invalidNeedsCorrection": "需要手动修正",
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",

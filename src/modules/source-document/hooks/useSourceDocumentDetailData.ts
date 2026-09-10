@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SourceDocumentLightWithEntriesDto } from "../contracts";
+import type { SourceDocumentResultDto } from "../contracts";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentLightAction } from "@/lib/queries/ledger-query-client";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -27,7 +27,7 @@ export function useSourceDocumentDetailData({
     queryKey: key,
     queryFn: async () => {
       const incoming = await withQueryTimeout(getSourceDocumentLightAction(ledgerId, id));
-      const current = queryClient.getQueryData<SourceDocumentLightWithEntriesDto>(key);
+      const current = queryClient.getQueryData<SourceDocumentResultDto>(key);
       return incoming != null && current != null && current.version > incoming.version
         ? current
         : incoming;

@@ -22,10 +22,11 @@ function makeItem(
     ledgerId: "ledger-1",
     title: `Doc ${id}`,
     text: null,
-    status: "completed",
+    processingStatus: "completed",
     type: "ai_parsed",
-    invalidReason: null,
-    entryDate: "2026-07-01",
+    failureKind: null,
+    failureMessage: null,
+    documentDate: "2026-07-01",
     createdAt: "2026-07-01T10:00:00.000Z",
     updatedAt: "2026-07-01T10:00:00.000Z",
     hasImages: false,
@@ -64,7 +65,7 @@ function makeEntry(
 describe("getEffectiveDate", () => {
   it("returns transaction provenance when entryDate is valid", () => {
     const result = getEffectiveDate({
-      entryDate: "2026-07-15",
+      documentDate: "2026-07-15",
       createdAt: "2026-07-14T00:00:00.000Z",
     });
     expect(result).toEqual({ date: "2026-07-15", provenance: "transaction" });
@@ -72,7 +73,7 @@ describe("getEffectiveDate", () => {
 
   it("falls back to submission date when entryDate is empty", () => {
     const result = getEffectiveDate({
-      entryDate: "",
+      documentDate: "",
       createdAt: "2026-07-14T00:00:00.000Z",
     });
     expect(result).toEqual({ date: "2026-07-14", provenance: "submitted" });
@@ -80,25 +81,25 @@ describe("getEffectiveDate", () => {
 
   it("falls back to submission date when entryDate is null", () => {
     const result = getEffectiveDate({
-      entryDate: null,
+      documentDate: null,
       createdAt: "2026-07-14T00:00:00.000Z",
     });
     expect(result).toEqual({ date: "2026-07-14", provenance: "submitted" });
   });
 
   it("returns unknown when both dates are missing", () => {
-    const result = getEffectiveDate({ entryDate: null, createdAt: "" });
+    const result = getEffectiveDate({ documentDate: null, createdAt: "" });
     expect(result).toEqual({ date: "date_unknown", provenance: "unknown" });
   });
 
   it("returns unknown when both date values are empty strings", () => {
-    const result = getEffectiveDate({ entryDate: "", createdAt: "" });
+    const result = getEffectiveDate({ documentDate: "", createdAt: "" });
     expect(result).toEqual({ date: "date_unknown", provenance: "unknown" });
   });
 
   it("never invents the current date", () => {
     const now = new Date().toISOString().slice(0, 10);
-    const result = getEffectiveDate({ entryDate: null, createdAt: null as unknown as string });
+    const result = getEffectiveDate({ documentDate: null, createdAt: null as unknown as string });
     expect(result.date).not.toBe(now);
     expect(result.provenance).toBe("unknown");
   });
@@ -111,18 +112,18 @@ describe("getEffectiveDate", () => {
 describe("buildUnifiedStreamGroups", () => {
   it("groups consecutive items by effective date preserving server order", () => {
     const c1 = makeItem("c1", {
-      status: "completed",
-      entryDate: "2026-07-15",
+      processingStatus: "completed",
+      documentDate: "2026-07-15",
       ledgerEntries: [makeEntry({ amount: "5.00", convertedAmount: "5.00" })],
     });
     const c2 = makeItem("c2", {
-      status: "completed",
-      entryDate: "2026-07-10",
+      processingStatus: "completed",
+      documentDate: "2026-07-10",
       ledgerEntries: [makeEntry({ amount: "3.00", convertedAmount: "3.00" })],
     });
     const c3 = makeItem("c3", {
-      status: "completed",
-      entryDate: "2026-07-20",
+      processingStatus: "completed",
+      documentDate: "2026-07-20",
       ledgerEntries: [makeEntry({ amount: "7.00", convertedAmount: "7.00" })],
     });
 
@@ -134,8 +135,8 @@ describe("buildUnifiedStreamGroups", () => {
 
   it("computes group totals only from completed active entries", () => {
     const completed = makeItem("c1", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       ledgerEntries: [
         makeEntry({ amount: "10.00", convertedAmount: "10.00" }),
         makeEntry({ amount: "5.00", convertedAmount: "5.00" }),
@@ -147,10 +148,10 @@ describe("buildUnifiedStreamGroups", () => {
   });
 
   it("excludes non-completed items from group totals", () => {
-    const pending = makeItem("p1", { status: "processing", entryDate: "2026-07-01" });
+    const pending = makeItem("p1", { processingStatus: "processing", documentDate: "2026-07-01" });
     const completed = makeItem("c1", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       ledgerEntries: [makeEntry({ amount: "10.00", convertedAmount: "10.00" })],
     });
 
@@ -161,7 +162,7 @@ describe("buildUnifiedStreamGroups", () => {
   });
 
   it("does not invent a total for empty/pending groups", () => {
-    const att = makeItem("q1", { status: "processing", entryDate: "2026-07-01" });
+    const att = makeItem("q1", { processingStatus: "processing", documentDate: "2026-07-01" });
 
     const groups = buildUnifiedStreamGroups([att]);
     expect(groups[0]!.total).toBe("0");
@@ -169,14 +170,14 @@ describe("buildUnifiedStreamGroups", () => {
 
   it("preserves server order within same date group without re-sorting", () => {
     const a1 = makeItem("a1", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       createdAt: "2026-07-01T10:00:00.000Z",
       ledgerEntries: [makeEntry()],
     });
     const a2 = makeItem("a2", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       createdAt: "2026-07-01T09:00:00.000Z",
       ledgerEntries: [makeEntry()],
     });
@@ -190,48 +191,48 @@ describe("buildUnifiedStreamGroups", () => {
 
   it("preserves server order with mixed statuses without re-sorting", () => {
     const candidate = makeItem("cand", {
-      status: "candidate_pending",
-      entryDate: "2026-07-01",
+      processingStatus: "cancelled",
+      documentDate: "2026-07-01",
       createdAt: "2026-07-01T12:00:00.000Z",
     });
     const invalid = makeItem("anom", {
-      status: "invalid",
-      entryDate: "2026-07-01",
+      processingStatus: "failed",
+      documentDate: "2026-07-01",
       createdAt: "2026-07-01T11:00:00.000Z",
     });
     const failed = makeItem("fail", {
-      status: "failed",
-      entryDate: "2026-07-01",
+      processingStatus: "failed",
+      documentDate: "2026-07-01",
       createdAt: "2026-07-01T10:00:00.000Z",
     });
     const completed = makeItem("comp", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       createdAt: "2026-07-01T09:00:00.000Z",
       ledgerEntries: [makeEntry()],
     });
 
     // Server order: createdAt descending
     const groups = buildUnifiedStreamGroups([candidate, invalid, failed, completed]);
-    const statuses = groups[0]!.items.map((i) => i.sourceDocument.status);
+    const statuses = groups[0]!.items.map((i) => i.sourceDocument.processingStatus);
     // Server order preserved
-    expect(statuses).toEqual(["candidate_pending", "invalid", "failed", "completed"]);
+    expect(statuses).toEqual(["cancelled", "failed", "failed", "completed"]);
   });
 
   it("groups items with same effective date together", () => {
     const a1 = makeItem("a1", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       ledgerEntries: [makeEntry()],
     });
     const a2 = makeItem("a2", {
-      status: "completed",
-      entryDate: "2026-07-01",
+      processingStatus: "completed",
+      documentDate: "2026-07-01",
       ledgerEntries: [makeEntry()],
     });
     const b1 = makeItem("b1", {
-      status: "completed",
-      entryDate: "2026-06-30",
+      processingStatus: "completed",
+      documentDate: "2026-06-30",
       ledgerEntries: [makeEntry()],
     });
 
@@ -245,13 +246,13 @@ describe("buildUnifiedStreamGroups", () => {
 
   it("places date_unknown group where it appears in server order", () => {
     const unknown = makeItem("u1", {
-      status: "processing",
-      entryDate: null,
+      processingStatus: "processing",
+      documentDate: null,
       createdAt: "",
     });
     const known = makeItem("k1", {
-      status: "completed",
-      entryDate: "2026-07-15",
+      processingStatus: "completed",
+      documentDate: "2026-07-15",
       ledgerEntries: [makeEntry()],
     });
 

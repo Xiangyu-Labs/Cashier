@@ -71,11 +71,11 @@ function addEntries(
 
 /** Derive the date a card groups under. Never invents the current date. */
 export function getEffectiveDate(sourceDocument: {
-  entryDate?: string | null;
+  documentDate?: string | null;
   createdAt?: string;
 }): { date: string; provenance: DateProvenance } {
-  if (sourceDocument.entryDate != null && sourceDocument.entryDate.trim() !== "") {
-    return { date: sourceDocument.entryDate, provenance: "transaction" };
+  if (sourceDocument.documentDate != null && sourceDocument.documentDate.trim() !== "") {
+    return { date: sourceDocument.documentDate, provenance: "transaction" };
   }
   const createdAt = sourceDocument.createdAt;
   if (createdAt != null && createdAt !== "") {
@@ -125,7 +125,7 @@ export function buildUnifiedStreamGroups(
       };
       groups.push(group);
     }
-    if (sourceDocument.status === "completed") {
+    if (entries.length > 0) {
       addEntries(group, entries, mainCurrency);
     }
   }

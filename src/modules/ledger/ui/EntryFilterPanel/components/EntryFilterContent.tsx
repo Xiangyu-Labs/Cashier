@@ -17,16 +17,14 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
 import type { PeriodPreset } from "@/lib/period-utils";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import type { EntryFilters, StreamStatusPreset } from "@/modules/ledger/filters";
 
-const STATUS_OPTIONS: SourceDocumentStatusType[] = [
+const STATUS_OPTIONS: SourceDocumentProcessingStatus[] = [
   "processing",
   "completed",
-  "invalid",
   "failed",
   "cancelled",
-  "candidate_pending",
 ];
 
 interface EntryFilterContentProps {
@@ -38,7 +36,7 @@ interface EntryFilterContentProps {
   setTempFilterDate: (field: "startDate" | "endDate", date: Date | null) => void;
   handleApply: () => void;
   handleReset: () => void;
-  toggleStatus: (status: SourceDocumentStatusType) => void;
+  toggleStatus: (status: SourceDocumentProcessingStatus) => void;
   resetStatuses: () => void;
   handlePreset: (preset: StreamStatusPreset) => void;
   categories: EntryCategory[];
@@ -70,20 +68,16 @@ export function EntryFilterContent({
   const tDateRange = useTranslations("DateRangeFilter");
   const tSettings = useTranslations("Settings");
 
-  const statusLabel = (status: SourceDocumentStatusType) => {
+  const statusLabel = (status: SourceDocumentProcessingStatus) => {
     switch (status) {
       case "processing":
         return t("statusProcessing");
       case "completed":
         return t("statusCompleted");
-      case "invalid":
-        return t("statusInvalid");
       case "failed":
         return t("statusFailed");
       case "cancelled":
         return t("statusCancelled");
-      case "candidate_pending":
-        return t("statusCandidatePending");
     }
   };
 

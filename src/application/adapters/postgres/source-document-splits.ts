@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { round } from "@/lib/money/decimal";
@@ -13,8 +13,9 @@ import { getSourceDocumentInTransaction } from "./source-document-reads/list";
 import { getSourceDocumentLightForLedger } from "@/modules/source-document/application/queries/get-source-document-light";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
-import { copyRevisionFiles, createCompletedRevision } from "./ledger-projections";
+import { copyRevisionFiles, createManualRevision } from "./ledger-projections";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import { assertSourceDocumentNotProcessing } from "./source-document-write-guards";
 
 type EntrySnapshot = typeof ledgerEntries.$inferSelect;
 
@@ -68,20 +69,16 @@ export async function splitSourceDocumentAtomically(input: {
     }),
   ]);
   if (ledger == null || document == null) throw new NotFoundError("Source document");
-  if (document.stateVersion !== input.expectedVersion) {
+  if (document.version !== input.expectedVersion) {
     return {
       ok: false,
       reason: "stale",
       sourceDocumentId: input.sourceDocumentId,
       expectedVersion: input.expectedVersion,
-      currentVersion: document.stateVersion,
+      currentVersion: document.version,
     };
   }
-  if (
-    document.activeRevisionId == null ||
-    document.pendingRevisionId != null ||
-    document.currentStatus !== "completed"
-  ) {
+  if (document.activeRevisionId == null) {
     throw new ConflictError("Source document cannot be split in its current state");
   }
   const initialEntries = await db.query.ledgerEntries.findMany({
@@ -103,7 +100,7 @@ export async function splitSourceDocumentAtomically(input: {
   }
   const preparedAt = performance.now();
   const conversions =
-    document.entryDate === input.entryDate
+    document.documentDate === input.entryDate
       ? null
       : await postgresFxRateBook.convertBatch(
           movedEntries.map((entry) => ({
@@ -124,23 +121,25 @@ export async function splitSourceDocumentAtomically(input: {
       input.ledgerId,
       input.sourceDocumentId
     );
-    if (lockedDocument.stateVersion !== input.expectedVersion) {
-      return { staleVersion: lockedDocument.stateVersion } as const;
+    if (lockedDocument.version !== input.expectedVersion) {
+      return { staleVersion: lockedDocument.version } as const;
     }
     if (
       lockedLedger.mainCurrency !== ledger.mainCurrency ||
-      lockedDocument.activeRevisionId == null ||
-      lockedDocument.pendingRevisionId != null ||
-      lockedDocument.currentStatus !== "completed"
+      lockedDocument.activeRevisionId == null
     ) {
       throw new ConflictError("Source document changed before the split");
     }
+    await assertSourceDocumentNotProcessing(tx, lockedDocument);
     const activeRevision = await tx.query.sourceDocumentRevisions.findFirst({
       where: and(
         eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
         eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
         eq(sourceDocumentRevisions.id, lockedDocument.activeRevisionId),
-        eq(sourceDocumentRevisions.outcome, "completed")
+        or(
+          eq(sourceDocumentRevisions.processingStatus, "completed"),
+          isNull(sourceDocumentRevisions.processingStatus)
+        )
       ),
     });
     if (activeRevision == null) throw new ConflictError("Active revision is not completed");
@@ -157,24 +156,26 @@ export async function splitSourceDocumentAtomically(input: {
       throw new ConflictError("Source document entries changed before the split");
     }
 
-    const sourceRevision = await createCompletedRevision(tx, {
+    const sourceRevision = await createManualRevision(tx, {
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
-      submittedText: activeRevision.submittedText,
+      origin: "manual_edit",
+      inputText: activeRevision.inputText,
     });
     await tx.insert(sourceDocuments).values({
       id: splitSourceDocumentId,
       ledgerId: input.ledgerId,
       title: effectiveTitle(lockedDocument.title, activeRevision.title),
       type: lockedDocument.type,
-      currentStatus: "completed",
-      stateVersion: 1,
-      entryDate: input.entryDate,
+
+      version: 1,
+      documentDate: input.entryDate,
     });
-    const splitRevision = await createCompletedRevision(tx, {
+    const splitRevision = await createManualRevision(tx, {
       ledgerId: input.ledgerId,
       sourceDocumentId: splitSourceDocumentId,
-      submittedText: activeRevision.submittedText,
+      origin: "manual_entry",
+      inputText: activeRevision.inputText,
     });
     await copyRevisionFiles(tx, {
       ledgerId: input.ledgerId,
@@ -249,21 +250,19 @@ export async function splitSourceDocumentAtomically(input: {
       .update(sourceDocuments)
       .set({
         activeRevisionId: sourceRevision.id,
-        pendingRevisionId: null,
-        currentStatus: "completed",
-        stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+        version: sql`${sourceDocuments.version} + 1`,
         updatedAt: now,
       })
       .where(
         and(
           eq(sourceDocuments.ledgerId, input.ledgerId),
           eq(sourceDocuments.id, input.sourceDocumentId),
-          eq(sourceDocuments.stateVersion, input.expectedVersion)
+          eq(sourceDocuments.version, input.expectedVersion)
         )
       );
     await tx
       .update(sourceDocuments)
-      .set({ activeRevisionId: splitRevision.id, pendingRevisionId: null, updatedAt: now })
+      .set({ activeRevisionId: splitRevision.id, latestSubmissionRevisionId: null, updatedAt: now })
       .where(
         and(
           eq(sourceDocuments.ledgerId, input.ledgerId),

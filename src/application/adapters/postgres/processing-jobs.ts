@@ -2,10 +2,10 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import type {
   ProcessingClaimContract,
   ProcessingCompletionContract,
-  ProcessingIntentContract,
+  ProcessingJobContract,
   ProcessingPort,
   ProcessingRecoveryConfig,
-  RecoverableProcessingIntentContract,
+  RecoverableProcessingJobContract,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
 import {
@@ -18,40 +18,40 @@ import { lockLedgerForUpdate } from "./transaction-locks";
 
 const DEFAULT_LEASE_MS = 5 * 60 * 1000;
 
-export interface PostgresProcessingIntentAdapterOptions {
+export interface PostgresProcessingJobAdapterOptions {
   leaseMs?: number;
   now?: () => Date;
   onDispatch?: () => void;
 }
 
-function mapIntent(row: typeof processingOutbox.$inferSelect): ProcessingIntentContract {
+function mapJob(row: typeof processingOutbox.$inferSelect): ProcessingJobContract {
   return {
     id: row.id,
     sourceDocumentId: row.sourceDocumentId,
     revisionId: row.revisionId,
     requestedAt: row.requestedAt.toISOString(),
-    attempt: row.attemptNumber,
+    attemptNumber: row.attemptNumber,
   };
 }
 
-export class PostgresProcessingIntentAdapter implements ProcessingPort {
+export class PostgresProcessingJobAdapter implements ProcessingPort {
   private readonly leaseMs: number;
   private readonly now: () => Date;
   private readonly onDispatch: (() => void) | undefined;
 
-  constructor(options: PostgresProcessingIntentAdapterOptions = {}) {
+  constructor(options: PostgresProcessingJobAdapterOptions = {}) {
     this.leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
     this.now = options.now ?? (() => new Date());
     this.onDispatch = options.onDispatch;
   }
 
-  async dispatch(intent: ProcessingIntentContract): Promise<void> {
+  async dispatch(job: ProcessingJobContract): Promise<void> {
     await db.transaction(async (tx) => {
       const revision = await tx
         .select({
           ledgerId: sourceDocumentRevisions.ledgerId,
           sourceDocumentId: sourceDocumentRevisions.sourceDocumentId,
-          outcome: sourceDocumentRevisions.outcome,
+          processingStatus: sourceDocumentRevisions.processingStatus,
         })
         .from(sourceDocumentRevisions)
         .innerJoin(
@@ -63,42 +63,42 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         )
         .where(
           and(
-            eq(sourceDocumentRevisions.id, intent.revisionId),
-            eq(sourceDocumentRevisions.sourceDocumentId, intent.sourceDocumentId),
-            eq(sourceDocuments.pendingRevisionId, intent.revisionId),
+            eq(sourceDocumentRevisions.id, job.revisionId),
+            eq(sourceDocumentRevisions.sourceDocumentId, job.sourceDocumentId),
+            eq(sourceDocuments.latestSubmissionRevisionId, job.revisionId),
             isNull(sourceDocuments.deletedAt)
           )
         )
         .then((rows) => rows[0]);
-      if (revision == null || revision.outcome !== "processing") return;
+      if (revision == null || revision.processingStatus !== "processing") return;
 
       await tx
         .insert(processingAttempts)
         .values({
           ledgerId: revision.ledgerId,
-          revisionId: intent.revisionId,
-          attemptNumber: intent.attempt,
+          revisionId: job.revisionId,
+          attemptNumber: job.attemptNumber,
           status: "queued",
         })
         .onConflictDoNothing();
       await tx
         .insert(processingOutbox)
         .values({
-          id: intent.id,
+          id: job.id,
           ledgerId: revision.ledgerId,
-          sourceDocumentId: intent.sourceDocumentId,
-          revisionId: intent.revisionId,
-          attemptNumber: intent.attempt,
+          sourceDocumentId: job.sourceDocumentId,
+          revisionId: job.revisionId,
+          attemptNumber: job.attemptNumber,
           status: "pending",
-          requestedAt: new Date(intent.requestedAt),
-          availableAt: new Date(intent.requestedAt),
+          requestedAt: new Date(job.requestedAt),
+          availableAt: new Date(job.requestedAt),
         })
         .onConflictDoNothing();
     });
     this.onDispatch?.();
   }
 
-  async claim(intentId: string): Promise<ProcessingClaimContract | null> {
+  async claim(jobId: string): Promise<ProcessingClaimContract | null> {
     const now = this.now();
     const claimToken = crypto.randomUUID();
     const expiresAt = new Date(now.getTime() + this.leaseMs);
@@ -106,7 +106,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       const claimed = await tx.execute<typeof processingOutbox.$inferSelect>(sql`
         WITH candidate AS (
           SELECT id FROM processing_outbox
-          WHERE id = ${intentId}
+          WHERE id = ${jobId}
             AND available_at <= ${now}
             AND (status = 'pending' OR (status = 'claimed' AND claim_expires_at <= ${now}))
           ORDER BY available_at, created_at
@@ -132,7 +132,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
               requestedAt: new Date(raw.requested_at as string | Date),
             } as typeof processingOutbox.$inferSelect);
       if (row == null) return null;
-      const intent = mapIntent(row);
+      const job = mapJob(row);
       await tx
         .update(processingAttempts)
         .set({ status: "processing", startedAt: now })
@@ -145,7 +145,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         );
       return {
         ledgerId: row.ledgerId,
-        intent,
+        job,
         claimToken,
         expiresAt: expiresAt.toISOString(),
       };
@@ -155,7 +155,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
   async recoverBatch(
     ledgerId: string,
     config: ProcessingRecoveryConfig
-  ): Promise<readonly RecoverableProcessingIntentContract[]> {
+  ): Promise<readonly RecoverableProcessingJobContract[]> {
     const now = this.now();
     const nextAvailable = new Date(now.getTime() + config.cooldownSeconds * 1000);
 
@@ -167,19 +167,18 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           SELECT outbox.id, outbox.revision_id, outbox.attempt_number,
             CASE
               WHEN document.deleted_at IS NOT NULL
-                OR document.pending_revision_id IS DISTINCT FROM outbox.revision_id
-                OR revision.outcome IN ('cancelled', 'abandoned')
+                OR document.latest_submission_revision_id IS DISTINCT FROM outbox.revision_id
+                OR revision.processing_status = 'cancelled'
               THEN 'cancelled'
-              WHEN revision.outcome = 'failed' THEN 'failed'
+              WHEN revision.processing_status = 'failed' THEN 'failed'
               ELSE 'completed'
             END AS outbox_status,
             CASE
               WHEN document.deleted_at IS NOT NULL
-                OR document.pending_revision_id IS DISTINCT FROM outbox.revision_id
-                OR revision.outcome IN ('cancelled', 'abandoned')
+                OR document.latest_submission_revision_id IS DISTINCT FROM outbox.revision_id
+                OR revision.processing_status = 'cancelled'
               THEN 'cancelled'
-              WHEN revision.outcome = 'failed' THEN 'failed'
-              WHEN revision.outcome = 'invalid' THEN 'invalid'
+              WHEN revision.processing_status = 'failed' THEN 'failed'
               ELSE 'completed'
             END AS attempt_status
           FROM processing_outbox outbox
@@ -193,8 +192,8 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             AND outbox.status IN ('pending', 'claimed')
             AND (
               document.deleted_at IS NOT NULL
-              OR document.pending_revision_id IS DISTINCT FROM outbox.revision_id
-              OR revision.outcome <> 'processing'
+              OR document.latest_submission_revision_id IS DISTINCT FROM outbox.revision_id
+              OR revision.processing_status <> 'processing'
             )
           ORDER BY outbox.created_at, outbox.id
           FOR UPDATE OF outbox SKIP LOCKED
@@ -226,12 +225,12 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           JOIN source_documents document
             ON document.ledger_id = outbox.ledger_id
            AND document.id = outbox.source_document_id
-           AND document.pending_revision_id = outbox.revision_id
+           AND document.latest_submission_revision_id = outbox.revision_id
            AND document.deleted_at IS NULL
           JOIN source_document_revisions revision
             ON revision.ledger_id = outbox.ledger_id
            AND revision.id = outbox.revision_id
-           AND revision.outcome = 'processing'
+           AND revision.processing_status = 'processing'
           WHERE outbox.ledger_id = ${ledgerId}
             AND outbox.schedule_attempt_count >= ${config.maxAttempts}
             AND outbox.next_available_at <= ${now}
@@ -258,10 +257,11 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           RETURNING attempt.id
         ), updated_revisions AS (
           UPDATE source_document_revisions revision
-          SET outcome = 'failed', failure_code = 'request_bound_retry_exhausted',
-              finalized_at = ${now}
+          SET processing_status = 'failed', failure_kind = 'processing_error',
+              failure_code = 'request_bound_retry_exhausted',
+              failure_message = 'Processing retry limit reached', finished_at = ${now}
           FROM closed
-          WHERE revision.id = closed.revision_id AND revision.outcome = 'processing'
+          WHERE revision.id = closed.revision_id AND revision.processing_status = 'processing'
           RETURNING revision.id
         )
         SELECT count(*) FROM closed
@@ -272,7 +272,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         sourceDocumentId: string;
         revisionId: string;
         requestedAt: Date | string;
-        attempt: number;
+        attemptNumber: number;
         scheduleAttemptCount: number;
         nextAvailableAt: Date | string;
       }>(sql`
@@ -282,12 +282,12 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           JOIN source_documents document
             ON document.ledger_id = outbox.ledger_id
            AND document.id = outbox.source_document_id
-           AND document.pending_revision_id = outbox.revision_id
+           AND document.latest_submission_revision_id = outbox.revision_id
            AND document.deleted_at IS NULL
           JOIN source_document_revisions revision
             ON revision.ledger_id = outbox.ledger_id
            AND revision.id = outbox.revision_id
-           AND revision.outcome = 'processing'
+           AND revision.processing_status = 'processing'
           WHERE outbox.ledger_id = ${ledgerId}
             AND outbox.schedule_attempt_count < ${config.maxAttempts}
             AND outbox.next_available_at <= ${now}
@@ -308,7 +308,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           outbox.source_document_id AS "sourceDocumentId",
           outbox.revision_id AS "revisionId",
           outbox.requested_at AS "requestedAt",
-          outbox.attempt_number AS attempt,
+          outbox.attempt_number AS "attemptNumber",
           outbox.schedule_attempt_count AS "scheduleAttemptCount",
           outbox.next_available_at AS "nextAvailableAt"
       `);
@@ -325,14 +325,14 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
     });
   }
 
-  async renew(intentId: string, claimToken: string): Promise<string | null> {
+  async renew(jobId: string, claimToken: string): Promise<string | null> {
     const expiresAt = new Date(this.now().getTime() + this.leaseMs);
     const renewed = await db
       .update(processingOutbox)
       .set({ claimExpiresAt: expiresAt })
       .where(
         and(
-          eq(processingOutbox.id, intentId),
+          eq(processingOutbox.id, jobId),
           eq(processingOutbox.status, "claimed"),
           eq(processingOutbox.claimToken, claimToken)
         )
@@ -347,14 +347,14 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       const row = await tx
         .update(processingOutbox)
         .set({
-          status: result.outcome === "failed" ? "failed" : "completed",
+          status: result.processingStatus === "failed" ? "failed" : "completed",
           completedAt: now,
           claimToken: null,
           claimExpiresAt: null,
         })
         .where(
           and(
-            eq(processingOutbox.id, result.intentId),
+            eq(processingOutbox.id, result.jobId),
             eq(processingOutbox.status, "claimed"),
             eq(processingOutbox.claimToken, result.claimToken)
           )
@@ -368,14 +368,9 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       await tx
         .update(processingAttempts)
         .set({
-          status: result.outcome,
+          status: result.processingStatus,
           completedAt: now,
-          retryClassification:
-            result.outcome === "invalid"
-              ? "invalid"
-              : result.outcome === "failed"
-                ? "retryable"
-                : null,
+          retryClassification: result.processingStatus === "failed" ? "retryable" : null,
           diagnosticCode: result.diagnostic?.code ?? null,
           correlationId: result.diagnostic?.correlationId ?? null,
         })

@@ -72,13 +72,7 @@
     "openCalculator": "打开计算器",
     "invalidValue": "请输入有效金额。"
   },
-  "CandidateAction": {
-    "accept": "确认候选",
-    "acceptSuccess": "候选已确认",
-    "acceptError": "确认候选失败",
-    "abandon": "放弃候选",
-    "abandonSuccess": "候选已放弃",
-    "abandonError": "放弃候选失败",
+  "SourceDocumentAction": {
     "cancelProcessing": "取消处理",
     "cancelSuccess": "已取消处理",
     "cancelError": "无法取消处理，已刷新为最新结果。",
@@ -187,7 +181,6 @@
     "statusInvalid": "无效",
     "statusFailed": "失败",
     "statusCancelled": "已取消",
-    "statusCandidatePending": "待核准",
     "statusSummary": "状态：{label}",
     "search": "搜索",
     "searchPlaceholder": "搜索标题、名称或描述",
@@ -559,7 +552,6 @@
     "processing": "处理中",
     "completed": "已完成",
     "cancelled": "已取消",
-    "candidatePendingTitle": "新解析结果待确认",
     "invalidNeedsCorrection": "需要手动修正",
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",
@@ -679,11 +671,5 @@
     "pendingChangesCloseDescription": "关闭前，请先保存或放弃当前这次编辑。",
     "pendingChangesLeaveDescription": "返回查看前，请先保存或放弃当前这次编辑。",
     "continueEditing": "继续编辑"
-  },
-  "ReviewDialog": {
-    "loading": "正在加载对比",
-    "loadError": "该审核已不可用。",
-    "reload": "重新加载",
-    "noEntries": "暂无条目"
   }
 }

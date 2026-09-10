@@ -72,10 +72,10 @@ function filesFitUploadLimits(files: readonly File[]): boolean {
 
 function submissionBase(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
   return {
-    entryDate: payload.entryDate,
+    documentDate: payload.documentDate,
     ...(payload.timezone == null ? {} : { timezone: payload.timezone }),
-    ...(payload.text == null ? {} : { text: payload.text }),
-    ...(payload.storedFileIds == null ? {} : { storedFileIds: payload.storedFileIds }),
+    text: payload.text,
+    storedFileIds: payload.storedFileIds,
   };
 }
 
@@ -97,7 +97,7 @@ export async function uploadSourceDocumentSubmissionImages(
   const images = payload.images ?? [];
   const base = submissionBase(payload);
   if (images.length === 0) return base;
-  if (images.length + (payload.storedFileIds?.length ?? 0) > API_V1_MAX_IMAGES) {
+  if (images.length + payload.storedFileIds.length > API_V1_MAX_IMAGES) {
     throw new SourceDocumentSubmissionUploadError("Maximum 3 images allowed", "prepare");
   }
 

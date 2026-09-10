@@ -72,23 +72,7 @@
     "productName": "Product Name",
     "notes": "Notes"
   },
-  "CandidateReview": {
-    "title": "Review parsing result",
-    "original": "Original parsing result",
-    "candidate": "New parsing result",
-    "entryCount": "{count} entries",
-    "keepOriginal": "Keep original result",
-    "acceptCandidate": "Accept new result",
-    "abandonConfirmTitle": "Keep the original result?",
-    "abandonConfirmDescription": "The new parsing result will be discarded. The current ledger entries will remain unchanged."
-  },
-  "CandidateAction": {
-    "accept": "Accept",
-    "acceptSuccess": "Candidate accepted",
-    "acceptError": "Failed to accept candidate",
-    "abandon": "Abandon",
-    "abandonSuccess": "Candidate abandoned",
-    "abandonError": "Failed to abandon candidate",
+  "SourceDocumentAction": {
     "cancelProcessing": "Cancel processing",
     "cancelSuccess": "Processing cancelled",
     "cancelError": "Could not cancel processing. The latest result has been refreshed.",
@@ -98,12 +82,6 @@
     "retrySuccessDescription": "The document is being parsed again.",
     "retryError": "Retry failed",
     "retryErrorDescription": "The original result was kept. Please try again."
-  },
-  "ReviewDialog": {
-    "loading": "Loading comparison",
-    "loadError": "The review is no longer available.",
-    "reload": "Reload",
-    "noEntries": "No entries"
   },
   "DateFilter": {
     "selectDate": "Select date",
@@ -179,7 +157,6 @@
     "statusInvalid": "Invalid",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
-    "statusCandidatePending": "Candidate Pending",
     "statusSummary": "Status: {label}",
     "search": "Search",
     "searchPlaceholder": "Search title, name, or description",
@@ -545,7 +522,6 @@
     "processing": "Processing",
     "completed": "Completed",
     "cancelled": "Cancelled",
-    "candidatePendingTitle": "New result ready for review",
     "invalidNeedsCorrection": "Needs manual correction",
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",

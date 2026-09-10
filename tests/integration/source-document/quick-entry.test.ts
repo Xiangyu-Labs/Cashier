@@ -97,7 +97,7 @@ describe("createQuickEntryAction", () => {
       db.query.sourceDocumentRevisions.findFirst({
         where: eq(sourceDocumentRevisions.id, sourceDoc!.activeRevisionId!),
       })
-    ).resolves.toMatchObject({ outcome: "completed" });
+    ).resolves.toMatchObject({ origin: "manual_entry", processingStatus: null });
 
     // Verify ledger entry was created
     const entry = await db.query.ledgerEntries.findFirst({
@@ -170,7 +170,7 @@ describe("createQuickEntryAction", () => {
     const sourceDoc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
-    expect(sourceDoc?.entryDate).toBeDefined();
+    expect(sourceDoc?.documentDate).toBeDefined();
   });
 
   it("should throw error for unauthorized ledger", async () => {

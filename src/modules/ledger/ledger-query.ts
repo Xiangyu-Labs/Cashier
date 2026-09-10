@@ -1,6 +1,6 @@
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
-import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import { canonicalizeSourceDocumentProcessingStatuses } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import type { LedgerEntryFilterParams } from "./filters";
 
 export interface LedgerAdvancedFilters {
@@ -8,12 +8,12 @@ export interface LedgerAdvancedFilters {
   currency?: string | null;
   minAmount?: string | null;
   maxAmount?: string | null;
-  statuses?: SourceDocumentStatusType[];
+  statuses?: SourceDocumentProcessingStatus[];
   search?: string | null;
 }
 
 export interface LedgerQuery extends LedgerEntryFilterParams {
-  statuses?: SourceDocumentStatusType[];
+  statuses?: SourceDocumentProcessingStatus[];
 }
 
 interface DetailsInitialQueryState {
@@ -28,7 +28,7 @@ function nonBlank(value: string | null | undefined): string | null {
 }
 
 function normalizeLedgerQuery(query: LedgerQuery): LedgerQuery {
-  const statuses = canonicalizeSourceDocumentStatuses(query.statuses);
+  const statuses = canonicalizeSourceDocumentProcessingStatuses(query.statuses);
   return {
     ...(nonBlank(query.startDate) != null ? { startDate: nonBlank(query.startDate) } : {}),
     ...(nonBlank(query.endDate) != null ? { endDate: nonBlank(query.endDate) } : {}),

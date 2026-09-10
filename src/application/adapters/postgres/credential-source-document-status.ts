@@ -16,7 +16,7 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
     // ledger's main currency in a single query so status polling does not fan
     // out into three sequential reads. The revision must belong to both the
     // document and the same ledger.
-    const selectedRevisionId = sql<string>`COALESCE(${sourceDocuments.pendingRevisionId}, ${sourceDocuments.activeRevisionId})`;
+    const selectedRevisionId = sql<string>`COALESCE(${sourceDocuments.latestSubmissionRevisionId}, ${sourceDocuments.activeRevisionId})`;
     const rows = await db
       .select({
         document: sourceDocuments,
@@ -68,15 +68,10 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
     const row = rows[0];
     if (row == null) return null;
     const { document, revision } = row;
-    if (revision.outcome === "abandoned") return null;
-
-    // Keep the legacy credential API's processing response while a human
-    // decision is pending, even though the internal accounting projection is
-    // already active and included in all ledger statistics.
     const status =
-      document.currentStatus === "candidate_pending"
-        ? "processing"
-        : (revision.outcome as CredentialSourceDocumentStatusResult["status"]);
+      revision.failureKind === "invalid_input"
+        ? "invalid"
+        : (revision.processingStatus as CredentialSourceDocumentStatusResult["status"]);
     let result: CredentialSourceDocumentStatusResult["result"] = null;
     if (status === "completed" && document.activeRevisionId != null) {
       const total = row.entries.reduce((sum, entry) => {
@@ -108,15 +103,15 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
       status === "failed"
         ? { code: toStableFailureCode(revision.failureCode) }
         : status === "invalid"
-          ? { code: toStableInvalidCode(revision.invalidReason) }
+          ? { code: toStableInvalidCode(revision.failureMessage) }
           : null;
     return {
       sourceDocumentId: document.id,
       revisionId: revision.id,
       status,
       submittedAt: revision.submittedAt.toISOString(),
-      finalizedAt: revision.finalizedAt?.toISOString() ?? null,
-      entryDate: document.entryDate,
+      finalizedAt: revision.finishedAt?.toISOString() ?? null,
+      entryDate: document.documentDate,
       result,
       error,
     };

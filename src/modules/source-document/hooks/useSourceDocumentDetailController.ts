@@ -20,7 +20,7 @@ export function useSourceDocumentDetailController(
     sourceDocument,
     ledgerEntries,
     open: options.open,
-    externalPending: options.isAccepting || options.isAbandoning || options.isCancelling,
+    externalPending: options.isCancelling,
     onClose: options.onClose,
     onReload: options.onReload,
     onSaveAll: options.onSaveAll,
@@ -74,12 +74,6 @@ export function useSourceDocumentDetailController(
   const executeAction = useCallback(
     async (action: SourceDocumentDeferredAction) => {
       switch (action.type) {
-        case "accept-candidate":
-          await options.onAcceptCandidate?.();
-          return;
-        case "abandon-candidate":
-          await options.onAbandonCandidate?.();
-          return;
         case "cancel-processing":
           await options.onCancelProcessing?.();
           return;
@@ -126,7 +120,8 @@ export function useSourceDocumentDetailController(
       ...session.pending,
       isEditMode: session.isEditMode,
       displayTitle: session.pending.pendingChanges.sourceDoc.title ?? sourceDocument?.title ?? "",
-      splitInitialDate: sourceDocument?.entryDate ?? sourceDocument?.createdAt.slice(0, 10) ?? "",
+      splitInitialDate:
+        sourceDocument?.documentDate ?? sourceDocument?.createdAt.slice(0, 10) ?? "",
     },
     selection,
     status: {
@@ -160,8 +155,6 @@ export function useSourceDocumentDetailController(
       handleBatchCurrency: (currency: string) =>
         requestAction({ type: "batch-currency", currency }),
       handleOpenBatchDelete: () => requestAction({ type: "batch-delete" }),
-      handleAcceptCandidate: () => requestAction({ type: "accept-candidate" }),
-      handleAbandonCandidate: () => requestAction({ type: "abandon-candidate" }),
       handleCancelProcessing: () => requestAction({ type: "cancel-processing" }),
       handleOpenRetry: () => requestAction({ type: "open-retry" }),
       handleRequestDelete: () => requestAction({ type: "open-delete" }),

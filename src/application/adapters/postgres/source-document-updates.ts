@@ -152,11 +152,10 @@ export async function saveChanges(
       where: whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId),
       columns: {
         activeRevisionId: true,
-        pendingRevisionId: true,
-        currentStatus: true,
-        stateVersion: true,
+        latestSubmissionRevisionId: true,
+        version: true,
         title: true,
-        entryDate: true,
+        documentDate: true,
       },
     }),
     db.query.ledgerEntries.findMany({
@@ -173,13 +172,13 @@ export async function saveChanges(
     }),
   ]);
   if (ledger == null || document == null) throw new NotFoundError("Source document");
-  if (document.stateVersion !== input.expectedVersion) {
+  if (document.version !== input.expectedVersion) {
     return {
       ok: false,
       reason: "stale",
       sourceDocumentId: input.sourceDocumentId,
       expectedVersion: input.expectedVersion,
-      currentVersion: document.stateVersion,
+      currentVersion: document.version,
     };
   }
   if (!hasEditableActiveProjection(document)) {
@@ -202,8 +201,8 @@ export async function saveChanges(
 
   const metadataChanged =
     (input.sourceDocument?.title !== undefined && input.sourceDocument.title !== document.title) ||
-    (input.sourceDocument?.entryDate !== undefined &&
-      input.sourceDocument.entryDate !== document.entryDate);
+    (input.sourceDocument?.documentDate !== undefined &&
+      input.sourceDocument.documentDate !== document.documentDate);
   const entriesChanged = input.entries.some(({ ledgerEntryId, data }) => {
     const entry = initialEntriesById.get(ledgerEntryId)!;
     const nextCurrency = data.currency !== undefined ? data.currency : entry.currency;
@@ -226,7 +225,7 @@ export async function saveChanges(
     };
   }
 
-  const nextEntryDate = input.sourceDocument?.entryDate ?? document.entryDate ?? undefined;
+  const nextEntryDate = input.sourceDocument?.documentDate ?? document.documentDate ?? undefined;
   const nextEntries = activeEntries.map((entry) => {
     const patch = patches.get(entry.id);
     return {
@@ -251,8 +250,8 @@ export async function saveChanges(
     };
   });
   const dateChanged =
-    input.sourceDocument?.entryDate !== undefined &&
-    input.sourceDocument.entryDate !== document.entryDate;
+    input.sourceDocument?.documentDate !== undefined &&
+    input.sourceDocument.documentDate !== document.documentDate;
   const financialChanges = nextEntries.filter((entry) => {
     const previous = initialEntriesById.get(entry.id)!;
     return (
@@ -296,8 +295,8 @@ export async function saveChanges(
       input.ledgerId,
       input.sourceDocumentId
     );
-    if (lockedDocument.stateVersion !== input.expectedVersion) {
-      return { ok: false as const, currentVersion: lockedDocument.stateVersion };
+    if (lockedDocument.version !== input.expectedVersion) {
+      return { ok: false as const, currentVersion: lockedDocument.version };
     }
     if (!hasEditableActiveProjection(lockedDocument)) {
       throw new ConflictError("Source document is not editable");
@@ -315,9 +314,9 @@ export async function saveChanges(
       revisionId: crypto.randomUUID(),
       entries: projection,
       ...(input.sourceDocument?.title === undefined ? {} : { title: input.sourceDocument.title }),
-      ...(input.sourceDocument?.entryDate === undefined
+      ...(input.sourceDocument?.documentDate === undefined
         ? {}
-        : { entryDate: input.sourceDocument.entryDate }),
+        : { entryDate: input.sourceDocument.documentDate }),
     });
     return { ok: true as const };
   });
@@ -359,11 +358,10 @@ export async function updateDocuments({
       id: sourceDocuments.id,
       type: sourceDocuments.type,
       activeRevisionId: sourceDocuments.activeRevisionId,
-      pendingRevisionId: sourceDocuments.pendingRevisionId,
-      currentStatus: sourceDocuments.currentStatus,
-      stateVersion: sourceDocuments.stateVersion,
+      latestSubmissionRevisionId: sourceDocuments.latestSubmissionRevisionId,
+      version: sourceDocuments.version,
       title: sourceDocuments.title,
-      entryDate: sourceDocuments.entryDate,
+      documentDate: sourceDocuments.documentDate,
     })
     .from(sourceDocuments)
     .where(
@@ -376,9 +374,9 @@ export async function updateDocuments({
     .orderBy(asc(sourceDocuments.id));
   const initialStaleTargets = initialDocuments.flatMap((document) => {
     const expectedVersion = expectedVersions.get(document.id)!;
-    return document.stateVersion === expectedVersion
+    return document.version === expectedVersion
       ? []
-      : [{ sourceDocumentId: document.id, expectedVersion, currentVersion: document.stateVersion }];
+      : [{ sourceDocumentId: document.id, expectedVersion, currentVersion: document.version }];
   });
   if (initialStaleTargets.length > 0) {
     return { ok: false as const, reason: "stale" as const, staleTargets: initialStaleTargets };
@@ -391,13 +389,15 @@ export async function updateDocuments({
   }
   const changedDateIds = new Set(
     initialDocuments
-      .filter((document) => data.entryDate !== undefined && document.entryDate !== data.entryDate)
+      .filter(
+        (document) => data.documentDate !== undefined && document.documentDate !== data.documentDate
+      )
       .map((document) => document.id)
   );
   const plan =
-    data.entryDate === undefined || changedDateIds.size === 0
+    data.documentDate === undefined || changedDateIds.size === 0
       ? null
-      : await prepareDateReestimate(ledgerId, requestedIds, data.entryDate, changedDateIds);
+      : await prepareDateReestimate(ledgerId, requestedIds, data.documentDate, changedDateIds);
 
   const transactionResult = await db.transaction(async (tx) => {
     if (plan != null) {
@@ -420,13 +420,13 @@ export async function updateDocuments({
     }
     const staleTargets = documents.flatMap((document) => {
       const expectedVersion = expectedVersions.get(document.id)!;
-      return document.stateVersion === expectedVersion
+      return document.version === expectedVersion
         ? []
         : [
             {
               sourceDocumentId: document.id,
               expectedVersion,
-              currentVersion: document.stateVersion,
+              currentVersion: document.version,
             },
           ];
     });
@@ -510,7 +510,7 @@ export async function updateDocuments({
             initial.id !== current.id ||
             initial.type !== current.type ||
             initial.activeRevisionId !== current.activeRevisionId ||
-            initial.pendingRevisionId !== current.pendingRevisionId
+            initial.latestSubmissionRevisionId !== current.latestSubmissionRevisionId
           );
         })
       ) {
@@ -531,7 +531,7 @@ export async function updateDocuments({
       const changedDocuments = documents.filter((document) => {
         return (
           (data.title !== undefined && data.title !== document.title) ||
-          data.entryDate !== document.entryDate
+          data.documentDate !== document.documentDate
         );
       });
       for (const document of changedDocuments) {
@@ -542,9 +542,9 @@ export async function updateDocuments({
           ledgerId,
           sourceDocumentId: document.id,
           expectedActiveRevisionId: document.activeRevisionId!,
-          expectedStateVersion: document.stateVersion,
+          expectedStateVersion: document.version,
           revisionId: crypto.randomUUID(),
-          entryDate: data.entryDate!,
+          entryDate: data.documentDate!,
           ...(data.title === undefined ? {} : { title: data.title }),
           entries: entries.map((entry) => {
             if (!changedDateIds.has(document.id)) {
@@ -585,7 +585,7 @@ export async function updateDocuments({
         .update(sourceDocuments)
         .set({
           title: data.title,
-          stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+          version: sql`${sourceDocuments.version} + 1`,
           updatedAt: new Date(),
         })
         .where(
@@ -680,7 +680,7 @@ export async function updateEntryDates(input: {
     ledgerId: input.ledgerId,
     targets: input.targets,
     ledgerEntryIds: selectedIds,
-    data: { entryDate: input.entryDate },
+    data: { documentDate: input.entryDate },
   });
   if (!result.ok) return result;
   if (result.data.impact == null) throw new ConflictError("Date update impact was not committed");

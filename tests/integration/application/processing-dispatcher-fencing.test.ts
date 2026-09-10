@@ -4,10 +4,10 @@ import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { serverComposition } from "@/application/server-composition-root";
 import {
-  PostgresProcessingIntentAdapter,
+  PostgresProcessingJobAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import {
   ledgerEntries,
   processingOutbox,
@@ -25,60 +25,57 @@ afterEach(() => {
 });
 
 /**
- * Creates a pending revision + intent for a single source document.
+ * Creates a pending revision + job for a single source document.
  * Each call uses a fresh user+ledger pair to avoid unique-constraint collisions
  * when called multiple times within one test.
  */
 async function pendingIntent(
   requestedAt = "2026-07-15T00:00:00.000Z",
   userId = crypto.randomUUID()
-): Promise<{ ledgerId: string; intent: ProcessingIntentContract }> {
+): Promise<{ ledgerId: string; job: ProcessingJobContract }> {
   const db = getTestDb();
   const { ledgerId } = await createTestUserWithLedger(db, undefined, undefined, userId);
-  const pending = await postgresRevisionAdapter.createPending({
+  const pending = await postgresRevisionAdapter.createProcessingRevision({
     ledgerId,
-    submittedText: "Lunch 12.50 CNY",
+    input: { text: "Lunch 12.50 CNY", storedFileIds: [], documentDate: null },
   });
   return {
     ledgerId,
-    intent: {
+    job: {
       id: crypto.randomUUID(),
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
       requestedAt,
-      attempt: 1,
+      attemptNumber: 1,
     },
   };
 }
 
 describe("leased processor fencing", () => {
-  async function reclaimedLease(intent: ProcessingIntentContract) {
+  async function reclaimedLease(job: ProcessingJobContract) {
     const db = getTestDb();
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
-    const first = await adapter.claim(intent.id);
+    const adapter = new PostgresProcessingJobAdapter();
+    await adapter.dispatch(job);
+    const first = await adapter.claim(job.id);
     expect(first).not.toBeNull();
     // Expire the first claim and let a second worker reclaim the outbox row.
     await db
       .update(processingOutbox)
       .set({ claimExpiresAt: new Date(Date.now() - 60_000) })
-      .where(eq(processingOutbox.id, intent.id));
-    const second = await adapter.claim(intent.id);
+      .where(eq(processingOutbox.id, job.id));
+    const second = await adapter.claim(job.id);
     expect(second).not.toBeNull();
     return { adapter, firstToken: first!.claimToken, secondToken: second!.claimToken };
   }
 
   it("does not commit a projection after the worker lease is reclaimed", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent(
-      "2026-07-15T00:00:00.000Z",
-      crypto.randomUUID()
-    );
-    const { firstToken } = await reclaimedLease(intent);
+    const { ledgerId, job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { firstToken } = await reclaimedLease(job);
 
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
-        outcome: "success",
+        processingStatus: "success",
         invalid_reason: null,
         title: "Lunch",
         receipt_count: 1,
@@ -102,36 +99,33 @@ describe("leased processor fencing", () => {
     await expect(
       processor.process({
         ledgerId,
-        sourceDocumentId: intent.sourceDocumentId,
-        revisionId: intent.revisionId,
-        lease: { intentId: intent.id, claimToken: firstToken },
+        sourceDocumentId: job.sourceDocumentId,
+        revisionId: job.revisionId,
+        lease: { jobId: job.id, claimToken: firstToken },
       })
     ).rejects.toThrow("Processing cancelled");
 
     const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+      where: eq(sourceDocumentRevisions.id, job.revisionId),
     });
     const document = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+      where: eq(sourceDocuments.id, job.sourceDocumentId),
     });
-    expect(revision?.outcome).toBe("processing");
+    expect(revision?.processingStatus).toBe("processing");
     expect(document?.activeRevisionId).toBeNull();
-    expect(document?.pendingRevisionId).toBe(intent.revisionId);
-    expect(document?.stateVersion).toBe(1);
+    expect(document?.latestSubmissionRevisionId).toBe(job.revisionId);
+    expect(document?.version).toBe(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 
   it("does not persist a terminal outcome after the worker lease is reclaimed", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent(
-      "2026-07-15T00:00:00.000Z",
-      crypto.randomUUID()
-    );
-    const { firstToken } = await reclaimedLease(intent);
+    const { ledgerId, job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { firstToken } = await reclaimedLease(job);
 
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
-        outcome: "invalid",
+        processingStatus: "invalid",
         invalid_reason: "Image too blurry",
         title: "Lunch",
         receipt_count: 1,
@@ -155,21 +149,21 @@ describe("leased processor fencing", () => {
     await expect(
       processor.process({
         ledgerId,
-        sourceDocumentId: intent.sourceDocumentId,
-        revisionId: intent.revisionId,
-        lease: { intentId: intent.id, claimToken: firstToken },
+        sourceDocumentId: job.sourceDocumentId,
+        revisionId: job.revisionId,
+        lease: { jobId: job.id, claimToken: firstToken },
       })
     ).rejects.toThrow("Processing cancelled");
 
     const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+      where: eq(sourceDocumentRevisions.id, job.revisionId),
     });
     const document = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+      where: eq(sourceDocuments.id, job.sourceDocumentId),
     });
-    expect(revision?.outcome).toBe("processing");
-    expect(revision?.invalidReason).toBeNull();
-    expect(document?.stateVersion).toBe(1);
+    expect(revision?.processingStatus).toBe("processing");
+    expect(revision?.failureMessage).toBeNull();
+    expect(document?.version).toBe(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 });

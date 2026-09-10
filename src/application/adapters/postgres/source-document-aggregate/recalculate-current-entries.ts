@@ -15,7 +15,7 @@ export async function recalculateCurrentEntries(
   const entries = await tx
     .selectDistinct({
       currency: ledgerEntries.currency,
-      entryDate: sourceDocuments.entryDate,
+      entryDate: sourceDocuments.documentDate,
     })
     .from(ledgerEntries)
     .innerJoin(
@@ -25,14 +25,17 @@ export async function recalculateCurrentEntries(
         eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
         or(
           eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
-          eq(sourceDocuments.pendingRevisionId, ledgerEntries.sourceDocumentRevisionId)
+          eq(sourceDocuments.latestSubmissionRevisionId, ledgerEntries.sourceDocumentRevisionId)
         ),
         isNull(sourceDocuments.deletedAt),
         ...(entryDate != null
           ? [
               includeUndated
-                ? or(eq(sourceDocuments.entryDate, entryDate), isNull(sourceDocuments.entryDate))
-                : eq(sourceDocuments.entryDate, entryDate),
+                ? or(
+                    eq(sourceDocuments.documentDate, entryDate),
+                    isNull(sourceDocuments.documentDate)
+                  )
+                : eq(sourceDocuments.documentDate, entryDate),
             ]
           : [])
       )
@@ -99,25 +102,22 @@ export async function recalculateCurrentEntries(
       INNER JOIN source_documents AS document
         ON document.id = entry.source_document_id
         AND document.ledger_id = ${ledgerId}
-        AND (
-          document.active_revision_id = entry.source_document_revision_id
-          OR document.pending_revision_id = entry.source_document_revision_id
-        )
+        AND document.active_revision_id = entry.source_document_revision_id
         AND document.deleted_at IS NULL
         ${
           entryDate != null
             ? sql`AND (
               ${
                 includeUndated
-                  ? sql`document.entry_date = ${entryDate} OR document.entry_date IS NULL`
-                  : sql`document.entry_date = ${entryDate}`
+                  ? sql`document.document_date = ${entryDate} OR document.document_date IS NULL`
+                  : sql`document.document_date = ${entryDate}`
               }
             )`
             : sql``
         }
       LEFT JOIN currency_rates AS rates
         ON rates.date = COALESCE(
-          document.entry_date,
+          document.document_date,
           (SELECT MAX(latest.date) FROM currency_rates AS latest)
         )
       WHERE entry.ledger_id = ${ledgerId}
@@ -174,7 +174,7 @@ export async function recalculateCurrentEntries(
       RETURNING entry.id, changed.source_document_id
     ), updated_documents AS (
       UPDATE source_documents AS document
-      SET state_version = document.state_version + 1,
+      SET version = document.version + 1,
           updated_at = ${now}
       FROM (
         SELECT DISTINCT source_document_id FROM updated_entries

@@ -1,4 +1,4 @@
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 
 export interface EntryFilters {
   startDate?: string;
@@ -7,7 +7,7 @@ export interface EntryFilters {
   currency?: string | null;
   minAmount?: string | null;
   maxAmount?: string | null;
-  statuses?: SourceDocumentStatusType[];
+  statuses?: SourceDocumentProcessingStatus[];
   search?: string | null;
 }
 
@@ -25,7 +25,10 @@ export interface LedgerEntryFilterParams {
 export const STREAM_STATUS_PRESETS = ["needs_attention", "in_progress"] as const;
 export type StreamStatusPreset = (typeof STREAM_STATUS_PRESETS)[number];
 
-export const STREAM_STATUS_PRESET_VALUES: Record<StreamStatusPreset, SourceDocumentStatusType[]> = {
-  needs_attention: ["candidate_pending", "invalid", "failed"],
+export const STREAM_STATUS_PRESET_VALUES: Record<
+  StreamStatusPreset,
+  SourceDocumentProcessingStatus[]
+> = {
+  needs_attention: ["failed", "cancelled"],
   in_progress: ["processing"],
 };

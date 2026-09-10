@@ -177,14 +177,14 @@ describe("API v1 source-documents route", () => {
     });
     await db
       .update(sourceDocumentRevisions)
-      .set({ outcome: "completed", finalizedAt: new Date() })
+      .set({ processingStatus: "completed", finishedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, created.revisionId));
     await db
       .update(sourceDocuments)
       .set({
         title: "Lunch receipt",
         activeRevisionId: created.revisionId,
-        pendingRevisionId: null,
+        latestSubmissionRevisionId: null,
       })
       .where(eq(sourceDocuments.id, created.sourceDocumentId));
 
@@ -259,14 +259,14 @@ describe("API v1 source-documents route", () => {
     ]);
     await db
       .update(sourceDocumentRevisions)
-      .set({ outcome: "completed", finalizedAt: new Date() })
+      .set({ processingStatus: "completed", finishedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, created.revisionId));
     await db
       .update(sourceDocuments)
       .set({
         title: "Mixed receipt",
         activeRevisionId: created.revisionId,
-        pendingRevisionId: null,
+        latestSubmissionRevisionId: null,
       })
       .where(eq(sourceDocuments.id, created.sourceDocumentId));
 
@@ -320,13 +320,13 @@ describe("API v1 source-documents route", () => {
     });
     await db
       .update(sourceDocumentRevisions)
-      .set({ outcome: "completed", finalizedAt: new Date() })
+      .set({ processingStatus: "completed", finishedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, created.revisionId));
     await db
       .update(sourceDocuments)
       .set({
         activeRevisionId: created.revisionId,
-        pendingRevisionId: null,
+        latestSubmissionRevisionId: null,
       })
       .where(eq(sourceDocuments.id, created.sourceDocumentId));
 

@@ -219,7 +219,7 @@ export class ExchangeRateService {
           FROM ${ledgers}
           INNER JOIN ${sourceDocuments}
             ON ${sourceDocuments.ledgerId} = ${ledgers.id}
-            AND (${sourceDocuments.entryDate} = ${targetDateStr} OR ${sourceDocuments.entryDate} IS NULL)
+            AND (${sourceDocuments.documentDate} = ${targetDateStr} OR ${sourceDocuments.documentDate} IS NULL)
             AND ${sourceDocuments.deletedAt} IS NULL
           INNER JOIN ${ledgerEntries}
             ON ${ledgerEntries.ledgerId} = ${ledgers.id}
@@ -227,7 +227,7 @@ export class ExchangeRateService {
             AND ${ledgerEntries.deletedAt} IS NULL
             AND (
               ${sourceDocuments.activeRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
-              OR ${sourceDocuments.pendingRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
+              OR ${sourceDocuments.latestSubmissionRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
             )
           WHERE ${ledgers.deletedAt} IS NULL
           ON CONFLICT (rate_date, ledger_id) DO NOTHING

@@ -6,9 +6,10 @@ import type {
 } from "@/modules/source-document/contracts";
 import { memo, useCallback, useId, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import { type SourceDocumentProcessingStatus } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
+import type { RevisionFailureKind } from "@/application/contracts";
 import { EntryCardShell } from "@/components/entry-card-shell";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
@@ -28,8 +29,9 @@ interface SourceDocumentCardProps {
   onExpandedChange?: (expanded: boolean) => void;
   onEditRetry?: () => void | Promise<void>;
   onEditRetryIntent?: () => void;
-  status: SourceDocumentStatusType;
-  invalidReason?: string | null;
+  processingStatus: SourceDocumentProcessingStatus | null;
+  failureKind?: RevisionFailureKind | null;
+  failureMessage?: string | null;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   className?: string;
   selectionMode?: boolean;
@@ -39,10 +41,8 @@ interface SourceDocumentCardProps {
   readOnly?: boolean;
   isRetrying?: boolean;
   isCancelling?: boolean;
-  isAbandoning?: boolean;
   onRetry?: () => void | Promise<void>;
   onCancelProcessing?: () => void | Promise<void>;
-  onAbandonCandidate?: () => void | Promise<void>;
 }
 
 export const SourceDocumentCard = memo(function SourceDocumentCard(props: SourceDocumentCardProps) {
@@ -62,8 +62,9 @@ function SourceDocumentCardBody({
   onExpandedChange,
   onEditRetry,
   onEditRetryIntent,
-  status,
-  invalidReason,
+  processingStatus,
+  failureKind,
+  failureMessage,
   errorCode,
   className,
   selectionMode = false,
@@ -73,10 +74,8 @@ function SourceDocumentCardBody({
   readOnly = false,
   isRetrying = false,
   isCancelling = false,
-  isAbandoning = false,
   onRetry,
   onCancelProcessing,
-  onAbandonCandidate,
 }: SourceDocumentCardProps) {
   const tCommon = useTranslations("Common");
   const tCard = useTranslations("SourceDocumentCard");
@@ -89,7 +88,7 @@ function SourceDocumentCardBody({
   }, [expanded, isExpanded, onExpandedChange]);
   const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
-  const hasExpandableContent = status === "completed" && sortedEntries.length > 0;
+  const hasExpandableContent = sortedEntries.length > 0;
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
     ? []
     : sourceDocument.supportedActions;
@@ -124,14 +123,14 @@ function SourceDocumentCardBody({
       >
         <SourceDocumentCardHeader
           sourceDocument={sourceDocument}
-          status={status}
-          invalidReason={invalidReason}
+          processingStatus={processingStatus}
+          failureKind={failureKind}
+          failureMessage={failureMessage}
           errorCode={errorCode}
           ledgerEntries={ledgerEntries}
           mainCurrency={mainCurrency}
           isRetrying={isRetrying}
           isCancelling={isCancelling}
-          isAbandoning={isAbandoning}
           selectionMode={selectionMode}
           supportedActions={supportedActions}
           showActions={!readOnly}
@@ -143,7 +142,6 @@ function SourceDocumentCardBody({
           onViewDetailsIntent={onViewDetailsIntent}
           onDirectRetry={onRetry}
           onCancelProcessing={onCancelProcessing}
-          onAbandonCandidate={onAbandonCandidate}
           onEditRetry={onEditRetry}
           onEditRetryIntent={onEditRetryIntent}
           onDelete={onDelete}
@@ -157,7 +155,7 @@ function SourceDocumentCardBody({
             <SourceDocumentCardEntries
               entries={sortedEntries}
               mainCurrency={mainCurrency}
-              sourceDocumentEntryDate={sourceDocument.entryDate}
+              sourceDocumentEntryDate={sourceDocument.documentDate}
               {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
             />
           </div>

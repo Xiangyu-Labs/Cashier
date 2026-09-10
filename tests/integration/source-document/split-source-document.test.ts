@@ -15,7 +15,7 @@ describe("splitSourceDocumentAction", () => {
     const fixture = await seed();
     await fixture.db
       .update(sourceDocuments)
-      .set({ entryDate: "2026-08-16" })
+      .set({ documentDate: "2026-08-16" })
       .where(eq(sourceDocuments.id, fixture.document.id));
     await fixture.db
       .update(ledgerEntries)
@@ -110,8 +110,8 @@ describe("splitSourceDocumentAction", () => {
     const split = await fixture.db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, result.data.splitSourceDocumentId),
     });
-    expect(source?.stateVersion).toBe(2);
-    expect(split?.stateVersion).toBe(1);
+    expect(source?.version).toBe(2);
+    expect(split?.version).toBe(1);
   });
 
   it("returns stale on lost-response retry", async () => {
@@ -163,7 +163,7 @@ describe("splitSourceDocumentAction", () => {
         await fixture.db.query.sourceDocuments.findFirst({
           where: eq(sourceDocuments.id, fixture.document.id),
         })
-      ).toMatchObject({ stateVersion: 1 });
+      ).toMatchObject({ version: 1 });
       expect(
         await fixture.db.query.sourceDocuments.findMany({
           where: eq(sourceDocuments.ledgerId, fixture.ledger.id),

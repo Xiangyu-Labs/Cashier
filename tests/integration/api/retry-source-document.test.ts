@@ -53,7 +53,7 @@ describe("source-document retry action", () => {
       db.query.sourceDocumentRevisions.findFirst({
         where: eq(sourceDocumentRevisions.id, before!.activeRevisionId!),
       })
-    ).resolves.toMatchObject({ outcome: "completed" });
+    ).resolves.toMatchObject({ processingStatus: "completed" });
 
     vi.mocked(getOpenAIClient).mockReturnValue(
       createOpenAIMock({
@@ -72,13 +72,13 @@ describe("source-document retry action", () => {
     const retried = await editRetrySourceDocumentAction(
       ledgerId,
       created.sourceDocumentId,
-      { text: "晚餐 50元" },
-      before!.stateVersion
+      { text: "晚餐 50元", storedFileIds: [], documentDate: null },
+      before!.version
     );
     expect(retried).toEqual({
       ok: true,
       sourceDocumentId: created.sourceDocumentId,
-      version: before!.stateVersion + 1,
+      version: before!.version + 1,
       data: { status: "processing" },
     });
     await processAllPendingTasks();
@@ -98,19 +98,17 @@ describe("source-document retry action", () => {
       ),
     });
 
-    // Document has an active revision and a completed pending candidate
+    // The completed retry becomes the active result immediately.
     expect(after).toMatchObject({
       id: created.sourceDocumentId,
-      currentStatus: "candidate_pending",
       deletedAt: null,
     });
-    expect(after?.pendingRevisionId).not.toBeNull();
-    expect(after?.activeRevisionId).toBe(before?.activeRevisionId);
+    expect(after?.latestSubmissionRevisionId).not.toBeNull();
+    expect(after?.activeRevisionId).toBe(after?.latestSubmissionRevisionId);
     expect(revisions).toHaveLength(2);
-    expect(revisions[0]?.outcome).toBe("completed");
-    expect(revisions[1]?.outcome).toBe("completed");
-    // Active entries are from the original parse (candidate not auto-activated)
-    expect(activeEntries).toMatchObject([{ itemName: "午餐" }]);
+    expect(revisions[0]?.processingStatus).toBe("completed");
+    expect(revisions[1]?.processingStatus).toBe("completed");
+    expect(activeEntries).toMatchObject([{ itemName: "晚餐" }]);
   });
 
   it("rejects raw image payloads that bypass upload finalization", async () => {
@@ -127,7 +125,7 @@ describe("source-document retry action", () => {
         {
           images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
         } as never,
-        before!.stateVersion
+        before!.version
       )
     ).rejects.toThrow();
   });
@@ -153,8 +151,8 @@ describe("source-document retry action", () => {
     await editRetrySourceDocumentAction(
       ledgerId,
       created.sourceDocumentId,
-      { text: "修改 50元" },
-      before!.stateVersion
+      { text: "修改 50元", storedFileIds: [], documentDate: null },
+      before!.version
     );
     await processAllPendingTasks();
 
@@ -169,8 +167,8 @@ describe("source-document retry action", () => {
       orderBy: asc(sourceDocumentRevisions.revisionNumber),
     });
     expect(revisions1).toHaveLength(2);
-    expect(revisions1[0]?.outcome).toBe("completed");
-    expect(revisions1[1]?.outcome).toBe("failed");
+    expect(revisions1[0]?.processingStatus).toBe("completed");
+    expect(revisions1[1]?.processingStatus).toBe("failed");
 
     // Step 4: Retry a second time with a working AI mock
     vi.mocked(getOpenAIClient).mockReturnValue(
@@ -191,27 +189,28 @@ describe("source-document retry action", () => {
     const retried = await editRetrySourceDocumentAction(
       ledgerId,
       created.sourceDocumentId,
-      { text: "晚餐 50元" },
-      afterFail!.stateVersion
+      { text: "晚餐 50元", storedFileIds: [], documentDate: null },
+      afterFail!.version
     );
     expect(retried).toMatchObject({ ok: true, data: { status: "processing" } });
     await processAllPendingTasks();
 
-    // Step 5: Verify final state — 3 revisions, candidate is pending, original active preserved
+    // Step 5: Verify final state: the successful retry replaces the active result.
     const afterRetry = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(afterRetry?.pendingRevisionId).not.toBeNull();
-    expect(afterRetry?.activeRevisionId).toBe(originalActiveRevisionId);
+    expect(afterRetry?.latestSubmissionRevisionId).not.toBeNull();
+    expect(afterRetry?.activeRevisionId).toBe(afterRetry?.latestSubmissionRevisionId);
+    expect(afterRetry?.activeRevisionId).not.toBe(originalActiveRevisionId);
 
     const revisions2 = await db.query.sourceDocumentRevisions.findMany({
       where: eq(sourceDocumentRevisions.sourceDocumentId, created.sourceDocumentId),
       orderBy: asc(sourceDocumentRevisions.revisionNumber),
     });
     expect(revisions2).toHaveLength(3);
-    expect(revisions2[0]?.outcome).toBe("completed"); // original
-    expect(revisions2[1]?.outcome).toBe("failed"); // failed retry
-    expect(revisions2[2]?.outcome).toBe("completed"); // successful retry candidate
+    expect(revisions2[0]?.processingStatus).toBe("completed"); // original
+    expect(revisions2[1]?.processingStatus).toBe("failed"); // failed retry
+    expect(revisions2[2]?.processingStatus).toBe("completed");
 
     const activeEntries = await db.query.ledgerEntries.findMany({
       where: and(
@@ -220,7 +219,6 @@ describe("source-document retry action", () => {
         isNull(ledgerEntries.deletedAt)
       ),
     });
-    // Active entries are from the original parse (candidate not auto-activated)
-    expect(activeEntries).toMatchObject([{ itemName: "午餐" }]);
+    expect(activeEntries).toMatchObject([{ itemName: "晚餐" }]);
   });
 });

@@ -34,7 +34,7 @@ describe("new record success feedback", () => {
     showNewRecordSuccessFeedback({
       mode: "ai",
       ledgerId: "ledger-1",
-      result: { sourceDocumentId: "source-1", entryDate: "2026-07-17" },
+      result: { sourceDocumentId: "source-1", documentDate: "2026-07-17" },
       activeTab: "stats",
       committedFilters: {},
       messages,
@@ -76,7 +76,7 @@ describe("new record success feedback", () => {
     showNewRecordSuccessFeedback({
       mode: "quick",
       ledgerId: "ledger-1",
-      result: { sourceDocumentId: "source-2", entryDate: "2026-07-17" },
+      result: { sourceDocumentId: "source-2", documentDate: "2026-07-17" },
       activeTab: "stream",
       committedFilters: {
         startDate: "2026-07-01",

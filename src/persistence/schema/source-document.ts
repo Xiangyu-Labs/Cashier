@@ -12,12 +12,7 @@ import {
   foreignKey,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, sql } from "drizzle-orm";
-import {
-  type ActiveSourceDocumentStatusType,
-  type SourceDocumentTypeValue,
-  SourceDocumentStatus,
-  SourceDocumentType,
-} from "@/lib/source-document-values";
+import { type SourceDocumentTypeValue, SourceDocumentType } from "@/lib/source-document-values";
 import { ledgers } from "./ledger";
 
 const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {
@@ -25,15 +20,6 @@ const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {
   ledgerId: uuid("ledger_id").notNull(),
   sourceDocumentId: uuid("source_document_id").notNull(),
 });
-
-export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
-  "processing",
-  "completed",
-  "candidate_pending",
-  "invalid",
-  "failed",
-  "cancelled",
-]);
 
 export const sourceDocumentTypeEnum = pgEnum("source_document_type", ["ai_parsed", "manual"]);
 
@@ -45,21 +31,17 @@ export const sourceDocuments = pgTable(
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     title: text("title"),
-    currentStatus: sourceDocumentStatusEnum("current_status")
-      .notNull()
-      .default(SourceDocumentStatus.Processing)
-      .$type<ActiveSourceDocumentStatusType>(),
     type: sourceDocumentTypeEnum("type")
       .notNull()
       .default(SourceDocumentType.AiParsed)
       .$type<SourceDocumentTypeValue>(),
-    entryDate: date("entry_date", { mode: "string" }),
+    documentDate: date("document_date", { mode: "string" }),
     effectiveDate: date("effective_date", { mode: "string" })
       .notNull()
-      .generatedAlwaysAs(sql`COALESCE("entry_date", ("created_at" AT TIME ZONE 'UTC')::date)`),
+      .generatedAlwaysAs(sql`COALESCE("document_date", ("created_at" AT TIME ZONE 'UTC')::date)`),
     activeRevisionId: uuid("active_revision_id"),
-    pendingRevisionId: uuid("pending_revision_id"),
-    stateVersion: integer("state_version").notNull().default(1),
+    latestSubmissionRevisionId: uuid("latest_submission_revision_id"),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -73,21 +55,12 @@ export const sourceDocuments = pgTable(
     index("idx_source_documents_active_feed")
       .on(table.ledgerId, table.effectiveDate.desc(), table.createdAt.desc(), table.id.desc())
       .where(sql`${table.deletedAt} IS NULL`),
-    index("idx_source_documents_active_status_feed")
-      .on(
-        table.ledgerId,
-        table.currentStatus,
-        table.effectiveDate.desc(),
-        table.createdAt.desc(),
-        table.id.desc()
-      )
-      .where(sql`${table.deletedAt} IS NULL`),
     index("idx_source_documents_active_revision").on(table.activeRevisionId),
-    index("idx_source_documents_pending_revision").on(table.pendingRevisionId),
-    index("idx_source_documents_ledger_entry_date")
-      .on(table.ledgerId, table.entryDate, table.createdAt.desc(), table.id.desc())
+    index("idx_source_documents_latest_submission_revision").on(table.latestSubmissionRevisionId),
+    index("idx_source_documents_ledger_document_date")
+      .on(table.ledgerId, table.documentDate, table.createdAt.desc(), table.id.desc())
       .where(sql`${table.deletedAt} IS NULL`),
-    check("source_documents_state_version_check", sql`${table.stateVersion} > 0`),
+    check("source_documents_version_check", sql`${table.version} > 0`),
     // PostgreSQL uses column-list SET NULL here so ledger_id remains intact.
     // Drizzle cannot express that syntax; migrations own the delete action.
     foreignKey({
@@ -100,13 +73,13 @@ export const sourceDocuments = pgTable(
       name: "fk_source_documents_active_revision",
     }),
     foreignKey({
-      columns: [table.ledgerId, table.id, table.pendingRevisionId],
+      columns: [table.ledgerId, table.id, table.latestSubmissionRevisionId],
       foreignColumns: [
         sourceDocumentRevisionsReference.ledgerId,
         sourceDocumentRevisionsReference.sourceDocumentId,
         sourceDocumentRevisionsReference.id,
       ],
-      name: "fk_source_documents_pending_revision",
+      name: "fk_source_documents_latest_submission_revision",
     }),
   ]
 );

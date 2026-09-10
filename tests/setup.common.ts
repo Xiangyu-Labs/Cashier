@@ -19,7 +19,7 @@ const { afterCallbacks } = await vi.hoisted(async () => ({
 /**
  * Drain pending `after()` callbacks within a bounded budget, including
  * callbacks registered by earlier callbacks (the recovery pass schedules
- * intent execution). A timeout fails the test and retains unfinished work so
+ * job execution). A timeout fails the test and retains unfinished work so
  * the next destructive setup cannot mistake it for a drained queue.
  */
 export async function flushAfterCallbacks(timeoutMs = 2500): Promise<void> {

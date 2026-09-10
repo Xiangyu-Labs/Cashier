@@ -27,16 +27,17 @@ const getSourceDocumentFullQuery = (ledgerId: string, sourceDocumentId: string) 
   getSourceDocumentFullQueryUseCase(ledgerId, sourceDocumentId, queryPorts.documents);
 
 const SOURCE_LIST_KEYS = [
-  "invalidReason",
+  "failureKind",
+  "failureMessage",
   "canEdit",
   "createdAt",
-  "entryDate",
+  "documentDate",
   "errorCode",
   "hasImages",
   "id",
   "ledgerEntries",
   "ledgerId",
-  "status",
+  "processingStatus",
   "supportedActions",
   "text",
   "title",
@@ -156,7 +157,7 @@ describe("bounded target read models", () => {
     const { ledgerId } = await createTestUserWithLedger(db);
     const [document] = await db
       .insert(sourceDocuments)
-      .values({ ledgerId, currentStatus: "completed", entryDate: "2026-09-03" })
+      .values({ ledgerId, documentDate: "2026-09-03" })
       .returning();
     await db.insert(ledgerEntries).values({
       ledgerId,
@@ -182,10 +183,7 @@ describe("bounded target read models", () => {
       const afterList = readStatements(getStatements()).length;
       const detail = await serverComposition.sourceDocumentReads.get(ledgerId, document!.id);
       const afterDetail = readStatements(getStatements()).length;
-      const evidence = await serverComposition.sourceDocumentReads.getEvidence(
-        ledgerId,
-        document!.id
-      );
+      const evidence = await serverComposition.sourceDocumentReads.getInput(ledgerId, document!.id);
       const afterEvidence = readStatements(getStatements()).length;
       await listStreamPage(ledgerId, { limit: 20 });
       const afterStream = readStatements(getStatements()).length;
@@ -237,9 +235,13 @@ describe("bounded target read models", () => {
       .returning({ id: storedFiles.id });
 
     const capture = await captureSqlStatements(async () =>
-      postgresRevisionAdapter.createPending({
+      postgresRevisionAdapter.createProcessingRevision({
         ledgerId,
-        storedFileIds: files.map((file) => file.id),
+        input: {
+          text: null,
+          storedFileIds: files.map((file) => file.id),
+          documentDate: null,
+        },
       })
     );
     const ownershipSelects = capture.statements
@@ -265,8 +267,7 @@ describe("bounded target read models", () => {
         Array.from({ length: historySize }, (_, index) => ({
           ledgerId,
           title: `Receipt ${index}`,
-          currentStatus: "completed" as const,
-          entryDate: "2026-07-15",
+          documentDate: "2026-07-15",
           createdAt,
           updatedAt: createdAt,
         }))
@@ -302,7 +303,7 @@ describe("bounded target read models", () => {
 
     const detail = await getSourceDocumentFullQuery(ledgerId, documents[0]!.id);
     expect(Object.keys(detail).sort()).toEqual(
-      ["createdAt", "files", "id", "status", "text"].sort()
+      ["createdAt", "documentDate", "files", "id", "processingStatus", "text"].sort()
     );
     expect(detail.text).toBe(`${sensitiveText}-0`);
     expect(detail.files).toEqual([
@@ -331,7 +332,7 @@ describe("bounded target read models", () => {
       expectedMainCurrency: "CNY",
       ledgerId,
       title: "Large receipt",
-      submittedText: sensitiveText,
+      inputText: sensitiveText,
       entryDate: "2026-07-15",
       entries: Array.from({ length: historySize }, (_, index) => ({
         id: crypto.randomUUID(),
@@ -365,7 +366,7 @@ describe("bounded target read models", () => {
       localPath,
       "sourceDocumentRevisionId",
       "activeRevisionId",
-      "pendingRevisionId",
+      "latestSubmissionRevisionId",
       "revisionNumber",
     ]) {
       expect(serialized).not.toContain(forbidden);

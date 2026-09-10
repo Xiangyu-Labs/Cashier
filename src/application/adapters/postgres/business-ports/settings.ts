@@ -35,7 +35,7 @@ export const postgresSettingsAdapter: SettingsPort = {
     // entryDate filter, matching the full-ledger recalculation a
     // main-currency change triggers.
     const rows = await db
-      .selectDistinct({ entryDate: sourceDocuments.entryDate })
+      .selectDistinct({ entryDate: sourceDocuments.documentDate })
       .from(ledgerEntries)
       .innerJoin(
         sourceDocuments,
@@ -44,7 +44,7 @@ export const postgresSettingsAdapter: SettingsPort = {
           eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
           or(
             eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
-            eq(sourceDocuments.pendingRevisionId, ledgerEntries.sourceDocumentRevisionId)
+            eq(sourceDocuments.latestSubmissionRevisionId, ledgerEntries.sourceDocumentRevisionId)
           ),
           isNull(sourceDocuments.deletedAt)
         )

@@ -165,8 +165,8 @@ describe("SourceDocument Actions", () => {
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.sourceDocumentId, result.sourceDocumentId!),
     });
-    expect(revision?.submittedText).toBe("午餐25元");
-    expect(revision?.outcome).toBe("processing");
+    expect(revision?.inputText).toBe("午餐25元");
+    expect(revision?.processingStatus).toBe("processing");
 
     // Process tasks to ensure cleanup
     await processAllPendingTasks();
@@ -235,14 +235,13 @@ describe("SourceDocument Actions", () => {
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
-    await deleteSourceDocumentAction(testLedgerId, sourceDocumentId, document!.stateVersion);
+    await deleteSourceDocumentAction(testLedgerId, sourceDocumentId, document!.version);
 
     // 3. Verify deletion
     const docAfter = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(docAfter).toBeDefined();
-    expect(docAfter?.currentStatus).toBe("cancelled");
     expect(docAfter?.deletedAt).not.toBeNull();
 
     const entriesAfter = await db.query.ledgerEntries.findMany({

@@ -5,7 +5,6 @@ const { actions, awaitInvalidation, mutationObservers } = vi.hoisted(() => ({
   actions: {
     retry: vi.fn(),
     cancel: vi.fn(),
-    abandon: vi.fn(),
   },
   awaitInvalidation: vi.fn<() => Promise<void>>(),
   mutationObservers: vi.fn(),
@@ -15,9 +14,8 @@ vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/modules/source-document/server-actions/retry", () => ({
   retrySourceDocumentAction: actions.retry,
 }));
-vi.mock("@/modules/source-document/server-actions/candidates", () => ({
+vi.mock("@/modules/source-document/server-actions/processing", () => ({
   cancelSourceDocumentProcessingAction: actions.cancel,
-  abandonSourceDocumentCandidateAction: actions.abandon,
 }));
 vi.mock("@/lib/mutations/use-ledger-mutation", () => ({
   useLedgerMutation: (_ledgerId: string, options: Record<string, unknown>) => {
@@ -51,7 +49,6 @@ describe("useStreamSourceDocumentRecoveryMutations", () => {
   it.each([
     ["retry", "retryingIds", actions.retry],
     ["cancelProcessing", "cancellingIds", actions.cancel],
-    ["abandonCandidate", "abandoningIds", actions.abandon],
   ] as const)(
     "keeps %s locked until cache invalidation completes",
     async (method, pendingKey, action) => {
@@ -62,7 +59,7 @@ describe("useStreamSourceDocumentRecoveryMutations", () => {
       const { result } = renderHook(() => useStreamSourceDocumentRecoveryMutations("ledger-1"));
       const initialAction = result.current[method];
 
-      expect(mutationObservers).toHaveBeenCalledTimes(3);
+      expect(mutationObservers).toHaveBeenCalledTimes(2);
       act(() => {
         void result.current[method]({ sourceDocumentId: "doc-1", expectedVersion: 3 });
         void result.current[method]({ sourceDocumentId: "doc-1", expectedVersion: 3 });

@@ -13,7 +13,7 @@ describe("buildSubmitPayload local business date", () => {
 
     expect(buildSubmitPayload("receipt", [], new Date(2026, 6, 27, 0, 30))).toMatchObject({
       text: "receipt",
-      entryDate: "2026-07-27",
+      documentDate: "2026-07-27",
       timezone: "Asia/Shanghai",
     });
   });

@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from "uuid";
 import { NotFoundError } from "@/lib/errors";
 import { activateTestSourceDocumentProjection } from "../helpers/schema-setup";
 import { getTargetSourceDocumentAccessContext } from "@/application/adapters/postgres/source-document-reads";
-import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
+import { createProcessingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -134,10 +134,14 @@ describe("getSourceDocumentLightAction", () => {
       imageUrls: ["data:image/jpeg;base64,/9j/4AAQ..."],
     });
     await db.transaction((tx) =>
-      createPendingRevisionInTransaction(tx, {
+      createProcessingRevisionInTransaction(tx, {
         ledgerId: ledgerData.id,
         sourceDocumentId: docData.id,
-        submittedText: "replacement without images",
+        input: {
+          text: "replacement without images",
+          storedFileIds: [],
+          documentDate: null,
+        },
       })
     );
 

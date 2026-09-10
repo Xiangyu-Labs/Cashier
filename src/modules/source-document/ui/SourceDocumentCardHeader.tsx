@@ -3,19 +3,11 @@ import type {
   SourceDocument,
   SourceDocumentLight,
   SourceDocumentListItemDto,
-  SourceDocumentStatusType,
+  SourceDocumentProcessingStatus,
 } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo, useRef } from "react";
-import {
-  ChevronDown,
-  CircleStop,
-  MoreVertical,
-  Pencil,
-  RefreshCw,
-  Trash2,
-  XCircle,
-} from "lucide-react";
+import { ChevronDown, CircleStop, MoreVertical, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -29,20 +21,24 @@ import {
 import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
-import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
+import type {
+  ApplicationErrorCode,
+  ProcessingFailureCode,
+  RevisionFailureKind,
+} from "@/application/contracts";
 import { toStableFailureCode, toStableInvalidCode } from "@/application/contracts";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight | SourceDocumentListItemDto;
-  status: SourceDocumentStatusType;
-  invalidReason?: string | null | undefined;
+  processingStatus: SourceDocumentProcessingStatus | null;
+  failureKind?: RevisionFailureKind | null | undefined;
+  failureMessage?: string | null | undefined;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
   isRetrying: boolean;
   isCancelling: boolean;
-  isAbandoning: boolean;
   selectionMode: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
@@ -54,23 +50,17 @@ interface SourceDocumentCardHeaderProps {
   onViewDetailsIntent?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onCancelProcessing?: (() => void | Promise<void>) | undefined;
-  onAbandonCandidate?: (() => void | Promise<void>) | undefined;
   onEditRetry?: (() => void | Promise<void>) | undefined;
   onEditRetryIntent?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
-function getProcessingStatus(status: SourceDocumentStatusType) {
-  if (status === "invalid" || status === "failed") {
+function getProcessingStatus(status: SourceDocumentProcessingStatus | null) {
+  if (status === "failed") {
     return "error" as const;
   }
 
-  if (
-    status === "processing" ||
-    status === "completed" ||
-    status === "candidate_pending" ||
-    status === "cancelled"
-  ) {
+  if (status === "processing" || status === "completed" || status === "cancelled") {
     return status;
   }
 
@@ -79,14 +69,14 @@ function getProcessingStatus(status: SourceDocumentStatusType) {
 
 export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   sourceDocument,
-  status,
-  invalidReason,
+  processingStatus: status,
+  failureKind,
+  failureMessage,
   errorCode,
   ledgerEntries,
   mainCurrency,
   isRetrying,
   isCancelling,
-  isAbandoning,
   selectionMode,
   supportedActions,
   showActions = true,
@@ -98,14 +88,13 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   onViewDetailsIntent,
   onDirectRetry,
   onCancelProcessing,
-  onAbandonCandidate,
   onEditRetry,
   onEditRetryIntent,
   onDelete,
 }: SourceDocumentCardHeaderProps) {
   const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
-  const tActions = useTranslations("CandidateAction");
+  const tActions = useTranslations("SourceDocumentAction");
   const diagnosticMessages = useDiagnosticMessages();
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -114,16 +103,14 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
     processingStatus != null &&
     processingStatus !== "completed" &&
     (ledgerEntries.length === 0 ||
-      status === "invalid" ||
       status === "failed" ||
       status === "processing" ||
-      status === "cancelled" ||
-      status === "candidate_pending");
+      status === "cancelled");
 
   // Derive stable error code for display
   const stableErrorCode =
-    status === "invalid"
-      ? toStableInvalidCode(invalidReason)
+    status === "failed" && failureKind === "invalid_input"
+      ? toStableInvalidCode(failureMessage)
       : status === "failed"
         ? toStableFailureCode(errorCode)
         : null;
@@ -184,15 +171,13 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             status={processingStatus}
             {...(stableErrorCode != null
               ? { label: diagnosticMessages.label(stableErrorCode) }
-              : status === "invalid" && invalidReason != null && invalidReason !== ""
-                ? { label: invalidReason }
+              : failureMessage != null && failureMessage !== ""
+                ? { label: failureMessage }
                 : {})}
           />
         )}
 
-        {!["processing", "invalid", "failed", "candidate_pending", "cancelled"].includes(
-          status
-        ) && (
+        {status === "completed" && (
           <div className="text-right">
             <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
           </div>
@@ -247,15 +232,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                     {tActions("cancelProcessing")}
                   </DropdownMenuItem>
                 )}
-
-                {hasAction("abandon_candidate") &&
-                  status !== "candidate_pending" &&
-                  onAbandonCandidate != null && (
-                    <DropdownMenuItem onClick={onAbandonCandidate} disabled={isAbandoning}>
-                      <XCircle className="mr-2 h-4 w-4" />
-                      {tActions("abandon")}
-                    </DropdownMenuItem>
-                  )}
 
                 {hasAction("retry") && onDelete != null && <DropdownMenuSeparator />}
 

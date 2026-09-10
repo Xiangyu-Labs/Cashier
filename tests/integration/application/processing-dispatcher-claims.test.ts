@@ -3,11 +3,11 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
-  PostgresProcessingIntentAdapter,
+  PostgresProcessingJobAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
 import { serverComposition } from "@/application/server-composition-root";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingJobContract } from "@/application/contracts";
 import {
   ledgerEntries,
   ledgers,
@@ -27,39 +27,36 @@ afterEach(() => {
 });
 
 /**
- * Creates a pending revision + intent for a single source document.
+ * Creates a pending revision + job for a single source document.
  * Each call uses a fresh user+ledger pair to avoid unique-constraint collisions
  * when called multiple times within one test.
  */
 async function pendingIntent(
   requestedAt = "2026-07-15T00:00:00.000Z",
   userId = crypto.randomUUID()
-): Promise<{ ledgerId: string; intent: ProcessingIntentContract }> {
+): Promise<{ ledgerId: string; job: ProcessingJobContract }> {
   const db = getTestDb();
   const { ledgerId } = await createTestUserWithLedger(db, undefined, undefined, userId);
-  const pending = await postgresRevisionAdapter.createPending({
+  const pending = await postgresRevisionAdapter.createProcessingRevision({
     ledgerId,
-    submittedText: "Lunch 12.50 CNY",
+    input: { text: "Lunch 12.50 CNY", storedFileIds: [], documentDate: null },
   });
   return {
     ledgerId,
-    intent: {
+    job: {
       id: crypto.randomUUID(),
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
       requestedAt,
-      attempt: 1,
+      attemptNumber: 1,
     },
   };
 }
 
-describe("PostgresProcessingIntentAdapter", () => {
+describe("PostgresProcessingJobAdapter", () => {
   it("processes parser, reconciliation, exchange-rate facts, and result writes by revision identity", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent(
-      "2026-07-15T00:00:00.000Z",
-      crypto.randomUUID()
-    );
+    const { ledgerId, job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
@@ -86,34 +83,31 @@ describe("PostgresProcessingIntentAdapter", () => {
     await expect(
       processor.process({
         ledgerId,
-        sourceDocumentId: intent.sourceDocumentId,
-        revisionId: intent.revisionId,
+        sourceDocumentId: job.sourceDocumentId,
+        revisionId: job.revisionId,
       })
-    ).resolves.toEqual({ outcome: "completed", completion: "atomic" });
+    ).resolves.toEqual({ processingStatus: "completed", completion: "atomic" });
     await expect(
       processor.process({
         ledgerId,
-        sourceDocumentId: intent.sourceDocumentId,
-        revisionId: intent.revisionId,
+        sourceDocumentId: job.sourceDocumentId,
+        revisionId: job.revisionId,
       })
-    ).resolves.toEqual({ outcome: "completed", completion: "residual" });
+    ).resolves.toEqual({ processingStatus: "completed", completion: "residual" });
 
     expect(generate).toHaveBeenCalledTimes(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
     await expect(
-      postgresRevisionAdapter.get(ledgerId, intent.sourceDocumentId)
+      postgresRevisionAdapter.get(ledgerId, job.sourceDocumentId)
     ).resolves.toMatchObject({
-      activeRevisionId: intent.revisionId,
-      pendingRevisionId: null,
+      activeRevisionId: job.revisionId,
+      latestSubmissionRevisionId: job.revisionId,
     });
   });
 
   it("processes with custom ledger prompt in AI generation request", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent(
-      "2026-07-15T00:00:00.000Z",
-      crypto.randomUUID()
-    );
+    const { ledgerId, job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     // Update typed ledger settings with a custom prompt.
     const customPrompt = "Please categorize expenses as food or transport";
@@ -152,8 +146,8 @@ describe("PostgresProcessingIntentAdapter", () => {
 
     await processor.process({
       ledgerId,
-      sourceDocumentId: intent.sourceDocumentId,
-      revisionId: intent.revisionId,
+      sourceDocumentId: job.sourceDocumentId,
+      revisionId: job.revisionId,
     });
 
     // Verify the custom prompt reaches the AI call
@@ -172,10 +166,7 @@ describe("PostgresProcessingIntentAdapter", () => {
       base: "EUR",
       rates: { EUR: 1, CNY: 8, USD: 1.2 },
     });
-    const { ledgerId, intent } = await pendingIntent(
-      "2026-07-15T00:00:00.000Z",
-      crypto.randomUUID()
-    );
+    const { ledgerId, job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     // Process once without custom prompt (successful first parse)
     const generate1 = vi.fn(async () => ({
@@ -204,8 +195,8 @@ describe("PostgresProcessingIntentAdapter", () => {
 
     await processor1.process({
       ledgerId,
-      sourceDocumentId: intent.sourceDocumentId,
-      revisionId: intent.revisionId,
+      sourceDocumentId: job.sourceDocumentId,
+      revisionId: job.revisionId,
     });
 
     // Update typed settings after the first parse.
@@ -220,9 +211,9 @@ describe("PostgresProcessingIntentAdapter", () => {
       .where(eq(ledgers.id, ledgerId));
 
     // Create a second revision (retry) after the settings change
-    const pending2 = await postgresRevisionAdapter.createPending({
+    const pending2 = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      submittedText: "Dinner 25.00 USD",
+      input: { text: "Dinner 25.00 USD", storedFileIds: [], documentDate: null },
     });
 
     const generate2 = vi.fn(async () => ({
@@ -266,11 +257,11 @@ describe("PostgresProcessingIntentAdapter", () => {
 
   it("deduplicates dispatch and permits only one concurrent claim", async () => {
     const db = getTestDb();
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-    const adapter = new PostgresProcessingIntentAdapter();
+    const { job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const adapter = new PostgresProcessingJobAdapter();
 
-    await Promise.all([adapter.dispatch(intent), adapter.dispatch(intent)]);
-    const claims = await Promise.all([adapter.claim(intent.id), adapter.claim(intent.id)]);
+    await Promise.all([adapter.dispatch(job), adapter.dispatch(job)]);
+    const claims = await Promise.all([adapter.claim(job.id), adapter.claim(job.id)]);
 
     expect(claims.filter((claim) => claim != null)).toHaveLength(1);
     expect(claims.find((claim) => claim != null)?.ledgerId).toBeDefined();
@@ -280,65 +271,65 @@ describe("PostgresProcessingIntentAdapter", () => {
 
   it("reclaims an expired lease and rejects stale completion", async () => {
     let now = new Date("2026-07-15T00:00:00.000Z");
-    const { intent } = await pendingIntent(now.toISOString(), crypto.randomUUID());
-    const adapter = new PostgresProcessingIntentAdapter({ leaseMs: 1_000, now: () => now });
-    await adapter.dispatch(intent);
+    const { job } = await pendingIntent(now.toISOString(), crypto.randomUUID());
+    const adapter = new PostgresProcessingJobAdapter({ leaseMs: 1_000, now: () => now });
+    await adapter.dispatch(job);
 
-    const first = await adapter.claim(intent.id);
+    const first = await adapter.claim(job.id);
     expect(first).not.toBeNull();
     now = new Date(now.getTime() + 500);
-    const renewedUntil = await adapter.renew(intent.id, first!.claimToken);
+    const renewedUntil = await adapter.renew(job.id, first!.claimToken);
     expect(renewedUntil).toBe(new Date(now.getTime() + 1_000).toISOString());
     now = new Date(now.getTime() + 1_001);
-    const second = await adapter.claim(intent.id);
+    const second = await adapter.claim(job.id);
     expect(second).not.toBeNull();
     expect(second!.claimToken).not.toBe(first!.claimToken);
 
     await expect(
       adapter.complete({
-        intentId: intent.id,
+        jobId: job.id,
         claimToken: first!.claimToken,
-        outcome: "completed",
+        processingStatus: "completed",
       })
     ).resolves.toBe(false);
     await expect(
       adapter.complete({
-        intentId: intent.id,
+        jobId: job.id,
         claimToken: second!.claimToken,
-        outcome: "invalid",
+        processingStatus: "failed",
       })
     ).resolves.toBe(true);
   });
 
   it("returns false on duplicate claim", async () => {
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
+    const { job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const adapter = new PostgresProcessingJobAdapter();
+    await adapter.dispatch(job);
 
     // First claim succeeds
-    const first = await adapter.claim(intent.id);
+    const first = await adapter.claim(job.id);
     expect(first).not.toBeNull();
 
-    // Second claim (same adapter, same DB) returns null since intent is claimed
-    const second = await adapter.claim(intent.id);
+    // Second claim (same adapter, same DB) returns null since job is claimed
+    const second = await adapter.claim(job.id);
     expect(second).toBeNull();
   });
 
-  it("records failed outcome on processing error via executeSingleProcessingIntent", async () => {
+  it("records failed outcome on processing error via executeSingleProcessingJob", async () => {
     const db = getTestDb();
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { job } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     const generate = vi.fn().mockRejectedValue(new Error("AI service unavailable"));
     vi.mocked(createAIContext).mockReturnValue({ generate });
 
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
+    const adapter = new PostgresProcessingJobAdapter();
+    await adapter.dispatch(job);
 
-    const result = await serverComposition.executeSingleProcessingIntent(intent);
+    const result = await serverComposition.executeSingleProcessingJob(job);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, intent.id),
+      where: eq(processingOutbox.id, job.id),
     });
     expect(row?.status).toBe("failed");
   });

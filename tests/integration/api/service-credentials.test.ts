@@ -203,8 +203,8 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId),
     });
-    expect(revision?.submittedText).toBeNull();
-    expect(revision?.outcome).toBe("processing");
+    expect(revision?.inputText).toBeNull();
+    expect(revision?.processingStatus).toBe("processing");
   });
 
   it("should reject ledger entry with invalid service credential", async () => {
@@ -288,8 +288,12 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const doc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, data.sourceDocumentId),
     });
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, doc!.latestSubmissionRevisionId!),
+    });
 
-    expect(doc?.entryDate).toBe(formatDateTimeForApi(new Date()));
+    expect(doc?.documentDate).toBeNull();
+    expect(revision?.inputDocumentDate).toBe(formatDateTimeForApi(new Date()));
   });
 
   it("should delete service credential via Action", async () => {

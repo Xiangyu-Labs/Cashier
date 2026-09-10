@@ -12,83 +12,63 @@ export type RevisionId = string;
 export type LedgerId = string;
 export type StoredFileId = string;
 export type UploadSessionId = string;
-export type ProcessingIntentId = string;
+export type ProcessingJobId = string;
 
-export type RevisionOutcome =
-  "processing" | "completed" | "invalid" | "failed" | "cancelled" | "abandoned";
+export type RevisionProcessingStatus = "processing" | "completed" | "failed" | "cancelled";
+export type RevisionOrigin = "submission" | "manual_edit" | "manual_entry";
+export type RevisionFailureKind = "invalid_input" | "processing_error";
 
 export type SupportedSourceDocumentAction =
-  | "retry"
-  | "edit_retry"
-  | "delete"
-  | "accept_candidate"
-  | "abandon_candidate"
-  | "cancel_processing"
-  | "split_entries";
+  "retry" | "edit_retry" | "delete" | "cancel_processing" | "split_entries";
 
 export interface SourceDocumentContract {
   id: SourceDocumentId;
   ledgerId: LedgerId;
   version: number;
   activeRevisionId: RevisionId | null;
-  pendingRevisionId: RevisionId | null;
+  latestSubmissionRevisionId: RevisionId | null;
   supportedActions: readonly SupportedSourceDocumentAction[];
 }
 
 export interface SourceDocumentRevisionContract {
   id: RevisionId;
   sourceDocumentId: SourceDocumentId;
-  outcome: RevisionOutcome;
+  origin: RevisionOrigin;
+  processingStatus: RevisionProcessingStatus | null;
   submittedAt: string;
-  finalizedAt: string | null;
+  finishedAt: string | null;
 }
 
 /** @testOnly Exported for application contract suites. */
 export function supportedSourceDocumentActions(input: {
   activeRevisionId: RevisionId | null;
-  pendingRevisionId?: RevisionId | null;
-  pendingOutcome: RevisionOutcome | null;
+  latestSubmissionStatus: RevisionProcessingStatus | null;
+  hasSubmissionInput: boolean;
   deleted?: boolean;
 }): readonly SupportedSourceDocumentAction[] {
   if (input.deleted) {
     return [];
   }
 
-  if (input.pendingOutcome === "processing") {
+  if (input.latestSubmissionStatus === "processing") {
     return ["cancel_processing", "retry", "edit_retry", "delete"];
   }
 
-  if (input.pendingOutcome === "invalid" || input.pendingOutcome === "failed") {
-    if (input.activeRevisionId != null) {
-      return ["abandon_candidate", "retry", "edit_retry", "delete"];
-    }
-    return ["retry", "edit_retry", "delete"];
+  const retryActions: SupportedSourceDocumentAction[] = input.hasSubmissionInput
+    ? ["retry", "edit_retry"]
+    : [];
+  if (input.activeRevisionId != null) {
+    return ["split_entries", ...retryActions, "delete"];
   }
-
-  // Document has an existing active projection and a completed pending revision -> candidate pending
-  if (input.activeRevisionId != null && input.pendingOutcome === "completed") {
-    return ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"];
-  }
-
-  if (input.pendingOutcome === "completed") {
-    return ["retry", "edit_retry", "delete"];
-  }
-  const hasPendingRevision =
-    input.pendingRevisionId === undefined
-      ? input.pendingOutcome != null
-      : input.pendingRevisionId != null;
-  if (input.activeRevisionId != null && !hasPendingRevision && input.pendingOutcome == null) {
-    return ["split_entries", "retry", "edit_retry", "delete"];
-  }
-  return ["retry", "edit_retry", "delete"];
+  return [...retryActions, "delete"];
 }
 
-export interface ProcessingIntentContract {
-  id: ProcessingIntentId;
+export interface ProcessingJobContract {
+  id: ProcessingJobId;
   sourceDocumentId: SourceDocumentId;
   revisionId: RevisionId;
   requestedAt: string;
-  attempt: number;
+  attemptNumber: number;
 }
 
 /**
@@ -97,7 +77,7 @@ export interface ProcessingIntentContract {
  * worker whose lease was lost or reclaimed cannot commit stale results.
  */
 export interface ProcessingLeaseContract {
-  intentId: ProcessingIntentId;
+  jobId: ProcessingJobId;
   claimToken: string;
 }
 
@@ -108,15 +88,15 @@ interface ProcessingDiagnostic {
 }
 
 export interface ProcessingCompletionContract {
-  intentId: ProcessingIntentId;
+  jobId: ProcessingJobId;
   claimToken: string;
-  outcome: Extract<RevisionOutcome, "completed" | "invalid" | "failed">;
+  processingStatus: Extract<RevisionProcessingStatus, "completed" | "failed">;
   diagnostic?: ProcessingDiagnostic;
 }
 
 export interface ProcessingClaimContract {
   ledgerId: LedgerId;
-  intent: ProcessingIntentContract;
+  job: ProcessingJobContract;
   claimToken: string;
   expiresAt: string;
 }
@@ -224,17 +204,17 @@ export function toStableInvalidCode(reason: string | null | undefined): InvalidC
 export interface SourceDocumentSubmissionContract {
   sourceDocumentId: SourceDocumentId;
   revisionId: RevisionId;
-  revisionState: "processing";
+  processingStatus: "processing";
 }
 
 export function toSourceDocumentSubmissionContract(
   sourceDocument: Pick<SourceDocumentContract, "id">,
-  revision: Pick<SourceDocumentRevisionContract, "id" | "outcome">
+  revision: Pick<SourceDocumentRevisionContract, "id" | "processingStatus">
 ): SourceDocumentSubmissionContract {
   return {
     sourceDocumentId: sourceDocument.id,
     revisionId: revision.id,
-    revisionState: "processing",
+    processingStatus: "processing",
   };
 }
 
@@ -245,34 +225,32 @@ export interface SourceDocumentPort {
     cursor?: string;
     limit?: number;
   }): Promise<{ items: readonly SourceDocumentContract[]; nextCursor: string | null }>;
-  createPending(input: {
+  createProcessingRevision(input: {
     ledgerId: LedgerId;
     sourceDocumentId?: SourceDocumentId;
-    submittedText?: string | null;
-    storedFileIds?: readonly StoredFileId[];
-    entryDate?: string | null;
+    input: SourceDocumentInputContract;
   }): Promise<{ document: SourceDocumentContract; revision: SourceDocumentRevisionContract }>;
   markProcessing(input: {
     ledgerId: LedgerId;
     sourceDocumentId: SourceDocumentId;
     revisionId: RevisionId;
   }): Promise<boolean>;
-  preserveTerminalOutcome(input: {
+  recordProcessingFailure(input: {
     ledgerId: LedgerId;
     sourceDocumentId: SourceDocumentId;
     revisionId: RevisionId;
-    outcome: "invalid" | "failed";
-    invalidReason?: string | null;
+    failureKind: RevisionFailureKind;
+    failureMessage: string;
     failureCode?: string | null;
     lease?: ProcessingLeaseContract;
   }): Promise<boolean>;
   softDelete(ledgerId: LedgerId, sourceDocumentId: SourceDocumentId): Promise<boolean>;
 }
 
-export interface PendingRevisionSubmissionContract {
+export interface SourceDocumentSubmissionResult {
   document: SourceDocumentContract;
   revision: SourceDocumentRevisionContract;
-  intent: ProcessingIntentContract;
+  job: ProcessingJobContract;
   /** True when the result was replayed from an already-completed idempotent request. */
   idempotencyReplay?: boolean;
 }
@@ -282,11 +260,15 @@ export interface SourceDocumentSubmissionInput {
   ledgerId: LedgerId;
   sourceDocumentId?: SourceDocumentId;
   expectedVersion?: number;
-  submittedText?: string | null;
-  storedFileIds?: readonly StoredFileId[];
-  entryDate?: string | null;
-  inheritEvidence?: boolean;
+  input?: SourceDocumentInputContract;
+  inheritInput?: boolean;
   supersedeProcessing?: boolean;
+}
+
+export interface SourceDocumentInputContract {
+  text: string | null;
+  storedFileIds: readonly StoredFileId[];
+  documentDate: string | null;
 }
 
 export interface SourceDocumentIdempotencyInput {
@@ -297,11 +279,9 @@ export interface SourceDocumentIdempotencyInput {
 }
 
 export interface SourceDocumentSubmissionPort {
-  createPendingWithIntent(
-    input: SourceDocumentSubmissionInput
-  ): Promise<PendingRevisionSubmissionContract>;
-  createIdempotentPendingWithIntent(
+  submit(input: SourceDocumentSubmissionInput): Promise<SourceDocumentSubmissionResult>;
+  submitIdempotently(
     idempotency: SourceDocumentIdempotencyInput,
     prepare: () => Promise<SourceDocumentSubmissionInput>
-  ): Promise<PendingRevisionSubmissionContract>;
+  ): Promise<SourceDocumentSubmissionResult>;
 }

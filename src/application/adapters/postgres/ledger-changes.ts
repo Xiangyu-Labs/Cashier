@@ -38,9 +38,13 @@ export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
         EXISTS (
           SELECT 1
           FROM source_documents document
+          JOIN source_document_revisions revision
+            ON revision.ledger_id = document.ledger_id
+           AND revision.source_document_id = document.id
+           AND revision.id = document.latest_submission_revision_id
           WHERE document.ledger_id = ${ledgerId}
             AND document.deleted_at IS NULL
-            AND document.current_status = 'processing'
+            AND revision.processing_status = 'processing'
         ) AS "hasTransitionalWork"
     `);
     const row = result.rows[0];
@@ -80,9 +84,13 @@ export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
         EXISTS (
           SELECT 1
           FROM source_documents document
+          JOIN source_document_revisions revision
+            ON revision.ledger_id = document.ledger_id
+           AND revision.source_document_id = document.id
+           AND revision.id = document.latest_submission_revision_id
           WHERE document.ledger_id = ${ledgerId}
             AND document.deleted_at IS NULL
-            AND document.current_status = 'processing'
+            AND revision.processing_status = 'processing'
         ) AS "hasTransitionalWork"
       FROM sync_state state
       CROSS JOIN change_summary summary

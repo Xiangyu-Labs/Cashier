@@ -65,7 +65,7 @@ export function showNewRecordSuccessFeedback({
   committedFilters,
   messages,
 }: ShowNewRecordSuccessFeedbackOptions): void {
-  if (shouldWarnNewRecordMayBeHidden(activeTab, committedFilters, result.entryDate)) {
+  if (shouldWarnNewRecordMayBeHidden(activeTab, committedFilters, result.documentDate)) {
     toast.success(messages.savedMayBeHidden, {
       action: {
         label: messages.viewRecord,

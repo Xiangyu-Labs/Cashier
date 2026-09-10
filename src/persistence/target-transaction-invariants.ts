@@ -1,5 +1,5 @@
 /**
- * The database cannot make the source_documents active/pending pointer prove that a
+ * The database cannot make the source document revision pointers prove that a
  * revision belongs to that same document. Target write adapters must load the
  * referenced revisions in their transaction and call these checks before commit.
  */
@@ -7,16 +7,16 @@ export interface RevisionPointerFact {
   id: string;
   ledgerId: string;
   sourceDocumentId: string;
-  outcome: "processing" | "completed" | "invalid" | "failed";
+  processingStatus: "processing" | "completed" | "failed" | "cancelled" | null;
 }
 
 export function assertSourceDocumentRevisionPointers(input: {
   ledgerId: string;
   sourceDocumentId: string;
   activeRevision: RevisionPointerFact | null;
-  pendingRevision: RevisionPointerFact | null;
+  latestSubmissionRevision: RevisionPointerFact | null;
 }): void {
-  const pointers = [input.activeRevision, input.pendingRevision].filter(
+  const pointers = [input.activeRevision, input.latestSubmissionRevision].filter(
     (pointer): pointer is RevisionPointerFact => pointer != null
   );
 
@@ -29,18 +29,13 @@ export function assertSourceDocumentRevisionPointers(input: {
     }
   }
 
-  if (input.activeRevision?.outcome !== "completed") {
+  if (
+    input.activeRevision?.processingStatus !== "completed" &&
+    input.activeRevision?.processingStatus !== null
+  ) {
     if (input.activeRevision != null) {
       throw new Error("Active revision must be completed");
     }
-  }
-
-  if (input.pendingRevision?.outcome === "completed") {
-    throw new Error("Pending revision cannot be completed");
-  }
-
-  if (input.activeRevision?.id === input.pendingRevision?.id) {
-    throw new Error("Active and pending revisions must differ");
   }
 }
 

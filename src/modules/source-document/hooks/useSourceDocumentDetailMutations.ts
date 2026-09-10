@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import type { SourceDocumentLightWithEntriesDto } from "../contracts";
+import type { SourceDocumentResultDto } from "../contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { saveSourceDocumentChangesAction } from "@/modules/source-document/server-actions/update";
 import { splitSourceDocumentAction } from "@/modules/source-document/server-actions/split";
@@ -119,7 +119,7 @@ export function useSourceDocumentDetailMutations({
       const key = queryKeys.sourceDocument(ledgerId!, id);
       await queryClient.cancelQueries({ queryKey: key, exact: true });
       const document = result.sourceDocument;
-      queryClient.setQueryData<SourceDocumentLightWithEntriesDto>(key, (previous) =>
+      queryClient.setQueryData<SourceDocumentResultDto>(key, (previous) =>
         previous != null && previous.version > document.version
           ? previous
           : {

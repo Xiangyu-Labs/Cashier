@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { type PeriodParams } from "@/lib/period-utils";
 import { buildLedgerEntryFilters } from "../ledger-filter-state";
 import type { LedgerAdvancedFilters } from "../initial-query-state";
-import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
+import { canonicalizeSourceDocumentProcessingStatuses } from "@/modules/source-document/types";
 
 /** @testOnly Exported for strict stream query descriptor tests. */
 export function buildStreamTotalQuery(
@@ -10,7 +10,7 @@ export function buildStreamTotalQuery(
   startDate: string | undefined,
   endDate: string | undefined
 ) {
-  const statuses = canonicalizeSourceDocumentStatuses(filters.statuses);
+  const statuses = canonicalizeSourceDocumentProcessingStatuses(filters.statuses);
 
   return {
     input: {

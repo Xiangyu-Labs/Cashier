@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createHash } from "crypto";
-import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
+import { SOURCE_DOCUMENT_PROCESSING_STATUSES } from "@/modules/source-document/types";
 import { ValidationError } from "@/lib/errors";
 import {
   dateStringSchema,
@@ -47,7 +47,7 @@ const optionalQueryDecimalSchema = z.preprocess(
     .refine((value) => compare(value, "0") >= 0, "Amount must be non-negative")
     .optional()
 );
-const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
+const sourceDocumentStatusSchema = z.enum(SOURCE_DOCUMENT_PROCESSING_STATUSES);
 const optionalSearchSchema = z.preprocess(
   (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
   z.string().max(MAX_SEARCH_LENGTH).optional()
@@ -139,7 +139,7 @@ const sourceDocumentPayloadSchema = strictObjectSchema({
     .array(uuidSchema)
     .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
     .optional(),
-  entryDate: optionalDateStringSchema,
+  documentDate: optionalDateStringSchema,
   timezone: timezoneSchema,
 });
 
@@ -227,7 +227,16 @@ const sourceDocumentPayloadSchemaV1 = strictObjectSchema({
 
 export const createSourceDocumentInputSchemaV1 = sourceDocumentPayloadSchemaV1;
 
-export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
+export const retrySourceDocumentInputSchema = strictObjectSchema({
+  text: z.string().trim().max(MAX_TEXT_CHARACTERS).nullable(),
+  storedFileIds: z.array(uuidSchema).max(MAX_FILES),
+  documentDate: dateStringSchema.nullable(),
+  timezone: timezoneSchema,
+}).superRefine((value, ctx) => {
+  if ((value.text == null || value.text === "") && value.storedFileIds.length === 0) {
+    ctx.addIssue({ code: "custom", message: "Content (text or images) is required" });
+  }
+});
 
 export const createSourceDocumentUploadPlanInputSchema = z
   .array(
@@ -309,8 +318,8 @@ export const streamPageInputSchema = strictObjectSchema({
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({
   title: optionalTitleSchema,
-  entryDate: optionalDateStringSchema,
-}).refine((value) => value.title !== undefined || value.entryDate !== undefined, {
+  documentDate: optionalDateStringSchema,
+}).refine((value) => value.title !== undefined || value.documentDate !== undefined, {
   message: "At least one source document patch is required",
 });
 

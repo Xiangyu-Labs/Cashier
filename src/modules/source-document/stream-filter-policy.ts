@@ -12,10 +12,10 @@ export interface StreamFilterPolicy {
 }
 
 export function getStreamEffectiveDate(item: {
-  entryDate?: string | null;
+  documentDate?: string | null;
   createdAt: string;
 }): string {
-  if (item.entryDate != null && item.entryDate !== "") return item.entryDate;
+  if (item.documentDate != null && item.documentDate !== "") return item.documentDate;
   return item.createdAt.slice(0, 10);
 }
 
@@ -88,7 +88,11 @@ export function matchesStreamDocument(
   filters: StreamFilterPolicy
 ): boolean {
   const statuses = normalizedStatuses(filters.statuses);
-  if (statuses.length > 0 && !statuses.includes(item.status)) return false;
+  if (
+    statuses.length > 0 &&
+    (item.processingStatus == null || !statuses.includes(item.processingStatus))
+  )
+    return false;
 
   const effectiveDate = getStreamEffectiveDate(item);
   if (filters.startDate != null && filters.startDate !== "" && effectiveDate < filters.startDate) {

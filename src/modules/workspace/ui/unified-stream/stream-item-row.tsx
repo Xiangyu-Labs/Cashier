@@ -1,6 +1,5 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
 import { memo, useCallback } from "react";
 import type { RendererProps, UnifiedStreamItem } from "./types";
@@ -25,13 +24,8 @@ interface UnifiedStreamItemRowProps {
   onExpandedChange?: (sourceDocumentId: string, expanded: boolean) => void;
   isRetrying?: boolean;
   isCancelling?: boolean;
-  isAbandoning?: boolean;
   onRetry?: (variables: { sourceDocumentId: string; expectedVersion: number }) => Promise<void>;
   onCancelProcessing?: (variables: {
-    sourceDocumentId: string;
-    expectedVersion: number;
-  }) => Promise<void>;
-  onAbandonCandidate?: (variables: {
     sourceDocumentId: string;
     expectedVersion: number;
   }) => Promise<void>;
@@ -80,10 +74,8 @@ export function StreamItemRow({
         : {
             isRetrying: recovery.retryingIds.has(sourceDocumentId),
             isCancelling: recovery.cancellingIds.has(sourceDocumentId),
-            isAbandoning: recovery.abandoningIds.has(sourceDocumentId),
             onRetry: recovery.retry,
             onCancelProcessing: recovery.cancelProcessing,
-            onAbandonCandidate: recovery.abandonCandidate,
           })}
     />
   );
@@ -109,10 +101,8 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   onExpandedChange,
   isRetrying = false,
   isCancelling = false,
-  isAbandoning = false,
   onRetry,
   onCancelProcessing,
-  onAbandonCandidate,
 }: UnifiedStreamItemRowProps) {
   const sourceDocument = item.sourceDocument as SourceDocument;
   const ledgerEntries = item.ledgerEntries as LedgerEntry[];
@@ -139,8 +129,9 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         {...(onEditRetry != null ? { onEditRetry: () => onEditRetry(sourceDocument) } : {})}
         {...(onEditRetryIntent != null ? { onEditRetryIntent } : {})}
         onDelete={() => onDeleteSourceConfirm(sourceDocument)}
-        status={item.sourceDocument.status as SourceDocumentStatusType}
-        invalidReason={item.sourceDocument.invalidReason}
+        processingStatus={item.sourceDocument.processingStatus}
+        failureKind={item.sourceDocument.failureKind}
+        failureMessage={item.sourceDocument.failureMessage}
         errorCode={item.sourceDocument.errorCode}
         selectionMode={selectionMode}
         isSelected={selected}
@@ -152,14 +143,10 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         {...(onExpandedChange === undefined ? {} : { onExpandedChange: handleExpandedChange })}
         isRetrying={isRetrying}
         isCancelling={isCancelling}
-        isAbandoning={isAbandoning}
-        {...(onRetry == null || onCancelProcessing == null || onAbandonCandidate == null
+        {...(onRetry == null ? {} : { onRetry: () => onRetry(recoveryVariables) })}
+        {...(onCancelProcessing == null
           ? {}
-          : {
-              onRetry: () => onRetry(recoveryVariables),
-              onCancelProcessing: () => onCancelProcessing(recoveryVariables),
-              onAbandonCandidate: () => onAbandonCandidate(recoveryVariables),
-            })}
+          : { onCancelProcessing: () => onCancelProcessing(recoveryVariables) })}
       />
     </div>
   );

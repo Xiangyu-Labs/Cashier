@@ -136,7 +136,7 @@ describe("useQuickEntryFormController", () => {
     expect(options.successMessage).toBeNull();
     expect(onSuccess).toHaveBeenCalledWith({
       sourceDocumentId: "source-quick",
-      entryDate: "2026-07-28",
+      documentDate: "2026-07-28",
     });
   });
 });

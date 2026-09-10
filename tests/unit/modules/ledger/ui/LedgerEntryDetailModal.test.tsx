@@ -138,7 +138,7 @@ describe("LedgerEntryDetailModal feedback", () => {
       title: null,
       status: "completed" as const,
       type: "manual" as const,
-      entryDate: null,
+      documentDate: null,
       createdAt: ledgerEntry.createdAt,
       updatedAt: ledgerEntry.updatedAt,
     };

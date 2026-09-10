@@ -110,7 +110,7 @@ describe("saveSourceDocumentChangesAction", () => {
       const document = await fixture.db.query.sourceDocuments.findFirst({
         where: eq(sourceDocuments.id, fixture.document.id),
       });
-      expect(document?.stateVersion).toBe(1);
+      expect(document?.version).toBe(1);
     }
   );
 });

@@ -4,24 +4,21 @@ import type {
   splitSourceDocumentInputSchema,
 } from "./contract-schemas";
 
-export type { SourceDocumentStatusType } from "./types";
+export type { SourceDocumentProcessingStatus } from "./types";
 export type {
-  SourceDocumentCandidateReviewDto,
-  SourceDocumentCandidateReviewEntryDto,
-  SourceDocumentCandidateReviewRevisionDto,
-  SourceDocumentCandidateProjectionSummary,
-  SourceDocumentDto,
-  SourceDocumentFullDto,
+  SourceDocumentActiveResultSummary,
+  SourceDocumentDetailDto,
+  SourceDocumentInputDto,
   SourceDocumentLedgerEntryDto,
-  SourceDocumentLightWithEntriesDto,
+  SourceDocumentResultDto,
   SourceDocumentListItemDto,
   SourceDocumentStoredFileDto,
   StreamPage,
   StreamTotalDto,
 } from "./document-contracts";
 export type {
-  SourceDocumentDto as SourceDocument,
-  SourceDocumentLightDto as SourceDocumentLight,
+  SourceDocumentDetailDto as SourceDocument,
+  SourceDocumentDetailPreviewDto as SourceDocumentLight,
 } from "./document-contracts";
 
 export interface CreateSourceDocumentResponseDto {
@@ -47,7 +44,7 @@ export type VersionedCommandResult<T> =
 
 /**
  * Transaction semantics: one atomic transaction covers every target. If any
- * target's `stateVersion` no longer matches its `expectedVersion`, the whole
+ * target's `version` no longer matches its `expectedVersion`, the whole
  * command rolls back with zero writes — `staleTargets` lists every mismatched
  * target, not just the first. On success, every target advanced together in
  * that same transaction.
@@ -94,7 +91,7 @@ export interface QuickEntryResponseDto {
 
 export interface CreatedRecordResult {
   sourceDocumentId: string;
-  entryDate: string;
+  documentDate: string;
 }
 
 export type SaveSourceDocumentChangesInput = z.infer<typeof saveSourceDocumentChangesInputSchema>;
@@ -106,7 +103,7 @@ export interface SaveSourceDocumentChangesResultDto {
 export type SplitSourceDocumentInput = z.infer<typeof splitSourceDocumentInputSchema>;
 
 export interface SplitSourceDocumentResultDto {
-  sourceDocument: import("./document-contracts").SourceDocumentLightWithEntriesDto;
+  sourceDocument: import("./document-contracts").SourceDocumentResultDto;
   splitSourceDocumentId: string;
   splitVersion: 1;
   movedEntryCount: number;
@@ -122,14 +119,6 @@ export interface DeleteSourceDocumentResultDto {
   deleted: boolean;
 }
 
-export interface AcceptCandidateResponseDto {
-  status: "completed";
-}
-
-export interface AbandonCandidateResponseDto {
-  status: "completed";
-}
-
 export interface CancelProcessingResponseDto {
-  status: "cancelled" | "completed";
+  processingStatus: "cancelled";
 }

@@ -24,15 +24,15 @@ describe("local contract release", () => {
   it("writes only target revision, processing, and ledger projections", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const pending = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const pending = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      submittedText: "Lunch 12.50",
+      input: { text: "Lunch 12.50", storedFileIds: [], documentDate: null },
     });
     const created = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, pending.document.id),
     });
     expect(created).not.toBeNull();
-    expect(created?.currentStatus).toBe("processing");
+    expect(created?.latestSubmissionRevisionId).toBe(pending.revision.id);
 
     await postgresRevisionAdapter.markProcessing({
       ledgerId,
@@ -55,9 +55,8 @@ describe("local contract release", () => {
     });
     expect(completed).toMatchObject({
       activeRevisionId: pending.revision.id,
-      pendingRevisionId: null,
+      latestSubmissionRevisionId: pending.revision.id,
       title: "Target title",
-      currentStatus: "completed",
     });
     expect(await db.select().from(processingOutbox)).toHaveLength(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
@@ -70,7 +69,6 @@ describe("local contract release", () => {
     await db.insert(sourceDocuments).values({
       id: legacyDocumentId,
       ledgerId,
-      currentStatus: "completed",
       deletedAt: new Date("2026-07-16T00:00:00.000Z"),
     });
     const beforeDocument = await db.query.sourceDocuments.findFirst({
@@ -89,26 +87,21 @@ describe("local contract release", () => {
     ).toEqual(beforeDocument);
   });
 
-  it("uses the explicitly persisted document status", async () => {
+  it("derives a manual document without submission processing state", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const created = await postgresLedgerProjectionAdapter.createManual({
       expectedMainCurrency: "CNY",
       ledgerId,
-      submittedText: "target revision text",
+      inputText: "target revision text",
       entries: [projectionEntry],
     });
-    await db
-      .update(sourceDocuments)
-      .set({ currentStatus: "failed" })
-      .where(eq(sourceDocuments.id, created.sourceDocumentId));
 
     await expect(
       getTargetSourceDocument(ledgerId, created.sourceDocumentId)
     ).resolves.toMatchObject({
       id: created.sourceDocumentId,
-      status: "failed",
-      text: "target revision text",
+      processingStatus: null,
     });
   });
 });

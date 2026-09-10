@@ -101,8 +101,7 @@ export function createSourceDocumentData(
     metadata: Record<string, unknown>;
     status: "processing" | "completed" | "invalid" | "failed" | "cancelled" | "deleted";
     type: "ai_parsed" | "manual";
-    invalidReason: string | null;
-    entryDate: string | null;
+    documentDate: string | null;
     createdAt: Date;
     updatedAt: Date;
     deletedAt: Date | null;
@@ -114,7 +113,6 @@ export function createSourceDocumentData(
     imageUrls: _imageUrls,
     metadata: _metadata,
     status = "completed",
-    invalidReason: _invalidReason,
     deletedAt,
     ...canonicalOverrides
   } = overrides;
@@ -122,9 +120,8 @@ export function createSourceDocumentData(
     id: uuidv4(),
     ledgerId,
     title: null,
-    currentStatus: status === "deleted" ? ("completed" as const) : status,
     type: "ai_parsed" as const,
-    entryDate: null,
+    documentDate: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: status === "deleted" ? (deletedAt ?? now) : (deletedAt ?? null),

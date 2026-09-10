@@ -1,11 +1,11 @@
-import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentResultDto } from "@/modules/source-document/contracts";
 import type { SourceDocumentReadPort } from "../ports";
 
 export async function getSourceDocumentLightForLedger(
   ledgerId: string,
   sourceDocumentId: string,
   documents: Pick<SourceDocumentReadPort, "get">
-): Promise<SourceDocumentLightWithEntriesDto | null> {
+): Promise<SourceDocumentResultDto | null> {
   const document = await documents.get(ledgerId, sourceDocumentId);
   if (document == null) return null;
 

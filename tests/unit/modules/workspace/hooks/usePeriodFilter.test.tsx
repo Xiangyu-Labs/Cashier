@@ -38,7 +38,7 @@ describe("usePeriodFilter", () => {
   });
 
   it("includes statuses in filters built from URL state", () => {
-    const searchParams = createSearchParams("streamStatuses=invalid,failed");
+    const searchParams = createSearchParams("streamStatuses=cancelled,failed");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: "/ledger/test",
@@ -47,7 +47,7 @@ describe("usePeriodFilter", () => {
       })
     );
 
-    expect(result.current.filters.statuses).toEqual(["invalid", "failed"]);
+    expect(result.current.filters.statuses).toEqual(["failed", "cancelled"]);
   });
 
   describe("applyStreamStatusPreset", () => {
@@ -77,7 +77,7 @@ describe("usePeriodFilter", () => {
       expect(params.get("streamMinAmount")).toBeNull();
       expect(params.get("streamMaxAmount")).toBeNull();
       expect(params.get("tab")).toBe("stream");
-      expect(params.get("streamStatuses")).toBe("invalid,failed,candidate_pending");
+      expect(params.get("streamStatuses")).toBe("failed,cancelled");
     });
 
     it("applies in_progress preset: clears period/date/amount, sets statuses, switches to stream", () => {

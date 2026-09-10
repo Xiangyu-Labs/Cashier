@@ -25,39 +25,6 @@
     "processing_timeout": "处理超时",
     "processing_timeout_desc": "处理时间过长，任务已停止。请重试。"
   },
-  "CandidateAction": {
-    "accept": "确认候选",
-    "acceptSuccess": "候选已确认",
-    "acceptError": "确认候选失败",
-    "abandon": "放弃候选",
-    "abandonSuccess": "候选已放弃",
-    "abandonError": "放弃候选失败",
-    "cancelProcessing": "取消处理",
-    "cancelSuccess": "已取消处理",
-    "cancelError": "无法取消处理，已刷新为最新结果。",
-    "retry": "重新处理",
-    "editRetry": "编辑重试",
-    "retrySuccess": "已开始重试",
-    "retrySuccessDescription": "正在重新解析此凭证。",
-    "retryError": "重试失败",
-    "retryErrorDescription": "原结果未改变，请稍后重试。"
-  },
-  "CandidateReview": {
-    "title": "审核解析结果",
-    "original": "原来的解析结果",
-    "candidate": "新的解析结果",
-    "entryCount": "共 {count} 条",
-    "keepOriginal": "保留原结果",
-    "acceptCandidate": "接受新结果",
-    "abandonConfirmTitle": "保留原解析结果？",
-    "abandonConfirmDescription": "新的解析结果将被丢弃，当前账目不会改变。"
-  },
-  "ReviewDialog": {
-    "loading": "正在加载对比",
-    "loadError": "该审核已不可用。",
-    "reload": "重新加载",
-    "noEntries": "暂无条目"
-  },
   "LedgerPage": {
     "notFound": "账本不存在",
     "settings": "设置",
@@ -158,7 +125,6 @@
     "statusInvalid": "无效",
     "statusFailed": "失败",
     "statusCancelled": "已取消",
-    "statusCandidatePending": "待核准",
     "statusSummary": "状态：{label}",
     "search": "搜索",
     "searchPlaceholder": "搜索标题、名称或描述",
@@ -257,7 +223,6 @@
     "processing": "处理中",
     "completed": "已完成",
     "cancelled": "已取消",
-    "candidatePendingTitle": "新解析结果待确认",
     "invalidNeedsCorrection": "需要手动修正",
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",
@@ -583,7 +548,7 @@
     "validationFailed": "设置内容无效，请检查后重试",
     "updateConflict": "未保存，设置已发生变化，请取消编辑后重新修改。",
     "save": "保存",
-    "saving": "正在保存…",
+    "saving": "(保存中...)",
     "serverChangedWhileEditing": "服务端设置已变化，保存将把当前草稿应用到最新版本。",
     "mainCurrencyMustBeEnabled": "主货币必须包含在偏好货币中。",
     "categoryCreated": "分类已创建",
@@ -605,7 +570,6 @@
     "createFailed": "创建失败",
     "deleteFailed": "删除失败",
     "categoryDescription": "分类描述",
-    "saving": "(保存中...)",
     "generatingMetadata": "正在生成描述和图标...",
     "retryMetadata": "重试生成",
     "categoryItemCount": "{count} 条明细",
@@ -948,5 +912,16 @@
   },
   "Currency": {
     "conversionUnavailable": "暂时无法换算"
+  },
+  "SourceDocumentAction": {
+    "cancelProcessing": "取消处理",
+    "cancelSuccess": "已取消处理",
+    "cancelError": "无法取消处理，已刷新为最新结果。",
+    "retry": "重新处理",
+    "editRetry": "编辑重试",
+    "retrySuccess": "已开始重试",
+    "retrySuccessDescription": "正在重新解析此凭证。",
+    "retryError": "重试失败",
+    "retryErrorDescription": "原结果未改变，请稍后重试。"
   }
 }

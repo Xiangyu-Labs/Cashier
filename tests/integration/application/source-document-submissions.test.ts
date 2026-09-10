@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { createStoredFileAdapter, type StoredFileAdapter } from "@/application/adapters/storage";
 import {
-  PostgresProcessingIntentAdapter,
+  PostgresProcessingJobAdapter,
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
   postgresSourceDocumentSubmissionAdapter,
@@ -72,10 +72,13 @@ const entry = {
 } as const;
 
 describe("target source-document submissions", () => {
-  it("creates one document, revision, and intent for concurrent user submissions", async () => {
+  it("creates one document, revision, and job for concurrent user submissions", async () => {
     const db = getTestDb();
     const { userId, ledgerId } = await createTestUserWithLedger(db);
-    const prepare = vi.fn(async () => ({ ledgerId, submittedText: "Lunch 12.50" }));
+    const prepare = vi.fn(async () => ({
+      ledgerId,
+      input: { text: "Lunch 12.50", storedFileIds: [], documentDate: null },
+    }));
     const idempotency = {
       principalType: "user" as const,
       principalId: userId,
@@ -84,14 +87,8 @@ describe("target source-document submissions", () => {
     };
 
     const [first, replay] = await Promise.all([
-      postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
-        idempotency,
-        prepare
-      ),
-      postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
-        idempotency,
-        prepare
-      ),
+      postgresSourceDocumentSubmissionAdapter.submitIdempotently!(idempotency, prepare),
+      postgresSourceDocumentSubmissionAdapter.submitIdempotently!(idempotency, prepare),
     ]);
 
     expect(first.document.id).toBe(replay.document.id);
@@ -124,12 +121,12 @@ describe("target source-document submissions", () => {
     const started = new Promise<void>((resolve) => (signalStarted = resolve));
     const gate = new Promise<void>((resolve) => (releaseFirst = resolve));
 
-    const first = postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+    const first = postgresSourceDocumentSubmissionAdapter.submitIdempotently!(
       idempotency,
       async () => {
         signalStarted();
         await gate;
-        return { ledgerId, submittedText: "receipt" };
+        return { ledgerId, input: { text: "receipt", storedFileIds: [], documentDate: null } };
       }
     );
     await started;
@@ -138,9 +135,12 @@ describe("target source-document submissions", () => {
       .set({ leaseExpiresAt: new Date(Date.now() - 1) })
       .where(eq(idempotencyRecords.key, idempotency.key));
 
-    const winner = await postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+    const winner = await postgresSourceDocumentSubmissionAdapter.submitIdempotently!(
       idempotency,
-      async () => ({ ledgerId, submittedText: "receipt" })
+      async () => ({
+        ledgerId,
+        input: { text: "receipt", storedFileIds: [], documentDate: null },
+      })
     );
     releaseFirst();
     await expect(first).rejects.toThrow("idempotency lease expired");
@@ -157,18 +157,17 @@ describe("target source-document submissions", () => {
     const storage = createStoredFileAdapter({ storage: new MemoryFileStore() });
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
 
-    const text = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const text = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      submittedText: "Lunch 12.50",
+      input: { text: "Lunch 12.50", storedFileIds: [], documentDate: null },
     });
-    const imageOnly = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const imageOnly = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      storedFileIds: [image.id],
+      input: { text: null, storedFileIds: [image.id], documentDate: null },
     });
-    const mixed = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const mixed = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      submittedText: "Mixed",
-      storedFileIds: [image.id],
+      input: { text: "Mixed", storedFileIds: [image.id], documentDate: null },
     });
 
     expect(new Set([text.document.id, imageOnly.document.id, mixed.document.id]).size).toBe(3);
@@ -176,13 +175,13 @@ describe("target source-document submissions", () => {
     expect(await db.select().from(processingOutbox)).toHaveLength(3);
     expect(await db.select().from(processingAttempts)).toHaveLength(3);
     expect(await db.select().from(revisionFiles)).toHaveLength(2);
-    expect(mixed.intent).toMatchObject({
+    expect(mixed.job).toMatchObject({
       sourceDocumentId: mixed.document.id,
       revisionId: mixed.revision.id,
     });
   });
 
-  it("rolls back the document, revision, and intent when evidence is not finalized", async () => {
+  it("rolls back the document, revision, and job when evidence is not finalized", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const [unfinalized] = await db
@@ -197,9 +196,9 @@ describe("target source-document submissions", () => {
       .returning();
 
     await expect(
-      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.submit({
         ledgerId,
-        storedFileIds: [unfinalized!.id],
+        input: { text: null, storedFileIds: [unfinalized!.id], documentDate: null },
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await db.select().from(sourceDocuments)).toHaveLength(0);
@@ -208,32 +207,33 @@ describe("target source-document submissions", () => {
   });
 
   it.each([
-    ["failed", "PROCESSING_UNAVAILABLE"],
-    ["invalid", null],
+    ["processing_error", "PROCESSING_UNAVAILABLE"],
+    ["invalid_input", null],
   ] as const)(
-    "keeps a first %s outcome without an active revision or ledger projection",
-    async (outcome, failureCode) => {
+    "keeps a first %s failure without an active revision or ledger projection",
+    async (failureKind, failureCode) => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const pending = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      const pending = await postgresSourceDocumentSubmissionAdapter.submit({
         ledgerId,
-        submittedText: "first parse evidence",
+        input: { text: "first parse evidence", storedFileIds: [], documentDate: null },
       });
 
       await expect(
-        postgresRevisionAdapter.preserveTerminalOutcome({
+        postgresRevisionAdapter.recordProcessingFailure({
           ledgerId,
           sourceDocumentId: pending.document.id,
           revisionId: pending.revision.id,
-          outcome,
-          ...(failureCode == null ? { invalidReason: "unreadable" } : { failureCode }),
+          failureKind,
+          failureMessage: failureKind === "invalid_input" ? "unreadable" : "processing failed",
+          ...(failureCode == null ? {} : { failureCode }),
         })
       ).resolves.toBe(true);
 
       const document = await postgresRevisionAdapter.get(ledgerId, pending.document.id);
       expect(document).toMatchObject({
         activeRevisionId: null,
-        pendingRevisionId: pending.revision.id,
+        latestSubmissionRevisionId: pending.revision.id,
         supportedActions: ["retry", "edit_retry", "delete"],
       });
       expect(await db.select().from(ledgerEntries)).toHaveLength(0);
@@ -252,30 +252,31 @@ describe("target source-document submissions", () => {
       where: eq(ledgerEntries.sourceDocumentRevisionId, active.revisionId),
     });
 
-    const failed = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const failed = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
-      submittedText: "failed retry",
-      inheritEvidence: true,
+      input: { text: "failed retry", storedFileIds: [], documentDate: null },
+      inheritInput: false,
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       revisionId: failed.revision.id,
-      outcome: "failed",
+      failureKind: "processing_error",
+      failureMessage: "processing failed",
     });
-    const anomalous = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const anomalous = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
-      submittedText: "anomalous edit retry",
-      inheritEvidence: true,
+      input: { text: "anomalous edit retry", storedFileIds: [], documentDate: null },
+      inheritInput: false,
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       revisionId: anomalous.revision.id,
-      outcome: "invalid",
-      invalidReason: "unreadable",
+      failureKind: "invalid_input",
+      failureMessage: "unreadable",
     });
 
     expect(
@@ -288,17 +289,18 @@ describe("target source-document submissions", () => {
       })
     ).toBe(false);
     expect(
-      await postgresRevisionAdapter.preserveTerminalOutcome({
+      await postgresRevisionAdapter.recordProcessingFailure({
         ledgerId,
         sourceDocumentId: active.sourceDocumentId,
         revisionId: failed.revision.id,
-        outcome: "failed",
+        failureKind: "processing_error",
+        failureMessage: "processing failed",
       })
     ).toBe(false);
     const document = await postgresRevisionAdapter.get(ledgerId, active.sourceDocumentId);
     expect(document).toMatchObject({
       activeRevisionId: active.revisionId,
-      pendingRevisionId: anomalous.revision.id,
+      latestSubmissionRevisionId: anomalous.revision.id,
     });
     expect(
       await db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, activeEntry!.id) })
@@ -310,26 +312,26 @@ describe("target source-document submissions", () => {
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = createStoredFileAdapter({ storage: new MemoryFileStore() });
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
-    const initial = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const initial = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      submittedText: "original",
-      storedFileIds: [image.id],
+      input: { text: "original", storedFileIds: [image.id], documentDate: null },
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: initial.document.id,
       revisionId: initial.revision.id,
-      outcome: "failed",
+      failureKind: "processing_error",
+      failureMessage: "processing failed",
     });
-    const retry = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const retry = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
       sourceDocumentId: initial.document.id,
-      inheritEvidence: true,
+      inheritInput: true,
     });
 
     await Promise.all([
-      new PostgresProcessingIntentAdapter().dispatch(retry.intent),
-      new PostgresProcessingIntentAdapter().dispatch(retry.intent),
+      new PostgresProcessingJobAdapter().dispatch(retry.job),
+      new PostgresProcessingJobAdapter().dispatch(retry.job),
     ]);
     const retryRevision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.id, retry.revision.id),
@@ -338,7 +340,7 @@ describe("target source-document submissions", () => {
       where: eq(revisionFiles.revisionId, retry.revision.id),
     });
     expect(retry.document.id).toBe(initial.document.id);
-    expect(retryRevision?.submittedText).toBe("original");
+    expect(retryRevision?.inputText).toBe("original");
     expect(retryFiles.map((file) => file.storedFileId)).toEqual([image.id]);
     expect(await db.select().from(processingOutbox)).toHaveLength(2);
     expect(await db.select().from(processingAttempts)).toHaveLength(2);
@@ -356,16 +358,20 @@ describe("target source-document submissions", () => {
     );
 
     // Create a revision with MAX_FILES files via the normal path (this succeeds)
-    const initial = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const initial = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      submittedText: "initial",
-      storedFileIds: files.slice(0, MAX_FILES).map((f) => f.id),
+      input: {
+        text: "initial",
+        storedFileIds: files.slice(0, MAX_FILES).map((f) => f.id),
+        documentDate: null,
+      },
     });
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: initial.document.id,
       revisionId: initial.revision.id,
-      outcome: "failed",
+      failureKind: "processing_error",
+      failureMessage: "processing failed",
     });
 
     // Directly insert an extra revisionFile record to simulate a pre-existing
@@ -378,13 +384,13 @@ describe("target source-document submissions", () => {
       position: MAX_FILES,
     });
 
-    // Inherited evidence retry should now reject because createPendingRevisionInTransaction
+    // Inherited evidence retry should now reject because createProcessingRevisionInTransaction
     // enforces the MAX_FILES limit.
     await expect(
-      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.submit({
         ledgerId,
         sourceDocumentId: initial.document.id,
-        inheritEvidence: true,
+        inheritInput: true,
       })
     ).rejects.toThrow(ValidationError);
   });
@@ -402,9 +408,9 @@ describe("target source-document submissions", () => {
     const first = await finalizedFile(storage, ledgerId, Buffer.from("first"));
     const second = await finalizedFile(storage, ledgerId, Buffer.from("second"));
     const other = await finalizedFile(storage, otherLedgerId, Buffer.from("other"));
-    const submitted = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const submitted = await postgresSourceDocumentSubmissionAdapter.submit({
       ledgerId,
-      storedFileIds: [second.id, first.id],
+      input: { text: null, storedFileIds: [second.id, first.id], documentDate: null },
     });
 
     const detail = await getTargetSourceDocument(ledgerId, submitted.document.id);
@@ -412,24 +418,25 @@ describe("target source-document submissions", () => {
     expect(detail).not.toHaveProperty("imageUrls");
     expect(JSON.stringify(detail)).not.toContain("/api/uploads/");
     expect(JSON.stringify(detail)).not.toContain("storageKey");
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.recordProcessingFailure({
       ledgerId,
       sourceDocumentId: submitted.document.id,
       revisionId: submitted.revision.id,
-      outcome: "failed",
+      failureKind: "processing_error",
+      failureMessage: "processing failed",
     });
     await expect(
-      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.submit({
         ledgerId,
         sourceDocumentId: submitted.document.id,
-        storedFileIds: [other.id],
+        input: { text: null, storedFileIds: [other.id], documentDate: null },
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(
-      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.submit({
         ledgerId: otherLedgerId,
         sourceDocumentId: submitted.document.id,
-        inheritEvidence: true,
+        inheritInput: true,
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });

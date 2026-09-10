@@ -13,10 +13,11 @@ describe("source-document inline submission preparation", () => {
   it("leaves text-only submissions unchanged", async () => {
     await expect(
       uploadSourceDocumentSubmissionImages("ledger-1", {
-        entryDate: "2026-07-15",
+        documentDate: "2026-07-15",
+        storedFileIds: [],
         text: "Lunch",
       })
-    ).resolves.toEqual({ entryDate: "2026-07-15", text: "Lunch" });
+    ).resolves.toEqual({ documentDate: "2026-07-15", text: "Lunch", storedFileIds: [] });
   });
 
   it("uploads compliant JPEG images without compressing them again", async () => {
@@ -31,7 +32,9 @@ describe("source-document inline submission preparation", () => {
     const result = await uploadSourceDocumentSubmissionImages(
       "ledger-1",
       {
-        entryDate: "2026-07-15",
+        documentDate: "2026-07-15",
+        text: null,
+        storedFileIds: [],
         images: [uploadImage()],
       },
       { compress, createPlan, put, finalize }
@@ -39,7 +42,8 @@ describe("source-document inline submission preparation", () => {
 
     expect(compress).not.toHaveBeenCalled();
     expect(result).toEqual({
-      entryDate: "2026-07-15",
+      documentDate: "2026-07-15",
+      text: null,
       storedFileIds: ["file-1"],
     });
     expect(put).toHaveBeenCalledWith(
@@ -53,7 +57,9 @@ describe("source-document inline submission preparation", () => {
       uploadSourceDocumentSubmissionImages(
         "ledger-1",
         {
-          entryDate: "2026-07-15",
+          documentDate: "2026-07-15",
+          text: null,
+          storedFileIds: [],
           images: [uploadImage(3 * 1024 * 1024 + 1)],
         },
         { compress: vi.fn().mockRejectedValue(new Error("decode failed")) }
@@ -67,7 +73,9 @@ describe("source-document inline submission preparation", () => {
       uploadSourceDocumentSubmissionImages(
         "ledger-1",
         {
-          entryDate: "2026-07-15",
+          documentDate: "2026-07-15",
+          text: null,
+          storedFileIds: [],
           images: Array.from({ length: 4 }, () => uploadImage()),
         },
         { compress }
@@ -98,7 +106,9 @@ describe("source-document inline submission preparation", () => {
     const submission = uploadSourceDocumentSubmissionImages(
       "ledger-1",
       {
-        entryDate: "2026-07-15",
+        documentDate: "2026-07-15",
+        text: null,
+        storedFileIds: [],
         images: Array.from({ length: 3 }, () => uploadImage(1024 * 1024 + 1)),
       },
       { compress, createPlan, put, finalize }
@@ -153,7 +163,9 @@ describe("source-document inline submission preparation", () => {
     const submission = uploadSourceDocumentSubmissionImages(
       "ledger-1",
       {
-        entryDate: "2026-07-15",
+        documentDate: "2026-07-15",
+        text: null,
+        storedFileIds: [],
         images: [uploadImage()],
       },
       { compress, createPlan, put, finalize, signal: controller.signal }
@@ -214,7 +226,9 @@ describe("source-document inline submission preparation", () => {
     const submission = uploadSourceDocumentSubmissionImages(
       "ledger-1",
       {
-        entryDate: "2026-07-15",
+        documentDate: "2026-07-15",
+        text: null,
+        storedFileIds: [],
         images: [uploadImage()],
       },
       { compress, createPlan, put, finalize, signal: controller.signal }

@@ -59,7 +59,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   onAddEntry,
   onDeleteEntry,
 }: SourceDocumentViewDetailsProps): ReactNode {
-  const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
+  const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.documentDate ?? "";
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
   const fieldsDisabled = interactionDisabled || !isEditMode;
 
@@ -76,9 +76,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         pendingChanges,
         mainCurrency,
         entryDate: displayEntryDate,
-        originalEntryDate: sourceDocument.entryDate ?? "",
+        originalEntryDate: sourceDocument.documentDate ?? "",
       }),
-    [displayEntryDate, ledgerEntries, mainCurrency, pendingChanges, sourceDocument.entryDate]
+    [displayEntryDate, ledgerEntries, mainCurrency, pendingChanges, sourceDocument.documentDate]
   );
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
@@ -98,7 +98,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     });
   }, [displayEntriesById, ledgerEntries]);
 
-  const isInvalid = sourceDocument.status === "invalid";
+  const isInvalid =
+    sourceDocument.processingStatus === "failed" && sourceDocument.failureKind === "invalid_input";
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -131,7 +132,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         onEntryChange={onEntryChange}
         onSelectEntry={onSelectEntry}
         displayEntryDate={displayEntryDate}
-        originalEntryDate={sourceDocument.entryDate ?? ""}
+        originalEntryDate={sourceDocument.documentDate ?? ""}
         onAddEntry={onAddEntry}
         onDeleteEntry={onDeleteEntry}
         pendingChanges={pendingChanges.entries}

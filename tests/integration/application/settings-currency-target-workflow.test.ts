@@ -99,18 +99,18 @@ describe("target Settings currency workflow", () => {
     expect(entry?.currency).toBe("CNY");
     expect(entry?.convertedAmount).toBe("10.000");
     expect(entry?.exchangeRate).toBe("0.125000000000");
-    expect(document?.stateVersion).toBe(before!.stateVersion + 1);
+    expect(document?.version).toBe(before!.version + 1);
   });
 
-  it("recalculates both active and pending revision entries", async () => {
+  it("recalculates only active revision entries", async () => {
     const db = getTestDb();
     const sourceDocumentId = crypto.randomUUID();
     const activeRevisionId = crypto.randomUUID();
-    const pendingRevisionId = crypto.randomUUID();
+    const latestSubmissionRevisionId = crypto.randomUUID();
     await db.insert(sourceDocuments).values({
       id: sourceDocumentId,
       ledgerId,
-      entryDate: "2026-07-15",
+      documentDate: "2026-07-15",
     });
     await db.insert(sourceDocumentRevisions).values([
       {
@@ -118,20 +118,20 @@ describe("target Settings currency workflow", () => {
         ledgerId,
         sourceDocumentId,
         revisionNumber: 1,
-        outcome: "completed",
-        finalizedAt: new Date(),
+        processingStatus: "completed",
+        finishedAt: new Date(),
       },
       {
-        id: pendingRevisionId,
+        id: latestSubmissionRevisionId,
         ledgerId,
         sourceDocumentId,
         revisionNumber: 2,
-        outcome: "processing",
+        processingStatus: "processing",
       },
     ]);
     await db
       .update(sourceDocuments)
-      .set({ activeRevisionId, pendingRevisionId })
+      .set({ activeRevisionId, latestSubmissionRevisionId })
       .where(eq(sourceDocuments.id, sourceDocumentId));
     await db.insert(ledgerEntries).values([
       {
@@ -147,7 +147,7 @@ describe("target Settings currency workflow", () => {
       {
         ledgerId,
         sourceDocumentId,
-        sourceDocumentRevisionId: pendingRevisionId,
+        sourceDocumentRevisionId: latestSubmissionRevisionId,
         amount: "40.00",
         currency: "CNY",
         itemName: "Pending",
@@ -166,9 +166,16 @@ describe("target Settings currency workflow", () => {
         where: eq(sourceDocuments.id, sourceDocumentId),
       }),
     ]);
-    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.000", "5.000"]);
-    expect(entries.every((entry) => entry.exchangeRate === "0.125000000000")).toBe(true);
-    expect(document?.stateVersion).toBe(2);
+    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.000", "40.000"]);
+    expect(
+      entries.find((entry) => entry.sourceDocumentRevisionId === activeRevisionId)
+    ).toMatchObject({
+      exchangeRate: "0.125000000000",
+    });
+    expect(
+      entries.find((entry) => entry.sourceDocumentRevisionId === latestSubmissionRevisionId)
+    ).toMatchObject({ exchangeRate: "1.000000000000" });
+    expect(document?.version).toBe(2);
   });
 
   it("allows other setting changes when entries exist", async () => {
@@ -253,14 +260,16 @@ describe("target Settings currency workflow", () => {
       const db = getTestDb();
       const sourceDocumentId = crypto.randomUUID();
       const activeRevisionId = crypto.randomUUID();
-      await db.insert(sourceDocuments).values({ id: sourceDocumentId, ledgerId, entryDate });
+      await db
+        .insert(sourceDocuments)
+        .values({ id: sourceDocumentId, ledgerId, documentDate: entryDate });
       await db.insert(sourceDocumentRevisions).values({
         id: activeRevisionId,
         ledgerId,
         sourceDocumentId,
         revisionNumber: 1,
-        outcome: "completed",
-        finalizedAt: new Date(),
+        processingStatus: "completed",
+        finishedAt: new Date(),
       });
       await db
         .update(sourceDocuments)
@@ -384,11 +393,11 @@ describe("settings concurrency invariants", () => {
       ledgerId,
       sourceDocumentId,
       revisionNumber: 1,
-      outcome: "processing",
+      processingStatus: "processing",
     });
     await db
       .update(sourceDocuments)
-      .set({ pendingRevisionId: revisionId, currentStatus: "processing" })
+      .set({ latestSubmissionRevisionId: revisionId })
       .where(eq(sourceDocuments.id, sourceDocumentId));
     await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
 
@@ -423,10 +432,9 @@ describe("settings concurrency invariants", () => {
     ]);
     expect(document).toMatchObject({
       activeRevisionId: null,
-      pendingRevisionId: revisionId,
-      currentStatus: "processing",
+      latestSubmissionRevisionId: revisionId,
     });
-    expect(revision?.outcome).toBe("processing");
+    expect(revision?.processingStatus).toBe("processing");
     expect(entries).toHaveLength(0);
   });
 
@@ -531,12 +539,12 @@ describe("settings concurrency invariants", () => {
         .then((rows) => rows[0]!);
 
       const { revision } = await db.transaction(async (tx) => {
-        const { createPendingRevisionInTransaction: createPending } =
+        const { createProcessingRevisionInTransaction: createProcessingRevision } =
           await import("@/application/adapters/postgres/revisions");
-        return createPending(tx, {
+        return createProcessingRevision(tx, {
           ledgerId,
           sourceDocumentId,
-          submittedText: "Race test",
+          input: { text: "Race test", storedFileIds: [], documentDate: null },
         });
       });
 

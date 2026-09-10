@@ -48,10 +48,10 @@ describe("useSourceDocumentDetailData", () => {
       title: "Lunch",
       text: "receipt",
       files: [],
-      status: "completed",
+      processingStatus: "completed",
       type: "text",
-      invalidReason: null,
-      entryDate: "2026-07-15",
+      failureMessage: null,
+      documentDate: "2026-07-15",
       metadata: {},
       createdAt: "2026-07-15T00:00:00.000Z",
       updatedAt: "2026-07-15T00:00:00.000Z",
@@ -101,16 +101,16 @@ describe("useSourceDocumentDetailData", () => {
         title: "Cached",
         text: "receipt",
         files: [],
-        status: "completed",
+        processingStatus: "completed",
         type: "text",
-        invalidReason: null,
-        entryDate: "2026-07-28",
+        failureMessage: null,
+        documentDate: "2026-07-28",
         createdAt: "2026-07-15T00:00:00.000Z",
         ledgerEntries: [],
         hasImages: false,
         supportedActions: [],
         errorCode: null,
-        pendingRevisionId: null,
+        latestSubmissionRevisionId: null,
       }
     );
     const wrapper = ({ children }: PropsWithChildren) => (
@@ -127,7 +127,7 @@ describe("useSourceDocumentDetailData", () => {
       { wrapper }
     );
 
-    expect(result.current.sourceDocument?.entryDate).toBe("2026-07-28");
+    expect(result.current.sourceDocument?.documentDate).toBe("2026-07-28");
     expect(getSourceDocumentLightAction).not.toHaveBeenCalled();
   });
 
@@ -143,16 +143,16 @@ describe("useSourceDocumentDetailData", () => {
         title: "Cached",
         text: "receipt",
         files: [],
-        status: "completed",
+        processingStatus: "completed",
         type: "text",
-        invalidReason: null,
-        entryDate: "2026-07-28",
+        failureMessage: null,
+        documentDate: "2026-07-28",
         createdAt: "2026-07-15T00:00:00.000Z",
         ledgerEntries: [],
         hasImages: false,
         supportedActions: [],
         errorCode: null,
-        pendingRevisionId: null,
+        latestSubmissionRevisionId: null,
       },
       { updatedAt: Date.now() - 2 * 60 * 1000 - 1 }
     );

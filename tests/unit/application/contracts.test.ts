@@ -17,18 +17,38 @@ describe("target application contracts", () => {
   it("exposes actions for stable document lifecycle states", () => {
     const cases = [
       [
-        { activeRevisionId: "revision-1", pendingOutcome: "failed" as const },
-        ["abandon_candidate", "retry", "edit_retry", "delete"],
+        {
+          activeRevisionId: "revision-1",
+          latestSubmissionStatus: "failed" as const,
+          hasSubmissionInput: true,
+        },
+        ["split_entries", "retry", "edit_retry", "delete"],
       ],
       [
-        { activeRevisionId: null, pendingOutcome: "cancelled" as const },
+        {
+          activeRevisionId: null,
+          latestSubmissionStatus: "cancelled" as const,
+          hasSubmissionInput: true,
+        },
         ["retry", "edit_retry", "delete"],
       ],
       [
-        { activeRevisionId: "revision-1", pendingOutcome: "completed" as const },
-        ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"],
+        {
+          activeRevisionId: "revision-1",
+          latestSubmissionStatus: "completed" as const,
+          hasSubmissionInput: true,
+        },
+        ["split_entries", "retry", "edit_retry", "delete"],
       ],
-      [{ activeRevisionId: null, pendingOutcome: "failed" as const, deleted: true }, []],
+      [
+        {
+          activeRevisionId: null,
+          latestSubmissionStatus: "failed" as const,
+          hasSubmissionInput: true,
+          deleted: true,
+        },
+        [],
+      ],
     ] as const;
 
     for (const [input, actions] of cases) {
@@ -38,16 +58,19 @@ describe("target application contracts", () => {
 
   it("only exposes splitting for a completed active document without pending work", () => {
     expect(
-      supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: null })
+      supportedSourceDocumentActions({
+        activeRevisionId: "revision-1",
+        latestSubmissionStatus: null,
+        hasSubmissionInput: false,
+      })
     ).toContain("split_entries");
     for (const input of [
-      { activeRevisionId: "revision-1", pendingOutcome: "cancelled" as const },
       {
         activeRevisionId: "revision-1",
-        pendingRevisionId: "pending-revision",
-        pendingOutcome: null,
+        latestSubmissionStatus: "processing" as const,
+        hasSubmissionInput: true,
       },
-      { activeRevisionId: null, pendingOutcome: null },
+      { activeRevisionId: null, latestSubmissionStatus: null, hasSubmissionInput: false },
     ]) {
       expect(supportedSourceDocumentActions(input)).not.toContain("split_entries");
     }
@@ -72,7 +95,13 @@ describe("target application contracts", () => {
       revisionId: string;
       revisionState: "processing";
     };
-    expect(toApiV1SourceDocumentCreateResponse(response)).toEqual(fixture.response);
+    expect(
+      toApiV1SourceDocumentCreateResponse({
+        sourceDocumentId: response.sourceDocumentId,
+        revisionId: response.revisionId,
+        processingStatus: response.revisionState,
+      })
+    ).toEqual(fixture.response);
     expect(apiV1Compatibility.version).toBe(fixture.compatibility.version);
     expect(apiV1Compatibility.status).toBe(fixture.compatibility.status);
   });

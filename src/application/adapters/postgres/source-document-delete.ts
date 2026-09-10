@@ -36,15 +36,15 @@ async function softDeleteLockedSourceDocument(
 ): Promise<boolean> {
   const sourceDocumentId = document.id;
   const now = new Date();
-  if (document.pendingRevisionId != null) {
+  if (document.latestSubmissionRevisionId != null) {
     await tx
       .update(sourceDocumentRevisions)
-      .set({ outcome: "cancelled", finalizedAt: now })
+      .set({ processingStatus: "cancelled", finishedAt: now })
       .where(
         and(
           eq(sourceDocumentRevisions.ledgerId, ledgerId),
-          eq(sourceDocumentRevisions.id, document.pendingRevisionId),
-          eq(sourceDocumentRevisions.outcome, "processing")
+          eq(sourceDocumentRevisions.id, document.latestSubmissionRevisionId),
+          eq(sourceDocumentRevisions.processingStatus, "processing")
         )
       );
   }
@@ -82,10 +82,8 @@ async function softDeleteLockedSourceDocument(
   const deleted = await tx
     .update(sourceDocuments)
     .set({
-      pendingRevisionId: null,
-      currentStatus: "cancelled",
       deletedAt: now,
-      stateVersion: sql`${sourceDocuments.stateVersion} + 1`,
+      version: sql`${sourceDocuments.version} + 1`,
       updatedAt: now,
     })
     .where(
@@ -121,13 +119,13 @@ export async function deleteSourceDocumentAtomically(input: {
       input.ledgerId,
       input.target.sourceDocumentId
     );
-    if (document.stateVersion !== input.target.expectedVersion) {
+    if (document.version !== input.target.expectedVersion) {
       return {
         ok: false,
         reason: "stale",
         sourceDocumentId: input.target.sourceDocumentId,
         expectedVersion: input.target.expectedVersion,
-        currentVersion: document.stateVersion,
+        currentVersion: document.version,
       };
     }
     const deleted = await softDeleteLockedSourceDocument(tx, input.ledgerId, document);

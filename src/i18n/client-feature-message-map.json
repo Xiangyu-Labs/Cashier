@@ -15,9 +15,7 @@
     "BatchActions",
     "Calculator",
     "Calendar",
-    "CandidateReview",
-    "CandidateAction",
-    "ReviewDialog",
+    "SourceDocumentAction",
     "DateFilter",
     "DateRangeFilter",
     "DiagnosticCode",
@@ -37,7 +35,7 @@
     "BatchActions",
     "Calendar",
     "Calculator",
-    "CandidateAction",
+    "SourceDocumentAction",
     "DateFilter",
     "DateRangeFilter",
     "DiagnosticCode",
@@ -50,8 +48,7 @@
     "SourceDocumentCard",
     "SourceDocumentDetail",
     "SourceDocumentEditRetryDialog",
-    "SourceDocumentImageModal",
-    "ReviewDialog"
+    "SourceDocumentImageModal"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
   "settings": ["LedgerError", "ServiceCredentials", "Settings"]

@@ -11,11 +11,10 @@ type EntryCategoryRow = Omit<EntryCategoryDto, "createdAt" | "updatedAt" | "dele
   DateFields;
 type SourceDocumentRow = Pick<
   SourceDocumentReferenceDto,
-  "id" | "ledgerId" | "title" | "type" | "entryDate"
+  "id" | "ledgerId" | "title" | "type" | "documentDate"
 > &
   DateFields & {
-    stateVersion: number;
-    currentStatus: SourceDocumentReferenceDto["status"];
+    version: number;
   };
 type LedgerEntryRow = Omit<
   LedgerEntryDto,
@@ -50,25 +49,23 @@ function mapSourceDocumentReferenceDto(
   doc: Pick<
     SourceDocumentRow,
     | "id"
-    | "stateVersion"
+    | "version"
     | "ledgerId"
     | "title"
     | "type"
-    | "entryDate"
+    | "documentDate"
     | "createdAt"
     | "updatedAt"
     | "deletedAt"
-    | "currentStatus"
   >
 ): SourceDocumentReferenceDto {
   return {
     id: doc.id,
-    version: doc.stateVersion,
+    version: doc.version,
     ledgerId: doc.ledgerId,
     title: doc.title,
-    status: "completed",
     type: doc.type,
-    entryDate: doc.entryDate,
+    documentDate: doc.documentDate,
     createdAt: toIso(doc.createdAt)!,
     updatedAt: toIso(doc.updatedAt)!,
     hasImages: false,

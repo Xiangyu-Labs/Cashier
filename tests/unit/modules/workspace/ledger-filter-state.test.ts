@@ -21,10 +21,10 @@ describe("ledger-filter-state", () => {
   it("includes statuses from advanced filters in entry filters", () => {
     const filters = buildLedgerEntryFilters(
       { period: "thisMonth" },
-      { statuses: ["failed", "invalid"] }
+      { statuses: ["failed", "failed"] }
     );
 
-    expect(filters.statuses).toEqual(["failed", "invalid"]);
+    expect(filters.statuses).toEqual(["failed", "failed"]);
   });
 
   it("omits statuses from entry filters when advanced filters has no statuses", () => {
@@ -130,12 +130,8 @@ describe("ledger-filter-state", () => {
       expect(STREAM_STATUS_PRESETS).toEqual(["needs_attention", "in_progress"]);
     });
 
-    it("needs_attention includes candidate_pending, invalid, and failed", () => {
-      expect(STREAM_STATUS_PRESET_VALUES.needs_attention).toEqual([
-        "candidate_pending",
-        "invalid",
-        "failed",
-      ]);
+    it("needs_attention includes cancelled and failed", () => {
+      expect(STREAM_STATUS_PRESET_VALUES.needs_attention).toEqual(["failed", "cancelled"]);
     });
 
     it("in_progress includes processing", () => {

@@ -1,21 +1,16 @@
 import type { SourceDocumentAggregateWritePort } from "@/modules/source-document/application/ports";
 import { postgresLedgerEntryCommandAdapter } from "../ledger-entry-commands";
 import { postgresLedgerProjectionAdapter } from "../ledger-projections";
-import {
-  abandonCandidateRevision,
-  acceptCandidateRevision,
-  cancelPendingRevision,
-} from "../ledger-projections/activate-revision";
+import { cancelSourceDocumentProcessing } from "../ledger-projections/cancel-source-document-processing";
 import { postgresSourceDocumentSubmissionAdapter } from "../submissions";
 import { saveChanges, updateDocuments, updateEntryDates } from "../source-document-updates";
 import { splitSourceDocumentAtomically } from "../source-document-splits";
 import { deleteSourceDocumentAtomically } from "../source-document-delete";
 
 export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWritePort = {
-  createProcessingDocument: (input) =>
-    postgresSourceDocumentSubmissionAdapter.createPendingWithIntent(input),
+  createProcessingDocument: (input) => postgresSourceDocumentSubmissionAdapter.submit(input),
   createIdempotentProcessingDocument: (idempotency, prepare) =>
-    postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent(idempotency, prepare),
+    postgresSourceDocumentSubmissionAdapter.submitIdempotently(idempotency, prepare),
   createManualDocument: (input) => postgresLedgerProjectionAdapter.createManual(input),
   saveChanges,
   updateDocuments,
@@ -26,10 +21,8 @@ export const postgresSourceDocumentAggregateAdapter: SourceDocumentAggregateWrit
   batchUpdateEntries: (input) => postgresLedgerEntryCommandAdapter.batchUpdate(input),
   batchDeleteEntries: (input) => postgresLedgerEntryCommandAdapter.batchDelete(input),
   splitEntries: splitSourceDocumentAtomically,
-  installRetry: (input) => postgresSourceDocumentSubmissionAdapter.createPendingWithIntent(input),
-  acceptCandidate: acceptCandidateRevision,
-  abandonCandidate: abandonCandidateRevision,
-  cancelProcessing: cancelPendingRevision,
+  installRetry: (input) => postgresSourceDocumentSubmissionAdapter.submit(input),
+  cancelProcessing: cancelSourceDocumentProcessing,
   deleteDocuments: deleteSourceDocumentAtomically,
   completeProcessing: (input) => postgresLedgerProjectionAdapter.activateRevision(input),
 };

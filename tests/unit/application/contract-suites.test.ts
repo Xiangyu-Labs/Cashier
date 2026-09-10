@@ -6,7 +6,7 @@ import {
   supportedSourceDocumentActions,
   type AuthorizedFileReadContract,
   type ProcessingCompletionContract,
-  type ProcessingIntentContract,
+  type ProcessingJobContract,
   type StoredFileContract,
   type StoredFilePort,
   type UploadFinalizationContract,
@@ -53,30 +53,30 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
     sourceDocumentActions: supportedSourceDocumentActions,
     files: filePort,
     processing: {
-      async dispatch(intent: ProcessingIntentContract) {
-        dispatched.add(intent.id);
+      async dispatch(job: ProcessingJobContract) {
+        dispatched.add(job.id);
       },
-      async claim(intentId) {
-        if (!dispatched.has(intentId)) return null;
+      async claim(jobId) {
+        if (!dispatched.has(jobId)) return null;
         return {
           ledgerId: "ledger-1",
-          intent: {
-            id: intentId,
+          job: {
+            id: jobId,
             sourceDocumentId: "document-1",
             revisionId: "revision-1",
             requestedAt: "2026-07-13T00:00:00.000Z",
-            attempt: 1,
+            attemptNumber: 1,
           },
           claimToken: "claim-1",
           expiresAt: "2026-07-13T00:05:00.000Z",
         };
       },
-      async renew(_intentId, _claimToken) {
+      async renew(_jobId, _claimToken) {
         return "2026-07-13T00:05:00.000Z";
       },
       async complete(result) {
-        if (completed.has(result.intentId)) return false;
-        completed.set(result.intentId, result);
+        if (completed.has(result.jobId)) return false;
+        completed.set(result.jobId, result);
         return true;
       },
     },
@@ -88,10 +88,10 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
         targetIds: ["target-1"],
       }),
     read: (file) => filePort.readAuthorized("ledger-1", file.id),
-    dispatch: (intent) =>
-      dispatched.has(intent.id)
+    dispatch: (job) =>
+      dispatched.has(job.id)
         ? Promise.resolve()
-        : Promise.resolve(dispatched.add(intent.id)).then(() => undefined),
+        : Promise.resolve(dispatched.add(job.id)).then(() => undefined),
     completions: () => [...completed.values()],
   };
 }

@@ -60,8 +60,7 @@ describe("source-document-queries", () => {
       .values({
         ledgerId,
         title: "Coffee and cake",
-        currentStatus: "completed",
-        entryDate: "2026-03-20",
+        documentDate: "2026-03-20",
       })
       .returning();
     const sourceDocument = requireDefined(document, "filtered subtotal document");
@@ -109,20 +108,17 @@ describe("source-document-queries", () => {
         {
           ledgerId,
           title: "completed-total",
-          currentStatus: "completed",
-          entryDate: "2026-03-15",
+          documentDate: "2026-03-15",
         },
         {
           ledgerId,
           title: "failed-with-active-result",
-          currentStatus: "completed",
-          entryDate: "2026-03-16",
+          documentDate: "2026-03-16",
         },
         {
           ledgerId,
           title: "completed-out-of-range",
-          currentStatus: "completed",
-          entryDate: "2026-02-01",
+          documentDate: "2026-02-01",
         },
       ])
       .returning();
@@ -172,9 +168,9 @@ describe("source-document-queries", () => {
             ledgerId,
             sourceDocumentId: failed.id,
             revisionNumber: 2,
-            submittedText: "retry",
-            outcome: "failed",
-            finalizedAt: new Date(),
+            inputText: "retry",
+            processingStatus: "failed",
+            finishedAt: new Date(),
           })
           .returning()
       )[0],
@@ -182,7 +178,7 @@ describe("source-document-queries", () => {
     );
     await db
       .update(sourceDocuments)
-      .set({ pendingRevisionId: failedRevision.id, currentStatus: "failed" })
+      .set({ latestSubmissionRevisionId: failedRevision.id })
       .where(eq(sourceDocuments.id, failed.id));
 
     await expect(
@@ -190,13 +186,13 @@ describe("source-document-queries", () => {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
       })
-    ).resolves.toEqual({ total: "125.25", unconvertedCount: 0 });
+    ).resolves.toEqual({ total: "200.25", unconvertedCount: 0 });
     await expect(getStreamTotal(ledgerId, { statuses: ["processing"] })).resolves.toEqual({
       total: "0",
       unconvertedCount: 0,
     });
     await expect(getStreamTotal(ledgerId, { statuses: ["completed", "failed"] })).resolves.toEqual({
-      total: "325.25",
+      total: "400.25",
       unconvertedCount: 0,
     });
     await expect(getStreamTotal(ledgerId, { minAmount: "100", maxAmount: "150" })).resolves.toEqual(
@@ -213,16 +209,14 @@ describe("source-document-queries", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: "2026-03-20",
+        documentDate: "2026-03-20",
       })
       .returning();
     const deleted = await db
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        currentStatus: "completed",
-        entryDate: "2026-03-19",
+        documentDate: "2026-03-19",
         deletedAt: new Date(),
       })
       .returning();

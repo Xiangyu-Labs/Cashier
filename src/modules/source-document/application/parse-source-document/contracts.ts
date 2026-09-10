@@ -53,13 +53,13 @@ export class ProcessingFailure extends Error {
 export interface ParseSourceDocumentOutput {
   ledgerEntries: ParsedLedgerEntry[];
   title?: string;
-  invalidReason?: string;
+  failureMessage?: string;
   verificationStatus: "passed" | "invalid";
 }
 
 export type ParsePipelineResult =
   | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[] }
-  | { kind: "invalid"; title: string; invalidReason: string }
+  | { kind: "invalid"; title: string; failureMessage: string }
   | { kind: "cancelled" };
 
 export class ProcessingCancelledError extends Error {

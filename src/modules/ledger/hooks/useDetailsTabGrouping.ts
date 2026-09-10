@@ -25,8 +25,8 @@ export function useDetailsTabGrouping(
   const locale = useLocale();
 
   const getDateStr = useCallback((entry: LedgerEntry) => {
-    if (entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== "") {
-      return entry.sourceDocument.entryDate;
+    if (entry.sourceDocument?.documentDate != null && entry.sourceDocument.documentDate !== "") {
+      return entry.sourceDocument.documentDate;
     }
     return formatDateTimeForApi(new Date(entry.createdAt)) ?? formatDateTimeForApi(new Date())!;
   }, []);

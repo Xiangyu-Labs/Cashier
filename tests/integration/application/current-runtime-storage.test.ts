@@ -153,9 +153,9 @@ describe("current-runtime target adapters", () => {
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
-    const pending = await postgresRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createProcessingRevision({
       ledgerId,
-      storedFileIds: [uploaded.id],
+      input: { text: null, storedFileIds: [uploaded.id], documentDate: null },
     });
     expect(
       await db.query.sourceDocuments.findFirst({
@@ -177,7 +177,7 @@ describe("current-runtime target adapters", () => {
       .update(storedFiles)
       .set({ storageProvider: "s3" })
       .where(eq(storedFiles.id, uploaded.id));
-    expect(pending.document.pendingRevisionId).toBe(pending.revision.id);
+    expect(pending.document.latestSubmissionRevisionId).toBe(pending.revision.id);
 
     await expect(
       adapter.createUploadPlan(

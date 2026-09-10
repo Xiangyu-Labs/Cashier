@@ -129,7 +129,7 @@ describe("useSourceDocumentSubmitMutations", () => {
     const { result } = setup(onSuccess);
 
     act(() => {
-      result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
+      result.current.submit({ documentDate: "2026-07-17", text: "Lunch", storedFileIds: [] });
     });
     await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(1));
     expect(onSuccess).not.toHaveBeenCalled();
@@ -144,7 +144,7 @@ describe("useSourceDocumentSubmitMutations", () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
     expect(onSuccess).toHaveBeenCalledWith({
       sourceDocumentId: "source-1",
-      entryDate: "2026-07-17",
+      documentDate: "2026-07-17",
     });
     expect(toastSuccessMock).not.toHaveBeenCalled();
   });
@@ -156,7 +156,7 @@ describe("useSourceDocumentSubmitMutations", () => {
     const { result } = setup(onSuccess);
 
     act(() => {
-      result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
+      result.current.submit({ documentDate: "2026-07-17", text: "Lunch", storedFileIds: [] });
     });
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("create failed"));
@@ -164,7 +164,7 @@ describe("useSourceDocumentSubmitMutations", () => {
 
     const firstClientSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[2];
     act(() => {
-      result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
+      result.current.submit({ documentDate: "2026-07-17", text: "Lunch", storedFileIds: [] });
     });
     await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(2));
     expect(createSourceDocumentActionMock.mock.calls[1]?.[2]).toBe(firstClientSubmissionId);
@@ -172,7 +172,7 @@ describe("useSourceDocumentSubmitMutations", () => {
 
   it("reuses uploaded files and submission identity after an ambiguous failure", async () => {
     uploadSubmissionImagesMock.mockResolvedValue({
-      entryDate: "2026-07-17",
+      documentDate: "2026-07-17",
       text: "Lunch",
       storedFileIds: ["stored-1"],
     });
@@ -182,7 +182,8 @@ describe("useSourceDocumentSubmitMutations", () => {
     const { result } = setup(vi.fn());
     const imageFile = new File([new Uint8Array([1])], "receipt.png", { type: "image/png" });
     const payload = {
-      entryDate: "2026-07-17",
+      documentDate: "2026-07-17",
+      storedFileIds: [],
       text: "Lunch",
       images: [{ file: imageFile, mimeType: "image/png" }],
     };
@@ -202,7 +203,7 @@ describe("useSourceDocumentSubmitMutations", () => {
 
     expect(uploadSubmissionImagesMock).toHaveBeenCalledTimes(1);
     expect(createSourceDocumentActionMock.mock.calls[1]?.[1]).toEqual({
-      entryDate: "2026-07-17",
+      documentDate: "2026-07-17",
       text: "Lunch",
       storedFileIds: ["stored-1"],
     });
@@ -213,12 +214,16 @@ describe("useSourceDocumentSubmitMutations", () => {
     createSourceDocumentActionMock.mockRejectedValue(new Error("server unavailable"));
     const { result } = setup(vi.fn());
 
-    act(() => result.current.submit({ entryDate: "2026-07-17", text: "Lunch" }));
+    act(() =>
+      result.current.submit({ documentDate: "2026-07-17", text: "Lunch", storedFileIds: [] })
+    );
     await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(result.current.isPending).toBe(false));
     const firstSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[2];
 
-    act(() => result.current.submit({ entryDate: "2026-07-17", text: "Dinner" }));
+    act(() =>
+      result.current.submit({ documentDate: "2026-07-17", text: "Dinner", storedFileIds: [] })
+    );
     await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(2));
 
     expect(createSourceDocumentActionMock.mock.calls[1]?.[2]).not.toBe(firstSubmissionId);
@@ -237,7 +242,7 @@ describe("useSourceDocumentSubmitMutations", () => {
     const { result } = setup(onSuccess);
 
     act(() => {
-      result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
+      result.current.submit({ documentDate: "2026-07-17", text: "Lunch", storedFileIds: [] });
     });
     expect(result.current.canCancel).toBe(true);
 

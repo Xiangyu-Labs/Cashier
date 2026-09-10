@@ -74,7 +74,7 @@ export function useQuickEntryFormController({
       setEditedEntryDate(null);
       onSuccess?.({
         sourceDocumentId: data.sourceDocumentId,
-        entryDate: variables.entryDate,
+        documentDate: variables.entryDate,
       });
     },
   });

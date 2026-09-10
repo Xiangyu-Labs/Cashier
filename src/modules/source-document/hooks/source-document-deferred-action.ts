@@ -1,6 +1,4 @@
 export type SourceDocumentDeferredAction =
-  | { type: "accept-candidate" }
-  | { type: "abandon-candidate" }
   | { type: "cancel-processing" }
   | { type: "open-retry" }
   | { type: "open-delete" }

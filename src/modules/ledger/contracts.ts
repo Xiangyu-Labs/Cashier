@@ -1,7 +1,4 @@
-import type {
-  SourceDocumentStatusType as SourceDocumentReferenceStatus,
-  SourceDocumentTypeValue as SourceDocumentReferenceType,
-} from "@/modules/source-document/types";
+import type { SourceDocumentTypeValue as SourceDocumentReferenceType } from "@/modules/source-document/types";
 
 import type { LedgerSettingsContract } from "@/application/contracts/ledger";
 
@@ -70,9 +67,8 @@ export type SourceDocumentReferenceDto = {
   version: number;
   ledgerId: string;
   title: string | null;
-  status: SourceDocumentReferenceStatus;
   type: SourceDocumentReferenceType;
-  entryDate: string | null;
+  documentDate: string | null;
   createdAt: string;
   updatedAt: string;
   hasImages?: boolean;

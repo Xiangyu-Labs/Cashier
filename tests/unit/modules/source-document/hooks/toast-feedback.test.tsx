@@ -7,8 +7,6 @@ import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/ho
 
 const {
   deleteSourceDocumentActionMock,
-  acceptSourceDocumentCandidateActionMock,
-  abandonSourceDocumentCandidateActionMock,
   retrySourceDocumentActionMock,
   batchUpdateSourceDocumentsActionMock,
   toastSuccessMock,
@@ -16,8 +14,6 @@ const {
   toastWarningMock,
 } = vi.hoisted(() => ({
   deleteSourceDocumentActionMock: vi.fn(),
-  acceptSourceDocumentCandidateActionMock: vi.fn(),
-  abandonSourceDocumentCandidateActionMock: vi.fn(),
   retrySourceDocumentActionMock: vi.fn(),
   batchUpdateSourceDocumentsActionMock: vi.fn(),
   toastSuccessMock: vi.fn(),
@@ -33,9 +29,7 @@ vi.mock("sonner", () => ({
   toast: { success: toastSuccessMock, error: toastErrorMock, warning: toastWarningMock },
 }));
 
-vi.mock("@/modules/source-document/server-actions/candidates", () => ({
-  acceptSourceDocumentCandidateAction: acceptSourceDocumentCandidateActionMock,
-  abandonSourceDocumentCandidateAction: abandonSourceDocumentCandidateActionMock,
+vi.mock("@/modules/source-document/server-actions/processing", () => ({
   cancelSourceDocumentProcessingAction: vi.fn(),
 }));
 vi.mock("@/modules/source-document/server-actions/update", () => ({
@@ -218,45 +212,6 @@ describe("source document mutation toast ownership", () => {
     expect(clearSelection).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();
     expect(toastErrorMock).toHaveBeenCalledWith("selectionChanged");
-  });
-
-  it("runs candidate success feedback before refresh settles and remains pending", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-    });
-    const refreshGate = deferred();
-    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
-    acceptSourceDocumentCandidateActionMock.mockResolvedValueOnce({
-      ok: true,
-      sourceDocumentId: "document-1",
-      version: 2,
-      data: { status: "completed" },
-    });
-    const onSuccess = vi.fn();
-    const { result } = renderHook(
-      () =>
-        useSourceDocumentRecoveryMutations({
-          ledgerId: "ledger-1",
-          sourceDocumentId: "document-1",
-          version: 1,
-          onSuccess,
-        }),
-      { wrapper: createWrapper(queryClient) }
-    );
-
-    let mutation!: Promise<void>;
-    act(() => {
-      mutation = result.current.acceptCandidate();
-    });
-
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("acceptSuccess"));
-    expect(result.current.isAccepting).toBe(true);
-    expect(onSuccess).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      refreshGate.resolve();
-      await mutation;
-    });
   });
 
   it("reports direct retry success and failure exactly once", async () => {

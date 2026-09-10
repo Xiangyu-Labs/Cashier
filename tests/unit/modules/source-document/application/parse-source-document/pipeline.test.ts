@@ -186,7 +186,7 @@ describe("runParsePipeline — single-pass flow", () => {
 
     expect(result.kind).toBe("invalid");
     if (result.kind === "invalid") {
-      expect(result.invalidReason).toBe("Image too blurry");
+      expect(result.failureMessage).toBe("Image too blurry");
     }
   });
 

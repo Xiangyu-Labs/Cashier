@@ -1,8 +1,5 @@
 import { StaleSourceDocumentVersionError } from "@/lib/errors";
-import type {
-  ProcessingIntentContract,
-  SourceDocumentSubmissionPort,
-} from "@/application/contracts";
+import type { ProcessingJobContract, SourceDocumentSubmissionPort } from "@/application/contracts";
 import type {
   RetrySourceDocumentResponseDto,
   VersionedCommandResult,
@@ -10,9 +7,9 @@ import type {
 import { staleVersionedCommandResult } from "../versioned-command-result";
 
 interface SourceDocumentRetryPayload {
-  text?: string;
-  storedFileIds?: string[];
-  entryDate?: string;
+  text: string | null;
+  storedFileIds: string[];
+  documentDate: string | null;
 }
 
 interface RetrySourceDocumentInput {
@@ -23,8 +20,8 @@ interface RetrySourceDocumentInput {
 }
 
 interface RetrySourceDocumentDependencies {
-  submissions: Pick<SourceDocumentSubmissionPort, "createPendingWithIntent">;
-  scheduleProcessing: (intent: ProcessingIntentContract) => void;
+  submissions: Pick<SourceDocumentSubmissionPort, "submit">;
+  scheduleProcessing: (job: ProcessingJobContract) => void;
 }
 
 export async function retrySourceDocument(
@@ -35,23 +32,21 @@ export async function retrySourceDocument(
     ledgerId,
     sourceDocumentId,
     expectedVersion,
-    inheritEvidence: true,
+    inheritInput: input == null,
     supersedeProcessing: true,
-    ...(input?.text === undefined ? {} : { submittedText: input.text }),
-    ...(input?.storedFileIds === undefined ? {} : { storedFileIds: input.storedFileIds }),
-    ...(input?.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+    ...(input == null ? {} : { input }),
   };
 
   let pending;
   try {
-    pending = await dependencies.submissions.createPendingWithIntent(submission);
+    pending = await dependencies.submissions.submit(submission);
   } catch (error) {
     if (error instanceof StaleSourceDocumentVersionError) {
       return staleVersionedCommandResult<RetrySourceDocumentResponseDto>(error);
     }
     throw error;
   }
-  if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
+  if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.job);
 
   return {
     ok: true,

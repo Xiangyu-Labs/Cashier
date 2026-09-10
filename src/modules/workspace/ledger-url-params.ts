@@ -1,4 +1,4 @@
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/locales";
 import { DECIMAL_STRING_PATTERN, normalize as normalizeDecimal } from "@/lib/money/decimal";
 import { isValidDateString } from "@/lib/date-utils";
@@ -25,13 +25,11 @@ const STATUSES_URL_DELIMITER = ",";
  * Canonical status order for URL serialization.
  * Mirrors SOURCE_DOCUMENT_STATUSES order for stable, predictable encoding.
  */
-const CANONICAL_STATUS_ORDER: readonly SourceDocumentStatusType[] = [
+const CANONICAL_STATUS_ORDER: readonly SourceDocumentProcessingStatus[] = [
   "processing",
   "completed",
-  "invalid",
   "failed",
   "cancelled",
-  "candidate_pending",
 ];
 
 /**
@@ -40,17 +38,17 @@ const CANONICAL_STATUS_ORDER: readonly SourceDocumentStatusType[] = [
  * Returns an empty array when the parameter is absent, empty, or contains no
  * valid tokens (empty array = all statuses, i.e. no status filtering).
  */
-export function parseStatusesParam(raw: string | null): SourceDocumentStatusType[] {
+export function parseStatusesParam(raw: string | null): SourceDocumentProcessingStatus[] {
   if (raw == null || raw === "") return [];
 
-  const tokenSet = new Set<SourceDocumentStatusType>();
+  const tokenSet = new Set<SourceDocumentProcessingStatus>();
   const rawTokens = raw.split(STATUSES_URL_DELIMITER);
 
   for (const token of rawTokens) {
     const trimmed = token.trim();
     if (trimmed === "") continue;
     if ((CANONICAL_STATUS_ORDER as readonly string[]).includes(trimmed)) {
-      tokenSet.add(trimmed as SourceDocumentStatusType);
+      tokenSet.add(trimmed as SourceDocumentProcessingStatus);
     }
   }
 
@@ -63,7 +61,7 @@ export function parseStatusesParam(raw: string | null): SourceDocumentStatusType
  * Returns null when the array is empty (parameter should be omitted).
  * The input is already assumed to be canonical; duplicates are removed defensively.
  */
-export function formatStatusesParam(statuses: SourceDocumentStatusType[]): string | null {
+export function formatStatusesParam(statuses: SourceDocumentProcessingStatus[]): string | null {
   if (statuses.length === 0) return null;
 
   // Deduplicate while preserving canonical order
@@ -79,7 +77,7 @@ export interface LedgerFilterParams {
   currency: string | null;
   minAmount: string | null;
   maxAmount: string | null;
-  statuses: SourceDocumentStatusType[];
+  statuses: SourceDocumentProcessingStatus[];
   search: string | null;
 }
 
@@ -156,7 +154,7 @@ export interface LedgerUrlUpdate {
   currency?: string | null;
   minAmount?: string | null;
   maxAmount?: string | null;
-  statuses?: SourceDocumentStatusType[] | null;
+  statuses?: SourceDocumentProcessingStatus[] | null;
   search?: string | null;
 }
 
