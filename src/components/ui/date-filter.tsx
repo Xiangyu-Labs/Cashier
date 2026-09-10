@@ -28,6 +28,12 @@ interface DateFilterProps {
   /** Whether to truncate overflow text with ellipsis */
   truncate?: boolean;
   disabled?: boolean;
+  /**
+   * Render the selected date as static text instead of an interactive picker.
+   * Use this in read-only surfaces, where a disabled button would still paint
+   * the dropdown chrome (calendar icon + chevron) without being usable.
+   */
+  readOnly?: boolean;
   minDate?: Date;
   maxDate?: Date;
 }
@@ -41,6 +47,7 @@ export function DateFilter({
   showClear = true,
   truncate = true,
   disabled = false,
+  readOnly = false,
   minDate,
   maxDate,
 }: DateFilterProps) {
@@ -74,6 +81,24 @@ export function DateFilter({
   };
 
   const isSmall = size === "sm";
+
+  if (readOnly && civilDateString != null) {
+    return (
+      <span className={cn("inline-flex min-w-0 items-center gap-1.5", className)}>
+        <CalendarIcon
+          aria-hidden="true"
+          className={cn("shrink-0 text-muted-foreground", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}
+        />
+        <span className={cn("min-w-0 text-text", isSmall ? "text-xs" : "text-sm")}>
+          {formatCivilDate(civilDateString, locale, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
+      </span>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

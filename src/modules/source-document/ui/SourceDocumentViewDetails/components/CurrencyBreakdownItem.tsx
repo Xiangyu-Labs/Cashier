@@ -28,12 +28,10 @@ export function CurrencyBreakdownItem({
   }, [entries, currency, mainCurrency]);
 
   return (
-    <span className="text-xs text-muted-foreground/80">
+    <span className="text-xs text-muted-foreground">
       <AmountText variant="group">{formatCurrencyAmount(amount, currency, locale)}</AmountText>
       {currency !== mainCurrency && (
-        <AmountText variant="secondary" className="ml-1.5">
-          (≈ {formatCurrencyAmount(converted, mainCurrency, locale)})
-        </AmountText>
+        <span className="ml-1.5">(≈ {formatCurrencyAmount(converted, mainCurrency, locale)})</span>
       )}
     </span>
   );

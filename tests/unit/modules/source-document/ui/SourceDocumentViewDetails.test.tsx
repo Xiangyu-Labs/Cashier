@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -108,6 +108,37 @@ function renderDetails(count: number, isLoadingImages = false) {
     />
   );
 }
+
+describe("SourceDocumentViewDetails summary date", () => {
+  it("shows the transaction date as plain text outside edit mode", () => {
+    renderDetails(0);
+
+    const dateRow = screen.getByTestId("source-document-date-row");
+    expect(dateRow).toHaveTextContent(/2026年7月28日|Jul 28, 2026/);
+    expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("restores the date picker in edit mode", () => {
+    renderWithQueryClient(
+      <SourceDocumentViewDetails
+        sourceDocument={documentWithFiles(0)}
+        ledgerEntries={[]}
+        categories={[]}
+        pendingChanges={{ sourceDoc: {}, entries: {} }}
+        selectedEntryIds={[]}
+        isSelectionMode={false}
+        isEditMode
+        onSourceDocChange={vi.fn()}
+        onEntryChange={vi.fn()}
+        onSelectEntry={vi.fn()}
+        onToggleSelectionMode={vi.fn()}
+      />
+    );
+
+    const dateRow = screen.getByTestId("source-document-date-row");
+    expect(within(dateRow).getAllByRole("button").length).toBeGreaterThan(0);
+  });
+});
 
 describe("SourceDocumentViewDetails image stage", () => {
   it("uses the same stable stage geometry while images are loading", () => {

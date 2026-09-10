@@ -34,4 +34,29 @@ describe("DateFilter", () => {
 
     expect(screen.queryByRole("button", { name: "clear" })).not.toBeInTheDocument();
   });
+
+  it("renders plain text without picker chrome when read-only", () => {
+    // Regression: read-only surfaces used to pass `disabled`, which still
+    // painted the outline button, calendar icon, and dropdown chevron.
+    render(<DateFilter value="2026-07-28" onChange={() => {}} readOnly />);
+
+    expect(screen.getByText("2026年7月28日")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("does not open a calendar when the read-only value is clicked", () => {
+    const onChange = vi.fn();
+    render(<DateFilter value="2026-07-28" onChange={onChange} readOnly />);
+
+    fireEvent.click(screen.getByText("2026年7月28日"));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the interactive picker when read-only has no value", () => {
+    render(<DateFilter value={null} onChange={() => {}} readOnly />);
+
+    expect(screen.getByRole("button", { name: "selectDate" })).toBeInTheDocument();
+  });
 });
