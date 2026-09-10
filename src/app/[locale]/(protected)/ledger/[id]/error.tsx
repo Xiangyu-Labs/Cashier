@@ -28,12 +28,12 @@ export default function LedgerError({
 
         <div className="flex flex-col gap-3">
           <Button className="w-full gap-2" onClick={() => window.location.reload()}>
-            <RefreshCcw className="w-4 h-4" />
+            <RefreshCcw aria-hidden="true" className="w-4 h-4" />
             {t("retry")}
           </Button>
           <Button variant="outline" className="w-full gap-2" asChild>
             <Link href="/">
-              <LayoutDashboard className="w-4 h-4" />
+              <LayoutDashboard aria-hidden="true" className="w-4 h-4" />
               {tLedger("backToHome")}
             </Link>
           </Button>

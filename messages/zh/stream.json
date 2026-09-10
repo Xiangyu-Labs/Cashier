@@ -34,12 +34,17 @@
     "title": "计算器",
     "amountAriaLabel": "金额",
     "openCalculator": "打开计算器",
-    "invalidValue": "请输入有效金额。"
+    "invalidValue": "请输入有效金额。",
+    "delete": "删除",
+    "calculate": "计算",
+    "confirm": "确认"
   },
   "Calendar": {
     "today": "今天",
     "yesterday": "昨天",
     "clear": "清除",
+    "previousMonth": "上个月",
+    "nextMonth": "下个月",
     "weekDays": ["日", "一", "二", "三", "四", "五", "六"],
     "weekDaysMon": ["一", "二", "三", "四", "五", "六", "日"],
     "currency": "货币",
@@ -139,6 +144,7 @@
   },
   "EntryFilterPanel": {
     "filter": "筛选",
+    "activeFilterCount": "已启用 {count} 个筛选",
     "dateRange": "时间范围",
     "allTime": "全部",
     "category": "类别",

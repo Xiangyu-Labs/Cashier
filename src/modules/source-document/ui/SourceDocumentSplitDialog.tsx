@@ -101,6 +101,8 @@ export function SourceDocumentSplitDialog({
             <Input
               id="split-entry-date"
               type="date"
+              name="entryDate"
+              autoComplete="off"
               required
               value={entryDate}
               disabled={isSubmitting}

@@ -236,6 +236,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             ) : null}
             <input
               type="date"
+              name="entryDate"
+              autoComplete="off"
               aria-label={t("changeDateTitle")}
               value={batch.selectedDate}
               onChange={(event) => batch.setSelectedDate(event.target.value)}

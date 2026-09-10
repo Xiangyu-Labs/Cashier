@@ -84,7 +84,7 @@ export function EditableCategorySelect({
           ) : (
             <span>{placeholder}</span>
           )}
-          <ChevronDown className="h-3 w-3 opacity-50 ml-0.5" />
+          <ChevronDown aria-hidden="true" className="h-3 w-3 opacity-50 ml-0.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-1" align="start" sideOffset={4}>
@@ -107,8 +107,8 @@ export function EditableCategorySelect({
               )}
             >
               <CategoryIcon iconName={category.icon} className="h-4 w-4" />
-              <span className="flex-1 truncate">{category.name}</span>
-              {value === category.id && <Check className="h-4 w-4" />}
+              <span className="min-w-0 flex-1 truncate">{category.name}</span>
+              {value === category.id && <Check aria-hidden="true" className="h-4 w-4" />}
             </button>
           ))}
         </div>

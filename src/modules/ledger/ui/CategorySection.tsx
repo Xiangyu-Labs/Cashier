@@ -102,7 +102,7 @@ export function CategorySection({
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate text-sm font-medium">{category.name}</span>
+                <span className="min-w-0 truncate text-sm font-medium">{category.name}</span>
                 {category.entryCount == null ? null : (
                   <span className="text-[10px] text-muted">
                     {t("categoryItemCount", { count: category.entryCount })}
@@ -187,6 +187,8 @@ export function CategorySection({
           <div className="flex gap-2">
             <Input
               value={newCategoryName}
+              name="newCategoryName"
+              autoComplete="off"
               onChange={(event) => setNewCategoryName(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {

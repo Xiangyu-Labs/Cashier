@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 
 export default function Error({
   error,
@@ -21,7 +22,7 @@ export default function Error({
     <div className="min-h-screen flex items-center justify-center p-4 bg-bg">
       <div className="max-w-md w-full bg-surface border border-border rounded-2xl p-8 shadow-xl text-center space-y-6">
         <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center text-destructive">
-          <AlertCircle className="w-10 h-10" />
+          <AlertCircle aria-hidden="true" className="w-10 h-10" />
         </div>
 
         <div className="space-y-2">
@@ -36,15 +37,11 @@ export default function Error({
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Button className="flex-1 gap-2 h-11" onClick={() => window.location.reload()}>
-            <RefreshCcw className="w-4 h-4" />
+            <RefreshCcw aria-hidden="true" className="w-4 h-4" />
             {t("retry")}
           </Button>
-          <Button
-            variant="outline"
-            className="flex-1 h-11"
-            onClick={() => (window.location.href = "/")}
-          >
-            {t("goHome")}
+          <Button asChild variant="outline" className="flex-1 h-11">
+            <Link href="/">{t("goHome")}</Link>
           </Button>
         </div>
       </div>

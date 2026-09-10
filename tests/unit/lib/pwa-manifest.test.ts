@@ -16,7 +16,7 @@ describe("buildPwaManifest", () => {
       start_url: "/",
       display: "standalone",
       background_color: "#ffffff",
-      theme_color: "#10a37f",
+      theme_color: "#ffffff",
       icons: expectedIcons,
     });
   });
@@ -30,7 +30,7 @@ describe("buildPwaManifest", () => {
       scope: "/en/",
       display: "standalone",
       background_color: "#ffffff",
-      theme_color: "#10a37f",
+      theme_color: "#ffffff",
       icons: expectedIcons,
     });
   });

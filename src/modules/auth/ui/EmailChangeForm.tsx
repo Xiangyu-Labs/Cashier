@@ -144,7 +144,7 @@ export function EmailChangeForm({
             </Button>
             {sent ? (
               <Button disabled={pending || code.length !== 6} onClick={verify}>
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {pending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
                 {t("verifyEmail")}
               </Button>
             ) : null}
@@ -157,6 +157,9 @@ export function EmailChangeForm({
             <Input
               id="new-account-email"
               type="email"
+              name="email"
+              autoComplete="email"
+              spellCheck={false}
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
@@ -175,7 +178,7 @@ export function EmailChangeForm({
               />
             ) : (
               <Button variant="outline" disabled={pending || email.trim() === ""} onClick={send}>
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {pending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
                 {t("sendCode")}
               </Button>
             )}
@@ -186,8 +189,10 @@ export function EmailChangeForm({
             <Label htmlFor="email-verification-code">{t("verificationCode")}</Label>
             <Input
               id="email-verification-code"
+              name="verificationCode"
               inputMode="numeric"
               autoComplete="one-time-code"
+              spellCheck={false}
               value={code}
               onChange={(event) => {
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6));

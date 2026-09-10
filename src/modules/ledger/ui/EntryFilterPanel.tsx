@@ -79,6 +79,9 @@ export function EntryFilterPanel({
         activeFilterCount > 0 && "border-primary/50 text-primary"
       )}
       onClick={isMobile ? () => handleOpenChange(true) : undefined}
+      aria-label={
+        activeFilterCount > 0 ? t("activeFilterCount", { count: activeFilterCount }) : t("filter")
+      }
       aria-haspopup={isMobile ? "dialog" : undefined}
       aria-expanded={isMobile ? open : undefined}
     >

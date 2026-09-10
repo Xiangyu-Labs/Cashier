@@ -28,6 +28,7 @@ function PasswordField(props: {
       <div className="relative">
         <Input
           id={props.id}
+          name={props.id}
           type={visible ? "text" : "password"}
           value={props.value}
           onChange={(event) => props.onChange(event.target.value)}
@@ -42,7 +43,11 @@ function PasswordField(props: {
           className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-text"
           aria-label={visible ? t("hidePassword") : t("showPassword")}
         >
-          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {visible ? (
+            <EyeOff aria-hidden="true" className="h-4 w-4" />
+          ) : (
+            <Eye aria-hidden="true" className="h-4 w-4" />
+          )}
         </button>
       </div>
     </div>
@@ -166,7 +171,7 @@ export function PasswordForm({
               {t("cancel")}
             </Button>
             <Button onClick={submit} disabled={!canSubmit || isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isLoading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
               {t("savePassword")}
             </Button>
           </>

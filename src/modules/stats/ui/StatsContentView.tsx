@@ -141,7 +141,7 @@ export function StatsContentView({
               aria-pressed={chartView === "heatmap"}
               className="h-7 px-2"
             >
-              <Grid3X3 className="mr-1 h-4 w-4" />
+              <Grid3X3 aria-hidden="true" className="mr-1 h-4 w-4" />
               {t("heatmap")}
             </Button>
             <Button
@@ -152,7 +152,7 @@ export function StatsContentView({
               aria-pressed={chartView === "trend"}
               className="h-7 px-2"
             >
-              <BarChart3 className="mr-1 h-4 w-4" />
+              <BarChart3 aria-hidden="true" className="mr-1 h-4 w-4" />
               {t("trend")}
             </Button>
           </div>

@@ -31,10 +31,11 @@ interface LoginNotificationEmailProps {
 export default function LoginNotificationEmail({
   email,
   loginTime,
+  locale,
   copy,
 }: LoginNotificationEmailProps) {
   return (
-    <Html>
+    <Html lang={locale}>
       <Head />
       <Preview>{copy.preview}</Preview>
       <Body style={main}>

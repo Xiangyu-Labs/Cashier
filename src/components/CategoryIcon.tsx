@@ -124,15 +124,15 @@ interface CategoryIconProps {
 
 export function CategoryIcon({ iconName, className }: CategoryIconProps) {
   if (iconName == null || iconName === "") {
-    return <Package className={className} />;
+    return <Package aria-hidden="true" className={className} />;
   }
 
   const safeIconName = CATEGORY_ICON_MAP[iconName];
   const IconComponent = safeIconName == null ? undefined : iconRecord[safeIconName];
 
   if (IconComponent) {
-    return <IconComponent className={className} />;
+    return <IconComponent aria-hidden="true" className={className} />;
   }
 
-  return <Package className={className} />;
+  return <Package aria-hidden="true" className={className} />;
 }

@@ -34,12 +34,17 @@
     "title": "Calculator",
     "amountAriaLabel": "Amount",
     "openCalculator": "Open calculator",
-    "invalidValue": "Enter a valid amount."
+    "invalidValue": "Enter a valid amount.",
+    "delete": "Delete",
+    "calculate": "Calculate",
+    "confirm": "Confirm"
   },
   "Calendar": {
     "today": "Today",
     "yesterday": "Yesterday",
     "clear": "Clear",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
     "weekDays": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     "weekDaysMon": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     "currency": "Currency",
@@ -139,6 +144,7 @@
   },
   "EntryFilterPanel": {
     "filter": "Filter",
+    "activeFilterCount": "Active filters: {count}",
     "dateRange": "Date Range",
     "allTime": "All Time",
     "category": "Category",

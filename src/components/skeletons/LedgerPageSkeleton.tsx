@@ -20,7 +20,7 @@ export function LedgerPageSkeleton({ activeTab = "stream" }: { activeTab?: Ledge
   };
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div aria-hidden="true" className="min-h-screen bg-bg text-text">
       {/* Header skeleton */}
       <header className="sticky top-0 z-header border-b border-border bg-surface">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-3 sm:px-4 md:px-6">

@@ -17,6 +17,10 @@ interface EditableFieldProps {
   disabled?: boolean;
   /** If true, save on blur. If false, show confirm/cancel buttons */
   saveOnBlur?: boolean;
+  /** Accessible label for the confirm button (required when saveOnBlur is false) */
+  confirmLabel?: string;
+  /** Accessible label for the cancel button (required when saveOnBlur is false) */
+  cancelLabel?: string;
   /** Minimum rows for textarea */
   minRows?: number;
   /** Maximum rows for textarea before scrolling */
@@ -34,6 +38,8 @@ export function EditableField({
   renderDisplay,
   disabled = false,
   saveOnBlur = true,
+  confirmLabel,
+  cancelLabel,
   minRows = 1,
   maxRows = 10,
 }: EditableFieldProps) {
@@ -210,16 +216,18 @@ export function EditableField({
             <button
               type="button"
               onClick={handleConfirm}
+              aria-label={confirmLabel}
               className="p-1 rounded hover:bg-primary/10 text-primary"
             >
-              <Check className="h-3.5 w-3.5" />
+              <Check aria-hidden="true" className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               onClick={handleCancel}
+              aria-label={cancelLabel}
               className="p-1 rounded hover:bg-destructive/10 text-muted-foreground"
             >
-              <X className="h-3.5 w-3.5" />
+              <X aria-hidden="true" className="h-3.5 w-3.5" />
             </button>
           </div>
         )}

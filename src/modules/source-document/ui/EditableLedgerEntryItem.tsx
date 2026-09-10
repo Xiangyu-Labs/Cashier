@@ -180,10 +180,11 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
           <PopoverTrigger asChild>
             <button
               disabled={readOnly}
+              aria-label={t("currency")}
               className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5 disabled:cursor-default"
             >
               {getCurrencySymbol(displayData.currency ?? "unknown", locale)}
-              <ChevronDown className="h-2.5 w-2.5 opacity-50" />
+              <ChevronDown aria-hidden="true" className="h-2.5 w-2.5 opacity-50" />
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-24 p-1" align="end">

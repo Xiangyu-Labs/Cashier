@@ -90,6 +90,7 @@
   },
   "Common": {
     "back": "Back",
+    "skipToContent": "Skip to content",
     "close": "Close",
     "deselectAll": "Deselect All",
     "edit": "Edit",

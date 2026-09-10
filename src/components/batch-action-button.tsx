@@ -31,7 +31,11 @@ export function BatchActionButton({
       className={cn("h-9 gap-1.5 px-3 text-sm", className)}
       {...props}
     >
-      {loading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
+      {loading ? (
+        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+      ) : (
+        <Icon aria-hidden="true" className="size-4" />
+      )}
       <span>{children}</span>
     </Button>
   );

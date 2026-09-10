@@ -52,7 +52,7 @@ export function EmailStep({
         <Button type="submit" className="w-full h-11" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
               {t("sending")}
             </>
           ) : (

@@ -230,8 +230,9 @@ function CalendarView({
           size="icon"
           className="size-11"
           onClick={handlePrevMonth}
+          aria-label={t("previousMonth")}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft aria-hidden="true" className="h-4 w-4" />
         </Button>
         <div className="font-semibold text-sm">
           {t("dateFormat", {
@@ -245,8 +246,9 @@ function CalendarView({
           size="icon"
           className="size-11"
           onClick={handleNextMonth}
+          aria-label={t("nextMonth")}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight aria-hidden="true" className="h-4 w-4" />
         </Button>
       </div>
 

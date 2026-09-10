@@ -119,7 +119,7 @@ export function LedgerEntriesBatchActionToolbar({
             >
               <div className="flex items-center justify-between mb-2 sm:mb-3">
                 <div className="flex flex-col">
-                  <span className="text-xs sm:text-sm font-medium">
+                  <span aria-live="polite" className="text-xs sm:text-sm font-medium">
                     {t("selected", { count: selectedCount })}
                   </span>
                   {isAllSelected && hasMoreData && (

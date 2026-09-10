@@ -127,7 +127,7 @@ export function LedgerEntriesStreamBody({
                 </Button>
               ) : isFetchingNextPage ? (
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
                   {t("loadingMore")}
                 </span>
               ) : null}
@@ -137,7 +137,7 @@ export function LedgerEntriesStreamBody({
           {/* End of list indicator when no more pages */}
           {!hasNextPage && streamGroups.length > 0 && (
             <div className="flex justify-center py-4">
-              <span className="text-xs text-muted-foreground/50">- {t("noMore")} -</span>
+              <span className="text-xs text-muted-foreground/50">— {t("noMore")} —</span>
             </div>
           )}
         </>

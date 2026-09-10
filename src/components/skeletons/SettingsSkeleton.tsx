@@ -4,7 +4,7 @@
  */
 export function SettingsSkeleton() {
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div aria-hidden="true" className="min-h-screen bg-bg text-text">
       {/* Header skeleton */}
       <header className="bg-surface border-b border-border sticky top-0 z-header">
         <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center">

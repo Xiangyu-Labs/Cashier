@@ -29,9 +29,9 @@ interface OTPEmailProps {
   copy: OTPEmailCopy;
 }
 
-export default function OTPEmail({ otp, copy }: OTPEmailProps) {
+export default function OTPEmail({ otp, locale, copy }: OTPEmailProps) {
   return (
-    <Html>
+    <Html lang={locale}>
       <Head />
       <Preview>{copy.preview}</Preview>
       <Body style={main}>

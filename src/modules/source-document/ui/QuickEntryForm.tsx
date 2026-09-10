@@ -14,7 +14,7 @@ import {
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { cn } from "@/lib/utils";
-import { Send } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
@@ -105,6 +105,8 @@ export function QuickEntryForm({
       {/* Item Name (optional) */}
       <Input
         aria-label={t("itemName")}
+        name="itemName"
+        autoComplete="off"
         value={itemName}
         disabled={isPending}
         onChange={(e) => setItemName(e.target.value)}
@@ -198,6 +200,7 @@ export function QuickEntryForm({
             onChange={setAmount}
             disabled={isPending}
             aria-label={t("amount")}
+            name="amount"
             placeholder="0.00"
             className="h-12 pr-16 text-right text-lg font-semibold tabular-nums"
           />
@@ -222,10 +225,13 @@ export function QuickEntryForm({
         className="w-full"
       >
         {isPending ? (
-          tCommon("sending_status")
+          <>
+            <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />
+            {tCommon("sending_status")}
+          </>
         ) : (
           <>
-            <Send className="h-4 w-4 mr-2" />
+            <Send aria-hidden="true" className="h-4 w-4 mr-2" />
             {t("record")}
           </>
         )}

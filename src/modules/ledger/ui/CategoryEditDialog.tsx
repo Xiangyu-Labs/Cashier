@@ -52,6 +52,8 @@ export function CategoryEditDialog({
               />
               <Input
                 value={editSession.draft.name}
+                name="categoryName"
+                autoComplete="off"
                 onChange={(event) =>
                   setEditSession((session) =>
                     session == null
@@ -64,6 +66,8 @@ export function CategoryEditDialog({
             </div>
             <Textarea
               value={editSession.draft.description}
+              name="categoryDescription"
+              autoComplete="off"
               onChange={(event) =>
                 setEditSession((session) =>
                   session == null

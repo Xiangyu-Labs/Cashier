@@ -9,9 +9,24 @@ import { scheduleProcessingRecoveryAfter } from "@/application/processing/schedu
 import { serverComposition } from "@/application/server-composition-root";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/routing";
 
 interface SettingsPageProps {
   params: Promise<{ id: string }>;
+}
+
+function LedgerNotFound({ message, backLabel }: { message: string; backLabel: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex w-full max-w-md flex-col gap-6 rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
+        <h1 className="text-xl font-bold">{message}</h1>
+        <Button variant="outline" className="w-full" asChild>
+          <Link href="/">{backLabel}</Link>
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export default async function SettingsPage({ params }: SettingsPageProps) {
@@ -26,7 +41,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
   if (!ledger) {
     const t = await getTranslations({ locale, namespace: "LedgerPage" });
-    return <div>{t("notFound")}</div>;
+    const tError = await getTranslations({ locale, namespace: "LedgerError" });
+    return <LedgerNotFound message={t("notFound")} backLabel={tError("backToHome")} />;
   }
 
   scheduleProcessingRecoveryAfter(ledgerId);
@@ -43,7 +59,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   );
   if (pageData == null) {
     const t = await getTranslations({ locale, namespace: "LedgerPage" });
-    return <div>{t("notFound")}</div>;
+    const tError = await getTranslations({ locale, namespace: "LedgerError" });
+    return <LedgerNotFound message={t("notFound")} backLabel={tError("backToHome")} />;
   }
 
   const allMessages = await getMessages({ locale });

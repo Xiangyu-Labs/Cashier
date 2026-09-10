@@ -63,7 +63,11 @@ export function PasswordStep(props: PasswordStepProps) {
             className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground transition-colors hover:text-text"
             aria-label={visible ? t("hidePassword") : t("showPassword")}
           >
-            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {visible ? (
+              <EyeOff aria-hidden="true" className="h-4 w-4" />
+            ) : (
+              <Eye aria-hidden="true" className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

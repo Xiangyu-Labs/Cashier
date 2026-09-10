@@ -42,7 +42,7 @@ describe("LedgerEntriesToolbar", () => {
     render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
 
     expect(screen.queryByText(/状态：/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "已启用 1 个筛选" })).toBeDefined();
   });
 
   it("renders only the amount when a filtered result omits the prefix", () => {

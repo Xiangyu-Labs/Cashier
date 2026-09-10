@@ -18,7 +18,7 @@ export function buildPwaManifest(locale?: "en" | "zh"): MetadataRoute.Manifest {
     ...(localized ? { scope: `/${locale}/` } : {}),
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#10a37f",
+    theme_color: "#ffffff",
     icons,
   };
 }

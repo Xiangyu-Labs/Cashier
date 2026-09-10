@@ -24,6 +24,7 @@ export function StatsChart({
 }: StatsChartProps) {
   const locale = useLocale();
   const t = useTranslations("StatsChart");
+  const tTab = useTranslations("StatsTab");
   // The queried range is already truncated to the ledger-timezone today by the
   // stats state; do not re-clamp with the browser clock here.
   const chartPoints = useMemo(() => {
@@ -125,6 +126,8 @@ export function StatsChart({
       <div className="absolute left-12 right-2 top-6" style={{ height: `${chartHeight}px` }}>
         {/* SVG for line only - stretched horizontally */}
         <svg
+          role="img"
+          aria-label={tTab("expenseTrend")}
           className="absolute inset-0 w-full h-full overflow-visible"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -191,7 +194,7 @@ export function StatsChart({
               <button
                 type="button"
                 aria-label={`${displayDate}, ${t("expense")}: ${formatAmount(p.total)}`}
-                aria-pressed={isHovered}
+                aria-current={isHovered ? "true" : undefined}
                 onMouseEnter={() => setHoveredPoint({ index: i, dataset: chartPoints })}
                 onMouseLeave={() => setHoveredPoint(null)}
                 onFocus={() => setHoveredPoint({ index: i, dataset: chartPoints })}

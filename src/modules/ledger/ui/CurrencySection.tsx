@@ -72,14 +72,19 @@ function PreferredCurrenciesMenu({
                   count: initialCurrencies.length,
                 })}
           </span>
-          <ChevronDown className="text-muted-foreground" />
+          <ChevronDown aria-hidden="true" className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-2">
         <div className="relative mb-2">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             value={search}
+            name="currencySearch"
+            autoComplete="off"
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t("preferredCurrenciesSearch")}
             aria-label={t("preferredCurrenciesSearch")}

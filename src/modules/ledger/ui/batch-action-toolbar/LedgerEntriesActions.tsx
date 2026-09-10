@@ -54,13 +54,13 @@ export function LedgerEntriesActions({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 px-3 text-sm">
             {isChangingCategory ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
             ) : (
-              <Tag className="size-4" />
+              <Tag aria-hidden="true" className="size-4" />
             )}
             <span className="hidden sm:inline">{t("manualCategory")}</span>
             <span className="sm:hidden">{t("manualCategoryShort")}</span>
-            <ChevronDown className="size-3 opacity-50" />
+            <ChevronDown aria-hidden="true" className="size-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" className="w-48 max-h-64 overflow-y-auto">
@@ -116,13 +116,13 @@ export function LedgerEntriesActions({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 px-3 text-sm">
             {isChangingCurrency ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
             ) : (
-              <DollarSign className="size-4" />
+              <DollarSign aria-hidden="true" className="size-4" />
             )}
             <span className="hidden sm:inline">{t("setCurrency")}</span>
             <span className="sm:hidden">{t("setCurrencyShort")}</span>
-            <ChevronDown className="size-3 opacity-50" />
+            <ChevronDown aria-hidden="true" className="size-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" className="w-32 max-h-64 overflow-y-auto">

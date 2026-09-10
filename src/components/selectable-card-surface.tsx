@@ -89,6 +89,7 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
           className="absolute left-11 top-[calc(var(--selectable-card-header-height)/2)] z-[1] flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] hover:bg-surface2"
         >
           <ChevronDown
+            aria-hidden="true"
             className={cn(
               "h-4 w-4 transition-transform duration-[var(--motion-feedback)] ease-[var(--motion-state-ease)]",
               expandable.isExpanded && "rotate-180"

@@ -148,7 +148,7 @@ export function LedgerPageClient({
   if (ledger == null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
-        <p className="text-muted">{t("notFound")}</p>
+        <h1 className="text-muted">{t("notFound")}</h1>
       </div>
     );
   }

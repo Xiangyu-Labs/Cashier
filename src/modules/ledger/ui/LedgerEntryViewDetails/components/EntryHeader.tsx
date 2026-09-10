@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
 import { getCurrencyDecimals } from "@/lib/money/currency-precision";
@@ -42,6 +42,7 @@ export function EntryHeader({
   disabled = false,
 }: EntryHeaderProps) {
   const locale = useLocale();
+  const t = useTranslations("Calendar");
   const sortedCurrencies = [
     ...preferredCurrencies.filter((c) => c !== "unknown"),
     ...SUPPORTED_CURRENCIES.filter((c) => !preferredCurrencies.includes(c)),
@@ -72,10 +73,11 @@ export function EntryHeader({
               <PopoverTrigger asChild>
                 <button
                   disabled={disabled}
+                  aria-label={t("currency")}
                   className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1 disabled:pointer-events-none disabled:opacity-50"
                 >
                   {getCurrencySymbol(currency, locale)}
-                  <ChevronDown className="h-3 w-3 opacity-50" />
+                  <ChevronDown aria-hidden="true" className="h-3 w-3 opacity-50" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-28 p-1" align="start">

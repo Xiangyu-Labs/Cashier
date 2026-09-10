@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -100,6 +100,8 @@ export function AddLedgerEntryDialog({
             <Label htmlFor="add-entry-name">{t("addEntryName")}</Label>
             <Input
               id="add-entry-name"
+              name="itemName"
+              autoComplete="off"
               value={itemName}
               disabled={isSubmitting}
               autoFocus
@@ -111,6 +113,7 @@ export function AddLedgerEntryDialog({
             <Label htmlFor="add-entry-amount">{t("addEntryAmount")}</Label>
             <AmountInput
               id="add-entry-amount"
+              name="amount"
               value={amount}
               onChange={setAmount}
               disabled={isSubmitting}
@@ -155,7 +158,11 @@ export function AddLedgerEntryDialog({
             {tCommon("cancel")}
           </Button>
           <Button disabled={!canSubmit || isSubmitting} onClick={handleSubmit}>
-            <Plus className="size-4" />
+            {isSubmitting ? (
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            ) : (
+              <Plus aria-hidden="true" className="size-4" />
+            )}
             {t("addEntryTitle")}
           </Button>
         </DialogFooter>

@@ -57,7 +57,7 @@ describe("EntryFilterPanel", () => {
         showCurrency={false}
       />
     );
-    expect(screen.getByRole("button", { name: "筛选 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "已启用 1 个筛选" })).toBeInTheDocument();
   });
 
   it("opens a bottom dialog and applies the shared draft on mobile", async () => {

@@ -41,7 +41,9 @@ export function AuthLoginPage({
             height={48}
             className="mx-auto mb-4 rounded-lg border border-border"
           />
-          <h1 className="text-2xl font-semibold text-text">Cashier</h1>
+          <h1 className="text-2xl font-semibold text-text">
+            <span translate="no">Cashier</span>
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">{t("productTagline")}</p>
         </div>
 
@@ -52,11 +54,10 @@ export function AuthLoginPage({
             </p>
           ) : null}
           {emailAuthEnabled ? (
-            <div className="mb-5 grid grid-cols-2 gap-1 rounded-md bg-surface2 p-1" role="tablist">
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-md bg-surface2 p-1">
               <button
                 type="button"
-                role="tab"
-                aria-selected={passwordMode}
+                aria-pressed={passwordMode}
                 disabled={flow.isLoading || flow.resendPending}
                 onClick={() => flow.setMode("password")}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${passwordMode ? "bg-surface text-text shadow-sm" : "text-muted-foreground hover:text-text"}`}
@@ -65,8 +66,7 @@ export function AuthLoginPage({
               </button>
               <button
                 type="button"
-                role="tab"
-                aria-selected={!passwordMode}
+                aria-pressed={!passwordMode}
                 disabled={flow.isLoading || flow.resendPending}
                 onClick={() => flow.setMode("otp")}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${!passwordMode ? "bg-surface text-text shadow-sm" : "text-muted-foreground hover:text-text"}`}

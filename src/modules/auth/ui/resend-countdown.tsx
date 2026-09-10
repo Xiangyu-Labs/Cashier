@@ -35,7 +35,7 @@ export function ResendCountdown({ canResendAt, onResend, disabled = false }: Res
       onClick={handleResend}
       className="text-sm"
     >
-      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      {isLoading && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}
       {remaining > 0 ? t("resendIn", { seconds: remaining }) : t("resend")}
     </Button>
   );

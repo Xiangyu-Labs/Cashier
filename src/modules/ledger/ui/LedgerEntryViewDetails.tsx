@@ -137,7 +137,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
         <div className="rounded-lg border border-border bg-surface2/30 p-3 sm:p-4 space-y-3 sm:space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Calendar aria-hidden="true" className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
               <span className="text-sm text-text">
                 {entryDate != null && entryDate !== ""
@@ -189,7 +189,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                           e.stopPropagation();
                           setIsExpanded(!isExpanded);
                         }}
-                        className="h-6 px-0 text-primary hover:text-primary/80 mt-1"
+                        className="relative h-6 px-0 text-primary hover:text-primary/80 mt-1 before:absolute before:inset-x-0 before:-top-2.5 before:-bottom-2.5 before:content-['']"
                       >
                         {isExpanded ? (
                           <>

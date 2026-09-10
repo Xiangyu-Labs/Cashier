@@ -59,9 +59,14 @@ export function SourceDocumentEntriesList({
               size="icon"
               onClick={onToggleSelectionMode}
               className="shrink-0 h-8 w-8"
+              aria-label={isSelectionMode ? t("cancelSelect") : t("select")}
               title={isSelectionMode ? t("cancelSelect") : t("select")}
             >
-              {isSelectionMode ? <X className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
+              {isSelectionMode ? (
+                <X aria-hidden="true" className="w-4 h-4" />
+              ) : (
+                <CheckSquare aria-hidden="true" className="w-4 h-4" />
+              )}
             </Button>
           )}
           <span className="text-xs font-semibold text-muted-foreground">
@@ -111,7 +116,7 @@ export function SourceDocumentEntriesList({
             className="w-full gap-1.5 border-dashed"
             onClick={onAddEntry}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus aria-hidden="true" className="h-3.5 w-3.5" />
             {t("addEntryTitle")}
           </Button>
         ) : null}

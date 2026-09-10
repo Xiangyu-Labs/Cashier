@@ -55,8 +55,12 @@ export function SourceDocumentDetailFooterActions({
               className="h-9 gap-1.5 px-3 text-muted-foreground"
               onClick={onCancelProcessing}
               disabled={interactionDisabled}
+              aria-label={tActions("cancelProcessing")}
             >
-              <XCircle className={cn("h-3.5 w-3.5", isCancelling && "animate-spin")} />
+              <XCircle
+                aria-hidden="true"
+                className={cn("h-3.5 w-3.5", isCancelling && "animate-spin")}
+              />
               <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
             </Button>
           )}
@@ -69,8 +73,9 @@ export function SourceDocumentDetailFooterActions({
             className="h-9 px-3 gap-1.5 text-muted-foreground"
             onClick={onOpenRetryDialog}
             disabled={interactionDisabled}
+            aria-label={t("editRetry")}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t("editRetry")}</span>
           </Button>
         )}

@@ -38,6 +38,7 @@ export const SourceDocumentCardTotal = memo(function SourceDocumentCardTotal({
     <Popover>
       <PopoverTrigger asChild>
         <button
+          aria-label={t("currencyBreakdown")}
           className={amountTextClassName(
             "item",
             "inline-flex items-center gap-1 transition-colors hover:text-primary group"
@@ -45,13 +46,16 @@ export const SourceDocumentCardTotal = memo(function SourceDocumentCardTotal({
           type="button"
         >
           {formattedTotal}
-          <Coins className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+          <Coins
+            aria-hidden="true"
+            className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors"
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-52 p-3" align="end">
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <Coins className="h-3 w-3" />
+            <Coins aria-hidden="true" className="h-3 w-3" />
             {t("currencyBreakdown")}
           </div>
           <div className="space-y-1.5">

@@ -90,6 +90,7 @@
   },
   "Common": {
     "back": "返回",
+    "skipToContent": "跳到主内容",
     "close": "关闭",
     "confirm": "确认",
     "delete": "删除",

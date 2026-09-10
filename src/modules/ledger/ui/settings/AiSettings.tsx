@@ -114,6 +114,8 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
       <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
         <Textarea
           value={draft.aiCustomPrompt}
+          name="aiCustomPrompt"
+          autoComplete="off"
           onChange={(event) => updateDraft({ aiCustomPrompt: event.target.value })}
           disabled={status === "saving"}
           aria-label={t("aiPrompt")}

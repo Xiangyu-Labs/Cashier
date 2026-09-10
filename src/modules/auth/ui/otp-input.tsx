@@ -123,8 +123,10 @@ export function OTPInput({
             inputRefs.current[index] = el;
           }}
           type="text"
+          name={`otp-${index + 1}`}
           inputMode="numeric"
           autoComplete={index === 0 ? "one-time-code" : "off"}
+          spellCheck={false}
           autoFocus={index === 0}
           pattern="\d*"
           maxLength={1}

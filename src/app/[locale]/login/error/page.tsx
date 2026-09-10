@@ -50,7 +50,7 @@ export default function LoginErrorPage() {
         {/* Error Icon */}
         <div className="mb-8">
           <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-10 h-10 text-destructive" />
+            <AlertCircle aria-hidden="true" className="w-10 h-10 text-destructive" />
           </div>
         </div>
 
@@ -61,9 +61,9 @@ export default function LoginErrorPage() {
         <p className="text-muted mb-8">{errorMessage.desc}</p>
 
         {/* Try Again Button */}
-        <Link href="/login">
-          <Button className="h-11 px-8">{t("tryAgain")}</Button>
-        </Link>
+        <Button asChild className="h-11 px-8">
+          <Link href="/login">{t("tryAgain")}</Link>
+        </Button>
       </div>
     </div>
   );

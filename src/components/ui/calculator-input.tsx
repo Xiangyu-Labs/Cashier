@@ -303,9 +303,10 @@ export function CalculatorInput({
           <button
             type="button"
             onClick={calculator.handleDelete}
+            aria-label={t("delete")}
             className={cn(functionBtn, "col-span-2")}
           >
-            <Delete className="h-5 w-5 mx-auto" />
+            <Delete aria-hidden="true" className="h-5 w-5 mx-auto" />
           </button>
           <button
             type="button"
@@ -377,12 +378,22 @@ export function CalculatorInput({
             .
           </button>
           {calculator.showEqualsButton ? (
-            <button type="button" onClick={calculator.handleEquals} className={confirmBtn}>
-              <Equal className="h-5 w-5 mx-auto" />
+            <button
+              type="button"
+              onClick={calculator.handleEquals}
+              aria-label={t("calculate")}
+              className={confirmBtn}
+            >
+              <Equal aria-hidden="true" className="h-5 w-5 mx-auto" />
             </button>
           ) : (
-            <button type="button" onClick={calculator.handleConfirm} className={confirmBtn}>
-              <Check className="h-5 w-5 mx-auto" />
+            <button
+              type="button"
+              onClick={calculator.handleConfirm}
+              aria-label={t("confirm")}
+              className={confirmBtn}
+            >
+              <Check aria-hidden="true" className="h-5 w-5 mx-auto" />
             </button>
           )}
         </div>

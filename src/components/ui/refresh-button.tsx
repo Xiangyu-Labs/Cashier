@@ -53,12 +53,16 @@ export function RefreshButton({ onRefresh, isRefreshing, disabled = false }: Ref
       title={t("refresh")}
     >
       {succeeded && !isRefreshing && !manualRefreshing ? (
-        <Check className="h-4 w-4 text-success" />
+        <Check aria-hidden="true" className="h-4 w-4 text-success" />
       ) : (
         <RefreshCw
+          aria-hidden="true"
           className={isRefreshing || manualRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
         />
       )}
+      <span aria-live="polite" className="sr-only">
+        {succeeded && !isRefreshing && !manualRefreshing ? t("refreshSuccess") : ""}
+      </span>
     </Button>
   );
 }

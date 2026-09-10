@@ -35,12 +35,20 @@ export function ExpiryTimer({ expiresAt, onExpired, className }: ExpiryTimerProp
   return (
     <div className={cn("text-sm", className)}>
       {!isExpired ? (
-        <p className={cn("text-muted-foreground", isUrgent && "text-destructive font-medium")}>
+        <p
+          className={cn(
+            "tabular-nums text-muted-foreground",
+            isUrgent && "text-destructive font-medium"
+          )}
+        >
           {t("codeExpiresTimer", { time: `${minutes}:${seconds.toString().padStart(2, "0")}` })}
         </p>
       ) : (
         <p className="text-destructive font-medium">{t("codeExpired")}</p>
       )}
+      <span aria-live="polite" className="sr-only">
+        {isExpired ? t("codeExpired") : ""}
+      </span>
     </div>
   );
 }

@@ -109,6 +109,7 @@ export function CalendarHeatmapSection({
           {legend.map((item) => (
             <div
               key={item.level}
+              role="img"
               className="w-4 h-4 rounded-sm"
               style={{ backgroundColor: item.color }}
               aria-label={heatmapLevelLabel(item.level)}

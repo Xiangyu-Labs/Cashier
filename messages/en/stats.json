@@ -3,6 +3,8 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "clear": "Clear",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
     "weekDays": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     "weekDaysMon": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     "currency": "Currency",

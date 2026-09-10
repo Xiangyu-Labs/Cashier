@@ -50,10 +50,10 @@ export function SourceDocumentRawEvidence({
           <div className="space-y-4 px-3 pb-3 pt-3">
             {(hasImages || isLoadingImages) && (
               <div>
-                <h5 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground/60">
+                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground/60">
                   <ImagePlay className="h-3 w-3 text-primary/60" />
                   {tCard("image")}
-                </h5>
+                </h3>
                 {isLoadingImages ? (
                   <div
                     data-testid="source-document-image-stage-loading"
@@ -80,6 +80,7 @@ export function SourceDocumentRawEvidence({
                     </button>
                     {files.length > 1 ? (
                       <div
+                        role="group"
                         className="mt-2 flex gap-2 overflow-x-auto pb-1"
                         aria-label={tCard("image")}
                       >
@@ -116,9 +117,9 @@ export function SourceDocumentRawEvidence({
 
             {hasRawText && (
               <div>
-                <h5 className="mb-2 text-xs font-medium text-muted-foreground/60">
+                <h3 className="mb-2 text-xs font-medium text-muted-foreground/60">
                   {t("rawContent")}
-                </h5>
+                </h3>
                 <div className="whitespace-pre-wrap break-words rounded-lg border border-border/40 bg-surface/50 p-3 text-sm leading-relaxed text-text/70">
                   {sourceDocument.text}
                 </div>

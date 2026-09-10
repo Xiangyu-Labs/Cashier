@@ -54,10 +54,9 @@ describe("AuthLoginPage", () => {
     const { AuthLoginPage } = await import("@/modules/auth/ui/login-page");
     render(<AuthLoginPage emailAuthEnabled />);
 
-    expect(screen.getByRole("tab", { name: "密码" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "邮箱验证码" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "邮箱验证码" })).toHaveAttribute(
-      "aria-selected",
+    expect(screen.getByRole("button", { name: "密码" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "邮箱验证码" })).toHaveAttribute(
+      "aria-pressed",
       "true"
     );
     expect(screen.getByText("邮箱登录")).toBeInTheDocument();

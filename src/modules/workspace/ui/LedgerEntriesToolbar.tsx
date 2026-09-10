@@ -152,11 +152,18 @@ export function LedgerEntriesToolbar({
         onClick={onToggleSelectionMode}
         disabled={readOnly || isProcessing}
         className="shrink-0 h-8 w-8"
+        aria-label={
+          readOnly ? tCommon("readOnlyPreview") : isSelectionMode ? t("cancelSelect") : t("select")
+        }
         title={
           readOnly ? tCommon("readOnlyPreview") : isSelectionMode ? t("cancelSelect") : t("select")
         }
       >
-        {isSelectionMode ? <ArrowLeft className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+        {isSelectionMode ? (
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+        ) : (
+          <CheckSquare aria-hidden="true" className="h-4 w-4" />
+        )}
       </Button>
 
       {isSelectionMode && (

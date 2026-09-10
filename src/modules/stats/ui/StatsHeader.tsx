@@ -123,7 +123,7 @@ export function StatsHeader({
             aria-label={t("previousPeriod")}
             className="p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft aria-hidden="true" size={20} />
           </button>
           <div className="text-lg font-semibold min-w-[8rem] text-center tabular-nums">{label}</div>
           <button
@@ -137,7 +137,7 @@ export function StatsHeader({
                 "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
             )}
           >
-            <ChevronRight size={20} />
+            <ChevronRight aria-hidden="true" size={20} />
           </button>
         </div>
         {periodOffset === 0 ? (

@@ -159,6 +159,9 @@ export function ServiceCredentialSection({
           <div className="py-4">
             <Input
               placeholder={t("namePlaceholder")}
+              aria-label={t("namePlaceholder")}
+              name="credentialName"
+              autoComplete="off"
               value={newCredName}
               disabled={isCreating}
               onChange={(event) => setNewCredName(event.target.value)}

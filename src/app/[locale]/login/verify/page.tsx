@@ -15,7 +15,7 @@ export default function VerifyPage() {
         {/* Success Icon */}
         <div className="mb-8">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-10 h-10 text-primary" />
+            <CheckCircle aria-hidden="true" className="w-10 h-10 text-primary" />
           </div>
         </div>
 
@@ -30,7 +30,7 @@ export default function VerifyPage() {
         {/* Email Icon Card */}
         <div className="bg-surface rounded-xl border border-border p-6 mb-6">
           <div className="flex items-center justify-center gap-3 text-text">
-            <Mail className="w-5 h-5 text-muted" />
+            <Mail aria-hidden="true" className="w-5 h-5 text-muted" />
             <span className="font-medium">{email}</span>
           </div>
         </div>

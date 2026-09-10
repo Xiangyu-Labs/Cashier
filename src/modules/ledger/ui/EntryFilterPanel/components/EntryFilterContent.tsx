@@ -87,6 +87,8 @@ export function EntryFilterContent({
         <div className="text-xs font-medium text-muted-foreground">{t("search")}</div>
         <Input
           type="search"
+          name="search"
+          autoComplete="off"
           value={tempFilters.search ?? ""}
           onChange={(event) =>
             setTempFilters((previous) => ({
@@ -95,13 +97,14 @@ export function EntryFilterContent({
             }))
           }
           placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
           className="h-9 text-base sm:text-sm"
         />
       </div>
       {/* Custom Date Range Section */}
       <div className="space-y-2">
         <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-          <CalendarIcon className="h-3 w-3" />
+          <CalendarIcon aria-hidden="true" className="h-3 w-3" />
           {t("dateRange")}
         </div>
         <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
@@ -123,6 +126,7 @@ export function EntryFilterContent({
                 variant="ghost"
                 size="sm"
                 className={cn("text-xs h-7", isActive && "bg-primary/10 text-primary font-medium")}
+                aria-pressed={isActive}
                 onClick={() => handleDatePreset(preset)}
               >
                 {label}
@@ -162,7 +166,7 @@ export function EntryFilterContent({
               }))
             }
           >
-            <SelectTrigger className="w-full h-9 text-base sm:text-sm">
+            <SelectTrigger aria-label={t("category")} className="w-full h-9 text-base sm:text-sm">
               <SelectValue placeholder={t("allCategories")} />
             </SelectTrigger>
             <SelectContent position="popper" sideOffset={4}>
@@ -192,7 +196,7 @@ export function EntryFilterContent({
               }))
             }
           >
-            <SelectTrigger className="w-full h-9 text-base sm:text-sm">
+            <SelectTrigger aria-label={t("currency")} className="w-full h-9 text-base sm:text-sm">
               <SelectValue placeholder={t("allCurrencies")} />
             </SelectTrigger>
             <SelectContent position="popper" sideOffset={4}>
@@ -213,6 +217,8 @@ export function EntryFilterContent({
         <div className="flex gap-2 items-center">
           <AmountInput
             placeholder={t("minAmount")}
+            aria-label={t("minAmount")}
+            name="minAmount"
             value={tempFilters.minAmount ?? ""}
             allowNegative
             onChange={(value) =>
@@ -226,6 +232,8 @@ export function EntryFilterContent({
           <span className="text-muted-foreground text-sm">-</span>
           <AmountInput
             placeholder={t("maxAmount")}
+            aria-label={t("maxAmount")}
+            name="maxAmount"
             value={tempFilters.maxAmount ?? ""}
             allowNegative
             onChange={(value) =>
@@ -281,7 +289,7 @@ export function EntryFilterContent({
       {/* Actions */}
       <div className="flex gap-2 pt-2 border-t">
         <Button variant="ghost" size="sm" className="flex-1 h-8" onClick={handleReset}>
-          <X className="h-4 w-4 mr-1" />
+          <X aria-hidden="true" className="h-4 w-4 mr-1" />
           {t("reset")}
         </Button>
         <Button size="sm" className="flex-1 h-8" onClick={handleApply}>

@@ -47,13 +47,17 @@ export function OtpStep({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text">{t("enterCode")}</label>
-          <OTPInput
-            value={otp}
-            onChange={onOtpChange}
-            disabled={isLoading || resendPending}
-            getDigitLabel={(position, length) => t("otpDigitLabel", { index: position, length })}
-          />
+          <span id="otp-code-label" className="text-sm font-medium text-text">
+            {t("enterCode")}
+          </span>
+          <div role="group" aria-labelledby="otp-code-label">
+            <OTPInput
+              value={otp}
+              onChange={onOtpChange}
+              disabled={isLoading || resendPending}
+              getDigitLabel={(position, length) => t("otpDigitLabel", { index: position, length })}
+            />
+          </div>
         </div>
         <ExpiryTimer expiresAt={expiresAt} onExpired={onExpired} className="text-center" />
       </div>
@@ -69,7 +73,7 @@ export function OtpStep({
       >
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
             {t("verifying")}
           </>
         ) : (
@@ -84,7 +88,7 @@ export function OtpStep({
           disabled={isLoading || resendPending}
           className="text-sm"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" />
           {t("changeEmail")}
         </Button>
         <ResendCountdown
