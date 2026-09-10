@@ -14,6 +14,7 @@ export interface RetrySeedSourceDocument {
 export interface RetrySeedFullData {
   text: string | null;
   files: SourceDocumentStoredFileDto[];
+  documentDate: string | null;
 }
 
 export function buildSourceDocumentRetrySeed(
@@ -22,6 +23,7 @@ export function buildSourceDocumentRetrySeed(
 ): SourceDocumentInputInitialData {
   const files = fullData?.files ?? sourceDocument.files ?? [];
   const text = fullData?.text ?? sourceDocument.text ?? undefined;
+  const documentDate = fullData !== undefined ? fullData.documentDate : sourceDocument.documentDate;
 
   return {
     images: files.map((file) => ({
@@ -30,6 +32,6 @@ export function buildSourceDocumentRetrySeed(
       storedFileId: file.id,
     })),
     ...(text != null ? { text } : {}),
-    ...(sourceDocument.documentDate != null ? { entryDate: sourceDocument.documentDate } : {}),
+    ...(documentDate != null ? { entryDate: documentDate } : {}),
   };
 }
