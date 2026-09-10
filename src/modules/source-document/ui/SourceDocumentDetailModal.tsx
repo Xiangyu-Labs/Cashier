@@ -12,7 +12,7 @@ import { memo, useCallback, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { ArrowLeft, MoreHorizontal, RefreshCw, Trash2, X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { EditableField } from "@/components/ui/editable-field";
@@ -24,12 +24,6 @@ import { SourceDocumentDetailFooterActions } from "./SourceDocumentDetailFooterA
 import { SourceDocumentDetailStatusPanels } from "./SourceDocumentDetailStatusPanels";
 import { SourceDocumentDetailConfirmDialogs } from "./SourceDocumentDetailConfirmDialogs";
 import { SourceDocumentDetailOverlays } from "./SourceDocumentDetailOverlays";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface SourceDocumentDetailModalProps {
   sourceDocumentId?: string;
@@ -191,32 +185,6 @@ function SourceDocumentDetailEditor({
                 disabled={status.busy || !editor.isEditMode}
               />
             </div>
-            {sourceDocument != null && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    disabled={status.busy}
-                    aria-label={t("title")}
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {sourceDocument.supportedActions.includes("edit_retry") && (
-                    <DropdownMenuItem onSelect={actions.handleOpenRetry}>
-                      <RefreshCw className="size-4" />
-                      {t("editRetry")}
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem className="text-danger" onSelect={actions.handleRequestDelete}>
-                    <Trash2 className="size-4" />
-                    {tCommon("delete")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
             <Button
               type="button"
               variant="ghost"

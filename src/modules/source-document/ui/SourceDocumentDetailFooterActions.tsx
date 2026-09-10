@@ -83,7 +83,7 @@ export function SourceDocumentDetailFooterActions({
         <Button
           variant="outline"
           size="sm"
-          className="h-11 px-3 gap-1.5 text-danger border-danger/40 hover:bg-danger/10 hover:text-danger"
+          className="h-9 px-3 gap-1.5 text-danger border-danger/40 hover:bg-danger/10 hover:text-danger"
           onClick={onRequestDelete}
           aria-label={tCommon("delete")}
           disabled={interactionDisabled}
