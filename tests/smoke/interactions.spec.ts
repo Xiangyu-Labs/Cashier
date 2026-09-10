@@ -37,6 +37,13 @@ test("selection, discard confirmation and one-tap split navigation", async ({
   await activate(page.getByRole("button", { name: "Cancel", exact: true }));
   await card.getByRole("button", { name: /Quick Entry$/ }).click();
   dialog = page.getByRole("dialog");
+  const menuBox = await dialog
+    .getByRole("button", { name: "Bill Details", exact: true })
+    .boundingBox();
+  const closeBox = await dialog.getByRole("button", { name: "Close", exact: true }).boundingBox();
+  expect(menuBox).not.toBeNull();
+  expect(closeBox).not.toBeNull();
+  expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(closeBox!.x);
   await dialog.getByRole("button", { name: "Select", exact: true }).click();
   const row = dialog.getByRole("checkbox", { name: `Select ${name}`, exact: true });
   await activate(row);

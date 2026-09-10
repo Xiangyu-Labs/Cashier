@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, max, or, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { compare } from "@/lib/money/decimal";
 import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
 import type { DateOrganizationSuggestion } from "@/modules/source-document/date-organization-contracts";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
@@ -34,7 +35,7 @@ function nextDateOrganizationSuggestion(
     return (
       entry != null &&
       entry.itemName === item.snapshot.itemName &&
-      entry.amount === item.snapshot.amount &&
+      compare(entry.amount, item.snapshot.amount) === 0 &&
       (entry.currency ?? "CNY") === item.snapshot.currency
     );
   });

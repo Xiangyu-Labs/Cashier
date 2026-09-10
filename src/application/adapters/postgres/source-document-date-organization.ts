@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
-import { round } from "@/lib/money/decimal";
+import { compare, round } from "@/lib/money/decimal";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, ledgers, sourceDocuments, sourceDocumentRevisions } from "@/persistence";
 import type {
@@ -108,7 +108,7 @@ export async function applyDateOrganization(
     if (
       current != null &&
       (current.itemName !== item.snapshot.itemName ||
-        current.amount !== item.snapshot.amount ||
+        compare(current.amount, item.snapshot.amount) !== 0 ||
         normalizeCurrency(current.currency) !== item.snapshot.currency)
     )
       throw new ConflictError("A suggested entry changed before date organization");

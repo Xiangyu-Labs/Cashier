@@ -12,7 +12,7 @@ import { memo, useCallback, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { ArrowLeft, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, RefreshCw, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { EditableField } from "@/components/ui/editable-field";
@@ -157,7 +157,7 @@ function SourceDocumentDetailEditor({
             restoreFocusRef.current?.focus();
           }}
           aria-describedby={undefined}
-          hideCloseButton={status.busy}
+          hideCloseButton
           onEscapeKeyDown={(event) => status.busy && event.preventDefault()}
           onPointerDownOutside={(event) => status.busy && event.preventDefault()}
         >
@@ -217,6 +217,17 @@ function SourceDocumentDetailEditor({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleClose}
+              disabled={status.busy}
+              aria-label={tCommon("close")}
+              title={tCommon("close")}
+            >
+              <X className="size-4" />
+            </Button>
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:flex lg:flex-col lg:overflow-hidden">

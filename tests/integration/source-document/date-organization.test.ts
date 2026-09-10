@@ -57,7 +57,7 @@ async function createFixture() {
           sourceText: index === 0 ? "昨天" : "前天",
           snapshot: {
             itemName: entry.itemName,
-            amount: entry.amount,
+            amount: String(Number(entry.amount)),
             currency: entry.currency ?? "CNY",
           },
         })),

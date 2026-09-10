@@ -134,7 +134,7 @@ const registry: Record<ExistingDocumentCommand, () => Promise<void>> = {
             sourceText: "昨天",
             snapshot: {
               itemName: entry.itemName,
-              amount: entry.amount,
+              amount: String(Number(entry.amount)),
               currency: entry.currency ?? "CNY",
             },
           })),
