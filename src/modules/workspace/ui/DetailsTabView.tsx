@@ -2,7 +2,7 @@
 
 import { useCallback, type RefCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, CheckSquare } from "lucide-react";
+import { ArrowLeft, SquareDashedMousePointer } from "lucide-react";
 import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
@@ -131,7 +131,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           {batch.isSelectionMode ? (
             <ArrowLeft className="h-4 w-4" />
           ) : (
-            <CheckSquare className="h-4 w-4" />
+            <SquareDashedMousePointer className="h-4 w-4" />
           )}
         </Button>
         {!batch.isSelectionMode ? (

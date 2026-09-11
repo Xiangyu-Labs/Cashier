@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, CheckSquare, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, SquareDashedMousePointer, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -162,7 +162,7 @@ export function LedgerEntriesToolbar({
         {isSelectionMode ? (
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         ) : (
-          <CheckSquare aria-hidden="true" className="h-4 w-4" />
+          <SquareDashedMousePointer aria-hidden="true" className="h-4 w-4" />
         )}
       </Button>
 

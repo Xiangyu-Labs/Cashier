@@ -1,7 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Plus, X } from "lucide-react";
+import { Plus, SquareDashedMousePointer, X } from "lucide-react";
 import { useState } from "react";
 import type { EntryCategory, LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
@@ -69,7 +69,7 @@ export function SourceDocumentEntriesList({
               {isSelectionMode ? (
                 <X aria-hidden="true" className="w-4 h-4" />
               ) : (
-                <CheckSquare aria-hidden="true" className="w-4 h-4" />
+                <SquareDashedMousePointer aria-hidden="true" className="w-4 h-4" />
               )}
             </Button>
           )}
