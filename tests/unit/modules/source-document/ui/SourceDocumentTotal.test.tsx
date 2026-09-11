@@ -14,12 +14,12 @@ function renderTotal(staleConversionCount = 0, unconvertedCount = 0) {
 }
 
 describe("SourceDocumentTotal", () => {
-  it("labels the total so the amount never floats unexplained", () => {
+  it("shows the total as a bare amount", () => {
     const { container } = renderTotal();
 
-    expect(container.textContent).toBe("合计 ¥92.00");
-    // One labelled amount, matching the ledger stream toolbar's total.
-    expect(screen.getByText("合计 ¥92.00")).toHaveClass("text-base", "font-semibold");
+    expect(container.textContent).toBe("¥92.00");
+    // A bare amount, matching the ledger stream toolbar's total.
+    expect(screen.getByText("¥92.00")).toHaveClass("text-base", "font-semibold");
     expect(container.textContent).not.toContain("=");
   });
 

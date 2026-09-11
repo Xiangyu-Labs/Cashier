@@ -119,7 +119,7 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("previews the transaction date and the labelled total in the toolbar", () => {
+  it("previews the transaction date and the total in the toolbar", () => {
     renderDetails(0);
 
     const dateRow = screen.getByTestId("source-document-date-row");
@@ -127,7 +127,7 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).getByText("交易时间")).toHaveClass("sr-only");
     const date = within(dateRow).getByText(/2026年7月28日|Jul 28, 2026/);
     expect(date).toHaveClass("text-sm", "font-medium");
-    expect(within(dateRow).getByText("合计 ¥0.00")).toHaveClass(
+    expect(within(dateRow).getByText("¥0.00")).toHaveClass(
       "text-base",
       "font-semibold",
       "tabular-nums"

@@ -11,8 +11,8 @@ interface SourceDocumentTotalProps {
 }
 
 /**
- * The document total, presented the same way as the ledger stream toolbar's
- * total: one labelled amount, then any caveat about the conversion.
+ * The document total: a bare amount, matching the ledger stream toolbar's
+ * total, followed by any caveat about the conversion.
  */
 export function SourceDocumentTotal({
   totalInMainCurrency,
@@ -29,7 +29,7 @@ export function SourceDocumentTotal({
     <div className="relative z-10 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
       <AmountText variant="summary" className="whitespace-nowrap">
         {staleConversionCount > 0 ? "≈ " : ""}
-        {t("totalAmount")} {amount}
+        {amount}
       </AmountText>
       {unconvertedCount > 0 ? (
         <span className="text-xs text-warning" role="status">
