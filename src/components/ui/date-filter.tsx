@@ -89,7 +89,7 @@ export function DateFilter({
           aria-hidden="true"
           className={cn("shrink-0 text-muted-foreground", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}
         />
-        <span className={cn("min-w-0 text-text", isSmall ? "text-xs" : "text-sm")}>
+        <span className="min-w-0 text-text text-sm">
           {formatCivilDate(civilDateString, locale, {
             year: "numeric",
             month: "short",

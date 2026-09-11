@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { CalendarRange, Check, Pencil, Sparkles, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui/amount-text";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { DateOrganizationSuggestion } from "../date-organization-contracts";
 import type { ApplyDateOrganizationInput } from "../contracts";
@@ -31,6 +33,7 @@ export function SourceDocumentDateOrganization({
   onAdjustmentStateChange,
 }: Props) {
   const t = useTranslations("SourceDocumentDetail.dateOrganization");
+  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [applicationError, setApplicationError] = useState(false);
@@ -245,9 +248,9 @@ export function SourceDocumentDateOrganization({
                         </span>
                       ) : null}
                     </span>
-                    <span className="tabular-nums">
-                      {entry.amount} {entry.currency}
-                    </span>
+                    <AmountText variant="item">
+                      {formatCurrencyAmount(entry.amount, entry.currency ?? "", locale)}
+                    </AmountText>
                     {editing && (
                       <Input
                         aria-label={t("entryDate", { name: entry.itemName })}

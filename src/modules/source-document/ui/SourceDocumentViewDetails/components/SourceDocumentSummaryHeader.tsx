@@ -47,7 +47,7 @@ export function SourceDocumentSummaryHeader({
     <div className="shrink-0 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div data-testid="source-document-date-row" className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-sm text-muted-foreground">{t("transactionTime")}:</span>
+          <span className="shrink-0 text-sm text-text">{t("transactionTime")}:</span>
           <DateFilter
             value={displayEntryDate}
             onChange={(date) => {
@@ -66,7 +66,7 @@ export function SourceDocumentSummaryHeader({
             </Badge>
           )}
           <span className="text-sm text-muted-foreground/40 hidden sm:inline">|</span>
-          <span className="hidden text-sm text-text sm:inline">
+          <span className="hidden text-sm text-muted-foreground sm:inline">
             {t("createdAt")}:{" "}
             {new Date(createdAt).toLocaleString(locale, {
               month: "short",

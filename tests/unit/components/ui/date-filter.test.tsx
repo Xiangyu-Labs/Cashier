@@ -44,6 +44,17 @@ describe("DateFilter", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
+  it("keeps the read-only value at text-sm even when size is sm", () => {
+    // Regression: the static read-only text inherited the interactive `sm`
+    // size and rendered at text-xs, so the date looked smaller than the
+    // surrounding row.
+    render(<DateFilter value="2026-07-28" onChange={() => {}} readOnly size="sm" />);
+
+    const value = screen.getByText("2026年7月28日");
+    expect(value).toHaveClass("text-sm");
+    expect(value).not.toHaveClass("text-xs");
+  });
+
   it("does not open a calendar when the read-only value is clicked", () => {
     const onChange = vi.fn();
     render(<DateFilter value="2026-07-28" onChange={onChange} readOnly />);

@@ -71,6 +71,35 @@ describe("SourceDocumentDateOrganization", () => {
     expect(chip).toHaveClass("h-8", "w-8");
   });
 
+  it("renders each suggested amount with the currency symbol, not the code", () => {
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          items: [
+            {
+              ledgerEntryId: entry.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: { itemName: entry.itemName, amount: entry.amount, currency: "CNY" },
+            },
+          ],
+        }}
+        entries={[entry]}
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("¥18.00")).toBeInTheDocument();
+    expect(screen.queryByText("18.00 CNY")).not.toBeInTheDocument();
+  });
+
   it("keeps an adjusted date after finishing the draft and applies it", async () => {
     const onApply = vi.fn().mockResolvedValue(undefined);
     render(

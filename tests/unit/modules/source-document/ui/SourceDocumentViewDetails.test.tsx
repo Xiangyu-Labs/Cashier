@@ -118,6 +118,17 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
   });
 
+  it("emphasises the transaction time and mutes the created-at metadata", () => {
+    renderDetails(0);
+
+    const dateRow = screen.getByTestId("source-document-date-row");
+    const transactionLabel = within(dateRow).getByText(/交易时间/);
+    const createdLabel = within(dateRow).getByText(/创建于/);
+
+    expect(transactionLabel).toHaveClass("text-text");
+    expect(createdLabel).toHaveClass("text-muted-foreground");
+  });
+
   it("restores the date picker in edit mode", () => {
     renderWithQueryClient(
       <SourceDocumentViewDetails
