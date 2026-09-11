@@ -21,7 +21,13 @@ export async function GET(
   );
   return NextResponse.json(messages, {
     headers: {
-      "Cache-Control": "public, max-age=31536000, immutable",
+      // The version in the URL is what makes the catalog safe to cache forever
+      // in production. In development the catalogs are regenerated in place, so
+      // an immutable response pins the browser to a snapshot that the running
+      // dev server may no longer serve — leaving components rendering raw key
+      // paths until the cache is cleared.
+      "Cache-Control":
+        process.env.NODE_ENV === "development" ? "no-store" : "public, max-age=31536000, immutable",
       "X-Message-Version": FEATURE_MESSAGE_VERSION,
     },
   });
