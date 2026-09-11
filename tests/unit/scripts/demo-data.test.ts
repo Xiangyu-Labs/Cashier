@@ -41,12 +41,19 @@ describe("demo workspace fixture", () => {
     const documents = fixture.documents as Array<{
       title: string | null;
       status: string;
+      failureKind?: string;
+      failureCode?: string;
+      retainedResult?: {
+        entries: Array<{ category: string | null; amount: string; currency: string }>;
+      };
       entries: Array<{ category: string | null; amount: string; currency: string }>;
     }>;
-    const entries = documents.flatMap((document) => document.entries);
+    const entries = documents.flatMap(
+      (document) => document.retainedResult?.entries ?? document.entries
+    );
 
-    expect(documents).toHaveLength(17);
-    expect(entries).toHaveLength(24);
+    expect(documents).toHaveLength(29);
+    expect(entries).toHaveLength(26);
     expect(documents.some((document) => document.title == null)).toBe(true);
     expect(documents.some((document) => document.status === "cancelled")).toBe(true);
     expect(entries.some((entry) => entry.category == null)).toBe(true);
@@ -54,6 +61,53 @@ describe("demo workspace fixture", () => {
     expect(entries.some((entry) => Number(entry.amount) >= 100_000)).toBe(true);
     expect(new Set(entries.map((entry) => entry.currency))).toEqual(
       new Set(["CNY", "USD", "MYR", "SGD", "JPY", "KWD"])
+    );
+  });
+
+  it("covers every stable failure reason and a failed retry with retained results", () => {
+    const failed = fixture.documents.filter(
+      (document: { status: string }) => document.status === "failed"
+    ) as Array<{
+      failureKind: string;
+      failureCode: string;
+      retainedResult?: { entries: unknown[] };
+    }>;
+
+    expect(failed).toHaveLength(13);
+    expect(
+      new Set(
+        failed
+          .filter((document) => document.failureKind === "invalid_input")
+          .map((document) => document.failureCode)
+      )
+    ).toEqual(
+      new Set([
+        "insufficient_evidence",
+        "currency_required",
+        "amount_conflict",
+        "unsupported_document",
+      ])
+    );
+    expect(
+      new Set(
+        failed
+          .filter((document) => document.failureKind === "processing_error")
+          .map((document) => document.failureCode)
+      )
+    ).toEqual(
+      new Set([
+        "ai_provider_unavailable",
+        "ai_schema_invalid",
+        "exchange_rate_failure",
+        "storage_failure",
+        "processing_unavailable",
+        "database_unavailable",
+        "request_bound_retry_exhausted",
+        "processing_timeout",
+      ])
+    );
+    expect(failed.filter((document) => document.retainedResult?.entries.length === 2)).toHaveLength(
+      1
     );
   });
 });

@@ -73,6 +73,10 @@ function createStorage(environment) {
   });
 }
 
+function activeEntries(document) {
+  return document.retainedResult?.entries ?? document.entries;
+}
+
 async function uploadFixtureImages(storage, environment, ledgerId) {
   const uploaded = [];
   for (const document of fixture.documents) {
@@ -234,16 +238,35 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
        VALUES ($1, $2, $3, $4, $5, 1, $6, $7, $7)`,
       [document.id, ledgerId, document.title, document.type, documentDate, suggestion, createdAt]
     );
+    if (document.retainedResult != null) {
+      await client.query(
+        `INSERT INTO source_document_revisions
+          (id, ledger_id, source_document_id, revision_number, title, origin, input_text,
+           input_document_date, input_date_reference, processing_status, submitted_at, finished_at,
+           created_at)
+         VALUES ($1, $2, $3, 1, $4, 'submission', $5, $6::text, $6::date, 'completed', $7, $7, $7)`,
+        [
+          document.retainedResult.revisionId,
+          ledgerId,
+          document.id,
+          document.retainedResult.title,
+          document.retainedResult.inputText,
+          documentDate,
+          createdAt,
+        ]
+      );
+    }
     await client.query(
       `INSERT INTO source_document_revisions
         (id, ledger_id, source_document_id, revision_number, title, origin, input_text,
          input_document_date, input_date_reference, processing_status, failure_kind, failure_code,
          failure_message, submitted_at, finished_at, created_at)
-       VALUES ($1, $2, $3, 1, $4, $5, $6, $7::text, $7::date, $8, $9, $10, $11, $12, $12, $12)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::text, $8::date, $9, $10, $11, $12, $13, $13, $13)`,
       [
         document.revisionId,
         ledgerId,
         document.id,
+        document.retainedResult == null ? 1 : 2,
         document.title,
         document.type === "manual" ? "manual_entry" : "submission",
         document.inputText,
@@ -278,7 +301,8 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
         [ledgerId, document.revisionId, image.fileId, createdAt]
       );
     }
-    for (const [position, entry] of document.entries.entries()) {
+    const entryRevisionId = document.retainedResult?.revisionId ?? document.revisionId;
+    for (const [position, entry] of activeEntries(document).entries()) {
       const categoryId = entry.category == null ? null : (categoryIds.get(entry.category) ?? null);
       if (entry.category != null && categoryId == null) {
         throw new Error(`Unknown demo category: ${entry.category}`);
@@ -294,7 +318,7 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
           ledgerId,
           categoryId,
           document.id,
-          document.revisionId,
+          entryRevisionId,
           position,
           entry.amount,
           entry.currency,
@@ -311,18 +335,33 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
           SET active_revision_id = $1, latest_submission_revision_id = $2
         WHERE id = $3`,
       [
-        document.status === "completed" ? document.revisionId : null,
+        document.status === "completed"
+          ? document.revisionId
+          : (document.retainedResult?.revisionId ?? null),
         document.revisionId,
         document.id,
       ]
     );
     if (document.status === "failed") {
+      const invalid = document.failureKind === "invalid_input";
+      const retryClassification = invalid
+        ? "invalid"
+        : document.failureCode === "request_bound_retry_exhausted"
+          ? "permanent"
+          : "retryable";
       await client.query(
         `INSERT INTO processing_attempts
           (ledger_id, revision_id, attempt_number, status, retry_classification,
            diagnostic_code, completed_at, created_at)
-         VALUES ($1, $2, 1, 'invalid', 'invalid', $3, $4, $4)`,
-        [ledgerId, document.revisionId, document.failureCode, createdAt]
+         VALUES ($1, $2, 1, $3, $4, $5, $6, $6)`,
+        [
+          ledgerId,
+          document.revisionId,
+          invalid ? "invalid" : "failed",
+          retryClassification,
+          document.failureCode,
+          createdAt,
+        ]
       );
     }
   }
@@ -408,7 +447,10 @@ async function runDemoData({ mode = "seed", apply = false, environment = process
         mode: reset ? "demo-reset" : "demo-seed",
         status: "complete",
         documents: fixture.documents.length,
-        entries: fixture.documents.reduce((sum, document) => sum + document.entries.length, 0),
+        entries: fixture.documents.reduce(
+          (sum, document) => sum + activeEntries(document).length,
+          0
+        ),
       })
     );
     return { status: "complete", userId, ledgerId };

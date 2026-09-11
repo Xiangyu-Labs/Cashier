@@ -26,6 +26,7 @@ test("@demo opens a populated workspace with evidence and statistics", async ({ 
 
   await expect(page.getByText("Regional Rail and Cafe", { exact: true })).toBeVisible();
   await expect(page.getByText("Blurry Parking Receipt", { exact: true })).toBeVisible();
+  await expect(page.getByText("Missing Currency Receipt", { exact: true })).toBeVisible();
   await page
     .getByRole("navigation", { name: "Ledger navigation" })
     .getByRole("button", { name: "Stats", exact: true })

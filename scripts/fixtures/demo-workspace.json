@@ -484,6 +484,187 @@
       "inputText": "Duplicate receipt upload cancelled before processing.",
       "status": "cancelled",
       "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000018",
+      "revisionId": "50000000-0000-4000-8000-000000000018",
+      "title": "Missing Currency Receipt",
+      "type": "ai_parsed",
+      "dayOffset": -3,
+      "inputText": "Lunch receipt with a total of 48.00 but no currency or location.",
+      "status": "failed",
+      "failureKind": "invalid_input",
+      "failureCode": "currency_required",
+      "failureMessage": "currency_required",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000019",
+      "revisionId": "50000000-0000-4000-8000-000000000019",
+      "title": "Conflicting Restaurant Total",
+      "type": "ai_parsed",
+      "dayOffset": -4,
+      "inputText": "Restaurant receipt where line items total 86.00 but the printed total is 68.00.",
+      "status": "failed",
+      "failureKind": "invalid_input",
+      "failureCode": "amount_conflict",
+      "failureMessage": "amount_conflict",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000020",
+      "revisionId": "50000000-0000-4000-8000-000000000020",
+      "title": "Unsupported Warranty Card",
+      "type": "ai_parsed",
+      "dayOffset": -5,
+      "inputText": "Product warranty card without a purchase amount or transaction details.",
+      "status": "failed",
+      "failureKind": "invalid_input",
+      "failureCode": "unsupported_document",
+      "failureMessage": "unsupported_document",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000021",
+      "revisionId": "50000000-0000-4000-8000-000000000021",
+      "title": "AI Provider Outage",
+      "type": "ai_parsed",
+      "dayOffset": -6,
+      "inputText": "Receipt submission interrupted by an unavailable AI provider.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "ai_provider_unavailable",
+      "failureMessage": "The AI provider was unavailable while parsing the receipt.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000022",
+      "revisionId": "50000000-0000-4000-8000-000000000022",
+      "title": "Malformed AI Response",
+      "type": "ai_parsed",
+      "dayOffset": -7,
+      "inputText": "Receipt submission that produced an invalid structured response.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "ai_schema_invalid",
+      "failureMessage": "The AI response did not match the required schema.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000023",
+      "revisionId": "50000000-0000-4000-8000-000000000023",
+      "title": "Foreign Exchange Lookup Failed",
+      "type": "ai_parsed",
+      "dayOffset": -8,
+      "inputText": "Foreign-currency receipt whose exchange rate could not be retrieved.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "exchange_rate_failure",
+      "failureMessage": "The exchange-rate provider did not return a usable rate.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000024",
+      "revisionId": "50000000-0000-4000-8000-000000000024",
+      "title": "Receipt Image Storage Failure",
+      "type": "ai_parsed",
+      "dayOffset": -9,
+      "inputText": "Receipt whose stored image could not be read during processing.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "storage_failure",
+      "failureMessage": "The receipt image could not be loaded from object storage.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000025",
+      "revisionId": "50000000-0000-4000-8000-000000000025",
+      "title": "Processing Worker Offline",
+      "type": "ai_parsed",
+      "dayOffset": -10,
+      "inputText": "Receipt queued while the processing runtime was unavailable.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "processing_unavailable",
+      "failureMessage": "No processing runtime was available for this request.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000026",
+      "revisionId": "50000000-0000-4000-8000-000000000026",
+      "title": "Ledger Database Failure",
+      "type": "ai_parsed",
+      "dayOffset": -11,
+      "inputText": "Receipt parsed successfully but could not be committed to the ledger.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "database_unavailable",
+      "failureMessage": "The parsed result could not be committed to the database.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000027",
+      "revisionId": "50000000-0000-4000-8000-000000000027",
+      "title": "Automatic Retries Exhausted",
+      "type": "ai_parsed",
+      "dayOffset": -12,
+      "inputText": "Receipt that remained unavailable after all automatic dispatch attempts.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "request_bound_retry_exhausted",
+      "failureMessage": "All request-bound processing retries were exhausted.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000028",
+      "revisionId": "50000000-0000-4000-8000-000000000028",
+      "title": "Receipt Processing Timeout",
+      "type": "ai_parsed",
+      "dayOffset": -13,
+      "inputText": "Large receipt that exceeded the processing time limit.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "processing_timeout",
+      "failureMessage": "Receipt processing exceeded the allowed time limit.",
+      "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000029",
+      "revisionId": "50000000-0000-4000-8000-000000000029",
+      "title": "FreshMart Weekly Groceries",
+      "type": "ai_parsed",
+      "dayOffset": -14,
+      "inputText": "Retry of a grocery receipt that timed out.",
+      "status": "failed",
+      "failureKind": "processing_error",
+      "failureCode": "processing_timeout",
+      "failureMessage": "The retry timed out; the previous successful result remains active.",
+      "retainedResult": {
+        "revisionId": "51000000-0000-4000-8000-000000000029",
+        "title": "FreshMart Weekly Groceries",
+        "inputText": "Weekly grocery receipt parsed successfully before retry.",
+        "entries": [
+          {
+            "id": "70000000-0000-4000-8000-000000000025",
+            "category": "Household",
+            "itemName": "Fresh vegetables",
+            "amount": "46.80",
+            "currency": "CNY",
+            "convertedAmount": "46.80",
+            "exchangeRate": "1"
+          },
+          {
+            "id": "70000000-0000-4000-8000-000000000026",
+            "category": "Household",
+            "itemName": "Kitchen supplies",
+            "amount": "32.20",
+            "currency": "CNY",
+            "convertedAmount": "32.20",
+            "exchangeRate": "1"
+          }
+        ]
+      },
+      "entries": []
     }
   ]
 }
