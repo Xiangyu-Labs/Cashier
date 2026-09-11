@@ -444,13 +444,10 @@
       "dismiss": "Dismiss",
       "adjust": "Adjust",
       "applyAll": "Apply all",
-      "referenceDate": "Reference date",
       "cancel": "Cancel",
       "done": "Finish adjusting",
-      "uncertain": "Date uncertain · keep original date",
-      "moveTo": "{date} · {count} entries",
       "applyFailed": "Application failed. The bill was not changed. Try again.",
-      "entryDate": "Suggested date for {name}"
+      "groupDate": "Group date"
     }
   },
   "SourceDocumentImageModal": {

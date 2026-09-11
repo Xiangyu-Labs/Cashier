@@ -253,12 +253,12 @@ describe("SourceDocumentDateOrganization", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "调整" }));
-    fireEvent.change(screen.getByLabelText("早餐 的建议日期"), {
+    fireEvent.change(screen.getByLabelText("分组日期"), {
       target: { value: "2026-09-08" },
     });
     fireEvent.click(screen.getByRole("button", { name: "完成调整" }));
     // 2026-09-08 is yesterday under the pinned clock, so the header says so.
-    expect(screen.getByText(/昨天 · 1 笔/)).toBeInTheDocument();
+    expect(screen.getByText("昨天")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "全部应用" }));
     await waitFor(() =>
@@ -274,6 +274,47 @@ describe("SourceDocumentDateOrganization", () => {
         appliedGroupIds: ["2026-09-08"],
       })
     );
+  });
+
+  it("swaps the header actions for cancel and finish while adjusting", () => {
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          items: [
+            {
+              ledgerEntryId: entry.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: { itemName: entry.itemName, amount: entry.amount, currency: "CNY" },
+            },
+          ],
+        }}
+        entries={[entry]}
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    // The date is plain text until adjusting turns the group header editable.
+    expect(screen.queryByLabelText("分组日期")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "调整" }));
+    expect(screen.getByLabelText("分组日期")).toBeInTheDocument();
+
+    // Adjusting offers only the two ways out; the suggestion commands come back
+    // once the draft is finished or dropped.
+    expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "完成调整" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "忽略" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "调整" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "全部应用" })).toBeNull();
+    // The reference date is an inference input, not something to edit here.
+    expect(screen.queryByText("参照日期")).toBeNull();
   });
 
   it("offers no per-group apply; the suggestion is applied as a whole", () => {
@@ -315,10 +356,54 @@ describe("SourceDocumentDateOrganization", () => {
 
     // Two groups are listed, but the panel's only actions are header-level:
     // adjust the dates, then apply everything at once.
-    expect(screen.getByText(/今天 · 1 笔/)).toBeInTheDocument();
-    expect(screen.getByText(/昨天 · 1 笔/)).toBeInTheDocument();
+    expect(screen.getByText("今天")).toBeInTheDocument();
+    expect(screen.getByText("昨天")).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(3);
     expect(screen.queryByRole("button", { name: /应用日期|应用此组/ })).toBeNull();
+  });
+
+  it("keeps an undated entry on the bill date and flags it as a guess", () => {
+    const undated: LedgerEntryEmbeddedViewDto = {
+      ...entry,
+      id: "77777777-7777-4777-8777-777777777777",
+      itemName: "现金支出",
+    };
+
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          // Only the dated entry is in the suggestion; the other one had no
+          // usable date hint, so the model left it out entirely.
+          items: [
+            {
+              ledgerEntryId: entry.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: { itemName: entry.itemName, amount: entry.amount, currency: "CNY" },
+            },
+          ],
+        }}
+        entries={[entry, undated]}
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("日期未知")).toBeInTheDocument();
+
+    // The group carries the bill date rather than a "keep original" state, and
+    // that date is editable like any other group's.
+    fireEvent.click(screen.getByRole("button", { name: "调整" }));
+    const groupDates = screen
+      .getAllByLabelText("分组日期")
+      .map((input) => (input as HTMLInputElement).value);
+    expect(groupDates).toEqual(["2026-09-10", "2026-09-09"]);
   });
 
   it("stacks the converted amount above the original for a foreign-currency entry", () => {
@@ -372,7 +457,7 @@ describe("SourceDocumentDateOrganization", () => {
     vi.setSystemTime(new Date("2026-09-09T12:00:00.000Z"));
     renderWithTimeZone("UTC");
 
-    expect(screen.getByText(/今天 · 1 笔/)).toBeInTheDocument();
+    expect(screen.getByText("今天")).toBeInTheDocument();
   });
 
   it("shifts today when the ledger timezone is a day ahead", () => {
@@ -380,6 +465,6 @@ describe("SourceDocumentDateOrganization", () => {
     renderWithTimeZone("Pacific/Kiritimati");
 
     // There it is already the 10th, so the same 2026-09-09 group is yesterday.
-    expect(screen.getByText(/昨天 · 1 笔/)).toBeInTheDocument();
+    expect(screen.getByText("昨天")).toBeInTheDocument();
   });
 });
