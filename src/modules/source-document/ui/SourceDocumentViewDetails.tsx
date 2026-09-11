@@ -119,6 +119,10 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       >
         <SourceDocumentSummaryHeader
           displayEntryDate={displayEntryDate}
+          totalInMainCurrency={totalInMainCurrency}
+          mainCurrency={mainCurrency}
+          staleConversionCount={staleConversionCount}
+          unconvertedCount={unconvertedCount}
           onSourceDocChange={onSourceDocChange}
           fieldsDisabled={fieldsDisabled}
           isInvalid={isInvalid}
@@ -160,14 +164,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           onDeleteEntry={onDeleteEntry}
           pendingChanges={pendingChanges.entries}
           {...(onRequestEdit == null ? {} : { onRequestEdit })}
-          headerEnd={
-            <SourceDocumentTotal
-              totalInMainCurrency={totalInMainCurrency}
-              mainCurrency={mainCurrency}
-              staleConversionCount={staleConversionCount}
-              unconvertedCount={unconvertedCount}
-            />
-          }
         />
       </div>
       <aside

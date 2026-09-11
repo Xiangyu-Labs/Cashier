@@ -34,6 +34,10 @@ interface DateFilterProps {
    * the dropdown chrome (calendar icon + chevron) without being usable.
    */
   readOnly?: boolean;
+  /** Overrides the read-only date text classes where the date is a headline value. */
+  readOnlyTextClassName?: string;
+  /** Drops the calendar marker from the read-only text. */
+  hideReadOnlyIcon?: boolean;
   minDate?: Date;
   maxDate?: Date;
 }
@@ -48,6 +52,8 @@ export function DateFilter({
   truncate = true,
   disabled = false,
   readOnly = false,
+  readOnlyTextClassName,
+  hideReadOnlyIcon = false,
   minDate,
   maxDate,
 }: DateFilterProps) {
@@ -85,11 +91,13 @@ export function DateFilter({
   if (readOnly && civilDateString != null) {
     return (
       <span className={cn("inline-flex min-w-0 items-center gap-1.5", className)}>
-        <CalendarIcon
-          aria-hidden="true"
-          className={cn("shrink-0 text-muted-foreground", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}
-        />
-        <span className="min-w-0 text-text text-sm">
+        {!hideReadOnlyIcon && (
+          <CalendarIcon
+            aria-hidden="true"
+            className={cn("shrink-0 text-muted-foreground", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}
+          />
+        )}
+        <span className={cn("min-w-0 text-text text-sm", readOnlyTextClassName)}>
           {formatCivilDate(civilDateString, locale, {
             year: "numeric",
             month: "short",

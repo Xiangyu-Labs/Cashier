@@ -120,26 +120,28 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("puts the total at the end of the entry-list header", () => {
+  it("previews the date and the labelled total in one row", () => {
     renderDetails(0);
 
     const dateRow = screen.getByTestId("source-document-date-row");
-    expect(within(dateRow).getByText(/交易时间/)).toHaveClass(
+    // The date is a secondary caption; the labelled total is the headline.
+    expect(within(dateRow).getByText("交易时间")).toHaveClass("sr-only");
+    expect(within(dateRow).getByText(/2026年7月28日|Jul 28, 2026/)).toHaveClass(
       "text-sm",
-      "font-semibold",
       "text-muted-foreground"
     );
+    expect(within(dateRow).getByText("合计")).toHaveClass("text-sm", "text-muted-foreground");
+    expect(within(dateRow).getByText("¥0.00")).toHaveClass(
+      "text-lg",
+      "font-semibold",
+      "tabular-nums"
+    );
+    // The read-only date drops its calendar marker.
+    expect(dateRow.querySelector(".lucide-calendar")).not.toBeInTheDocument();
 
-    // The total carries no visible label, only a screen-reader name.
-    const totalLabel = screen.getByText("合计金额");
-    expect(totalLabel).toHaveClass("sr-only");
-    expect(totalLabel.nextElementSibling).toHaveClass("tabular-nums", "text-base", "font-semibold");
+    // The entry-list title keeps the count.
+    expect(screen.getByText("明细项目 (0)")).toBeInTheDocument();
     expect(screen.queryByText("=")).not.toBeInTheDocument();
-
-    // The total reads after the entry-list title, not in the date row.
-    expect(dateRow).not.toHaveTextContent(/合计金额/);
-    const bodyText = document.body.textContent ?? "";
-    expect(bodyText.indexOf("明细项目")).toBeLessThan(bodyText.indexOf("合计金额"));
     expect(screen.queryByText(/创建于/)).not.toBeInTheDocument();
   });
 

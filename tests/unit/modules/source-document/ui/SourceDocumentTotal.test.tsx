@@ -14,11 +14,13 @@ function renderTotal(staleConversionCount = 0, unconvertedCount = 0) {
 }
 
 describe("SourceDocumentTotal", () => {
-  it("shows the total amount on its own, without a label or breakdown", () => {
+  it("labels the total so the amount never floats unexplained", () => {
     const { container } = renderTotal();
 
-    expect(container.textContent).toBe("合计金额¥92.00");
-    expect(screen.getByText("合计金额")).toHaveClass("sr-only");
+    expect(container.textContent).toBe("合计¥92.00");
+    expect(screen.getByText("合计")).toHaveClass("text-sm", "text-muted-foreground");
+    // The amount is the headline figure of the summary row.
+    expect(screen.getByText("¥92.00")).toHaveClass("text-lg", "font-semibold");
     expect(container.textContent).not.toContain("=");
   });
 

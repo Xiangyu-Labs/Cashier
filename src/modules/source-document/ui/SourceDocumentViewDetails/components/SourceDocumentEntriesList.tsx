@@ -2,7 +2,7 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Plus, SquareDashedMousePointer, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { EntryCategory, LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
 import type { EntriesPendingChanges } from "@/modules/source-document/detail-types";
@@ -27,10 +27,7 @@ interface SourceDocumentEntriesListProps {
   onDeleteEntry?: ((entryId: string) => void) | undefined;
   pendingChanges: EntriesPendingChanges;
   onRequestEdit?: () => void;
-  /** Rendered at the end of the header row, e.g. the document total. */
-  headerEnd?: ReactNode;
 }
-
 export function SourceDocumentEntriesList({
   entries,
   categories,
@@ -50,7 +47,6 @@ export function SourceDocumentEntriesList({
   onDeleteEntry,
   pendingChanges,
   onRequestEdit,
-  headerEnd,
 }: SourceDocumentEntriesListProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -58,8 +54,7 @@ export function SourceDocumentEntriesList({
 
   return (
     <div className="min-w-0">
-      {/* pr-3 matches the row padding so the total lines up with the amounts below. */}
-      <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 pr-3">
+      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
         <div className="flex items-center gap-2">
           {entries.length > 0 && !interactionDisabled && (
             <Button
@@ -81,7 +76,6 @@ export function SourceDocumentEntriesList({
             {t("entries")} ({entries.length})
           </span>
         </div>
-        {headerEnd}
       </div>
 
       <div className="divide-y overflow-hidden rounded-lg border bg-surface pb-0">

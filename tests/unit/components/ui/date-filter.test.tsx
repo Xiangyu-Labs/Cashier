@@ -65,6 +65,21 @@ describe("DateFilter", () => {
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
+  it("can drop the calendar marker and restyle the read-only value", () => {
+    const { container } = render(
+      <DateFilter
+        value="2026-07-28"
+        onChange={() => {}}
+        readOnly
+        hideReadOnlyIcon
+        readOnlyTextClassName="text-base font-semibold"
+      />
+    );
+
+    expect(container.querySelector(".lucide-calendar")).not.toBeInTheDocument();
+    expect(screen.getByText("2026年7月28日")).toHaveClass("text-base", "font-semibold");
+  });
+
   it("falls back to the interactive picker when read-only has no value", () => {
     render(<DateFilter value={null} onChange={() => {}} readOnly />);
 

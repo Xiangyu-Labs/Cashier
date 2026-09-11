@@ -11,8 +11,8 @@ interface SourceDocumentTotalProps {
 }
 
 /**
- * The document total, shown at the end of the entry-list header so it sits on
- * the same line as the entries it sums up.
+ * The document total, shown in the summary bar next to the date and entry
+ * count it belongs to.
  */
 export function SourceDocumentTotal({
   totalInMainCurrency,
@@ -25,10 +25,10 @@ export function SourceDocumentTotal({
   const locale = useLocale();
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      {/* The total carries no visible label, so name it for screen readers. */}
-      <span className="sr-only">{t("totalAmount")}</span>
-      <AmountText variant="summary">
+    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      {/* The label names the amount, so a bare number never floats unexplained. */}
+      <span className="shrink-0 text-sm text-muted-foreground">{t("totalAmount")}</span>
+      <AmountText variant="summary" className="text-lg">
         {staleConversionCount > 0 ? "≈ " : ""}
         {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
       </AmountText>
