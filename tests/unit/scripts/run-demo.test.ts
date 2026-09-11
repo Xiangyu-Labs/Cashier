@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createDemoComposeArgs, createDemoEnvironment } from "../../../scripts/run-demo.mjs";
+import {
+  createDemoComposeArgs,
+  createDemoDataArgs,
+  createDemoEnvironment,
+} from "../../../scripts/run-demo.mjs";
 
 describe("demo runtime environment", () => {
   it("uses the standalone Compose file that does not require a project .env", () => {
@@ -14,6 +18,16 @@ describe("demo runtime environment", () => {
       "postgres",
       "minio",
       "storage-bootstrap",
+    ]);
+  });
+
+  it("rebuilds fixture data on each demo launch but keeps reset preview-only by default", () => {
+    expect(createDemoDataArgs()).toEqual(["scripts/demo-data.mjs", "reset", "--apply"]);
+    expect(createDemoDataArgs({ reset: true })).toEqual(["scripts/demo-data.mjs", "reset"]);
+    expect(createDemoDataArgs({ reset: true, apply: true })).toEqual([
+      "scripts/demo-data.mjs",
+      "reset",
+      "--apply",
     ]);
   });
 

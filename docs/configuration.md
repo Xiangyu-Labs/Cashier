@@ -101,7 +101,8 @@
 `npm run dev:demo` 使用独立的 `docker-compose.demo.yml` 启动 `cashier-demo` Compose project、
 `cashier_demo` 数据库和本地 MinIO，不依赖项目 `.env`。它会强制覆盖数据库、对象存储、认证和
 AI 连接变量，因此不会读取 `.env.local` 中的远程服务地址。Demo 数据为固定的虚构票据和完整
-账本结果，不会调用真实 AI 或邮件服务。
+账本结果，不会调用真实 AI 或邮件服务。每次运行 `npm run dev:demo` 都会先输出重建目标，再将
+专用工作区恢复为初始 fixture；上一次运行中产生的修改不会保留。
 
 默认端口为应用 `3000`、PostgreSQL `55433`、MinIO `59000`，可分别通过
 `CASHIER_DEMO_APP_PORT`、`CASHIER_DEMO_POSTGRES_PORT`、`CASHIER_DEMO_S3_PORT` 覆盖。

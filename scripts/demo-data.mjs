@@ -342,12 +342,18 @@ async function runDemoData({ mode = "seed", apply = false, environment = process
   const storage = createStorage(environment);
   try {
     const inspection = await inspectDemoTarget(client);
-    if (mode === "reset" && !apply) {
+    if (mode === "reset") {
       console.log(
-        JSON.stringify({ mode: "demo-reset-preview", ...inspection.counts, keys: inspection.keys })
+        JSON.stringify({
+          mode: apply ? "demo-reset-target" : "demo-reset-preview",
+          ...inspection.counts,
+          keys: inspection.keys,
+        })
       );
-      console.log("[demo] Preview only. Re-run with --apply to rebuild the demo workspace.");
-      return { status: "preview", ...inspection };
+      if (!apply) {
+        console.log("[demo] Preview only. Re-run with --apply to rebuild the demo workspace.");
+        return { status: "preview", ...inspection };
+      }
     }
 
     const knownIds = fixture.documents.map((document) => document.id);

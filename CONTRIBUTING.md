@@ -18,8 +18,8 @@ npm run dev:demo
 Open the printed loopback URL and select `Continue as dev`. The command uses the standalone
 `docker-compose.demo.yml` definition to start a dedicated `cashier-demo` PostgreSQL and MinIO stack,
 migrates `cashier_demo`, and seeds fictional receipts and ledger history. It does not require a
-project `.env` file. Existing demo edits are preserved. To inspect or rebuild only this dedicated
-workspace:
+project `.env` file. Every launch restores the fixture, so edits from the previous session are
+discarded. To inspect or rebuild only this dedicated workspace:
 
 ```bash
 npm run demo:reset

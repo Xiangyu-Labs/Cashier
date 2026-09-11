@@ -90,6 +90,11 @@ export function createDemoComposeArgs() {
   ];
 }
 
+/** @testOnly Returns the fixture command while preserving reset preview semantics. */
+export function createDemoDataArgs({ reset = false, apply = false } = {}) {
+  return ["scripts/demo-data.mjs", "reset", ...(!reset || apply ? ["--apply"] : [])];
+}
+
 async function isPortAvailable(port) {
   const server = net.createServer();
   try {
@@ -137,15 +142,7 @@ async function main(args = process.argv.slice(2), environment = process.env) {
   const test = args.includes("--test");
   await run("docker", createDemoComposeArgs(), demoEnv);
   await run(process.execPath, ["scripts/migrate-database.mjs"], demoEnv);
-  await run(
-    process.execPath,
-    [
-      "scripts/demo-data.mjs",
-      reset || test ? "reset" : "seed",
-      ...(apply || test ? ["--apply"] : []),
-    ],
-    demoEnv
-  );
+  await run(process.execPath, createDemoDataArgs({ reset, apply }), demoEnv);
   if (reset) return;
 
   const appPort = Number(demoEnv.CASHIER_DEMO_APP_PORT);
