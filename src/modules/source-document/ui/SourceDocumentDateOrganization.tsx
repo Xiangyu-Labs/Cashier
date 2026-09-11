@@ -75,10 +75,19 @@ export function SourceDocumentDateOrganization({
         ledgerEntryIds,
       }));
   }, [effectiveDates, entries]);
-  const apply = async (groupIds: string[]) => {
+  /**
+   * Apply every group with a resolved date at once. Groups are never applied
+   * individually: the panel's only paths are adjusting the dates and then
+   * applying the whole suggestion.
+   */
+  const applyAll = async () => {
     setApplicationError(false);
     try {
-      await onApply({ suggestionId: suggestion.id, groups, appliedGroupIds: groupIds });
+      await onApply({
+        suggestionId: suggestion.id,
+        groups,
+        appliedGroupIds: groups.filter((group) => group.entryDate != null).map((group) => group.id),
+      });
       setEditing(false);
       setDirty(false);
       onAdjustmentStateChange?.(false, false);
@@ -132,9 +141,7 @@ export function SourceDocumentDateOrganization({
           <Button
             size="sm"
             disabled={disabled || groups.every((group) => group.entryDate == null)}
-            onClick={() =>
-              void apply(groups.filter((group) => group.entryDate != null).map((group) => group.id))
-            }
+            onClick={() => void applyAll()}
           >
             {t("applyAll")}
           </Button>
@@ -194,32 +201,18 @@ export function SourceDocumentDateOrganization({
       <div className="divide-y divide-info/15">
         {groups.map((group) => (
           <div key={group.id} className="py-3">
-            <div className="mb-2 flex items-center justify-between gap-2 px-3">
-              <div className="min-w-0 text-sm font-medium">
-                {group.entryDate == null
-                  ? t("uncertain")
-                  : t("moveTo", {
-                      date: formatRelativeDateLabel(
-                        group.entryDate,
-                        locale,
-                        { today: tCard("today"), yesterday: tCard("yesterday") },
-                        timeZone
-                      ),
-                      count: group.ledgerEntryIds.length,
-                    })}
-              </div>
-              {group.entryDate != null && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={disabled || editing}
-                  onClick={() => void apply([group.id])}
-                >
-                  {group.ledgerEntryIds.length === entries.length
-                    ? t("applyDate")
-                    : t("applyGroup")}
-                </Button>
-              )}
+            <div className="mb-2 px-3 text-sm font-medium">
+              {group.entryDate == null
+                ? t("uncertain")
+                : t("moveTo", {
+                    date: formatRelativeDateLabel(
+                      group.entryDate,
+                      locale,
+                      { today: tCard("today"), yesterday: tCard("yesterday") },
+                      timeZone
+                    ),
+                    count: group.ledgerEntryIds.length,
+                  })}
             </div>
             <div className="divide-y divide-border/50">
               {group.ledgerEntryIds.map((id) => {

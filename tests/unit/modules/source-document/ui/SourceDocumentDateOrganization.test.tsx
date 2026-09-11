@@ -276,6 +276,51 @@ describe("SourceDocumentDateOrganization", () => {
     );
   });
 
+  it("offers no per-group apply; the suggestion is applied as a whole", () => {
+    const lunch: LedgerEntryEmbeddedViewDto = {
+      ...entry,
+      id: "66666666-6666-4666-8666-666666666666",
+    };
+
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          items: [
+            {
+              ledgerEntryId: entry.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: { itemName: entry.itemName, amount: entry.amount, currency: "CNY" },
+            },
+            {
+              ledgerEntryId: lunch.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-08",
+              sourceText: "昨天",
+              snapshot: { itemName: lunch.itemName, amount: lunch.amount, currency: "CNY" },
+            },
+          ],
+        }}
+        entries={[entry, lunch]}
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    // Two groups are listed, but the panel's only actions are header-level:
+    // adjust the dates, then apply everything at once.
+    expect(screen.getByText(/今天 · 1 笔/)).toBeInTheDocument();
+    expect(screen.getByText(/昨天 · 1 笔/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /应用日期|应用此组/ })).toBeNull();
+  });
+
   it("stacks the converted amount above the original for a foreign-currency entry", () => {
     const usd: LedgerEntryEmbeddedViewDto = {
       ...entry,
