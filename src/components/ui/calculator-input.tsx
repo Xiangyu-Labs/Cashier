@@ -209,7 +209,7 @@ export function CalculatorInput({
         onClick={handleStartInput}
         aria-label={ariaLabel}
       >
-        <span className="font-mono">{value.toFixed(maxDecimals)}</span>
+        <span className="tabular-nums">{value.toFixed(maxDecimals)}</span>
       </button>
     );
   }
@@ -233,7 +233,7 @@ export function CalculatorInput({
             aria-invalid={inputError !== null}
             aria-describedby={inputError === null ? undefined : "calculator-input-error"}
             className={cn(
-              "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none",
+              "w-32 border-0 bg-transparent p-0 text-center tabular-nums shadow-none",
               displayClassName
             )}
           />
@@ -272,7 +272,7 @@ export function CalculatorInput({
         {/* Expression Display */}
         <div className="mb-2 h-6 text-right">
           {calculator.expression !== "" && (
-            <span className="text-sm text-muted-foreground font-mono truncate block">
+            <span className="text-sm text-muted-foreground tabular-nums truncate block">
               {calculator.expression}
             </span>
           )}
@@ -282,7 +282,7 @@ export function CalculatorInput({
         <div className="mb-4 text-right">
           <span
             className={cn(
-              "text-3xl font-bold font-mono",
+              "text-3xl font-bold tabular-nums",
               calculator.state.hasResult ? "text-primary" : "text-text"
             )}
           >

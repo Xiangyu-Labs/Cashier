@@ -20,6 +20,57 @@ const entry: LedgerEntryEmbeddedViewDto = {
 };
 
 describe("SourceDocumentDateOrganization", () => {
+  it("shows the category icon for each suggested entry", () => {
+    const categorised: LedgerEntryEmbeddedViewDto = {
+      ...entry,
+      categoryId: "55555555-5555-4555-8555-555555555555",
+      category: {
+        id: "55555555-5555-4555-8555-555555555555",
+        ledgerId: entry.ledgerId,
+        name: "餐饮",
+        description: null,
+        icon: "Utensils",
+        sortOrder: 0,
+        createdAt: "2026-09-10T00:00:00.000Z",
+        updatedAt: "2026-09-10T00:00:00.000Z",
+        deletedAt: null,
+      },
+    };
+
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          items: [
+            {
+              ledgerEntryId: categorised.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: {
+                itemName: categorised.itemName,
+                amount: categorised.amount,
+                currency: "CNY",
+              },
+            },
+          ],
+        }}
+        entries={[categorised]}
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    // The row renders the same 32px circular chip the entry cards use.
+    const chip = document.querySelector(".rounded-full.bg-surface2");
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveClass("h-8", "w-8");
+  });
+
   it("keeps an adjusted date after finishing the draft and applies it", async () => {
     const onApply = vi.fn().mockResolvedValue(undefined);
     render(

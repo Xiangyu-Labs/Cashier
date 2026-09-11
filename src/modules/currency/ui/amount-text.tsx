@@ -11,7 +11,9 @@ const amountVariantClasses: Record<AmountVariant, string> = {
 };
 
 export function amountTextClassName(variant: AmountVariant, className?: string) {
-  return cn("font-mono tabular-nums", amountVariantClasses[variant], className);
+  // Amounts share the app's system sans stack rather than a monospace face;
+  // tabular-nums keeps the digits column-aligned without the width jitter.
+  return cn("tabular-nums", amountVariantClasses[variant], className);
 }
 
 export function AmountText({

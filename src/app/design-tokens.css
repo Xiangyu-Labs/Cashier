@@ -11,10 +11,11 @@
   --dur-short: 160ms;
   --dur-state: 200ms;
   --rule-hairline: 1px;
+  /* Single source of truth for the app font stacks; globals.css aliases these. */
   --font-body:
-    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei", sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto,
+    sans-serif;
+  --font-mono-list: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;

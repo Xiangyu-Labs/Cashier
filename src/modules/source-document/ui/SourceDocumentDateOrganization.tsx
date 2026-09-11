@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CalendarRange, Check, Pencil, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
@@ -228,6 +229,9 @@ export function SourceDocumentDateOrganization({
                 if (entry == null) return null;
                 return (
                   <div key={id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface2 text-text">
+                      <CategoryIcon iconName={entry.category?.icon ?? null} className="h-4 w-4" />
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{entry.itemName}</span>
                       {suggestionByEntryId.get(id)?.sourceText != null ? (
