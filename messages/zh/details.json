@@ -653,7 +653,6 @@
     "batchModePendingDescription": "进入批量操作前，请保存或放弃当前编辑。",
     "dateOrganization": {
       "title": "日期整理建议",
-      "pending": "建议尚未应用，不影响当前入账日期",
       "dismiss": "忽略",
       "adjust": "调整",
       "applyAll": "全部应用",

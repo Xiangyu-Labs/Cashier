@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarRange, Check, Pencil, Sparkles, X } from "lucide-react";
+import { CalendarRange, Check, Pencil, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,14 +93,8 @@ export function SourceDocumentDateOrganization({
 
   return (
     <section className="rounded-lg border border-info/30 bg-info/5" aria-label={t("title")}>
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-info/15 px-3 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="size-4" />
-            {t("title")}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t("pending")}</p>
-        </div>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-info/15 px-3 py-3">
+        <div className="min-w-0 text-sm font-semibold">{t("title")}</div>
         <div className="flex gap-1">
           <Button
             variant="ghost"

@@ -653,7 +653,6 @@
     "batchModePendingDescription": "Save or discard your current edits before entering batch actions.",
     "dateOrganization": {
       "title": "Date organization suggestion",
-      "pending": "Suggestions are not applied and do not affect the current posting date",
       "dismiss": "Dismiss",
       "adjust": "Adjust",
       "applyAll": "Apply all",

@@ -103,8 +103,6 @@ describe("SourceDocumentDateOrganization", () => {
     const row = chip?.closest("div");
     expect(row).toHaveClass("bg-transparent");
     expect(row).not.toHaveClass("bg-surface");
-    // The panel title icon uses the app foreground, not a theme tint.
-    expect(document.querySelector(".lucide-sparkles")).not.toHaveClass("text-info");
   });
 
   it("shows the entry category and note instead of the date-hint reason", () => {
