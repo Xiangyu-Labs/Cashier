@@ -73,6 +73,25 @@ describe("SelectableCardSurface", () => {
     expect(onInternalClick).toHaveBeenCalledTimes(1);
   });
 
+  it("outlines the unselected box neutrally and fills it only when selected", () => {
+    // Regression: the empty box carried border-primary, so every row in
+    // selection mode looked pre-selected.
+    const { container } = render(
+      <SelectableCardSurface
+        selectionMode
+        selected={false}
+        selectionLabel="Select lunch"
+        onToggleSelection={vi.fn()}
+      >
+        <div>Lunch</div>
+      </SelectableCardSurface>
+    );
+
+    const box = container.querySelector('[aria-hidden="true"].absolute.left-3');
+    expect(box).toHaveClass("border-muted-foreground/40");
+    expect(box).not.toHaveClass("border-primary");
+  });
+
   it("disables an unselected card when the selection limit is reached", async () => {
     const user = userEvent.setup();
     const onToggleSelection = vi.fn();

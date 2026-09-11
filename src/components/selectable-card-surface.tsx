@@ -70,9 +70,11 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
           <span
             aria-hidden="true"
             className={cn(
-              "absolute left-3 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary-foreground group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring",
+              // Neutral outline until the card is actually selected: a
+              // primary-tinted box on every row reads as "selected" already.
+              "absolute left-3 flex size-5 items-center justify-center rounded-sm border border-muted-foreground/40 bg-background text-primary-foreground group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring",
               indicatorPositionClass[indicatorPlacement],
-              selected && "bg-primary group-focus-visible:outline-bg"
+              selected && "border-primary bg-primary group-focus-visible:outline-bg"
             )}
           >
             {selected ? <Check className="size-4" /> : null}
