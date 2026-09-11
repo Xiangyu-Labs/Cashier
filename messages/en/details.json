@@ -659,7 +659,7 @@
       "cancel": "Cancel",
       "done": "Finish adjusting",
       "uncertain": "Date uncertain · keep original date",
-      "moveTo": "Move to {date} · {count} entries",
+      "moveTo": "{date} · {count} entries",
       "applyDate": "Apply date",
       "applyGroup": "Apply group",
       "applyFailed": "Application failed. The bill was not changed. Try again.",

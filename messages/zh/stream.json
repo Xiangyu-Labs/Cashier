@@ -628,7 +628,7 @@
       "cancel": "取消",
       "done": "完成调整",
       "uncertain": "日期未确定 · 保留原日期",
-      "moveTo": "建议移至 {date} · {count} 笔",
+      "moveTo": "{date} · {count} 笔",
       "applyDate": "应用日期",
       "applyGroup": "应用此组",
       "applyFailed": "应用失败，账单未更改。请重试。",

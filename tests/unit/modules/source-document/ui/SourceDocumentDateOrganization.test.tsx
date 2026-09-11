@@ -219,7 +219,7 @@ describe("SourceDocumentDateOrganization", () => {
       target: { value: "2026-09-08" },
     });
     fireEvent.click(screen.getByRole("button", { name: "完成调整" }));
-    expect(screen.getByText(/移至 2026-09-08/)).toBeInTheDocument();
+    expect(screen.getByText(/2026-09-08 · 1 笔/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "全部应用" }));
     await waitFor(() =>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarRange, Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,8 +189,7 @@ export function SourceDocumentDateOrganization({
         {groups.map((group) => (
           <div key={group.id} className="py-3">
             <div className="mb-2 flex items-center justify-between gap-2 px-3">
-              <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                <CalendarRange className="size-4 text-muted-foreground" />
+              <div className="min-w-0 text-sm font-medium">
                 {group.entryDate == null
                   ? t("uncertain")
                   : t("moveTo", { date: group.entryDate, count: group.ledgerEntryIds.length })}
