@@ -194,8 +194,8 @@ export function SourceDocumentDateOrganization({
       )}
       <div className="divide-y divide-info/15">
         {groups.map((group) => (
-          <div key={group.id} className="px-3 py-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
+          <div key={group.id} className="py-3">
+            <div className="mb-2 flex items-center justify-between gap-2 px-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <CalendarRange className="size-4 text-muted-foreground" />
@@ -231,12 +231,15 @@ export function SourceDocumentDateOrganization({
                 const entry = entryById.get(id);
                 if (entry == null) return null;
                 return (
-                  <div key={id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                  <div
+                    key={id}
+                    className="flex min-h-11 items-center gap-1.5 px-3 py-2 text-sm sm:gap-2"
+                  >
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface2 text-text">
                       <CategoryIcon iconName={entry.category?.icon ?? null} className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate">{entry.itemName}</span>
+                      <span className="block truncate font-medium text-text">{entry.itemName}</span>
                       {suggestionByEntryId.get(id)?.sourceText != null ? (
                         <span className="block truncate text-xs text-muted-foreground">
                           {t("recognizedFrom", {

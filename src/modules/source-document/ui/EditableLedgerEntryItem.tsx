@@ -178,48 +178,53 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
       {/* Amount + Currency */}
       <div className="flex items-center gap-1 shrink-0">
         {readOnly ? (
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {getCurrencySymbol(displayData.currency ?? "unknown", locale)}
-          </span>
+          <AmountText variant="item">
+            {formatCurrencyAmount(
+              parseAmount(displayData.amount),
+              displayData.currency ?? "",
+              locale
+            )}
+          </AmountText>
         ) : (
-          <Popover modal={true}>
-            <PopoverTrigger asChild>
-              <button
-                aria-label={t("currency")}
-                className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5"
-              >
-                {getCurrencySymbol(displayData.currency ?? "unknown", locale)}
-                <ChevronDown aria-hidden="true" className="h-2.5 w-2.5 opacity-50" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-24 p-1" align="end">
-              <div className="max-h-48 overflow-y-auto">
-                {sortedCurrencies.map((curr) => (
-                  <button
-                    key={curr}
-                    onClick={() => handleChange("currency", curr)}
-                    className={cn(
-                      "w-full text-left px-2 py-1.5 text-xs rounded hover:bg-accent transition-colors",
-                      displayData.currency === curr && "bg-accent"
-                    )}
-                  >
-                    {curr}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
+          <>
+            <Popover modal={true}>
+              <PopoverTrigger asChild>
+                <button
+                  aria-label={t("currency")}
+                  className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5"
+                >
+                  {getCurrencySymbol(displayData.currency ?? "unknown", locale)}
+                  <ChevronDown aria-hidden="true" className="h-2.5 w-2.5 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-24 p-1" align="end">
+                <div className="max-h-48 overflow-y-auto">
+                  {sortedCurrencies.map((curr) => (
+                    <button
+                      key={curr}
+                      onClick={() => handleChange("currency", curr)}
+                      className={cn(
+                        "w-full text-left px-2 py-1.5 text-xs rounded hover:bg-accent transition-colors",
+                        displayData.currency === curr && "bg-accent"
+                      )}
+                    >
+                      {curr}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
-        <CalculatorInput
-          value={parseAmount(displayData.amount)}
-          onChange={(v) => handleChange("amount", v.toFixed(amountDecimals))}
-          displayClassName={amountTextClassName("item")}
-          disabled={readOnly}
-          allowNegative={parseAmount(displayData.amount) < 0}
-          preserveDirection
-          maxDecimals={amountDecimals}
-        />
+            <CalculatorInput
+              value={parseAmount(displayData.amount)}
+              onChange={(v) => handleChange("amount", v.toFixed(amountDecimals))}
+              displayClassName={amountTextClassName("item")}
+              allowNegative={parseAmount(displayData.amount) < 0}
+              preserveDirection
+              maxDecimals={amountDecimals}
+            />
+          </>
+        )}
       </div>
 
       <ExpenseDeductionBadge amount={displayData.amount} />

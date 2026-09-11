@@ -45,10 +45,12 @@ function renderItem(readOnly: boolean) {
 }
 
 describe("EditableLedgerEntryItem currency control", () => {
-  it("shows the currency symbol as plain text when read-only", () => {
+  it("shows the amount as plain, undimmed text when read-only", () => {
     renderItem(true);
 
-    expect(screen.getByText("¥")).toBeInTheDocument();
+    const amount = screen.getByText("¥18.00");
+    expect(amount).toHaveClass("text-text");
+    expect(amount).not.toHaveClass("opacity-50");
     expect(screen.queryByRole("button", { name: "货币" })).not.toBeInTheDocument();
   });
 

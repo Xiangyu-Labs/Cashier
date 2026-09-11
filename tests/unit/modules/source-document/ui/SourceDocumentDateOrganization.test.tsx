@@ -98,6 +98,8 @@ describe("SourceDocumentDateOrganization", () => {
 
     expect(screen.getByText("¥18.00")).toBeInTheDocument();
     expect(screen.queryByText("18.00 CNY")).not.toBeInTheDocument();
+    // Entry rows share the line-item styling so the two lists line up.
+    expect(screen.getByText("早餐")).toHaveClass("font-medium", "text-text");
   });
 
   it("keeps an adjusted date after finishing the draft and applies it", async () => {
