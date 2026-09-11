@@ -120,27 +120,24 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("previews the date and the labelled total in one row", () => {
+  it("previews the transaction date and the labelled total in the toolbar", () => {
     renderDetails(0);
 
     const dateRow = screen.getByTestId("source-document-date-row");
-    // The date is a secondary caption; the labelled total is the headline.
+    // The bar reuses the ledger toolbar shell: select control, centred date, total.
     expect(within(dateRow).getByText("交易时间")).toHaveClass("sr-only");
-    expect(within(dateRow).getByText(/2026年7月28日|Jul 28, 2026/)).toHaveClass(
-      "text-sm",
-      "text-muted-foreground"
-    );
-    expect(within(dateRow).getByText("合计")).toHaveClass("text-sm", "text-muted-foreground");
-    expect(within(dateRow).getByText("¥0.00")).toHaveClass(
-      "text-lg",
+    const date = within(dateRow).getByText(/2026年7月28日|Jul 28, 2026/);
+    expect(date).toHaveClass("text-sm", "font-medium");
+    expect(within(dateRow).getByText("合计 ¥0.00")).toHaveClass(
+      "text-base",
       "font-semibold",
       "tabular-nums"
     );
     // The read-only date drops its calendar marker.
     expect(dateRow.querySelector(".lucide-calendar")).not.toBeInTheDocument();
 
-    // The entry-list title keeps the count.
-    expect(screen.getByText("明细项目 (0)")).toBeInTheDocument();
+    // The entry count no longer takes a row of its own.
+    expect(screen.queryByText("明细项目 (0)")).not.toBeInTheDocument();
     expect(screen.queryByText("=")).not.toBeInTheDocument();
     expect(screen.queryByText(/创建于/)).not.toBeInTheDocument();
   });

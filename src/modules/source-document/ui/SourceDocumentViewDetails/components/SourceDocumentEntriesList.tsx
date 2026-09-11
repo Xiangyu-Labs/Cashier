@@ -1,7 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Plus, SquareDashedMousePointer, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import type { EntryCategory, LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
@@ -18,7 +18,6 @@ interface SourceDocumentEntriesListProps {
   interactionDisabled: boolean;
   fieldsDisabled: boolean;
   isEditMode: boolean;
-  onToggleSelectionMode: () => void;
   onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
   onSelectEntry: (entryId: string, selected: boolean) => void;
   displayEntryDate: string;
@@ -38,7 +37,6 @@ export function SourceDocumentEntriesList({
   interactionDisabled,
   fieldsDisabled,
   isEditMode,
-  onToggleSelectionMode,
   onEntryChange,
   onSelectEntry,
   displayEntryDate,
@@ -54,30 +52,6 @@ export function SourceDocumentEntriesList({
 
   return (
     <div className="min-w-0">
-      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2">
-          {entries.length > 0 && !interactionDisabled && (
-            <Button
-              variant={isSelectionMode ? "secondary" : "ghost"}
-              size="icon"
-              onClick={onToggleSelectionMode}
-              className="shrink-0 h-8 w-8"
-              aria-label={isSelectionMode ? t("cancelSelect") : t("select")}
-              title={isSelectionMode ? t("cancelSelect") : t("select")}
-            >
-              {isSelectionMode ? (
-                <X aria-hidden="true" className="w-4 h-4" />
-              ) : (
-                <SquareDashedMousePointer aria-hidden="true" className="w-4 h-4" />
-              )}
-            </Button>
-          )}
-          <span className="text-sm font-semibold text-muted-foreground">
-            {t("entries")} ({entries.length})
-          </span>
-        </div>
-      </div>
-
       <div className="divide-y overflow-hidden rounded-lg border bg-surface pb-0">
         {entries.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">

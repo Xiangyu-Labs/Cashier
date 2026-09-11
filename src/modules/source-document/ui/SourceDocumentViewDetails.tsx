@@ -117,17 +117,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           mobileView === "evidence" && "hidden lg:block"
         )}
       >
-        <SourceDocumentSummaryHeader
-          displayEntryDate={displayEntryDate}
-          totalInMainCurrency={totalInMainCurrency}
-          mainCurrency={mainCurrency}
-          staleConversionCount={staleConversionCount}
-          unconvertedCount={unconvertedCount}
-          onSourceDocChange={onSourceDocChange}
-          fieldsDisabled={fieldsDisabled}
-          isInvalid={isInvalid}
-        />
-
+        {/* The suggestion leads: it is about to change the dates the bar below
+            shows, so it sits above them. */}
         {sourceDocument.dateOrganizationSuggestion != null &&
         onApplyDateOrganization != null &&
         onDismissDateOrganization != null ? (
@@ -145,6 +136,21 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           />
         ) : null}
 
+        <SourceDocumentSummaryHeader
+          displayEntryDate={displayEntryDate}
+          totalInMainCurrency={totalInMainCurrency}
+          mainCurrency={mainCurrency}
+          staleConversionCount={staleConversionCount}
+          unconvertedCount={unconvertedCount}
+          onSourceDocChange={onSourceDocChange}
+          fieldsDisabled={fieldsDisabled}
+          isInvalid={isInvalid}
+          entryCount={ledgerEntries.length}
+          isSelectionMode={isSelectionMode}
+          interactionDisabled={interactionDisabled}
+          onToggleSelectionMode={onToggleSelectionMode}
+        />
+
         <SourceDocumentEntriesList
           entries={ledgerEntries}
           categories={categories}
@@ -155,7 +161,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           interactionDisabled={interactionDisabled}
           fieldsDisabled={fieldsDisabled}
           isEditMode={isEditMode}
-          onToggleSelectionMode={onToggleSelectionMode}
           onEntryChange={onEntryChange}
           onSelectEntry={onSelectEntry}
           displayEntryDate={displayEntryDate}

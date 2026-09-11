@@ -11,8 +11,8 @@ interface SourceDocumentTotalProps {
 }
 
 /**
- * The document total, shown in the summary bar next to the date and entry
- * count it belongs to.
+ * The document total, presented the same way as the ledger stream toolbar's
+ * total: one labelled amount, then any caveat about the conversion.
  */
 export function SourceDocumentTotal({
   totalInMainCurrency,
@@ -23,14 +23,13 @@ export function SourceDocumentTotal({
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
+  const amount = formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale);
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-      {/* The label names the amount, so a bare number never floats unexplained. */}
-      <span className="shrink-0 text-sm text-muted-foreground">{t("totalAmount")}</span>
-      <AmountText variant="summary" className="text-lg">
+    <div className="relative z-10 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      <AmountText variant="summary" className="whitespace-nowrap">
         {staleConversionCount > 0 ? "≈ " : ""}
-        {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
+        {t("totalAmount")} {amount}
       </AmountText>
       {unconvertedCount > 0 ? (
         <span className="text-xs text-warning" role="status">
