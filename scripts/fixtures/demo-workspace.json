@@ -1,0 +1,318 @@
+{
+  "version": 1,
+  "user": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "email": "dev@cashier.local",
+    "name": "Local Developer"
+  },
+  "ledger": {
+    "id": "20000000-0000-4000-8000-000000000001",
+    "mainCurrency": "CNY",
+    "preferredCurrencies": ["CNY", "USD", "MYR"],
+    "aiLanguage": "en",
+    "timeZone": "Asia/Kuala_Lumpur"
+  },
+  "categories": [
+    {
+      "id": "30000000-0000-4000-8000-000000000001",
+      "name": "Dining",
+      "description": "Meals, drinks, and dining adjustments",
+      "icon": "Utensils",
+      "sortOrder": 1
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000002",
+      "name": "Household",
+      "description": "Groceries and household supplies",
+      "icon": "ShoppingCart",
+      "sortOrder": 2
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000003",
+      "name": "Transport",
+      "description": "Public transport, rideshare, fuel, and parking",
+      "icon": "Bus",
+      "sortOrder": 3
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000004",
+      "name": "Healthcare",
+      "description": "Medication and health services",
+      "icon": "Stethoscope",
+      "sortOrder": 4
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000005",
+      "name": "Education",
+      "description": "Books, courses, and learning tools",
+      "icon": "GraduationCap",
+      "sortOrder": 5
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000006",
+      "name": "Memberships",
+      "description": "Software and service subscriptions",
+      "icon": "Crown",
+      "sortOrder": 6
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000007",
+      "name": "Housing",
+      "description": "Utilities and housing costs",
+      "icon": "House",
+      "sortOrder": 7
+    }
+  ],
+  "documents": [
+    {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "revisionId": "50000000-0000-4000-8000-000000000001",
+      "title": "Harbor Coffee",
+      "type": "ai_parsed",
+      "dayOffset": 0,
+      "inputText": "Receipt from Harbor Coffee. Flat white, chicken sandwich, and member discount.",
+      "status": "completed",
+      "image": {
+        "fileId": "60000000-0000-4000-8000-000000000001",
+        "filename": "harbor-coffee-receipt.jpg",
+        "asset": "harbor-coffee-receipt.jpg"
+      },
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000001",
+          "category": "Dining",
+          "itemName": "Flat White",
+          "amount": "16.00",
+          "currency": "CNY",
+          "convertedAmount": "16.00",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000002",
+          "category": "Dining",
+          "itemName": "Chicken Sandwich",
+          "amount": "28.00",
+          "currency": "CNY",
+          "convertedAmount": "28.00",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000003",
+          "category": "Dining",
+          "itemName": "Member Discount",
+          "description": "Receipt-level adjustment",
+          "amount": "-4.00",
+          "currency": "CNY",
+          "convertedAmount": "-4.00",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000002",
+      "revisionId": "50000000-0000-4000-8000-000000000002",
+      "title": "City Taxi",
+      "type": "manual",
+      "dayOffset": -1,
+      "inputText": "Airport transfer",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000004",
+          "category": "Transport",
+          "itemName": "Airport transfer",
+          "amount": "32.50",
+          "currency": "CNY",
+          "convertedAmount": "32.50",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000003",
+      "revisionId": "50000000-0000-4000-8000-000000000003",
+      "title": "FreshMart",
+      "type": "ai_parsed",
+      "dayOffset": -3,
+      "inputText": "FreshMart grocery receipt with food and household supplies.",
+      "status": "completed",
+      "image": {
+        "fileId": "60000000-0000-4000-8000-000000000002",
+        "filename": "freshmart-receipt.jpg",
+        "asset": "freshmart-receipt.jpg"
+      },
+      "dateSuggestionId": "80000000-0000-4000-8000-000000000001",
+      "dateSuggestionEntryId": "70000000-0000-4000-8000-000000000006",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000005",
+          "category": "Household",
+          "itemName": "Jasmine Rice",
+          "amount": "36.90",
+          "currency": "CNY",
+          "convertedAmount": "36.90",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000006",
+          "category": "Household",
+          "itemName": "Seasonal Fruit",
+          "description": "Deliver tomorrow",
+          "amount": "28.40",
+          "currency": "CNY",
+          "convertedAmount": "28.40",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000007",
+          "category": "Household",
+          "itemName": "Laundry Detergent",
+          "amount": "22.90",
+          "currency": "CNY",
+          "convertedAmount": "22.90",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000004",
+      "revisionId": "50000000-0000-4000-8000-000000000004",
+      "title": "CloudBox Subscription",
+      "type": "ai_parsed",
+      "dayOffset": -8,
+      "inputText": "Cloud storage monthly subscription, USD 9.99.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000008",
+          "category": "Memberships",
+          "itemName": "Cloud storage plan",
+          "amount": "9.99",
+          "currency": "USD",
+          "convertedAmount": "71.73",
+          "exchangeRate": "7.18"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000005",
+      "revisionId": "50000000-0000-4000-8000-000000000005",
+      "title": "City Pharmacy",
+      "type": "ai_parsed",
+      "dayOffset": -15,
+      "inputText": "City Pharmacy receipt.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000009",
+          "category": "Healthcare",
+          "itemName": "Cold medicine",
+          "amount": "36.80",
+          "currency": "CNY",
+          "convertedAmount": "36.80",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000010",
+          "category": "Healthcare",
+          "itemName": "Vitamin tablets",
+          "amount": "20.00",
+          "currency": "CNY",
+          "convertedAmount": "20.00",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000006",
+      "revisionId": "50000000-0000-4000-8000-000000000006",
+      "title": "Northstar Books",
+      "type": "ai_parsed",
+      "dayOffset": -32,
+      "inputText": "Programming and design books.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000011",
+          "category": "Education",
+          "itemName": "Distributed Systems",
+          "amount": "79.00",
+          "currency": "CNY",
+          "convertedAmount": "79.00",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000012",
+          "category": "Education",
+          "itemName": "Interface Design",
+          "amount": "49.00",
+          "currency": "CNY",
+          "convertedAmount": "49.00",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000007",
+      "revisionId": "50000000-0000-4000-8000-000000000007",
+      "title": "Kuala Lumpur Hotel",
+      "type": "ai_parsed",
+      "dayOffset": -61,
+      "inputText": "One night hotel stay, MYR 420.00.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000013",
+          "category": "Housing",
+          "itemName": "Hotel room",
+          "amount": "420.00",
+          "currency": "MYR",
+          "convertedAmount": "680.40",
+          "exchangeRate": "1.62"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000008",
+      "revisionId": "50000000-0000-4000-8000-000000000008",
+      "title": "Electricity Bill",
+      "type": "ai_parsed",
+      "dayOffset": -120,
+      "inputText": "Quarterly electricity bill.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000014",
+          "category": "Housing",
+          "itemName": "Electricity usage",
+          "amount": "286.35",
+          "currency": "CNY",
+          "convertedAmount": "286.35",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000015",
+          "category": "Housing",
+          "itemName": "Service fee",
+          "amount": "8.00",
+          "currency": "CNY",
+          "convertedAmount": "8.00",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000009",
+      "revisionId": "50000000-0000-4000-8000-000000000009",
+      "title": "Blurry Parking Receipt",
+      "type": "ai_parsed",
+      "dayOffset": -2,
+      "inputText": "Parking receipt; merchant and total are unreadable.",
+      "status": "failed",
+      "failureKind": "invalid_input",
+      "failureCode": "insufficient_evidence",
+      "failureMessage": "The receipt does not contain enough readable information.",
+      "entries": []
+    }
+  ]
+}

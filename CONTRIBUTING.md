@@ -7,6 +7,30 @@ reproducible fixes, documentation improvements, and small feature proposals are 
 
 Use Node.js 24.
 
+For product and UI work, start the isolated local demo workspace. It does not read remote database,
+object-storage, email, or AI credentials from your local environment:
+
+```bash
+npm ci
+npm run dev:demo
+```
+
+Open the printed loopback URL and select `Continue as dev`. The command uses the standalone
+`docker-compose.demo.yml` definition to start a dedicated `cashier-demo` PostgreSQL and MinIO stack,
+migrates `cashier_demo`, and seeds fictional receipts and ledger history. It does not require a
+project `.env` file. Existing demo edits are preserved. To inspect or rebuild only this dedicated
+workspace:
+
+```bash
+npm run demo:reset
+npm run demo:reset -- --apply
+```
+
+The first command is a non-destructive preview. The second applies the reset. Override occupied
+ports with `CASHIER_DEMO_APP_PORT`, `CASHIER_DEMO_POSTGRES_PORT`, or `CASHIER_DEMO_S3_PORT`.
+
+For development against explicitly configured infrastructure instead:
+
 ```bash
 npm ci
 cp .env.local.example .env

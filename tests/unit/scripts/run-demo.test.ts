@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+import { createDemoComposeArgs, createDemoEnvironment } from "../../../scripts/run-demo.mjs";
+
+describe("demo runtime environment", () => {
+  it("uses the standalone Compose file that does not require a project .env", () => {
+    expect(createDemoComposeArgs()).toEqual([
+      "compose",
+      "-p",
+      "cashier-demo",
+      "-f",
+      "docker-compose.demo.yml",
+      "up",
+      "-d",
+      "postgres",
+      "minio",
+      "storage-bootstrap",
+    ]);
+  });
+
+  it("overrides external service configuration with isolated loopback values", () => {
+    const result = createDemoEnvironment({
+      NODE_ENV: "development",
+      DATABASE_URL: "postgresql://remote.example.com/production",
+      S3_ENDPOINT: "https://storage.example.com",
+      OPENAI_API_KEY: "real-key",
+    });
+
+    expect(result).toMatchObject({
+      CASHIER_DEMO_MODE: "true",
+      DATABASE_URL: "postgresql://cashier:cashier-local-only@127.0.0.1:55433/cashier_demo",
+      S3_ENDPOINT: "http://127.0.0.1:59000",
+      OPENAI_API_KEY: "demo-unused",
+      OPENAI_BASE_URL: "http://127.0.0.1:1/v1",
+      DEV_AUTH_BYPASS: "true",
+      DISABLE_REGISTRATION: "true",
+    });
+  });
+
+  it("uses explicit valid ports consistently", () => {
+    const result = createDemoEnvironment({
+      NODE_ENV: "development",
+      CASHIER_DEMO_APP_PORT: "3010",
+      CASHIER_DEMO_POSTGRES_PORT: "55440",
+      CASHIER_DEMO_S3_PORT: "59010",
+    });
+    expect(result.APP_URL).toBe("http://127.0.0.1:3010");
+    expect(result.DATABASE_URL).toContain("127.0.0.1:55440/cashier_demo");
+    expect(result.S3_ENDPOINT).toBe("http://127.0.0.1:59010");
+    expect(result.S3_PUBLIC_ENDPOINT).toBe("http://127.0.0.1:59010");
+    expect(result.CASHIER_DEMO_POSTGRES_PORT).toBe("55440");
+    expect(result.CASHIER_DEMO_S3_PORT).toBe("59010");
+  });
+
+  it.each(["0", "65536", "3.5", "invalid"])("rejects invalid ports", (port) => {
+    expect(() =>
+      createDemoEnvironment({ NODE_ENV: "development", CASHIER_DEMO_APP_PORT: port })
+    ).toThrow(/CASHIER_DEMO_APP_PORT/);
+  });
+});

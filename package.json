@@ -13,6 +13,8 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:demo": "node scripts/run-demo.mjs",
+    "demo:reset": "node scripts/run-demo.mjs --reset",
     "build": "next build --webpack && node scripts/check-protected-route-bundle.mjs",
     "start": "next start",
     "lint": "eslint",
@@ -28,6 +30,7 @@
     "build:check": "node scripts/run-check-build.mjs",
     "test:prepare": "node scripts/prepare-test-postgres.mjs",
     "test:smoke": "node scripts/run-smoke.mjs",
+    "test:demo": "node scripts/run-demo.mjs --test",
     "test": "node scripts/run-vitest.mjs run --config vitest.config.mts --project=unit-node --project=unit-dom",
     "test:watch": "node scripts/run-vitest.mjs --watch --config vitest.config.mts --project=unit-node --project=unit-dom",
     "test:run": "node scripts/run-vitest.mjs run --config vitest.config.mts",
