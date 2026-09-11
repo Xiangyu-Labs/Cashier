@@ -98,6 +98,11 @@ describe("SourceDocumentDateOrganization", () => {
     const chip = document.querySelector(".rounded-full.bg-surface2");
     expect(chip).toBeInTheDocument();
     expect(chip).toHaveClass("h-8", "w-8");
+    // Rows are the shared line-item component in its transparent variant, so
+    // they don't paint an opaque block on the panel's tinted background.
+    const row = chip?.closest("div");
+    expect(row).toHaveClass("bg-transparent");
+    expect(row).not.toHaveClass("bg-surface");
     // The panel title icon uses the app foreground, not a theme tint.
     expect(document.querySelector(".lucide-sparkles")).not.toHaveClass("text-info");
   });

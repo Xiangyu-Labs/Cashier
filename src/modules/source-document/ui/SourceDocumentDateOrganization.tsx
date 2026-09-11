@@ -3,14 +3,13 @@
 import { useMemo, useState } from "react";
 import { CalendarRange, Check, Pencil, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { DateOrganizationSuggestion } from "../date-organization-contracts";
 import type { ApplyDateOrganizationInput } from "../contracts";
 import { resolveDateHint } from "../date-organization";
+import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
 
 interface Props {
   suggestion: DateOrganizationSuggestion;
@@ -231,61 +230,36 @@ export function SourceDocumentDateOrganization({
                 const entry = entryById.get(id);
                 if (entry == null) return null;
                 return (
-                  <div
+                  // The same row the line-item list renders, in read-only mode.
+                  <EditableLedgerEntryItem
                     key={id}
-                    className="flex min-h-11 items-center gap-1.5 px-3 py-2 text-sm sm:gap-2"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface2 text-text">
-                      <CategoryIcon iconName={entry.category?.icon ?? null} className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-text">{entry.itemName}</span>
-                      {(entry.category != null || entry.description != null) && (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                          {entry.category != null && (
-                            <span className="shrink-0">{entry.category.name}</span>
-                          )}
-                          {entry.description != null && entry.description !== "" && (
-                            <>
-                              <span className="text-muted-foreground/30">·</span>
-                              <span className="truncate text-[11px] italic text-muted-foreground/60">
-                                {entry.description}
-                              </span>
-                            </>
-                          )}
-                        </span>
-                      )}
-                    </span>
-                    {/* Mirrors the line-item rows: the main-currency value on
-                        top, the original amount it came from below. */}
-                    <AmountDisplay
-                      ledgerId={entry.ledgerId}
-                      amount={entry.amount}
-                      currency={entry.currency}
-                      mainCurrency={mainCurrency}
-                      date={suggestion.sourceDocumentDate}
-                      persistedConvertedAmount={entry.convertedAmount}
-                      variant="item"
-                      className="shrink-0"
-                    />
-                    {editing && (
-                      <Input
-                        aria-label={t("entryDate", { name: entry.itemName })}
-                        type="date"
-                        className="h-8 w-36"
-                        value={effectiveDates[id] ?? ""}
-                        onChange={(event) => {
-                          setDates((current) => ({
-                            ...current,
-                            [id]: event.target.value || null,
-                          }));
-                          setManuallyAdjustedIds((current) => new Set(current).add(id));
-                          setDirty(true);
-                          onAdjustmentStateChange?.(true, true);
-                        }}
-                      />
-                    )}
-                  </div>
+                    ledgerEntry={entry}
+                    categories={entry.category != null ? [entry.category] : []}
+                    mainCurrency={mainCurrency}
+                    sourceDocumentEntryDate={suggestion.sourceDocumentDate}
+                    originalEntryDate={suggestion.sourceDocumentDate}
+                    readOnly
+                    variant="plain"
+                    trailing={
+                      editing ? (
+                        <Input
+                          aria-label={t("entryDate", { name: entry.itemName })}
+                          type="date"
+                          className="h-8 w-36"
+                          value={effectiveDates[id] ?? ""}
+                          onChange={(event) => {
+                            setDates((current) => ({
+                              ...current,
+                              [id]: event.target.value || null,
+                            }));
+                            setManuallyAdjustedIds((current) => new Set(current).add(id));
+                            setDirty(true);
+                            onAdjustmentStateChange?.(true, true);
+                          }}
+                        />
+                      ) : undefined
+                    }
+                  />
                 );
               })}
             </div>

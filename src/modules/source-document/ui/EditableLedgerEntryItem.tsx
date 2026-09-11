@@ -1,7 +1,7 @@
 "use client";
 import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -31,6 +31,8 @@ const itemVariants = cva(
     variants: {
       variant: {
         default: "bg-surface hover:bg-surface2/50",
+        /** No surface of its own, for rows sitting on a tinted background. */
+        plain: "bg-transparent",
         warning: "bg-warning/5 border border-warning/20",
         error: "bg-destructive/5 border border-destructive/20",
         info: "bg-primary/5 border border-primary/20",
@@ -47,7 +49,8 @@ export { type EntryEditData };
 export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVariants> {
   ledgerEntry: LedgerEntry;
   categories: EntryCategory[];
-  categoryPlaceholder: string;
+  /** Only needed while the row is editable; read-only rows never show it. */
+  categoryPlaceholder?: string;
   preferredCurrencies?: string[];
   mainCurrency?: string;
   className?: string;
@@ -66,12 +69,14 @@ export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVa
   readOnly?: boolean;
   /** When provided, a delete affordance is shown for this entry (edit mode only). */
   onDelete?: (() => void) | undefined;
+  /** Extra control rendered after the amount, e.g. the date-organization picker. */
+  trailing?: ReactNode;
 }
 
 export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   ledgerEntry,
   categories,
-  categoryPlaceholder,
+  categoryPlaceholder = "",
   preferredCurrencies = [],
   mainCurrency = "CNY",
   variant = "default",
@@ -82,6 +87,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   originalEntryDate,
   readOnly = false,
   onDelete,
+  trailing,
 }: EditableLedgerEntryItemProps) {
   const t = useTranslations("Calendar");
   const tCommon = useTranslations("Common");
@@ -220,6 +226,8 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
           </>
         )}
       </div>
+
+      {trailing}
 
       {/* Read-only rows get the badge from AmountDisplay. */}
       {!readOnly && <ExpenseDeductionBadge amount={displayData.amount} />}
