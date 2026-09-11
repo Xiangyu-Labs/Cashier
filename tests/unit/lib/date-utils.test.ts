@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addPeriod,
   formatCivilDate,
   formatDateTimeForApi,
+  formatRelativeDateLabel,
   getDateRange,
   isValidDateString,
   parseDateRangeEnd,
@@ -92,5 +93,39 @@ describe("date-utils", () => {
     expect(isValidDateString("2026-03-18")).toBe(true);
     expect(isValidDateString("2026-02-30")).toBe(false);
     expect(isValidDateString("2026-3-18")).toBe(false);
+  });
+});
+
+describe("formatRelativeDateLabel", () => {
+  const labels = { today: "Today", yesterday: "Yesterday" };
+
+  // An absolute instant, so the assertions below hold in any runtime timezone.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-11T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("names today and yesterday", () => {
+    expect(formatRelativeDateLabel("2026-09-11", "en-US", labels)).toBe("Today");
+    expect(formatRelativeDateLabel("2026-09-10", "en-US", labels)).toBe("Yesterday");
+  });
+
+  it("resolves today in the requested timezone", () => {
+    expect(formatRelativeDateLabel("2026-09-11", "en-US", labels, "UTC")).toBe("Today");
+    expect(formatRelativeDateLabel("2026-09-11", "en-US", labels, "Pacific/Kiritimati")).toBe(
+      "Yesterday"
+    );
+  });
+
+  it("falls back to the localized date for older days", () => {
+    expect(formatRelativeDateLabel("2026-07-15", "en-US", labels)).toBe("Wednesday, July 15");
+  });
+
+  it("returns malformed input unchanged", () => {
+    expect(formatRelativeDateLabel("not-a-date", "en-US", labels)).toBe("not-a-date");
   });
 });

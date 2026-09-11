@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import { SourceDocumentDateOrganization } from "@/modules/source-document/ui/SourceDocumentDateOrganization";
 
@@ -48,7 +48,45 @@ const entry: LedgerEntryEmbeddedViewDto = {
   deletedAt: null,
 };
 
+function renderWithTimeZone(timeZone: string) {
+  render(
+    <SourceDocumentDateOrganization
+      suggestion={{
+        schemaVersion: 1,
+        id: "44444444-4444-4444-8444-444444444444",
+        referenceDate: "2026-09-10",
+        sourceDocumentDate: "2026-09-10",
+        items: [
+          {
+            ledgerEntryId: entry.id,
+            dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+            resolvedDate: "2026-09-09",
+            sourceText: "昨天",
+            snapshot: { itemName: entry.itemName, amount: entry.amount, currency: "CNY" },
+          },
+        ],
+      }}
+      entries={[entry]}
+      disabled={false}
+      onApply={vi.fn()}
+      onDismiss={vi.fn()}
+      timeZone={timeZone}
+    />
+  );
+}
+
 describe("SourceDocumentDateOrganization", () => {
+  // The group header names today/yesterday relative to the clock, so pin it:
+  // the fixtures suggest 2026-09-09 and the test below adjusts one to 2026-09-08.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 9, 12));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows the category icon for each suggested entry", () => {
     const categorised: LedgerEntryEmbeddedViewDto = {
       ...entry,
@@ -219,7 +257,8 @@ describe("SourceDocumentDateOrganization", () => {
       target: { value: "2026-09-08" },
     });
     fireEvent.click(screen.getByRole("button", { name: "完成调整" }));
-    expect(screen.getByText(/2026-09-08 · 1 笔/)).toBeInTheDocument();
+    // 2026-09-08 is yesterday under the pinned clock, so the header says so.
+    expect(screen.getByText(/昨天 · 1 笔/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "全部应用" }));
     await waitFor(() =>
@@ -281,5 +320,21 @@ describe("SourceDocumentDateOrganization", () => {
     expect(
       converted.compareDocumentPosition(original) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it("names the group date in the ledger timezone", () => {
+    // An absolute instant, so the timezone under test decides the day.
+    vi.setSystemTime(new Date("2026-09-09T12:00:00.000Z"));
+    renderWithTimeZone("UTC");
+
+    expect(screen.getByText(/今天 · 1 笔/)).toBeInTheDocument();
+  });
+
+  it("shifts today when the ledger timezone is a day ahead", () => {
+    vi.setSystemTime(new Date("2026-09-09T12:00:00.000Z"));
+    renderWithTimeZone("Pacific/Kiritimati");
+
+    // There it is already the 10th, so the same 2026-09-09 group is yesterday.
+    expect(screen.getByText(/昨天 · 1 笔/)).toBeInTheDocument();
   });
 });

@@ -58,6 +58,8 @@ interface SourceDocumentViewDetailsProps {
    */
   mobileView: "details" | "evidence";
   onMobileViewChange: (view: "details" | "evidence") => void;
+  /** Ledger timezone; the suggestion panel names today/yesterday against it. */
+  timeZone?: string;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
@@ -86,6 +88,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   onDateAdjustmentStateChange,
   mobileView,
   onMobileViewChange,
+  timeZone,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const t = useTranslations("SourceDocumentDetail");
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.documentDate ?? "";
@@ -133,6 +136,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             disabled={interactionDisabled || isOrganizingDates || dateOrganizationDisabled}
             onApply={onApplyDateOrganization}
             onDismiss={onDismissDateOrganization}
+            {...(timeZone != null ? { timeZone } : {})}
             {...(onDateAdjustmentStateChange == null
               ? {}
               : { onAdjustmentStateChange: onDateAdjustmentStateChange })}

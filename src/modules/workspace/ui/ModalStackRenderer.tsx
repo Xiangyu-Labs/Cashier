@@ -11,12 +11,14 @@ export interface ModalStackRendererProps {
   categories: EntryCategory[];
   mainCurrency: string;
   preferredCurrencies: string[];
+  timeZone?: string;
 }
 
 export function ModalStackRenderer({
   categories,
   mainCurrency,
   preferredCurrencies,
+  timeZone,
 }: ModalStackRendererProps) {
   const stack = useModalStackStore((state) => state.stack);
   const item = stack.at(-1);
@@ -68,6 +70,7 @@ export function ModalStackRenderer({
       categories,
       mainCurrency,
       preferredCurrencies,
+      ...(timeZone != null ? { timeZone } : {}),
     };
 
     return stackItem.type === "source-document" ? (

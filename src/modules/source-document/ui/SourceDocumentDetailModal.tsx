@@ -71,6 +71,7 @@ interface SourceDocumentDetailModalProps {
   ) => Promise<ApplyDateOrganizationResultDto>;
   onDismissDateOrganization?: (suggestionId: string) => Promise<unknown>;
   isOrganizingDates?: boolean;
+  timeZone?: string;
 }
 
 function SourceDocumentDetailEditor({
@@ -100,6 +101,7 @@ function SourceDocumentDetailEditor({
   onApplyDateOrganization,
   onDismissDateOrganization,
   isOrganizingDates = false,
+  timeZone,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -245,6 +247,7 @@ function SourceDocumentDetailEditor({
                   {...(onDismissDateOrganization == null ? {} : { onDismissDateOrganization })}
                   isOrganizingDates={isOrganizingDates}
                   dateOrganizationDisabled={editor.isEditMode || selection.isSelectionMode}
+                  {...(timeZone != null ? { timeZone } : {})}
                   mobileView={mobileView}
                   onMobileViewChange={setMobileView}
                   onDateAdjustmentStateChange={(active, dirty) => {

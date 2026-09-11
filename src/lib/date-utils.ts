@@ -232,3 +232,36 @@ export function isValidTimeZone(timeZone: string): boolean {
     return false;
   }
 }
+
+/**
+ * Label a "YYYY-MM-DD" day-group date the way the ledger stream labels its day
+ * splitters: Today / Yesterday in the viewer's timezone, otherwise the
+ * localized date. Malformed input is returned unchanged.
+ */
+export function formatRelativeDateLabel(
+  dateString: string,
+  locale: string,
+  labels: { today: string; yesterday: string },
+  timeZone?: string
+): string {
+  const date = parseDateString(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  const zonedToday = getDateInTimezone(timeZone);
+  const today = zonedToday != null ? parseDateString(zonedToday) : new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const key = localDateKey(date);
+  if (key === localDateKey(today)) return labels.today;
+  if (key === localDateKey(yesterday)) return labels.yesterday;
+  return date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
+}
+
+function localDateKey(value: Date): string {
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+}

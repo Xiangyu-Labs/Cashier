@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatRelativeDateLabel } from "@/lib/date-utils";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { DateOrganizationSuggestion } from "../date-organization-contracts";
 import type { ApplyDateOrganizationInput } from "../contracts";
@@ -21,6 +22,8 @@ interface Props {
   ) => Promise<unknown>;
   onDismiss: (suggestionId: string) => Promise<unknown>;
   onAdjustmentStateChange?: (active: boolean, dirty: boolean) => void;
+  /** Ledger timezone, so 今天/昨天 match the dates the ledger stream groups by. */
+  timeZone?: string;
 }
 
 export function SourceDocumentDateOrganization({
@@ -31,8 +34,11 @@ export function SourceDocumentDateOrganization({
   onApply,
   onDismiss,
   onAdjustmentStateChange,
+  timeZone,
 }: Props) {
   const t = useTranslations("SourceDocumentDetail.dateOrganization");
+  const tCard = useTranslations("SourceDocumentCard");
+  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [applicationError, setApplicationError] = useState(false);
@@ -192,7 +198,15 @@ export function SourceDocumentDateOrganization({
               <div className="min-w-0 text-sm font-medium">
                 {group.entryDate == null
                   ? t("uncertain")
-                  : t("moveTo", { date: group.entryDate, count: group.ledgerEntryIds.length })}
+                  : t("moveTo", {
+                      date: formatRelativeDateLabel(
+                        group.entryDate,
+                        locale,
+                        { today: tCard("today"), yesterday: tCard("yesterday") },
+                        timeZone
+                      ),
+                      count: group.ledgerEntryIds.length,
+                    })}
               </div>
               {group.entryDate != null && (
                 <Button

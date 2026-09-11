@@ -18,6 +18,7 @@ interface SourceDocumentDetailWrapperProps {
   mainCurrency: string;
   preferredCurrencies: string[];
   ledgerEntries?: LedgerEntry[];
+  timeZone?: string;
 }
 
 export function SourceDocumentDetailWrapper({
@@ -31,6 +32,7 @@ export function SourceDocumentDetailWrapper({
   mainCurrency,
   preferredCurrencies,
   ledgerEntries: initialLedgerEntries,
+  timeZone,
 }: SourceDocumentDetailWrapperProps) {
   const {
     sourceDocument,
@@ -108,6 +110,7 @@ export function SourceDocumentDetailWrapper({
       onApplyDateOrganization={applyDateOrganization}
       onDismissDateOrganization={dismissDateOrganization}
       isOrganizingDates={isOrganizingDates}
+      {...(timeZone != null ? { timeZone } : {})}
     />
   );
 }

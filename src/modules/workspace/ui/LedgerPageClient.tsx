@@ -237,6 +237,7 @@ export function LedgerPageClient({
           categories={categories}
           mainCurrency={mainCurrency}
           preferredCurrencies={preferredCurrencies}
+          {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
         />
       </div>
     </>
