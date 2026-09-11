@@ -225,8 +225,6 @@
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
     "dateUnknown": "Date unknown",
-    "today": "Today",
-    "yesterday": "Yesterday",
     "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
   },
   "QuickEntryForm": {
@@ -246,6 +244,8 @@
     "goToSettings": "Go to settings"
   },
   "Common": {
+    "today": "Today",
+    "yesterday": "Yesterday",
     "back": "Back",
     "skipToContent": "Skip to content",
     "close": "Close",

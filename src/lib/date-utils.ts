@@ -234,9 +234,11 @@ export function isValidTimeZone(timeZone: string): boolean {
 }
 
 /**
- * Label a "YYYY-MM-DD" day-group date the way the ledger stream labels its day
- * splitters: Today / Yesterday in the viewer's timezone, otherwise the
- * localized date. Malformed input is returned unchanged.
+ * The app's one label for a "YYYY-MM-DD" day: Today / Yesterday when the day is
+ * one of those in the viewer's timezone, otherwise the full written date —
+ * "2026年9月10日 星期四", "Thursday, September 10, 2026". The today/yesterday
+ * words come from the caller so each feature reads them from its own catalog.
+ * Malformed input is returned unchanged.
  */
 export function formatRelativeDateLabel(
   dateString: string,
@@ -255,7 +257,49 @@ export function formatRelativeDateLabel(
   const key = localDateKey(date);
   if (key === localDateKey(today)) return labels.today;
   if (key === localDateKey(yesterday)) return labels.yesterday;
-  return date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
+  return formatFullDate(date, locale);
+}
+
+/**
+ * {@link formatRelativeDateLabel} for a timestamp rather than a civil date: the
+ * instant is first resolved to the day it falls on in `timeZone`.
+ */
+export function formatInstantDateLabel(
+  instant: string | Date,
+  locale: string,
+  labels: { today: string; yesterday: string },
+  timeZone?: string
+): string {
+  const date = typeof instant === "string" ? parseISO(instant) : instant;
+  if (isNaN(date.getTime())) return typeof instant === "string" ? instant : "";
+  return formatRelativeDateLabel(formatDateKeyInTimeZone(date, timeZone), locale, labels, timeZone);
+}
+
+/**
+ * A day written out in full, weekday and year included. Chinese trails the
+ * weekday, English leads it — each language's own order for a written date.
+ */
+export function formatFullDate(date: Date, locale: string): string {
+  const day = getDateTimeFormatter(locale, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+  const weekday = getDateTimeFormatter(locale, { weekday: "long" }).format(date);
+  return locale.startsWith("zh") ? `${day} ${weekday}` : `${weekday}, ${day}`;
+}
+
+/** The calendar day an instant falls on, as "YYYY-MM-DD", in `timeZone`. */
+export function formatDateKeyInTimeZone(date: Date, timeZone?: string): string {
+  try {
+    return getDateTimeFormatter(
+      "sv-SE",
+      timeZone == null || timeZone === "" ? {} : { timeZone }
+    ).format(date);
+  } catch {
+    // An unusable timezone falls back to the runtime's own day.
+    return formatDateTimeForApi(date);
+  }
 }
 
 function localDateKey(value: Date): string {

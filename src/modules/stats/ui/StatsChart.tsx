@@ -1,6 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
-import { type DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
+import {
+  type DateRangeType,
+  formatDateTimeForApi,
+  formatRelativeDateLabel,
+} from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCompactCurrencyAmount, formatCurrencyAmount } from "@/lib/format/currency";
 import { buildChartPoints } from "@/modules/stats/lib/chart-points";
@@ -25,6 +29,7 @@ export function StatsChart({
   const locale = useLocale();
   const t = useTranslations("StatsChart");
   const tTab = useTranslations("StatsTab");
+  const tCommon = useTranslations("Common");
   // The queried range is already truncated to the ledger-timezone today by the
   // stats state; do not re-clamp with the browser clock here.
   const chartPoints = useMemo(() => {
@@ -173,10 +178,9 @@ export function StatsChart({
           const displayDate =
             rangeType === "year"
               ? p.fullDate // YYYY-MM format
-              : parseDateString(p.fullDate).toLocaleDateString(locale, {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
+              : formatRelativeDateLabel(p.fullDate, locale, {
+                  today: tCommon("today"),
+                  yesterday: tCommon("yesterday"),
                 });
 
           const isHovered = hoveredPoint?.dataset === chartPoints && hoveredPoint.index === i;

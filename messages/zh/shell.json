@@ -89,6 +89,8 @@
     "loginWarn": "如果不是您本人登录，请立即保护您的账户安全。"
   },
   "Common": {
+    "today": "今天",
+    "yesterday": "昨天",
     "back": "返回",
     "skipToContent": "跳到主内容",
     "close": "关闭",

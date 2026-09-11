@@ -104,7 +104,10 @@ describe("ServiceCredentialSection", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it.each(["en", "zh"] as const)("formats credential dates with the %s locale", (locale) => {
+  it.each([
+    ["en", "Friday, August 7, 2026"],
+    ["zh", "2026年8月7日 星期五"],
+  ] as const)("formats credential dates with the %s locale", (locale, formatted) => {
     intl.locale = locale;
     const createdAt = "2026-08-07T00:00:00.000Z";
     render(
@@ -126,8 +129,6 @@ describe("ServiceCredentialSection", () => {
       />
     );
 
-    expect(
-      screen.getByText(`createdAt:${new Date(createdAt).toLocaleDateString(locale)}`)
-    ).toBeInTheDocument();
+    expect(screen.getByText(`createdAt:${formatted}`)).toBeInTheDocument();
   });
 });

@@ -239,6 +239,8 @@
     "retry": "编辑重试"
   },
   "Common": {
+    "today": "今天",
+    "yesterday": "昨天",
     "back": "返回",
     "skipToContent": "跳到主内容",
     "close": "关闭",
@@ -563,8 +565,6 @@
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",
     "dateUnknown": "日期未知",
-    "today": "今天",
-    "yesterday": "昨天",
     "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。"
   },
   "SourceDocumentDetail": {

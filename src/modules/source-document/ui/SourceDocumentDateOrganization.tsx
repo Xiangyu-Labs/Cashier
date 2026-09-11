@@ -37,6 +37,7 @@ export function SourceDocumentDateOrganization({
 }: Props) {
   const t = useTranslations("SourceDocumentDetail.dateOrganization");
   const tCard = useTranslations("SourceDocumentCard");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -213,7 +214,7 @@ export function SourceDocumentDateOrganization({
                   {formatRelativeDateLabel(
                     group.entryDate,
                     locale,
-                    { today: tCard("today"), yesterday: tCard("yesterday") },
+                    { today: tCommon("today"), yesterday: tCommon("yesterday") },
                     timeZone
                   )}
                 </span>

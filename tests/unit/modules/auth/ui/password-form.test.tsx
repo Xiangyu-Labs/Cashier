@@ -95,21 +95,21 @@ describe("PasswordForm", () => {
   });
 
   it.each([
-    ["en", enMessages, "Last changed"],
-    ["zh", zhMessages, "上次修改于"],
-  ] as const)("formats the last-updated date with the %s locale", (locale, messages, prefix) => {
-    const updatedAt = "2026-08-11T00:00:00.000Z";
-    render(
-      <NextIntlClientProvider locale={locale} messages={messages}>
-        <PasswordForm hasPassword passwordUpdatedAt={updatedAt} />
-      </NextIntlClientProvider>
-    );
+    ["en", enMessages, "Last changed", "Tuesday, August 11, 2026"],
+    ["zh", zhMessages, "上次修改于", "2026年8月11日 星期二"],
+  ] as const)(
+    "formats the last-updated date with the %s locale",
+    (locale, messages, prefix, formatted) => {
+      const updatedAt = "2026-08-11T00:00:00.000Z";
+      render(
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <PasswordForm hasPassword passwordUpdatedAt={updatedAt} />
+        </NextIntlClientProvider>
+      );
 
-    const formatted = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-      new Date(updatedAt)
-    );
-    expect(screen.getByText(`${prefix} ${formatted}`)).toBeInTheDocument();
-  });
+      expect(screen.getByText(`${prefix} ${formatted}`)).toBeInTheDocument();
+    }
+  );
 });
 
 function submitSetPassword() {

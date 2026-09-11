@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatInstantDateLabel } from "@/lib/date-utils";
 import { changePasswordAction } from "@/modules/auth/server-actions/change-password";
 import { setPasswordAction } from "@/modules/auth/server-actions/set-password";
 import type { PasswordMutationActionErrorCode } from "@/modules/auth/contracts";
@@ -66,6 +67,7 @@ export function PasswordForm({
   onCredentialsChanged?: () => void | Promise<void>;
 }) {
   const t = useTranslations("Settings.Account");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -149,9 +151,10 @@ export function PasswordForm({
         {savedPasswordUpdatedAt == null
           ? t("passwordNotSet")
           : t("passwordLastChanged", {
-              date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                new Date(savedPasswordUpdatedAt)
-              ),
+              date: formatInstantDateLabel(savedPasswordUpdatedAt, locale, {
+                today: tCommon("today"),
+                yesterday: tCommon("yesterday"),
+              }),
             })}
       </span>
       <CredentialChangeDialog

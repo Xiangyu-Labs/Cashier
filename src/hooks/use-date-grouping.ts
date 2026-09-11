@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useCallback } from "react";
-import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { formatRelativeDateLabel, parseDateString } from "@/lib/date-utils";
 import { add as addDecimal } from "@/lib/money/decimal";
 
 interface DateGroup<T> {
@@ -58,30 +58,17 @@ export function useDateGrouping<T>({
 
     const groups: Record<string, DateGroup<T>> = {};
 
-    const zonedToday = getDateInTimezone(timeZone);
-    const today = zonedToday != null ? parseDateString(zonedToday) : new Date();
-    const todayStr = formatDateTimeForApi(today);
-    const yesterdayDate = new Date(today);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = formatDateTimeForApi(yesterdayDate);
-
     sortedItems.forEach((item) => {
       const dateStr = memoizedGetDateStr(item);
       const date = parseDateString(dateStr);
       const sortTimestamp = date.getTime();
 
-      let title = "";
-      if (dateStr === todayStr) {
-        title = t("today");
-      } else if (dateStr === yesterdayStr) {
-        title = t("yesterday");
-      } else {
-        title = date.toLocaleDateString(locale, {
-          month: "long",
-          day: "numeric",
-          weekday: "long",
-        });
-      }
+      const title = formatRelativeDateLabel(
+        dateStr,
+        locale,
+        { today: t("today"), yesterday: t("yesterday") },
+        timeZone
+      );
 
       const group = groups[dateStr] ?? {
         title,

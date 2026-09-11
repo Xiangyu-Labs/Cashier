@@ -15,13 +15,14 @@ export function UnifiedGroupHeader({
 }) {
   const locale = useLocale();
   const t = useTranslations("SourceDocumentCard");
+  const tCommon = useTranslations("Common");
   const dateLabel =
     group.dateProvenance === "unknown"
       ? t("dateUnknown")
       : formatRelativeDateLabel(
           group.date,
           locale,
-          { today: t("today"), yesterday: t("yesterday") },
+          { today: tCommon("today"), yesterday: tCommon("yesterday") },
           timeZone
         );
 

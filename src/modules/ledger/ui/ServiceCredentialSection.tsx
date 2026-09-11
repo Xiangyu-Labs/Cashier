@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useLocale, useTranslations } from "next-intl";
+import { formatInstantDateLabel } from "@/lib/date-utils";
 import { copyToClipboard } from "@/lib/utils";
 import { UI } from "@/lib/constants";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -122,7 +123,10 @@ export function ServiceCredentialSection({
                   </div>
                   <div className="mt-1 text-[10px] text-muted">
                     {t("createdAt", {
-                      date: new Date(credential.createdAt).toLocaleDateString(locale),
+                      date: formatInstantDateLabel(credential.createdAt, locale, {
+                        today: tCommon("today"),
+                        yesterday: tCommon("yesterday"),
+                      }),
                     })}
                   </div>
                 </div>

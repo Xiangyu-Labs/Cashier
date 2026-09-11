@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getHeatmapColor, formatCellAmount } from "../../lib/heatmap-colors";
+import { formatRelativeDateLabel } from "@/lib/date-utils";
 import type { HeatmapLevel } from "../../types";
 import { compare } from "@/lib/money/decimal";
 
@@ -32,6 +33,10 @@ export function DayCellLarge({
   locale,
 }: DayCellLargeProps) {
   const t = useTranslations("Calendar");
+  const dateLabel = formatRelativeDateLabel(date, locale, {
+    today: t("today"),
+    yesterday: t("yesterday"),
+  });
 
   return (
     <div className="relative min-w-0 overflow-visible">
@@ -39,7 +44,7 @@ export function DayCellLarge({
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label={`${date}, ${count > 0 || compare(amount, "0") !== 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
+            aria-label={`${dateLabel}, ${count > 0 || compare(amount, "0") !== 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
             onClick={onClick}
             className={cn(
               "aspect-square w-full min-w-0 overflow-hidden rounded-lg transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
@@ -69,7 +74,7 @@ export function DayCellLarge({
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" align="center">
-          <div className="font-medium">{date}</div>
+          <div className="font-medium">{dateLabel}</div>
           {count > 0 || compare(amount, "0") !== 0 ? (
             <div>
               {t("expense")}: {formatCellAmount(amount, currency, locale)}

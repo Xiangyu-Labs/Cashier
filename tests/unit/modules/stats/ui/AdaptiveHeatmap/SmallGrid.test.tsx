@@ -35,9 +35,10 @@ describe("SmallGridHeatmap", () => {
       expect(cell?.querySelector('[aria-hidden="true"]')).not.toBeNull();
     }
 
-    // In-range days stay clickable, including days without spending.
-    fireEvent.click(screen.getByRole("button", { name: /2026-08-05/ }));
-    fireEvent.click(screen.getByRole("button", { name: /2026-08-06/ }));
+    // In-range days stay clickable, including days without spending. The cell
+    // names its day in full, so match on the date rather than the raw key.
+    fireEvent.click(screen.getByRole("button", { name: /2026年8月5日/ }));
+    fireEvent.click(screen.getByRole("button", { name: /2026年8月6日/ }));
     expect(onDayClick).toHaveBeenCalledTimes(2);
     expect(onDayClick).toHaveBeenCalledWith("2026-08-05");
     expect(onDayClick).toHaveBeenCalledWith("2026-08-06");

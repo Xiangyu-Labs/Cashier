@@ -3,6 +3,7 @@ import {
   addPeriod,
   formatCivilDate,
   formatDateTimeForApi,
+  formatInstantDateLabel,
   formatRelativeDateLabel,
   getDateRange,
   isValidDateString,
@@ -121,8 +122,21 @@ describe("formatRelativeDateLabel", () => {
     );
   });
 
-  it("falls back to the localized date for older days", () => {
-    expect(formatRelativeDateLabel("2026-07-15", "en-US", labels)).toBe("Wednesday, July 15");
+  it("writes an older day out in full, weekday and year included", () => {
+    expect(formatRelativeDateLabel("2026-07-15", "en-US", labels)).toBe("Wednesday, July 15, 2026");
+    expect(formatRelativeDateLabel("2026-07-15", "zh", labels)).toBe("2026年7月15日 星期三");
+  });
+
+  it("labels a timestamp by the day it falls on", () => {
+    expect(formatInstantDateLabel("2026-09-11T02:00:00.000Z", "en-US", labels, "UTC")).toBe(
+      "Today"
+    );
+    expect(
+      formatInstantDateLabel("2026-09-11T02:00:00.000Z", "en-US", labels, "Pacific/Kiritimati")
+    ).toBe("Yesterday");
+    expect(formatInstantDateLabel("2026-07-15T02:00:00.000Z", "en-US", labels, "UTC")).toBe(
+      "Wednesday, July 15, 2026"
+    );
   });
 
   it("returns malformed input unchanged", () => {

@@ -239,6 +239,8 @@
     "loadingMore": "Loading more…"
   },
   "Common": {
+    "today": "Today",
+    "yesterday": "Yesterday",
     "back": "Back",
     "skipToContent": "Skip to content",
     "close": "Close",
@@ -563,8 +565,6 @@
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
     "dateUnknown": "Date unknown",
-    "today": "Today",
-    "yesterday": "Yesterday",
     "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
   },
   "SourceDocumentDetail": {

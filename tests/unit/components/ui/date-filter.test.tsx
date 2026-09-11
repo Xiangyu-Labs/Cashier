@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { DateFilter } from "@/components/ui/date-filter";
 
@@ -8,10 +8,24 @@ vi.mock("next-intl", () => ({
 }));
 
 describe("DateFilter", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("names today and yesterday rather than spelling the date out", () => {
+    // Local noon, so the assertion holds in any runtime timezone.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 11, 12));
+
+    render(<DateFilter value="2026-09-11" onChange={() => {}} readOnly />);
+
+    expect(screen.getByText("today")).toBeInTheDocument();
+  });
+
   it("renders a date-only string without shifting it to the previous day", () => {
     render(<DateFilter value="2026-07-28" onChange={() => {}} />);
 
-    expect(screen.getByText("2026年7月28日")).toBeInTheDocument();
+    expect(screen.getByText("2026年7月28日 星期二")).toBeInTheDocument();
   });
 
   it("uses a real button to clear without opening the calendar", () => {
@@ -40,7 +54,7 @@ describe("DateFilter", () => {
     // painted the outline button, calendar icon, and dropdown chevron.
     render(<DateFilter value="2026-07-28" onChange={() => {}} readOnly />);
 
-    expect(screen.getByText("2026年7月28日")).toBeInTheDocument();
+    expect(screen.getByText("2026年7月28日 星期二")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -50,7 +64,7 @@ describe("DateFilter", () => {
     // surrounding row.
     render(<DateFilter value="2026-07-28" onChange={() => {}} readOnly size="sm" />);
 
-    const value = screen.getByText("2026年7月28日");
+    const value = screen.getByText("2026年7月28日 星期二");
     expect(value).toHaveClass("text-sm");
     expect(value).not.toHaveClass("text-xs");
   });
@@ -59,7 +73,7 @@ describe("DateFilter", () => {
     const onChange = vi.fn();
     render(<DateFilter value="2026-07-28" onChange={onChange} readOnly />);
 
-    fireEvent.click(screen.getByText("2026年7月28日"));
+    fireEvent.click(screen.getByText("2026年7月28日 星期二"));
 
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
@@ -77,7 +91,7 @@ describe("DateFilter", () => {
     );
 
     expect(container.querySelector(".lucide-calendar")).not.toBeInTheDocument();
-    expect(screen.getByText("2026年7月28日")).toHaveClass("text-base", "font-semibold");
+    expect(screen.getByText("2026年7月28日 星期二")).toHaveClass("text-base", "font-semibold");
   });
 
   it("falls back to the interactive picker when read-only has no value", () => {

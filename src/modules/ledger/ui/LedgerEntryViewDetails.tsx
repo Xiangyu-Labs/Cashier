@@ -5,8 +5,11 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import { parseISO } from "date-fns";
+import {
+  formatDateTimeForApi,
+  formatInstantDateLabel,
+  formatRelativeDateLabel,
+} from "@/lib/date-utils";
 import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
@@ -54,6 +57,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   busy = false,
 }: LedgerEntryViewDetailsProps): ReactNode {
   const t = useTranslations("LedgerEntryDetail");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
 
   const displayData = useMemo(
@@ -102,15 +106,6 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     displayData.description,
   ]);
 
-  const formatDateTime = (dateStr: string) => {
-    const parsed = dateStr.includes("T") ? parseISO(dateStr) : parseDateString(dateStr);
-    return parsed.toLocaleDateString(locale, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const handleFieldChange = useCallback(
     <K extends keyof EntryPendingChanges>(field: K, value: EntryPendingChanges[K]) => {
       onFieldChange({ [field]: value });
@@ -141,10 +136,9 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
               <span className="text-sm text-text">
                 {entryDate != null && entryDate !== ""
-                  ? parseDateString(entryDate).toLocaleDateString(locale, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
+                  ? formatRelativeDateLabel(entryDate, locale, {
+                      today: tCommon("today"),
+                      yesterday: tCommon("yesterday"),
                     })
                   : "-"}
               </span>
@@ -214,7 +208,12 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
           <div className="flex justify-between items-center border-t border-border/50 pt-4">
             <span className="text-sm text-muted-foreground">{t("createdAt")}</span>
-            <span className="text-sm text-text">{formatDateTime(ledgerEntry.createdAt)}</span>
+            <span className="text-sm text-text">
+              {formatInstantDateLabel(ledgerEntry.createdAt, locale, {
+                today: tCommon("today"),
+                yesterday: tCommon("yesterday"),
+              })}
+            </span>
           </div>
         </div>
       </div>

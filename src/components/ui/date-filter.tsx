@@ -7,8 +7,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import {
-  formatCivilDate,
   formatDateTimeForApi,
+  formatRelativeDateLabel,
   isValidDateString,
   parseDateString,
 } from "@/lib/date-utils";
@@ -58,6 +58,7 @@ export function DateFilter({
   maxDate,
 }: DateFilterProps) {
   const t = useTranslations("DateFilter");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [open, setOpen] = React.useState(false);
 
@@ -68,6 +69,15 @@ export function DateFilter({
     }
     return isValidDateString(value) ? value : null;
   }, [value]);
+
+  // The field paints its value the way the rest of the app writes a day.
+  const dateLabel =
+    civilDateString == null
+      ? null
+      : formatRelativeDateLabel(civilDateString, locale, {
+          today: tCommon("today"),
+          yesterday: tCommon("yesterday"),
+        });
 
   const dateValue = React.useMemo(
     () => (civilDateString == null ? null : parseDateString(civilDateString)),
@@ -97,13 +107,7 @@ export function DateFilter({
             className={cn("shrink-0 text-muted-foreground", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}
           />
         )}
-        <span className={cn("min-w-0 text-text text-sm", readOnlyTextClassName)}>
-          {formatCivilDate(civilDateString, locale, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
-        </span>
+        <span className={cn("min-w-0 text-text text-sm", readOnlyTextClassName)}>{dateLabel}</span>
       </span>
     );
   }
@@ -126,13 +130,7 @@ export function DateFilter({
           >
             <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
             <span className={cn(truncate ? "truncate" : "whitespace-nowrap", "flex-1")}>
-              {civilDateString != null
-                ? formatCivilDate(civilDateString, locale, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })
-                : (placeholder ?? t("selectDate"))}
+              {dateLabel ?? placeholder ?? t("selectDate")}
             </span>
             <ChevronDown
               className={cn("ml-auto opacity-50 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}

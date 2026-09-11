@@ -89,6 +89,8 @@
     "loginWarn": "If you did not sign in, please secure your account immediately."
   },
   "Common": {
+    "today": "Today",
+    "yesterday": "Yesterday",
     "back": "Back",
     "skipToContent": "Skip to content",
     "close": "Close",
