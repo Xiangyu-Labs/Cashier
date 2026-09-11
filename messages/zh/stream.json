@@ -563,7 +563,7 @@
     "deleteConfirmDesc": "确定要删除此原始凭证吗？这将同时删除所有关联的账本记录。",
     "rawContent": "原始输入",
     "rawEvidence": "原始凭证",
-    "viewEvidence": "查看原始凭证",
+    "viewEvidence": "原始凭证",
     "backToDetails": "返回明细",
     "translation": "翻译",
     "originalText": "识别原文",

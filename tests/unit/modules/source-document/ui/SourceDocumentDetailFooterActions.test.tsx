@@ -27,14 +27,14 @@ describe("SourceDocumentDetailFooterActions", () => {
   it("omits the evidence button unless the owner offers the evidence pane", () => {
     render(<SourceDocumentDetailFooterActions {...baseProps} />);
 
-    expect(screen.queryByRole("button", { name: "查看原始凭证" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "原始凭证" })).not.toBeInTheDocument();
   });
 
   it("orders the evidence, retry, and delete actions and calls back", () => {
     const onViewEvidence = vi.fn();
     render(<SourceDocumentDetailFooterActions {...baseProps} onViewEvidence={onViewEvidence} />);
 
-    const evidenceButton = screen.getByRole("button", { name: "查看原始凭证" });
+    const evidenceButton = screen.getByRole("button", { name: "原始凭证" });
     const retryButton = screen.getByRole("button", { name: "编辑重试" });
     const deleteButton = screen.getByRole("button", { name: "删除" });
 
