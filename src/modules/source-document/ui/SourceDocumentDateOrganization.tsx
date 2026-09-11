@@ -240,16 +240,21 @@ export function SourceDocumentDateOrganization({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-text">{entry.itemName}</span>
-                      {suggestionByEntryId.get(id)?.sourceText != null ? (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {t("recognizedFrom", {
-                            text: suggestionByEntryId.get(id)!.sourceText,
-                          })}
-                          {suggestionByEntryId.get(id)!.dateHint.kind !== "absolute"
-                            ? ` · ${t("inferred")}`
-                            : ""}
+                      {(entry.category != null || entry.description != null) && (
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                          {entry.category != null && (
+                            <span className="shrink-0">{entry.category.name}</span>
+                          )}
+                          {entry.description != null && entry.description !== "" && (
+                            <>
+                              <span className="text-muted-foreground/30">·</span>
+                              <span className="truncate text-[11px] italic text-muted-foreground/60">
+                                {entry.description}
+                              </span>
+                            </>
+                          )}
                         </span>
-                      ) : null}
+                      )}
                     </span>
                     <AmountText variant="item">
                       {formatCurrencyAmount(entry.amount, entry.currency ?? "", locale)}

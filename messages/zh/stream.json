@@ -644,8 +644,6 @@
       "keepsOriginal": "保留本账单",
       "changesOriginal": "将修改本账单日期",
       "createsNew": "将创建新账单",
-      "recognizedFrom": "识别原文“{text}”",
-      "inferred": "根据参照日期推算",
       "entryDate": "{name} 的建议日期"
     }
   },

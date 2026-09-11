@@ -463,8 +463,6 @@
       "keepsOriginal": "Keeps this bill",
       "changesOriginal": "Changes this bill's date",
       "createsNew": "Creates a new bill",
-      "recognizedFrom": "Recognized from “{text}”",
-      "inferred": "inferred from the reference date",
       "entryDate": "Suggested date for {name}"
     }
   },
