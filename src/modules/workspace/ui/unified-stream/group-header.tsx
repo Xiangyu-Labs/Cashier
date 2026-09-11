@@ -21,12 +21,9 @@ export function UnifiedGroupHeader({
     if (isNaN(date.getTime())) return group.date;
     return formatLocalizedDate(date, locale, t("today"), t("yesterday"), timeZone);
   })();
-  const provenanceNote = group.dateProvenance === "submitted" ? t("submittedGroupSuffix") : "";
-
   return (
     <EntryGroupHeader
       title={dateLabel}
-      {...(provenanceNote !== "" ? { subtitle: provenanceNote } : {})}
       totalLabel={formatCurrencyAmount(group.total, mainCurrency, locale)}
     />
   );

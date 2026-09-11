@@ -531,10 +531,7 @@
     "invalidNeedsCorrection": "Needs manual correction",
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
-    "submittedOn": "Submitted",
     "dateUnknown": "Date unknown",
-    "submittedDateTitle": "Submission date — no transaction date available",
-    "submittedGroupSuffix": "(submitted)",
     "today": "Today",
     "yesterday": "Yesterday",
     "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."

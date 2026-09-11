@@ -107,6 +107,42 @@ describe("LedgerEntriesUnifiedGroups", () => {
     expect(cardProps).toHaveBeenCalledWith(expect.objectContaining({ defaultExpanded: true }));
   });
 
+  it("renders the date alone for a submission-date group", () => {
+    const group = {
+      date: "2026-07-15",
+      dateProvenance: "submitted" as const,
+      total: "0",
+      unconvertedCount: 0,
+      currencyTotals: {},
+      items: [
+        {
+          sourceDocument: { id: "document-1", ledgerId: "ledger-1", status: "processing" },
+          ledgerEntries: [],
+          effectiveDate: "2026-07-15",
+          dateProvenance: "submitted" as const,
+        },
+      ],
+    } as unknown as UnifiedStreamGroup;
+
+    render(
+      <LedgerEntriesUnifiedGroups
+        streamGroups={[group]}
+        mainCurrency="CNY"
+        onViewSourceDetail={vi.fn()}
+        onDeleteSourceConfirm={vi.fn()}
+        isSelectionMode={false}
+        selectedIds={[]}
+        onToggleSelection={vi.fn()}
+        noRecordsText="No records"
+        getItemProps={() => ({})}
+      />
+    );
+
+    const header = screen.getByRole("heading", { level: 3 });
+    expect(header.textContent).not.toBe("");
+    expect(header.textContent).not.toContain("提交");
+  });
+
   it("passes the ledger collapse preference to cards", () => {
     const group = {
       date: "2026-07-15",

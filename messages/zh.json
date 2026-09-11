@@ -224,10 +224,7 @@
     "invalidNeedsCorrection": "需要手动修正",
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",
-    "submittedOn": "提交于",
     "dateUnknown": "日期未知",
-    "submittedDateTitle": "提交日期（无交易日期）",
-    "submittedGroupSuffix": "（提交）",
     "today": "今天",
     "yesterday": "昨天",
     "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。"
