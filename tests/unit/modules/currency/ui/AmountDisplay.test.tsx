@@ -16,7 +16,6 @@ function renderAmountDisplay(props: Partial<React.ComponentProps<typeof AmountDi
       messages={{
         Currency: {
           conversionUnavailable: "暂时无法换算",
-          expenseDeduction: "支出抵扣",
         },
       }}
     >
@@ -77,17 +76,18 @@ describe("AmountDisplay", () => {
     expect(screen.getByText(/CNY\s*100\.00/)).toBeInTheDocument();
   });
 
-  it("labels negative amounts as expense deductions", () => {
+  it("shows negative amounts without any extra label", () => {
     mockUseAmountDisplay.mockReturnValue({
       displayAmount: "-8",
       isDifferentCurrency: false,
       originalCurrency: "CNY",
       status: "idle",
     });
-    renderAmountDisplay({ amount: "-8" });
+    const { container } = renderAmountDisplay({ amount: "-8" });
 
-    expect(screen.getByText("支出抵扣")).toBeInTheDocument();
     expect(screen.getByText(/-.*8\.00/)).toBeInTheDocument();
+    // Negative amounts used to carry an "expense deduction" caption; it is gone.
+    expect(container.textContent).toBe("-¥8.00");
   });
 
   it("can hide the original amount on success", () => {

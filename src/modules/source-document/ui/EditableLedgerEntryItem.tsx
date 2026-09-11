@@ -1,5 +1,4 @@
 "use client";
-import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { memo, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -228,9 +227,6 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
       </div>
 
       {trailing}
-
-      {/* Read-only rows get the badge from AmountDisplay. */}
-      {!readOnly && <ExpenseDeductionBadge amount={displayData.amount} />}
 
       {!readOnly && onDelete != null && (
         <Button

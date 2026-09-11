@@ -89,8 +89,7 @@
     "retryErrorDescription": "The original result was kept. Please try again."
   },
   "Currency": {
-    "conversionUnavailable": "Conversion unavailable",
-    "expenseDeduction": "Expense deduction"
+    "conversionUnavailable": "Conversion unavailable"
   },
   "DateFilter": {
     "selectDate": "Select date",
@@ -523,8 +522,6 @@
     "retryProcessing": "Retry Processing",
     "editRetry": "Edit and Retry",
     "moreActions": "More Actions",
-    "currencyBreakdown": "Currency Breakdown",
-    "convertedTotal": "Converted",
     "image": "Images",
     "imageAlt": "Image {index}",
     "quickEntry": "Quick Entry",

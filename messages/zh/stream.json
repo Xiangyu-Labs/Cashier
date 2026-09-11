@@ -89,8 +89,7 @@
     "retryErrorDescription": "原结果未改变，请稍后重试。"
   },
   "Currency": {
-    "conversionUnavailable": "暂时无法换算",
-    "expenseDeduction": "支出抵扣"
+    "conversionUnavailable": "暂时无法换算"
   },
   "DateFilter": {
     "selectDate": "选择日期",
@@ -523,8 +522,6 @@
     "retryProcessing": "重新处理",
     "editRetry": "编辑重试",
     "moreActions": "更多操作",
-    "currencyBreakdown": "货币明细",
-    "convertedTotal": "折合",
     "image": "图片",
     "imageAlt": "图片 {index}",
     "quickEntry": "快速记账",

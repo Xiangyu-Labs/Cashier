@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EntryCategory, LedgerEntry } from "@/modules/ledger/contracts";
-import { buildSourceDocumentCardTotals } from "@/modules/source-document/ui/source-document-card.utils";
+import { calculateSourceDocumentCardTotal } from "@/modules/source-document/ui/source-document-card.utils";
 
 const defaultCategory: EntryCategory = {
   id: "cat-food",
@@ -37,8 +37,8 @@ function createEntry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
 }
 
 describe("source-document-card utils", () => {
-  it("builds totals with converted amounts and falls back to main-currency entry amounts", () => {
-    const totals = buildSourceDocumentCardTotals(
+  it("totals converted amounts and falls back to main-currency entry amounts", () => {
+    const total = calculateSourceDocumentCardTotal(
       [
         createEntry({
           id: "usd-entry",
@@ -52,26 +52,17 @@ describe("source-document-card utils", () => {
           currency: "CNY",
           convertedAmount: null,
         }),
+        // A foreign amount with no conversion contributes nothing.
+        createEntry({
+          id: "sgd-entry",
+          amount: "5.00",
+          currency: "SGD",
+          convertedAmount: null,
+        }),
       ],
       "CNY"
     );
 
-    expect(totals.subtotalsByCurrency).toEqual({
-      USD: "10",
-      CNY: "20",
-    });
-    expect(totals.totalInMainCurrency).toBe("90");
-    expect(totals.breakdownData).toEqual([
-      {
-        currency: "USD",
-        amount: "10",
-        convertedAmount: "70",
-      },
-      {
-        currency: "CNY",
-        amount: "20",
-        convertedAmount: "20",
-      },
-    ]);
+    expect(total).toBe("90");
   });
 });

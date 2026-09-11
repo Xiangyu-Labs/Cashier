@@ -1,5 +1,4 @@
 "use client";
-import { ExpenseDeductionBadge } from "@/modules/currency/ui/ExpenseDeductionBadge";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -67,8 +66,6 @@ export function EntryHeader({
           inputClassName="font-semibold text-base sm:text-lg"
           disabled={disabled}
         />
-
-        <ExpenseDeductionBadge amount={amount} />
 
         {/*
           Same reading order as the stream rows: the main-currency value on top,
