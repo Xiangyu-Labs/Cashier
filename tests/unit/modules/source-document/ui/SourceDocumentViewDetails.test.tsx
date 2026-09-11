@@ -100,6 +100,8 @@ function renderDetails(count: number, isLoadingImages = false) {
       selectedEntryIds={[]}
       isSelectionMode={false}
       isLoadingImages={isLoadingImages}
+      mobileView="details"
+      onMobileViewChange={vi.fn()}
       onSourceDocChange={vi.fn()}
       onEntryChange={vi.fn()}
       onSelectEntry={vi.fn()}
@@ -118,23 +120,27 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("emphasises the transaction time and mutes the created-at metadata", () => {
+  it("keeps one label style and puts the total at the end of the entry-list header", () => {
     renderDetails(0);
 
     const dateRow = screen.getByTestId("source-document-date-row");
     const transactionLabel = within(dateRow).getByText(/交易时间/);
-    const createdLabel = within(dateRow).getByText(/创建于/);
+    const totalLabel = screen.getByText(/合计金额/);
 
-    expect(transactionLabel).toHaveClass("text-text");
-    expect(createdLabel).toHaveClass("text-muted-foreground");
-  });
+    for (const label of [transactionLabel, totalLabel]) {
+      expect(label).toHaveClass("text-sm", "font-semibold", "text-muted-foreground");
+    }
+    // The amount keeps its display weight.
+    expect(totalLabel.parentElement?.querySelector(".tabular-nums")).toHaveClass(
+      "text-base",
+      "font-semibold"
+    );
 
-  it("renders the total icon at the shared size and without a theme tint", () => {
-    renderDetails(0);
-
-    const wallet = document.querySelector(".lucide-wallet");
-    expect(wallet).toHaveClass("h-4", "w-4");
-    expect(wallet).not.toHaveClass("text-primary/60");
+    // The total reads after the entry-list title, not in the date row.
+    expect(dateRow).not.toHaveTextContent(/合计金额/);
+    const bodyText = document.body.textContent ?? "";
+    expect(bodyText.indexOf("明细项目")).toBeLessThan(bodyText.indexOf("合计金额"));
+    expect(screen.queryByText(/创建于/)).not.toBeInTheDocument();
   });
 
   it("restores the date picker in edit mode", () => {
@@ -147,6 +153,8 @@ describe("SourceDocumentViewDetails summary date", () => {
         selectedEntryIds={[]}
         isSelectionMode={false}
         isEditMode
+        mobileView="details"
+        onMobileViewChange={vi.fn()}
         onSourceDocChange={vi.fn()}
         onEntryChange={vi.fn()}
         onSelectEntry={vi.fn()}
@@ -191,14 +199,31 @@ describe("SourceDocumentViewDetails image stage", () => {
     );
   });
 
-  it("switches to evidence and back on mobile without unmounting the detail view", () => {
-    renderDetails(1);
+  it("hides the details pane and returns from evidence through the controlled view", () => {
+    // The pane toggle is driven by the footer, so this component only reports
+    // the requested view back to its owner.
+    const onMobileViewChange = vi.fn();
+    renderWithQueryClient(
+      <SourceDocumentViewDetails
+        sourceDocument={documentWithFiles(1)}
+        ledgerEntries={[]}
+        categories={[]}
+        pendingChanges={{ sourceDoc: {}, entries: {} }}
+        selectedEntryIds={[]}
+        isSelectionMode={false}
+        mobileView="evidence"
+        onMobileViewChange={onMobileViewChange}
+        onSourceDocChange={vi.fn()}
+        onEntryChange={vi.fn()}
+        onSelectEntry={vi.fn()}
+        onToggleSelectionMode={vi.fn()}
+      />
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: /view evidence|查看原始凭证/i }));
-    expect(screen.getByRole("button", { name: /back to details|返回明细/i })).toBeInTheDocument();
+    expect(screen.getByTestId("source-document-details-pane")).toHaveClass("hidden", "lg:block");
 
     fireEvent.click(screen.getByRole("button", { name: /back to details|返回明细/i }));
-    expect(screen.getByRole("button", { name: /view evidence|查看原始凭证/i })).toBeInTheDocument();
+    expect(onMobileViewChange).toHaveBeenCalledWith("details");
   });
 });
 
@@ -230,6 +255,8 @@ describe("SourceDocumentViewDetails selection", () => {
         selectedEntryIds={[]}
         isSelectionMode={false}
         isEditMode={false}
+        mobileView="details"
+        onMobileViewChange={vi.fn()}
         onSourceDocChange={vi.fn()}
         onEntryChange={vi.fn()}
         onSelectEntry={vi.fn()}
@@ -268,6 +295,8 @@ describe("SourceDocumentViewDetails selection", () => {
       categories: [],
       pendingChanges,
       selectedEntryIds: [],
+      mobileView: "details" as const,
+      onMobileViewChange: vi.fn(),
       onSourceDocChange: vi.fn(),
       onEntryChange: vi.fn(),
       onSelectEntry,

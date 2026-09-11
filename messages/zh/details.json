@@ -598,7 +598,6 @@
     "backToDetails": "返回明细",
     "translation": "翻译",
     "originalText": "识别原文",
-    "createdAt": "创建于",
     "transactionTime": "交易时间",
     "pendingRecalculation": "保存后将按新日期重新换算",
     "editRetry": "编辑重试",

@@ -106,6 +106,13 @@ function SourceDocumentDetailEditor({
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const [dateAdjustmentActive, setDateAdjustmentActive] = useState(false);
   const [dateDraftDirty, setDateDraftDirty] = useState(false);
+  // The narrow-viewport pane toggle lives here rather than in ViewDetails so
+  // the footer's "view evidence" button can drive it.
+  const [mobileView, setMobileView] = useState<"details" | "evidence">("details");
+  const hasEvidence =
+    sourceDocument != null &&
+    (sourceDocument.files.length > 0 ||
+      (sourceDocument.text != null && sourceDocument.text.trim() !== ""));
   const discardDateDraft = useCallback(() => {
     setDateAdjustmentActive(false);
     setDateDraftDirty(false);
@@ -238,6 +245,8 @@ function SourceDocumentDetailEditor({
                   {...(onDismissDateOrganization == null ? {} : { onDismissDateOrganization })}
                   isOrganizingDates={isOrganizingDates}
                   dateOrganizationDisabled={editor.isEditMode || selection.isSelectionMode}
+                  mobileView={mobileView}
+                  onMobileViewChange={setMobileView}
                   onDateAdjustmentStateChange={(active, dirty) => {
                     setDateAdjustmentActive(active || dirty);
                     setDateDraftDirty(dirty);
@@ -286,6 +295,9 @@ function SourceDocumentDetailEditor({
             onCancelEditMode={actions.handleCancelEditMode}
             onEditSave={actions.handleEditSave}
             onEnterEditMode={actions.handleEnterEditMode}
+            {...(hasEvidence && mobileView === "details"
+              ? { onViewEvidence: () => setMobileView("evidence") }
+              : {})}
           />
         </DialogContent>
 

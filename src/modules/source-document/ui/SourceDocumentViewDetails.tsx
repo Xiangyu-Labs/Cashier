@@ -1,8 +1,8 @@
 "use client";
 import type { LedgerEntryEmbeddedViewDto, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
-import { type ReactNode, useMemo, memo, useState } from "react";
-import { ArrowLeft, FileText } from "lucide-react";
+import { type ReactNode, useMemo, memo } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import type { EntryEditData } from "@/modules/source-document/types";
 import { buildSourceDocumentDetailViewModel } from "./source-document-detail-view-model";
 import { SourceDocumentSummaryHeader } from "./SourceDocumentViewDetails/components/SourceDocumentSummaryHeader";
 import { SourceDocumentEntriesList } from "./SourceDocumentViewDetails/components/SourceDocumentEntriesList";
+import { SourceDocumentTotal } from "./SourceDocumentViewDetails/components/SourceDocumentTotal";
 import { SourceDocumentRawEvidence } from "./SourceDocumentViewDetails/components/SourceDocumentRawEvidence";
 import type {
   PendingChanges,
@@ -51,6 +52,13 @@ interface SourceDocumentViewDetailsProps {
   isOrganizingDates?: boolean;
   dateOrganizationDisabled?: boolean;
   onDateAdjustmentStateChange?: (active: boolean, dirty: boolean) => void;
+  /**
+   * Which pane the narrow-viewport layout shows. The footer owns the toggle
+   * because the "view evidence" button sits in the action bar; desktop always
+   * shows both panes.
+   */
+  mobileView: "details" | "evidence";
+  onMobileViewChange: (view: "details" | "evidence") => void;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
@@ -77,9 +85,10 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   isOrganizingDates = false,
   dateOrganizationDisabled = false,
   onDateAdjustmentStateChange,
+  mobileView,
+  onMobileViewChange,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const t = useTranslations("SourceDocumentDetail");
-  const [mobileView, setMobileView] = useState<"details" | "evidence">("details");
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.documentDate ?? "";
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
   const fieldsDisabled = interactionDisabled || !isEditMode;
@@ -105,43 +114,21 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
   const isInvalid =
     sourceDocument.processingStatus === "failed" && sourceDocument.failureKind === "invalid_input";
-  const hasEvidence =
-    sourceDocument.files.length > 0 ||
-    (sourceDocument.text != null && sourceDocument.text.trim() !== "");
 
   return (
     <div className="grid min-h-0 gap-4 lg:h-full lg:grid-cols-[minmax(0,3fr)_minmax(20rem,2fr)]">
       <div
+        data-testid="source-document-details-pane"
         className={cn(
           "min-w-0 space-y-4 overflow-y-auto lg:min-h-0 lg:pr-1",
           mobileView === "evidence" && "hidden lg:block"
         )}
       >
-        {hasEvidence ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full lg:hidden"
-            onClick={() => setMobileView("evidence")}
-          >
-            <FileText className="size-4" />
-            {t("viewEvidence")}
-          </Button>
-        ) : null}
         <SourceDocumentSummaryHeader
           displayEntryDate={displayEntryDate}
           onSourceDocChange={onSourceDocChange}
           fieldsDisabled={fieldsDisabled}
           isInvalid={isInvalid}
-          createdAt={sourceDocument.createdAt}
-          totalInMainCurrency={totalInMainCurrency}
-          mainCurrency={mainCurrency}
-          staleConversionCount={staleConversionCount}
-          unconvertedCount={unconvertedCount}
-          uniqueCurrencies={uniqueCurrencies}
-          subtotalsByCurrency={subtotalsByCurrency}
-          displayEntries={displayEntries}
         />
 
         {sourceDocument.dateOrganizationSuggestion != null &&
@@ -179,6 +166,17 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           onDeleteEntry={onDeleteEntry}
           pendingChanges={pendingChanges.entries}
           {...(onRequestEdit == null ? {} : { onRequestEdit })}
+          headerEnd={
+            <SourceDocumentTotal
+              totalInMainCurrency={totalInMainCurrency}
+              mainCurrency={mainCurrency}
+              staleConversionCount={staleConversionCount}
+              unconvertedCount={unconvertedCount}
+              uniqueCurrencies={uniqueCurrencies}
+              subtotalsByCurrency={subtotalsByCurrency}
+              displayEntries={displayEntries}
+            />
+          }
         />
       </div>
       <aside
@@ -192,7 +190,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           variant="ghost"
           size="sm"
           className="mb-3 lg:hidden"
-          onClick={() => setMobileView("details")}
+          onClick={() => onMobileViewChange("details")}
         >
           <ArrowLeft className="size-4" />
           {t("backToDetails")}

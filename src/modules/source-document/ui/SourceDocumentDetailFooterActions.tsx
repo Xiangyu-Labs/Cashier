@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Trash2, X, Save, XCircle, Pencil } from "lucide-react";
+import { FileText, RefreshCw, Trash2, X, Save, XCircle, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,11 @@ interface SourceDocumentDetailFooterActionsProps {
   onCancelEditMode: () => void;
   onEditSave: () => Promise<boolean>;
   onEnterEditMode: () => void;
+  /**
+   * Opens the evidence pane on narrow viewports; the modal omits it on
+   * desktop, where both panes are already visible side by side.
+   */
+  onViewEvidence?: () => void;
 }
 
 /** Non-selection-mode footer bar for processing, edit, retry, and delete actions. */
@@ -39,6 +44,7 @@ export function SourceDocumentDetailFooterActions({
   onCancelEditMode,
   onEditSave,
   onEnterEditMode,
+  onViewEvidence,
 }: SourceDocumentDetailFooterActionsProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -65,7 +71,21 @@ export function SourceDocumentDetailFooterActions({
             </Button>
           )}
 
-        {/* Edit & Retry */}
+        {/* View evidence, edit & retry, delete — in that order. */}
+        {onViewEvidence != null && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 px-3 text-muted-foreground lg:hidden"
+            onClick={onViewEvidence}
+            disabled={interactionDisabled}
+            aria-label={t("viewEvidence")}
+          >
+            <FileText aria-hidden="true" className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("viewEvidence")}</span>
+          </Button>
+        )}
+
         {sourceDocument?.supportedActions.includes("edit_retry") && (
           <Button
             variant="outline"
