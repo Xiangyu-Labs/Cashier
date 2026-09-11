@@ -2,17 +2,12 @@
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
-import type { SourceDocumentDetailDisplayEntry } from "../../source-document-detail-view-model";
-import { CurrencyBreakdownItem } from "./CurrencyBreakdownItem";
 
 interface SourceDocumentTotalProps {
   totalInMainCurrency: string;
   mainCurrency: string;
   staleConversionCount: number;
   unconvertedCount: number;
-  uniqueCurrencies: string[];
-  subtotalsByCurrency: Record<string, string>;
-  displayEntries: SourceDocumentDetailDisplayEntry[];
 }
 
 /**
@@ -24,9 +19,6 @@ export function SourceDocumentTotal({
   mainCurrency,
   staleConversionCount,
   unconvertedCount,
-  uniqueCurrencies,
-  subtotalsByCurrency,
-  displayEntries,
 }: SourceDocumentTotalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -34,9 +26,8 @@ export function SourceDocumentTotal({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <span className="shrink-0 text-sm font-semibold text-muted-foreground">
-        {t("totalAmount")}:
-      </span>
+      {/* The total carries no visible label, so name it for screen readers. */}
+      <span className="sr-only">{t("totalAmount")}</span>
       <AmountText variant="summary">
         {staleConversionCount > 0 ? "≈ " : ""}
         {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
@@ -50,20 +41,6 @@ export function SourceDocumentTotal({
           {t("pendingRecalculation")}
         </span>
       ) : null}
-      {uniqueCurrencies.length > 1 && (
-        <>
-          <span className="text-muted-foreground/30">·</span>
-          {uniqueCurrencies.map((curr) => (
-            <CurrencyBreakdownItem
-              key={curr}
-              currency={curr}
-              amount={subtotalsByCurrency[curr] ?? "0"}
-              mainCurrency={mainCurrency}
-              entries={displayEntries}
-            />
-          ))}
-        </>
-      )}
     </div>
   );
 }

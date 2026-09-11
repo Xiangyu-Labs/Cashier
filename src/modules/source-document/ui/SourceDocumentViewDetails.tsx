@@ -93,13 +93,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
   const fieldsDisabled = interactionDisabled || !isEditMode;
 
-  const {
-    displayEntries,
-    subtotalsByCurrency,
-    totalInMainCurrency,
-    unconvertedCount,
-    staleConversionCount,
-  } = useMemo(
+  const { totalInMainCurrency, unconvertedCount, staleConversionCount } = useMemo(
     () =>
       buildSourceDocumentDetailViewModel({
         ledgerEntries,
@@ -111,7 +105,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     [displayEntryDate, ledgerEntries, mainCurrency, pendingChanges, sourceDocument.documentDate]
   );
 
-  const uniqueCurrencies = Object.keys(subtotalsByCurrency);
   const isInvalid =
     sourceDocument.processingStatus === "failed" && sourceDocument.failureKind === "invalid_input";
 
@@ -138,6 +131,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             key={sourceDocument.dateOrganizationSuggestion.id}
             suggestion={sourceDocument.dateOrganizationSuggestion}
             entries={ledgerEntries}
+            mainCurrency={mainCurrency}
             disabled={interactionDisabled || isOrganizingDates || dateOrganizationDisabled}
             onApply={onApplyDateOrganization}
             onDismiss={onDismissDateOrganization}
@@ -172,9 +166,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
               mainCurrency={mainCurrency}
               staleConversionCount={staleConversionCount}
               unconvertedCount={unconvertedCount}
-              uniqueCurrencies={uniqueCurrencies}
-              subtotalsByCurrency={subtotalsByCurrency}
-              displayEntries={displayEntries}
             />
           }
         />

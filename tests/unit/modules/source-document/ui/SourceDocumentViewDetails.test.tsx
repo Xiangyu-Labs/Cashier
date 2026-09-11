@@ -120,21 +120,21 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(within(dateRow).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("keeps one label style and puts the total at the end of the entry-list header", () => {
+  it("puts the total at the end of the entry-list header", () => {
     renderDetails(0);
 
     const dateRow = screen.getByTestId("source-document-date-row");
-    const transactionLabel = within(dateRow).getByText(/交易时间/);
-    const totalLabel = screen.getByText(/合计金额/);
-
-    for (const label of [transactionLabel, totalLabel]) {
-      expect(label).toHaveClass("text-sm", "font-semibold", "text-muted-foreground");
-    }
-    // The amount keeps its display weight.
-    expect(totalLabel.parentElement?.querySelector(".tabular-nums")).toHaveClass(
-      "text-base",
-      "font-semibold"
+    expect(within(dateRow).getByText(/交易时间/)).toHaveClass(
+      "text-sm",
+      "font-semibold",
+      "text-muted-foreground"
     );
+
+    // The total carries no visible label, only a screen-reader name.
+    const totalLabel = screen.getByText("合计金额");
+    expect(totalLabel).toHaveClass("sr-only");
+    expect(totalLabel.nextElementSibling).toHaveClass("tabular-nums", "text-base", "font-semibold");
+    expect(screen.queryByText("=")).not.toBeInTheDocument();
 
     // The total reads after the entry-list title, not in the date row.
     expect(dateRow).not.toHaveTextContent(/合计金额/);

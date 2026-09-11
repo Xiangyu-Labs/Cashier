@@ -1,19 +1,23 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { EditableLedgerEntryItem } from "@/modules/source-document/ui/EditableLedgerEntryItem";
 
-vi.mock("@/modules/currency/hooks/useAmountDisplay", () => ({
-  useAmountDisplay: () => ({
-    converted: null,
+const amountDisplay = vi.hoisted(() => ({
+  current: {
+    converted: null as string | null,
     displayAmount: "18.00",
     isDifferentCurrency: false,
-    status: "idle",
+    status: "idle" as "idle" | "success",
     isLoading: false,
     isError: false,
     originalCurrency: "CNY",
     mainCurrency: "CNY",
-  }),
+  },
+}));
+
+vi.mock("@/modules/currency/hooks/useAmountDisplay", () => ({
+  useAmountDisplay: () => amountDisplay.current,
 }));
 
 const entry: LedgerEntry = {
@@ -45,6 +49,19 @@ function renderItem(readOnly: boolean) {
 }
 
 describe("EditableLedgerEntryItem currency control", () => {
+  beforeEach(() => {
+    amountDisplay.current = {
+      converted: null,
+      displayAmount: "18.00",
+      isDifferentCurrency: false,
+      status: "idle",
+      isLoading: false,
+      isError: false,
+      originalCurrency: "CNY",
+      mainCurrency: "CNY",
+    };
+  });
+
   it("shows the amount as plain, undimmed text when read-only", () => {
     renderItem(true);
 
@@ -58,5 +75,31 @@ describe("EditableLedgerEntryItem currency control", () => {
     renderItem(false);
 
     expect(screen.getByRole("button", { name: "货币" })).toBeInTheDocument();
+  });
+
+  it("stacks the converted amount above the original, like the stream rows", () => {
+    amountDisplay.current = {
+      converted: "72.00",
+      displayAmount: "72.00",
+      isDifferentCurrency: true,
+      status: "success",
+      isLoading: false,
+      isError: false,
+      originalCurrency: "USD",
+      mainCurrency: "CNY",
+    };
+    renderItem(true);
+
+    const converted = screen.getByText("¥72.00");
+    expect(converted).toHaveClass("text-base", "font-semibold", "text-text");
+
+    const original = screen.getByText((text) => text.startsWith("≈"));
+    expect(original).toHaveClass("text-xs", "text-muted-foreground");
+    expect(original.textContent).toContain("USD");
+
+    // The original sits below the converted amount.
+    expect(
+      converted.compareDocumentPosition(original) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });

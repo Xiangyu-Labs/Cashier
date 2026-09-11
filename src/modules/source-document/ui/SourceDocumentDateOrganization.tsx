@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { CalendarRange, Check, Pencil, Sparkles, X } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui/amount-text";
+import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { DateOrganizationSuggestion } from "../date-organization-contracts";
 import type { ApplyDateOrganizationInput } from "../contracts";
@@ -16,6 +15,7 @@ import { resolveDateHint } from "../date-organization";
 interface Props {
   suggestion: DateOrganizationSuggestion;
   entries: LedgerEntryEmbeddedViewDto[];
+  mainCurrency?: string;
   disabled: boolean;
   onApply: (
     input: Omit<ApplyDateOrganizationInput, "sourceDocumentId" | "expectedVersion">
@@ -27,13 +27,13 @@ interface Props {
 export function SourceDocumentDateOrganization({
   suggestion,
   entries,
+  mainCurrency = "CNY",
   disabled,
   onApply,
   onDismiss,
   onAdjustmentStateChange,
 }: Props) {
   const t = useTranslations("SourceDocumentDetail.dateOrganization");
-  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [applicationError, setApplicationError] = useState(false);
@@ -256,9 +256,18 @@ export function SourceDocumentDateOrganization({
                         </span>
                       )}
                     </span>
-                    <AmountText variant="item">
-                      {formatCurrencyAmount(entry.amount, entry.currency ?? "", locale)}
-                    </AmountText>
+                    {/* Mirrors the line-item rows: the main-currency value on
+                        top, the original amount it came from below. */}
+                    <AmountDisplay
+                      ledgerId={entry.ledgerId}
+                      amount={entry.amount}
+                      currency={entry.currency}
+                      mainCurrency={mainCurrency}
+                      date={suggestion.sourceDocumentDate}
+                      persistedConvertedAmount={entry.convertedAmount}
+                      variant="item"
+                      className="shrink-0"
+                    />
                     {editing && (
                       <Input
                         aria-label={t("entryDate", { name: entry.itemName })}

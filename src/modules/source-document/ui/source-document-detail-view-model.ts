@@ -3,7 +3,7 @@ import { roundToCurrency } from "@/lib/money/currency-precision";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
 
-export interface SourceDocumentDetailDisplayEntry extends Omit<
+interface SourceDocumentDetailDisplayEntry extends Omit<
   LedgerEntry,
   "amount" | "convertedAmount" | "exchangeRate" | "currency"
 > {
@@ -29,7 +29,7 @@ export function buildSourceDocumentDetailViewModel({
   entryDate,
   originalEntryDate,
 }: BuildSourceDocumentDetailViewModelInput) {
-  const displayEntries = ledgerEntries.map((entry) => {
+  const displayEntries: SourceDocumentDetailDisplayEntry[] = ledgerEntries.map((entry) => {
     const change = pendingChanges.entries[entry.id] ?? {};
     const currency = change.currency ?? entry.currency ?? mainCurrency;
     const amount = new Decimal(change.amount ?? entry.amount).toFixed();
@@ -68,11 +68,6 @@ export function buildSourceDocumentDetailViewModel({
     };
   });
 
-  const subtotalsByCurrency = displayEntries.reduce<Record<string, string>>((groups, entry) => {
-    groups[entry.currency] = new Decimal(groups[entry.currency] ?? 0).plus(entry.amount).toFixed();
-    return groups;
-  }, {});
-
   const totalInMainCurrency = displayEntries
     .reduce((total, entry) => total.plus(entry.convertedAmount ?? 0), new Decimal(0))
     .toFixed();
@@ -91,7 +86,6 @@ export function buildSourceDocumentDetailViewModel({
 
   return {
     displayEntries,
-    subtotalsByCurrency,
     totalInMainCurrency,
     unconvertedCount,
     staleConversionCount,

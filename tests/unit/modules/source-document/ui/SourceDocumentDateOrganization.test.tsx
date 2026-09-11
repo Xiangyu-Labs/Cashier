@@ -3,6 +3,35 @@ import { describe, expect, it, vi } from "vitest";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import { SourceDocumentDateOrganization } from "@/modules/source-document/ui/SourceDocumentDateOrganization";
 
+// The rows render through AmountDisplay; resolve the conversion from the
+// DTO's persisted value instead of hitting the exchange-rate query.
+vi.mock("@/modules/currency/hooks/useAmountDisplay", () => ({
+  useAmountDisplay: ({
+    amount,
+    currency,
+    mainCurrency,
+    persistedConvertedAmount,
+  }: {
+    amount: string;
+    currency: string | null | undefined;
+    mainCurrency: string;
+    persistedConvertedAmount?: string | null;
+  }) => {
+    const isDifferentCurrency = currency != null && currency !== mainCurrency;
+    const converted = persistedConvertedAmount ?? amount;
+    return {
+      converted,
+      displayAmount: isDifferentCurrency ? converted : amount,
+      isDifferentCurrency,
+      status: isDifferentCurrency ? "success" : "idle",
+      isLoading: false,
+      isError: false,
+      originalCurrency: currency ?? "?",
+      mainCurrency,
+    };
+  },
+}));
+
 const entry: LedgerEntryEmbeddedViewDto = {
   id: "33333333-3333-4333-8333-333333333333",
   ledgerId: "11111111-1111-4111-8111-111111111111",
@@ -150,7 +179,7 @@ describe("SourceDocumentDateOrganization", () => {
       />
     );
 
-    expect(screen.getByText("¥18.00")).toBeInTheDocument();
+    expect(screen.getByText("¥18.00")).toHaveClass("text-base", "font-semibold");
     expect(screen.queryByText("18.00 CNY")).not.toBeInTheDocument();
     // Entry rows share the line-item styling so the two lists line up.
     expect(screen.getByText("早餐")).toHaveClass("font-medium", "text-text");
@@ -203,5 +232,51 @@ describe("SourceDocumentDateOrganization", () => {
         appliedGroupIds: ["2026-09-08"],
       })
     );
+  });
+
+  it("stacks the converted amount above the original for a foreign-currency entry", () => {
+    const usd: LedgerEntryEmbeddedViewDto = {
+      ...entry,
+      amount: "10.00",
+      currency: "USD",
+      convertedAmount: "72.00",
+    };
+
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          items: [
+            {
+              ledgerEntryId: usd.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: { itemName: usd.itemName, amount: usd.amount, currency: "USD" },
+            },
+          ],
+        }}
+        entries={[usd]}
+        mainCurrency="CNY"
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    const converted = screen.getByText("¥72.00");
+    expect(converted).toHaveClass("text-base", "font-semibold");
+
+    const original = screen.getByText((text) => text.startsWith("≈"));
+    expect(original).toHaveClass("text-xs", "text-muted-foreground");
+    expect(original.textContent).toContain("USD");
+
+    // The original sits below the converted amount.
+    expect(
+      converted.compareDocumentPosition(original) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });

@@ -6,7 +6,6 @@ import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
@@ -15,8 +14,9 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { EntryEditData } from "@/modules/source-document/types";
-import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
-import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
+import { getCurrencySymbol } from "@/lib/format/currency";
+import { amountTextClassName } from "@/modules/currency/ui/amount-text";
+import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
 import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 
 function parseAmount(amount: string | null | undefined): number {
@@ -107,16 +107,6 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   const persistedConvertedAmount =
     !hasPendingValueChanges && !dateHasPendingChange ? ledgerEntry.convertedAmount : null;
 
-  const { converted, isDifferentCurrency, status } = useAmountDisplay({
-    ledgerId: ledgerEntry.ledgerId,
-    amount:
-      pendingChanges?.amount !== undefined ? String(pendingChanges.amount) : ledgerEntry.amount,
-    currency: displayData.currency,
-    mainCurrency,
-    date: sourceDocumentEntryDate ?? ledgerEntry.createdAt,
-    persistedConvertedAmount,
-  });
-
   const category = categories.find((c) => c.id === displayData.categoryId);
   const amountDecimals = getCurrencyDecimals(displayData.currency ?? mainCurrency);
 
@@ -178,13 +168,17 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
       {/* Amount + Currency */}
       <div className="flex items-center gap-1 shrink-0">
         {readOnly ? (
-          <AmountText variant="item">
-            {formatCurrencyAmount(
-              parseAmount(displayData.amount),
-              displayData.currency ?? "",
-              locale
-            )}
-          </AmountText>
+          // Same two-line amount block the stream rows use: the main-currency
+          // value, then the original amount it came from.
+          <AmountDisplay
+            ledgerId={ledgerEntry.ledgerId}
+            amount={displayData.amount}
+            currency={displayData.currency}
+            mainCurrency={mainCurrency}
+            date={sourceDocumentEntryDate ?? ledgerEntry.createdAt}
+            persistedConvertedAmount={persistedConvertedAmount}
+            variant="item"
+          />
         ) : (
           <>
             <Popover modal={true}>
@@ -227,12 +221,8 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         )}
       </div>
 
-      <ExpenseDeductionBadge amount={displayData.amount} />
-      {isDifferentCurrency && status === "success" && converted != null && (
-        <AmountText variant="secondary" className="shrink-0">
-          ≈ {formatCurrencyAmount(converted, mainCurrency, locale)}
-        </AmountText>
-      )}
+      {/* Read-only rows get the badge from AmountDisplay. */}
+      {!readOnly && <ExpenseDeductionBadge amount={displayData.amount} />}
 
       {!readOnly && onDelete != null && (
         <Button
