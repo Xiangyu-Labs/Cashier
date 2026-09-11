@@ -27,6 +27,7 @@ interface SourceDocumentSummaryHeaderProps {
  * The document toolbar: the same shell as the ledger stream toolbar, so the
  * select control, the transaction date, and the total read the same in both.
  * The date is centred against the bar itself; the side controls never nudge it.
+ * It is the header row of the entries card, so it draws only the rule below.
  */
 export function SourceDocumentSummaryHeader({
   displayEntryDate,
@@ -48,7 +49,7 @@ export function SourceDocumentSummaryHeader({
   return (
     <div
       data-testid="source-document-date-row"
-      className="relative flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-surface p-2"
+      className="relative flex min-w-0 items-center justify-between gap-2 border-b border-border p-2"
     >
       <div className="relative z-10 flex shrink-0 items-center gap-2">
         {entryCount > 0 && !interactionDisabled && (

@@ -143,40 +143,44 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           />
         ) : null}
 
-        <SourceDocumentSummaryHeader
-          displayEntryDate={displayEntryDate}
-          totalInMainCurrency={totalInMainCurrency}
-          mainCurrency={mainCurrency}
-          staleConversionCount={staleConversionCount}
-          unconvertedCount={unconvertedCount}
-          onSourceDocChange={onSourceDocChange}
-          fieldsDisabled={fieldsDisabled}
-          isInvalid={isInvalid}
-          entryCount={ledgerEntries.length}
-          isSelectionMode={isSelectionMode}
-          interactionDisabled={interactionDisabled}
-          onToggleSelectionMode={onToggleSelectionMode}
-        />
+        {/* The toolbar and the entries are one card, the way the suggestion
+            panel above them reads: a header row over the list it summarises. */}
+        <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
+          <SourceDocumentSummaryHeader
+            displayEntryDate={displayEntryDate}
+            totalInMainCurrency={totalInMainCurrency}
+            mainCurrency={mainCurrency}
+            staleConversionCount={staleConversionCount}
+            unconvertedCount={unconvertedCount}
+            onSourceDocChange={onSourceDocChange}
+            fieldsDisabled={fieldsDisabled}
+            isInvalid={isInvalid}
+            entryCount={ledgerEntries.length}
+            isSelectionMode={isSelectionMode}
+            interactionDisabled={interactionDisabled}
+            onToggleSelectionMode={onToggleSelectionMode}
+          />
 
-        <SourceDocumentEntriesList
-          entries={ledgerEntries}
-          categories={categories}
-          preferredCurrencies={preferredCurrencies}
-          mainCurrency={mainCurrency}
-          selectedEntryIds={selectedEntryIds}
-          isSelectionMode={isSelectionMode}
-          interactionDisabled={interactionDisabled}
-          fieldsDisabled={fieldsDisabled}
-          isEditMode={isEditMode}
-          onEntryChange={onEntryChange}
-          onSelectEntry={onSelectEntry}
-          displayEntryDate={displayEntryDate}
-          originalEntryDate={sourceDocument.documentDate ?? ""}
-          onAddEntry={onAddEntry}
-          onDeleteEntry={onDeleteEntry}
-          pendingChanges={pendingChanges.entries}
-          {...(onRequestEdit == null ? {} : { onRequestEdit })}
-        />
+          <SourceDocumentEntriesList
+            entries={ledgerEntries}
+            categories={categories}
+            preferredCurrencies={preferredCurrencies}
+            mainCurrency={mainCurrency}
+            selectedEntryIds={selectedEntryIds}
+            isSelectionMode={isSelectionMode}
+            interactionDisabled={interactionDisabled}
+            fieldsDisabled={fieldsDisabled}
+            isEditMode={isEditMode}
+            onEntryChange={onEntryChange}
+            onSelectEntry={onSelectEntry}
+            displayEntryDate={displayEntryDate}
+            originalEntryDate={sourceDocument.documentDate ?? ""}
+            onAddEntry={onAddEntry}
+            onDeleteEntry={onDeleteEntry}
+            pendingChanges={pendingChanges.entries}
+            {...(onRequestEdit == null ? {} : { onRequestEdit })}
+          />
+        </div>
       </div>
       <aside
         className={cn(

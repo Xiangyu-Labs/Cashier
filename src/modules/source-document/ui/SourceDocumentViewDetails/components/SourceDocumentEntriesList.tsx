@@ -52,7 +52,9 @@ export function SourceDocumentEntriesList({
 
   return (
     <div className="min-w-0">
-      <div className="divide-y overflow-hidden rounded-lg border bg-surface pb-0">
+      {/* The card, its border and its background belong to the parent, which
+          also renders the toolbar above this list. */}
+      <div className="divide-y">
         {entries.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">
             <p className="text-muted-foreground text-sm font-medium">{t("noEntries")}</p>
