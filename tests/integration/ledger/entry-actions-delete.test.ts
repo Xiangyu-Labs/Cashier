@@ -32,7 +32,6 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
     .values({
       id: uuidv4(),
       ledgerId,
-      type: "ai_parsed",
       documentDate: entryDate ?? null,
     })
     .returning();

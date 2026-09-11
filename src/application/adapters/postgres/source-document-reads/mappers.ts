@@ -12,16 +12,12 @@ import {
 } from "@/application/contracts";
 import { deriveSourceDocumentCapabilities } from "@/modules/source-document/application/source-document-state";
 import { compare as decimalCompare, round as decimalRound } from "@/lib/money/decimal";
-import type {
-  SourceDocumentProcessingStatus,
-  SourceDocumentTypeValue,
-} from "@/modules/source-document/types";
+import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 
 export interface SourceDocumentRow {
   id: string;
   ledgerId: string;
   title: string | null;
-  type: SourceDocumentTypeValue;
   documentDate: string | null;
   effectiveDate: string;
   activeRevisionId: string | null;
@@ -152,7 +148,6 @@ export function mapListItem(
     title: effectiveDocumentTitle(row.title, hydration.revisionTitle),
     text: null,
     processingStatus: hydration.processingStatus,
-    type: row.type,
     failureKind: hydration.failureKind,
     failureMessage: hydration.failureMessage,
     documentDate: row.documentDate,
@@ -195,7 +190,6 @@ export function mapSourceDocumentDetail(
     files: hydration.files.map(mapStoredFileDto),
     ledgerEntries: hydration.ledgerEntries.map(mapLedgerEntryAggregateDto),
     processingStatus: hydration.processingStatus,
-    type: row.type,
     failureKind: hydration.failureKind,
     failureMessage: hydration.failureMessage,
     documentDate: row.documentDate,

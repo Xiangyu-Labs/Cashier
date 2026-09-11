@@ -5,7 +5,6 @@ import type {
   SourceDocumentListItemDto,
   SourceDocumentActiveResultSummary,
 } from "@/modules/source-document/contracts";
-import type { SourceDocumentTypeValue } from "@/lib/source-document-values";
 import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
 
 describe("source-document contract types", () => {
@@ -14,9 +13,9 @@ describe("source-document contract types", () => {
     expectTypeOf<SourceDocumentListItemDto["text"]>().toEqualTypeOf<null>();
   });
 
-  it("keeps ledger source-document reference date/type aligned", () => {
+  it("keeps ledger source-document references source-agnostic", () => {
     expectTypeOf<SourceDocumentReferenceDto["documentDate"]>().toEqualTypeOf<string | null>();
-    expectTypeOf<SourceDocumentReferenceDto["type"]>().toEqualTypeOf<SourceDocumentTypeValue>();
+    expectTypeOf<SourceDocumentReferenceDto>().not.toHaveProperty("type");
   });
 
   it("exposes the optional active result summary on detail projections", () => {

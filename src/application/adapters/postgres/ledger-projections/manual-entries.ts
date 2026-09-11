@@ -2,7 +2,6 @@ import { and, eq, inArray, isNull, max, or, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { compare } from "@/lib/money/decimal";
-import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
 import type { DateOrganizationSuggestion } from "@/modules/source-document/date-organization-contracts";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import type { PostgresTransaction } from "../transaction-locks";
@@ -367,7 +366,6 @@ export async function createCompletedProjectionInTransaction(
     entryDate?: string | null;
     inputText?: string | null;
     copyFilesFromRevisionId?: string;
-    type: SourceDocumentTypeValue;
     entries: readonly LedgerProjectionEntryContract[];
   }
 ): Promise<string> {
@@ -382,7 +380,6 @@ export async function createCompletedProjectionInTransaction(
     id: input.sourceDocumentId,
     ledgerId: input.ledgerId,
     title: input.title ?? null,
-    type: input.type,
     documentDate: input.entryDate ?? null,
   });
   const revision = await createManualRevision(tx, {

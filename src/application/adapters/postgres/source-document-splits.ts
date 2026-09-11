@@ -166,7 +166,6 @@ export async function splitSourceDocumentAtomically(input: {
       id: splitSourceDocumentId,
       ledgerId: input.ledgerId,
       title: effectiveTitle(lockedDocument.title, activeRevision.title),
-      type: lockedDocument.type,
 
       version: 1,
       documentDate: input.entryDate,

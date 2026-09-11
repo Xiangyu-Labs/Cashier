@@ -21,7 +21,6 @@ const sourceDocument: SourceDocument = {
   text: "Lunch",
   files: [],
   processingStatus: "completed",
-  type: "ai_parsed",
   failureKind: null,
   failureMessage: null,
   documentDate: "2026-07-28",
@@ -52,10 +51,10 @@ const ledgerEntry: LedgerEntry = {
 };
 
 describe("SourceDocumentCard interactions", () => {
-  it("shows the total for completed manual revisions without a processing status", () => {
+  it("shows the total for completed direct revisions without an entry-source badge", () => {
     render(
       <SourceDocumentCard
-        sourceDocument={{ ...sourceDocument, processingStatus: null, type: "manual" }}
+        sourceDocument={{ ...sourceDocument, processingStatus: null }}
         ledgerEntries={[ledgerEntry]}
         processingStatus={null}
         defaultExpanded={false}
@@ -63,6 +62,7 @@ describe("SourceDocumentCard interactions", () => {
     );
 
     expect(screen.getByText(/12\.00/)).toBeInTheDocument();
+    expect(screen.queryByText(/快速记账|Quick Entry/i)).not.toBeInTheDocument();
   });
 
   it("starts expanded by default and opens details only from the main region", () => {

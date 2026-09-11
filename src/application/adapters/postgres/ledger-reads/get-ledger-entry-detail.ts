@@ -33,7 +33,6 @@ export async function getLedgerEntryDetail(
           version: true,
           ledgerId: true,
           title: true,
-          type: true,
           documentDate: true,
           createdAt: true,
           updatedAt: true,

@@ -92,12 +92,16 @@ describe("createQuickEntryAction", () => {
       where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
     expect(sourceDoc).toBeDefined();
-    expect(sourceDoc?.type).toBe("manual");
+    expect(sourceDoc?.title).toBe("Test Item");
     await expect(
       db.query.sourceDocumentRevisions.findFirst({
         where: eq(sourceDocumentRevisions.id, sourceDoc!.activeRevisionId!),
       })
-    ).resolves.toMatchObject({ origin: "manual_entry", processingStatus: null });
+    ).resolves.toMatchObject({
+      origin: "manual_entry",
+      processingStatus: null,
+      inputText: null,
+    });
 
     // Verify ledger entry was created
     const entry = await db.query.ledgerEntries.findFirst({
@@ -119,6 +123,10 @@ describe("createQuickEntryAction", () => {
       where: eq(ledgerEntries.id, result.ledgerEntryId),
     });
     expect(entry?.itemName).toBe("Test Category");
+    const sourceDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
+    });
+    expect(sourceDoc?.title).toBe("Test Category");
   });
 
   it("should use default currency when not provided", async () => {

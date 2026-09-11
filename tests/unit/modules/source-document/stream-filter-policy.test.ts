@@ -14,7 +14,6 @@ function makeItem(overrides: Partial<SourceDocumentListItemDto> = {}): SourceDoc
     title: "Coffee receipt",
     text: null,
     processingStatus: "completed",
-    type: "ai_parsed",
     failureKind: null,
     failureMessage: null,
     documentDate: "2026-08-05",

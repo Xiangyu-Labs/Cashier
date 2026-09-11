@@ -158,11 +158,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           <span className="truncate text-sm font-semibold text-text">
             {sourceDocument.title?.trim() || t("untitled")}
           </span>
-          {sourceDocument.type === "manual" && (
-            <span className="shrink-0 rounded bg-surface2 px-1.5 py-0.5 text-xs text-muted-foreground">
-              {t("quickEntry")}
-            </span>
-          )}
         </span>
       </button>
 

@@ -23,7 +23,6 @@ describe("saveSourceDocumentChangesAction", () => {
     const ledger = createLedgerData({ userId, mainCurrency: "USD" });
     const document = createSourceDocumentData(ledger.id, {
       status: "completed",
-      type: "manual",
       title: "Original",
     });
     const entryId = crypto.randomUUID();

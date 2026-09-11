@@ -50,7 +50,6 @@ function createProcessor(entryCount: number, overrides: Record<string, unknown> 
       document: {
         activeRevisionId: null,
         latestSubmissionRevisionId: "revision-1",
-        type: "ai_parsed",
         createdAt: new Date("2026-09-01T00:00:00Z"),
       },
       storedFileIds: [],

@@ -9,11 +9,9 @@ import {
   date,
   integer,
   jsonb,
-  pgEnum,
   foreignKey,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, sql } from "drizzle-orm";
-import { type SourceDocumentTypeValue, SourceDocumentType } from "@/lib/source-document-values";
 import { ledgers } from "./ledger";
 
 const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {
@@ -21,8 +19,6 @@ const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {
   ledgerId: uuid("ledger_id").notNull(),
   sourceDocumentId: uuid("source_document_id").notNull(),
 });
-
-export const sourceDocumentTypeEnum = pgEnum("source_document_type", ["ai_parsed", "manual"]);
 
 export const sourceDocuments = pgTable(
   "source_documents",
@@ -32,10 +28,6 @@ export const sourceDocuments = pgTable(
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     title: text("title"),
-    type: sourceDocumentTypeEnum("type")
-      .notNull()
-      .default(SourceDocumentType.AiParsed)
-      .$type<SourceDocumentTypeValue>(),
     documentDate: date("document_date", { mode: "string" }),
     effectiveDate: date("effective_date", { mode: "string" })
       .notNull()

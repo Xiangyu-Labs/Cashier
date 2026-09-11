@@ -52,7 +52,6 @@ export interface RevisionProcessingContextContract {
   document: {
     activeRevisionId: RevisionId | null;
     latestSubmissionRevisionId: RevisionId | null;
-    type: "ai_parsed" | "manual";
     createdAt: Date;
   } | null;
   storedFileIds: string[];

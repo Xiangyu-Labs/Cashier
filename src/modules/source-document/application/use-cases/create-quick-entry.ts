@@ -41,7 +41,7 @@ async function createQuickEntryAtomically(
   const created = await ports.projections.createManual({
     ledgerId,
     expectedMainCurrency,
-    title: categoryName,
+    title: itemName,
     entryDate: data.entryDate,
     entries: [
       {

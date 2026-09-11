@@ -41,7 +41,6 @@ const SOURCE_LIST_KEYS = [
   "supportedActions",
   "text",
   "title",
-  "type",
   "updatedAt",
   "version",
 ];

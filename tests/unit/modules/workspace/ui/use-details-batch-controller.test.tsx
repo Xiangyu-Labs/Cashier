@@ -72,7 +72,6 @@ function entry(id: string, sourceDocumentId = "document-1") {
       ledgerId: "ledger-1",
       title: null,
       processingStatus: "completed" as const,
-      type: "manual" as const,
       documentDate: "2026-09-04",
       createdAt: "2026-09-04T00:00:00.000Z",
       updatedAt: "2026-09-04T00:00:00.000Z",

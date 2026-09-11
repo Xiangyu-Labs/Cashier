@@ -23,7 +23,6 @@ export async function loadRevisionProcessingContext(
         processingStatus: sourceDocumentRevisions.processingStatus,
         activeRevisionId: sourceDocuments.activeRevisionId,
         latestSubmissionRevisionId: sourceDocuments.latestSubmissionRevisionId,
-        type: sourceDocuments.type,
         createdAt: sourceDocuments.createdAt,
       })
       .from(sourceDocumentRevisions)
@@ -84,7 +83,6 @@ export async function loadRevisionProcessingContext(
         : {
             activeRevisionId: identity.activeRevisionId,
             latestSubmissionRevisionId: identity.latestSubmissionRevisionId,
-            type: identity.type,
             createdAt: identity.createdAt,
           },
     storedFileIds: files.map((file) => file.id),

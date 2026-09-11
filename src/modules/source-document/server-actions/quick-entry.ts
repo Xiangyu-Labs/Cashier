@@ -11,7 +11,7 @@ import { convertEntryAmount } from "@/modules/currency/application/use-cases/con
 
 /**
  * Create a quick entry (manual entry without AI parsing).
- * Atomically creates a SourceDocument (type="manual", status="completed") and a LedgerEntry.
+ * Atomically creates a completed SourceDocument and a LedgerEntry without AI parsing.
  */
 export const createQuickEntryAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId, ledger }, data: CreateQuickEntryInput): Promise<QuickEntryResponseDto> => {

@@ -96,7 +96,6 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       const revisionId = await createCompletedProjectionInTransaction(tx, {
         ledgerId: input.ledgerId,
         sourceDocumentId,
-        type: "manual",
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.entryDate !== undefined ? { entryDate: input.entryDate } : {}),
         ...(input.inputText !== undefined ? { inputText: input.inputText } : {}),

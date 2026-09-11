@@ -26,7 +26,6 @@ async function seedEntry(
     .values({
       id: uuidv4(),
       ledgerId,
-      type: "ai_parsed",
       documentDate: opts.entryDate ?? null,
     })
     .returning();

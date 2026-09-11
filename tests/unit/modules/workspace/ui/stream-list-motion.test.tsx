@@ -31,7 +31,6 @@ function card(
     title: `Doc ${id}`,
     text: null,
     processingStatus: "processing",
-    type: "ai_parsed",
     failureKind: null,
     failureMessage: null,
     documentDate: "2026-07-15",

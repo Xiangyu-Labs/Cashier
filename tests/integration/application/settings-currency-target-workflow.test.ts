@@ -387,7 +387,7 @@ describe("settings concurrency invariants", () => {
     const { ledgerId } = await createTestUserWithLedger(db, "settings-stale-activation");
     const sourceDocumentId = crypto.randomUUID();
     const revisionId = crypto.randomUUID();
-    await db.insert(sourceDocuments).values({ id: sourceDocumentId, ledgerId, type: "ai_parsed" });
+    await db.insert(sourceDocuments).values({ id: sourceDocumentId, ledgerId });
     await db.insert(sourceDocumentRevisions).values({
       id: revisionId,
       ledgerId,
@@ -534,7 +534,7 @@ describe("settings concurrency invariants", () => {
       const sourceDocumentId = crypto.randomUUID();
       await db
         .insert(sourceDocuments)
-        .values({ id: sourceDocumentId, ledgerId, type: "ai_parsed" })
+        .values({ id: sourceDocumentId, ledgerId })
         .returning()
         .then((rows) => rows[0]!);
 

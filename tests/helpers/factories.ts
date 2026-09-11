@@ -100,7 +100,6 @@ export function createSourceDocumentData(
     imageUrls: string[];
     metadata: Record<string, unknown>;
     status: "processing" | "completed" | "invalid" | "failed" | "cancelled" | "deleted";
-    type: "ai_parsed" | "manual";
     documentDate: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -120,7 +119,6 @@ export function createSourceDocumentData(
     id: uuidv4(),
     ledgerId,
     title: null,
-    type: "ai_parsed" as const,
     documentDate: null,
     createdAt: now,
     updatedAt: now,

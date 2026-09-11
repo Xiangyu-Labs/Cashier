@@ -367,7 +367,6 @@ export async function updateDocuments({
   const initialDocuments = await db
     .select({
       id: sourceDocuments.id,
-      type: sourceDocuments.type,
       activeRevisionId: sourceDocuments.activeRevisionId,
       latestSubmissionRevisionId: sourceDocuments.latestSubmissionRevisionId,
       version: sourceDocuments.version,
@@ -519,7 +518,6 @@ export async function updateDocuments({
           return (
             current == null ||
             initial.id !== current.id ||
-            initial.type !== current.type ||
             initial.activeRevisionId !== current.activeRevisionId ||
             initial.latestSubmissionRevisionId !== current.latestSubmissionRevisionId
           );

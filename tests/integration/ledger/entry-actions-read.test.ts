@@ -33,7 +33,6 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
     .values({
       id: uuidv4(),
       ledgerId,
-      type: "ai_parsed",
       documentDate: entryDate ?? null,
     })
     .returning();
@@ -382,7 +381,6 @@ describe("getLedgerEntriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        type: "ai_parsed",
         documentDate: "2024-01-15",
         createdAt: new Date("2024-03-01"),
       })
@@ -398,7 +396,6 @@ describe("getLedgerEntriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        type: "ai_parsed",
         documentDate: "2024-03-15",
         createdAt: new Date("2024-01-01"),
       })

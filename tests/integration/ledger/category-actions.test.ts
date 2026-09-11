@@ -172,7 +172,6 @@ describe("deleteEntryCategoryAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        type: "ai_parsed",
       })
       .returning();
     expect(doc).toBeDefined();
@@ -310,7 +309,6 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        type: "ai_parsed",
       })
       .returning();
     expect(doc).toBeDefined();
@@ -360,7 +358,6 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        type: "ai_parsed",
       })
       .returning();
     expect(activeDoc).toBeDefined();
@@ -374,7 +371,6 @@ describe("getEntryCategoriesAction", () => {
         id: uuidv4(),
         ledgerId,
         deletedAt: new Date(),
-        type: "ai_parsed",
       })
       .returning();
     expect(deletedDoc).toBeDefined();

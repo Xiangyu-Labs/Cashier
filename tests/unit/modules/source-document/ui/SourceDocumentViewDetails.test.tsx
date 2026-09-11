@@ -70,7 +70,6 @@ function documentWithFiles(count: number): SourceDocument {
       originalFilename: `${index + 1}.png`,
     })),
     processingStatus: "completed",
-    type: "ai_parsed",
     failureKind: null,
     failureMessage: null,
     documentDate: "2026-07-28",
@@ -167,6 +166,21 @@ describe("SourceDocumentViewDetails summary date", () => {
 });
 
 describe("SourceDocumentViewDetails image stage", () => {
+  it("shows an evidence empty state without hiding the details pane", () => {
+    renderDetails(0);
+    expect(screen.getByText(/暂无原始凭证|No original evidence/i)).toBeInTheDocument();
+    expect(screen.getByTestId("source-document-details-pane")).not.toHaveClass("hidden");
+    expect(
+      screen.queryByRole("button", { name: /back to details|返回明细/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the image skeleton instead of the empty state while evidence is loading", () => {
+    renderDetails(0, true);
+    expect(screen.getByTestId("source-document-image-stage-loading")).toBeInTheDocument();
+    expect(screen.queryByText(/暂无原始凭证|No original evidence/i)).not.toBeInTheDocument();
+  });
+
   it("uses the same stable stage geometry while images are loading", () => {
     renderDetails(1, true);
     expect(screen.getByTestId("source-document-image-stage-loading")).toHaveClass("aspect-[4/3]");

@@ -23,7 +23,6 @@ function makeItem(
     title: `Doc ${id}`,
     text: null,
     processingStatus: "completed",
-    type: "ai_parsed",
     failureKind: null,
     failureMessage: null,
     documentDate: "2026-07-01",

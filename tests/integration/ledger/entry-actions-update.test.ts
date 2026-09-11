@@ -25,7 +25,6 @@ describe("updateLedgerEntryAction version CAS", () => {
     await db.insert(sourceDocuments).values({
       id: sourceDocumentId,
       ledgerId,
-      type: "manual",
     });
     await db.insert(ledgerEntries).values({
       id: entryId,

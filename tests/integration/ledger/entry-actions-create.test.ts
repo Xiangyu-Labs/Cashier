@@ -27,7 +27,6 @@ describe("createLedgerEntryAction version CAS", () => {
     await db.insert(sourceDocuments).values({
       id: sourceDocumentId,
       ledgerId,
-      type: "manual",
     });
     await activateTestSourceDocumentProjection(db, sourceDocumentId);
   });

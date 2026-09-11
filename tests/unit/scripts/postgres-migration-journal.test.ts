@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0039_date_organization_suggestions");
+    expect(journal.entries.at(-1)?.tag).toBe("0040_unify_source_documents");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

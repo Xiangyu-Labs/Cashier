@@ -158,7 +158,6 @@ export async function createProcessingRevisionInTransaction(
           .values({
             id: sourceDocumentId,
             ledgerId: input.ledgerId,
-            type: "ai_parsed",
           })
           .returning()
           .then((rows) => rows[0]!)

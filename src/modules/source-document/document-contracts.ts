@@ -1,4 +1,4 @@
-import type { SourceDocumentProcessingStatus, SourceDocumentTypeValue } from "./types";
+import type { SourceDocumentProcessingStatus } from "./types";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type {
   ApplicationErrorCode,
@@ -22,7 +22,6 @@ interface SourceDocumentSummaryDto {
   ledgerId: string;
   title: string | null;
   processingStatus: SourceDocumentProcessingStatus | null;
-  type: SourceDocumentTypeValue;
   failureKind: RevisionFailureKind | null;
   failureMessage: string | null;
   documentDate: string | null;

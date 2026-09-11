@@ -205,7 +205,6 @@ export async function applyDateOrganization(
         id,
         ledgerId: input.ledgerId,
         title: lockedDocument.title ?? activeRevision.title,
-        type: lockedDocument.type,
         version: 1,
         documentDate: group.entryDate,
       });

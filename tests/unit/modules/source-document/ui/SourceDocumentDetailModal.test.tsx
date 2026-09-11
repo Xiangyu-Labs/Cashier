@@ -165,7 +165,6 @@ const sourceDocument: SourceDocumentLight = {
   text: null,
   files: [],
   processingStatus: "completed",
-  type: "manual",
   failureKind: null,
   failureMessage: null,
   documentDate: "2026-07-28",

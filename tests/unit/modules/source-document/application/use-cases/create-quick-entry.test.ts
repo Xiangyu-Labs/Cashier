@@ -120,6 +120,7 @@ describe("createQuickEntry", () => {
     });
     expect(createManualMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        title: "Tea",
         entryDate: "2026-01-31",
         entries: [
           expect.objectContaining({

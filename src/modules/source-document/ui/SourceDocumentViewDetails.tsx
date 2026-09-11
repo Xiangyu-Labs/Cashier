@@ -10,7 +10,6 @@ import type { EntryEditData } from "@/modules/source-document/types";
 import { buildSourceDocumentDetailViewModel } from "./source-document-detail-view-model";
 import { SourceDocumentSummaryHeader } from "./SourceDocumentViewDetails/components/SourceDocumentSummaryHeader";
 import { SourceDocumentEntriesList } from "./SourceDocumentViewDetails/components/SourceDocumentEntriesList";
-import { SourceDocumentTotal } from "./SourceDocumentViewDetails/components/SourceDocumentTotal";
 import { SourceDocumentRawEvidence } from "./SourceDocumentViewDetails/components/SourceDocumentRawEvidence";
 import type {
   PendingChanges,
@@ -107,6 +106,10 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
   const isInvalid =
     sourceDocument.processingStatus === "failed" && sourceDocument.failureKind === "invalid_input";
+  const hasEvidence =
+    sourceDocument.files.length > 0 ||
+    (sourceDocument.text != null && sourceDocument.text.trim().length > 0) ||
+    isLoadingImages;
 
   return (
     <div className="grid min-h-0 gap-4 lg:h-full lg:grid-cols-[minmax(0,3fr)_minmax(20rem,2fr)]">
@@ -114,7 +117,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         data-testid="source-document-details-pane"
         className={cn(
           "min-w-0 space-y-4 overflow-y-auto lg:min-h-0 lg:pr-1",
-          mobileView === "evidence" && "hidden lg:block"
+          hasEvidence && mobileView === "evidence" && "hidden lg:block"
         )}
       >
         {/* The suggestion leads: it is about to change the dates the bar below
@@ -174,19 +177,21 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       <aside
         className={cn(
           "min-w-0 overflow-y-auto border-t pt-4 lg:min-h-0 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0",
-          mobileView === "details" && "hidden lg:block"
+          hasEvidence && mobileView === "details" && "hidden lg:block"
         )}
       >
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="mb-3 lg:hidden"
-          onClick={() => onMobileViewChange("details")}
-        >
-          <ArrowLeft className="size-4" />
-          {t("backToDetails")}
-        </Button>
+        {hasEvidence ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mb-3 lg:hidden"
+            onClick={() => onMobileViewChange("details")}
+          >
+            <ArrowLeft className="size-4" />
+            {t("backToDetails")}
+          </Button>
+        ) : null}
         <SourceDocumentRawEvidence
           sourceDocument={sourceDocument}
           isLoadingImages={isLoadingImages}

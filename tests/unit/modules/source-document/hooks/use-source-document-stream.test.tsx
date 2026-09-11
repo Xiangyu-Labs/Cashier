@@ -69,7 +69,6 @@ function makeItem(id: string, overrides: Record<string, unknown> = {}) {
     text: null,
     files: [],
     status: "completed",
-    type: "ai_parsed",
     failureMessage: null,
     entryDate: "2026-07-01",
     metadata: {},
