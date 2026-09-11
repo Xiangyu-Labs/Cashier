@@ -69,6 +69,8 @@ describe("SourceDocumentDateOrganization", () => {
     const chip = document.querySelector(".rounded-full.bg-surface2");
     expect(chip).toBeInTheDocument();
     expect(chip).toHaveClass("h-8", "w-8");
+    // The panel title icon uses the app foreground, not a theme tint.
+    expect(document.querySelector(".lucide-sparkles")).not.toHaveClass("text-info");
   });
 
   it("shows the entry category and note instead of the date-hint reason", () => {

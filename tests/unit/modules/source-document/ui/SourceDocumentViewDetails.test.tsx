@@ -129,6 +129,14 @@ describe("SourceDocumentViewDetails summary date", () => {
     expect(createdLabel).toHaveClass("text-muted-foreground");
   });
 
+  it("renders the total icon at the shared size and without a theme tint", () => {
+    renderDetails(0);
+
+    const wallet = document.querySelector(".lucide-wallet");
+    expect(wallet).toHaveClass("h-4", "w-4");
+    expect(wallet).not.toHaveClass("text-primary/60");
+  });
+
   it("restores the date picker in edit mode", () => {
     renderWithQueryClient(
       <SourceDocumentViewDetails

@@ -79,7 +79,7 @@ export function SourceDocumentSummaryHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-        <Wallet className="h-3.5 w-3.5 text-primary/60" />
+        <Wallet className="h-4 w-4 shrink-0" />
         <span className="text-sm text-muted-foreground">{t("totalAmount")}:</span>
         <AmountText variant="summary">
           {staleConversionCount > 0 ? "≈ " : ""}
