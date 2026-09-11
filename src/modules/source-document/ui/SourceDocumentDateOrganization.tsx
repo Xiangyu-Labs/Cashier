@@ -189,22 +189,11 @@ export function SourceDocumentDateOrganization({
         {groups.map((group) => (
           <div key={group.id} className="py-3">
             <div className="mb-2 flex items-center justify-between gap-2 px-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <CalendarRange className="size-4 text-muted-foreground" />
-                  {group.entryDate == null
-                    ? t("uncertain")
-                    : t("moveTo", { date: group.entryDate, count: group.ledgerEntryIds.length })}
-                </div>
-                {group.entryDate != null ? (
-                  <p className="mt-0.5 pl-6 text-xs text-muted-foreground">
-                    {group.entryDate === suggestion.sourceDocumentDate
-                      ? t("keepsOriginal")
-                      : group.ledgerEntryIds.length === entries.length
-                        ? t("changesOriginal")
-                        : t("createsNew")}
-                  </p>
-                ) : null}
+              <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                <CalendarRange className="size-4 text-muted-foreground" />
+                {group.entryDate == null
+                  ? t("uncertain")
+                  : t("moveTo", { date: group.entryDate, count: group.ledgerEntryIds.length })}
               </div>
               {group.entryDate != null && (
                 <Button
