@@ -16,9 +16,14 @@ interface EntryHeaderProps {
   amount: number;
   currency: string;
   preferredCurrencies: string[];
-  mainCurrency: string;
-  convertedAmount: string | null;
+  /** Primary value on top: the main-currency amount once it is converted. */
+  displayAmount: string;
+  /** Currency of `displayAmount`; the entry's own until a conversion resolves. */
+  displayCurrency: string;
+  /** Stable flag for the two-line layout — the currency pair differs. */
   isDifferentCurrency: boolean;
+  /** True once the conversion for the current draft has resolved. */
+  showOriginalAmount: boolean;
   onFieldChange: (
     field: "itemName" | "amount" | "currency",
     value: string | number | undefined
@@ -31,9 +36,10 @@ export function EntryHeader({
   amount,
   currency,
   preferredCurrencies,
-  mainCurrency,
-  convertedAmount,
+  displayAmount,
+  displayCurrency,
   isDifferentCurrency,
+  showOriginalAmount,
   onFieldChange,
   disabled = false,
 }: EntryHeaderProps) {
@@ -63,52 +69,71 @@ export function EntryHeader({
         />
 
         <ExpenseDeductionBadge amount={amount} />
-        <div className="mt-1">
-          <div className="flex items-baseline gap-1.5 sm:gap-2">
-            <Popover modal={true}>
-              <PopoverTrigger asChild>
-                <button
-                  disabled={disabled}
-                  aria-label={t("currency")}
-                  className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  {getCurrencySymbol(currency, locale)}
-                  <ChevronDown aria-hidden="true" className="h-3 w-3 opacity-50" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-28 p-1" align="start">
-                <div className="max-h-48 overflow-y-auto">
-                  {sortedCurrencies.map((curr) => (
-                    <button
-                      key={curr}
-                      onClick={() => onFieldChange("currency", curr)}
-                      className={cn(
-                        "w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors",
-                        currency === curr && "bg-accent"
-                      )}
-                    >
-                      {curr}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
 
-            <CalculatorInput
-              value={amount}
-              onChange={(v) => onFieldChange("amount", v)}
-              displayClassName={amountTextClassName("item")}
-              disabled={disabled}
-              allowNegative={amount < 0}
-              preserveDirection
-              maxDecimals={getCurrencyDecimals(currency)}
-            />
-          </div>
-
-          {isDifferentCurrency && convertedAmount != null && (
-            <AmountText variant="secondary" className="mt-0.5">
-              ≈ {formatCurrencyAmount(convertedAmount, mainCurrency, locale)}
+        {/*
+          Same reading order as the stream rows: the main-currency value on top,
+          the original amount it came from underneath.
+        */}
+        <div className="mt-1 flex flex-col items-start">
+          {(disabled || isDifferentCurrency) && (
+            <AmountText variant="item">
+              {formatCurrencyAmount(displayAmount, displayCurrency, locale)}
             </AmountText>
+          )}
+
+          {disabled ? (
+            showOriginalAmount ? (
+              <AmountText variant="secondary" className={cn(isDifferentCurrency && "mt-0.5")}>
+                ≈ {formatCurrencyAmount(amount, currency, locale, { currencyDisplay: "code" })}
+              </AmountText>
+            ) : null
+          ) : (
+            <div
+              className={cn(
+                "flex items-baseline gap-1.5 sm:gap-2",
+                isDifferentCurrency && "mt-0.5"
+              )}
+            >
+              {showOriginalAmount && <AmountText variant="secondary">≈</AmountText>}
+              <Popover modal={true}>
+                <PopoverTrigger asChild>
+                  <button
+                    disabled={disabled}
+                    aria-label={t("currency")}
+                    className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {getCurrencySymbol(currency, locale)}
+                    <ChevronDown aria-hidden="true" className="h-3 w-3 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-28 p-1" align="start">
+                  <div className="max-h-48 overflow-y-auto">
+                    {sortedCurrencies.map((curr) => (
+                      <button
+                        key={curr}
+                        onClick={() => onFieldChange("currency", curr)}
+                        className={cn(
+                          "w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors",
+                          currency === curr && "bg-accent"
+                        )}
+                      >
+                        {curr}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <CalculatorInput
+                value={amount}
+                onChange={(v) => onFieldChange("amount", v)}
+                displayClassName={amountTextClassName(isDifferentCurrency ? "secondary" : "item")}
+                disabled={disabled}
+                allowNegative={amount < 0}
+                preserveDirection
+                maxDecimals={getCurrencyDecimals(currency)}
+              />
+            </div>
           )}
         </div>
       </div>

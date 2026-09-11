@@ -85,7 +85,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
   const hasPendingAmountOrCurrency =
     pendingChanges.amount !== undefined || pendingChanges.currency !== undefined;
-  const { converted, isDifferentCurrency, status } = useAmountDisplay({
+  const { displayAmount, isDifferentCurrency, status } = useAmountDisplay({
     ledgerId: ledgerEntry.ledgerId,
     amount:
       pendingChanges.amount !== undefined ? String(pendingChanges.amount) : ledgerEntry.amount,
@@ -95,6 +95,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     // The persisted value is authoritative until amount/currency are edited.
     persistedConvertedAmount: hasPendingAmountOrCurrency ? null : ledgerEntry.convertedAmount,
   });
+  // Until the conversion resolves, `displayAmount` is still the original amount.
+  const showOriginalAmount = isDifferentCurrency && status === "success";
 
   const { isExpanded, setIsExpanded, needsFolding, contentRef } = useTextFolding([
     displayData.description,
@@ -124,9 +126,10 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
           amount={displayData.amount}
           currency={displayData.currency}
           preferredCurrencies={preferredCurrencies}
-          mainCurrency={mainCurrency}
-          convertedAmount={status === "success" && converted != null ? converted : null}
+          displayAmount={displayAmount}
+          displayCurrency={showOriginalAmount ? mainCurrency : displayData.currency}
           isDifferentCurrency={isDifferentCurrency}
+          showOriginalAmount={showOriginalAmount}
           onFieldChange={handleFieldChange}
           disabled={fieldDisabled}
         />
