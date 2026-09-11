@@ -234,9 +234,9 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
     }
     await client.query(
       `INSERT INTO source_documents
-        (id, ledger_id, title, type, document_date, version, date_organization_suggestion, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 1, $6, $7, $7)`,
-      [document.id, ledgerId, document.title, document.type, documentDate, suggestion, createdAt]
+        (id, ledger_id, title, document_date, version, date_organization_suggestion, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 1, $5, $6, $6)`,
+      [document.id, ledgerId, document.title, documentDate, suggestion, createdAt]
     );
     if (document.retainedResult != null) {
       await client.query(
