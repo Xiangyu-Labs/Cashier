@@ -313,6 +313,177 @@
       "failureCode": "insufficient_evidence",
       "failureMessage": "The receipt does not contain enough readable information.",
       "entries": []
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000010",
+      "revisionId": "50000000-0000-4000-8000-000000000010",
+      "title": "Regional Rail and Cafe",
+      "type": "ai_parsed",
+      "dayOffset": 0,
+      "inputText": "Travel expense note combining a Singapore rail ticket and a cafe purchase in Malaysia.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000016",
+          "category": "Transport",
+          "itemName": "Airport rail ticket",
+          "amount": "18.40",
+          "currency": "SGD",
+          "convertedAmount": "97.888",
+          "exchangeRate": "5.32"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000017",
+          "category": "Dining",
+          "itemName": "Station cafe lunch",
+          "amount": "42.00",
+          "currency": "MYR",
+          "convertedAmount": "68.04",
+          "exchangeRate": "1.62"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000011",
+      "revisionId": "50000000-0000-4000-8000-000000000011",
+      "title": "Tokyo Metro",
+      "type": "manual",
+      "dayOffset": -5,
+      "inputText": "Metro day pass in Tokyo.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000018",
+          "category": "Transport",
+          "itemName": "24-hour metro pass",
+          "amount": "1280",
+          "currency": "JPY",
+          "convertedAmount": "61.44",
+          "exchangeRate": "0.048"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000012",
+      "revisionId": "50000000-0000-4000-8000-000000000012",
+      "title": "Home Supply Refund",
+      "type": "manual",
+      "dayOffset": -6,
+      "inputText": "Refund for a returned desk lamp.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000019",
+          "category": "Household",
+          "itemName": "Returned desk lamp",
+          "description": "Full refund to the original payment method",
+          "amount": "-259.00",
+          "currency": "CNY",
+          "convertedAmount": "-259.00",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000013",
+      "revisionId": "50000000-0000-4000-8000-000000000013",
+      "title": null,
+      "type": "manual",
+      "dayOffset": -10,
+      "inputText": "Cash purchase awaiting categorization.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000020",
+          "category": null,
+          "itemName": "Uncategorized cash purchase",
+          "amount": "18.60",
+          "currency": "CNY",
+          "convertedAmount": "18.60",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000014",
+      "revisionId": "50000000-0000-4000-8000-000000000014",
+      "title": "Professional Development Conference Registration and Advanced Distributed Systems Workshop",
+      "type": "ai_parsed",
+      "dayOffset": -20,
+      "inputText": "Conference registration containing a workshop and a digital reference package.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000021",
+          "category": "Education",
+          "itemName": "Advanced distributed systems architecture and operational reliability workshop",
+          "description": "A full-day technical workshop covering consistency models, failure recovery, observability, capacity planning, and practical incident analysis for production services.",
+          "amount": "1880.00",
+          "currency": "CNY",
+          "convertedAmount": "1880.00",
+          "exchangeRate": "1"
+        },
+        {
+          "id": "70000000-0000-4000-8000-000000000022",
+          "category": "Education",
+          "itemName": "Digital conference reference package",
+          "description": "Slides, recordings, transcripts, and supplementary reading material",
+          "amount": "320.00",
+          "currency": "CNY",
+          "convertedAmount": "320.00",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000015",
+      "revisionId": "50000000-0000-4000-8000-000000000015",
+      "title": "Annual Health Insurance",
+      "type": "ai_parsed",
+      "dayOffset": -45,
+      "inputText": "Annual family health insurance premium.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000023",
+          "category": "Healthcare",
+          "itemName": "Annual family premium",
+          "amount": "123456.78",
+          "currency": "CNY",
+          "convertedAmount": "123456.78",
+          "exchangeRate": "1"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000016",
+      "revisionId": "50000000-0000-4000-8000-000000000016",
+      "title": "Kuwait Museum Shop",
+      "type": "manual",
+      "dayOffset": -75,
+      "inputText": "Museum catalog purchased in Kuwaiti dinar.",
+      "status": "completed",
+      "entries": [
+        {
+          "id": "70000000-0000-4000-8000-000000000024",
+          "category": "Education",
+          "itemName": "Exhibition catalog",
+          "amount": "12.345",
+          "currency": "KWD",
+          "convertedAmount": "288.873",
+          "exchangeRate": "23.40"
+        }
+      ]
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000017",
+      "revisionId": "50000000-0000-4000-8000-000000000017",
+      "title": "Cancelled Duplicate Upload",
+      "type": "ai_parsed",
+      "dayOffset": -4,
+      "inputText": "Duplicate receipt upload cancelled before processing.",
+      "status": "cancelled",
+      "entries": []
     }
   ]
 }

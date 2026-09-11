@@ -279,6 +279,10 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
       );
     }
     for (const [position, entry] of document.entries.entries()) {
+      const categoryId = entry.category == null ? null : (categoryIds.get(entry.category) ?? null);
+      if (entry.category != null && categoryId == null) {
+        throw new Error(`Unknown demo category: ${entry.category}`);
+      }
       await client.query(
         `INSERT INTO ledger_entries
           (id, ledger_id, category_id, source_document_id, source_document_revision_id,
@@ -288,7 +292,7 @@ async function insertFixture(client, environment, { userId, ledgerId, uploadedIm
         [
           entry.id,
           ledgerId,
-          categoryIds.get(entry.category),
+          categoryId,
           document.id,
           document.revisionId,
           position,
