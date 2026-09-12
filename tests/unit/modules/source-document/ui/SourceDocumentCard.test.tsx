@@ -65,6 +65,27 @@ describe("SourceDocumentCard interactions", () => {
     expect(screen.queryByText(/快速记账|Quick Entry/i)).not.toBeInTheDocument();
   });
 
+  it("labels an unparsable document without echoing its AI reason in the badge", () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={{
+          ...sourceDocument,
+          processingStatus: "failed",
+          failureKind: "invalid_input",
+          failureMessage: "这是一张退款单据，本系统只处理支出。",
+        }}
+        ledgerEntries={[]}
+        processingStatus="failed"
+        failureKind="invalid_input"
+        errorCode={null}
+        defaultExpanded={false}
+      />
+    );
+
+    expect(screen.getByTestId("status-label")).toHaveTextContent("无法解析");
+    expect(screen.queryByText("这是一张退款单据，本系统只处理支出。")).not.toBeInTheDocument();
+  });
+
   it("starts expanded by default and opens details only from the main region", () => {
     const onViewDetails = vi.fn();
     render(

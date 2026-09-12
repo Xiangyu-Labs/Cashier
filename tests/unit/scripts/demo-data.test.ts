@@ -80,14 +80,7 @@ describe("demo workspace fixture", () => {
           .filter((document) => document.failureKind === "invalid_input")
           .map((document) => document.failureCode)
       )
-    ).toEqual(
-      new Set([
-        "insufficient_evidence",
-        "currency_required",
-        "amount_conflict",
-        "unsupported_document",
-      ])
-    );
+    ).toEqual(new Set(["ai_declared_invalid", "entry_validation_failed"]));
     expect(
       new Set(
         failed

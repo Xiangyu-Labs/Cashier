@@ -172,7 +172,7 @@ describe("runParsePipeline — single-pass flow", () => {
     }
   });
 
-  it("invalid outcome returns invalid result", async () => {
+  it("invalid outcome returns the AI reason and the AI-declared diagnostic", async () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
@@ -186,7 +186,52 @@ describe("runParsePipeline — single-pass flow", () => {
 
     expect(result.kind).toBe("invalid");
     if (result.kind === "invalid") {
-      expect(result.failureMessage).toBe("Image too blurry");
+      expect(result.reason).toBe("Image too blurry");
+      expect(result.diagnostic).toBe("ai_declared_invalid");
+    }
+  });
+
+  it("invalid outcome without a reason stays reason-less instead of inventing text", async () => {
+    const { ai } = createMockAI({
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
+        outcome: "invalid",
+        invalid_reason: "   ",
+        ledger_entries: [],
+        receipt_totals: [],
+      },
+    });
+    const result = await runParsePipeline(createInput(), buildCtx(ai));
+
+    expect(result.kind).toBe("invalid");
+    if (result.kind === "invalid") {
+      expect(result.reason).toBeUndefined();
+      expect(result.diagnostic).toBe("ai_declared_invalid");
+    }
+  });
+
+  it("flags a self-detected non-positive entry with its own diagnostic", async () => {
+    const { ai } = createMockAI({
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Discount",
+            amount: "0",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        receipt_totals: [],
+      },
+    });
+    const result = await runParsePipeline(createInput(), buildCtx(ai));
+
+    expect(result.kind).toBe("invalid");
+    if (result.kind === "invalid") {
+      expect(result.diagnostic).toBe("non_positive_entry");
     }
   });
 

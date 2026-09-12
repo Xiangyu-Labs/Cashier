@@ -75,8 +75,9 @@ export function toParseSourceDocumentOutput(
       return {
         ledgerEntries: [],
         title: result.title,
-        failureMessage: result.failureMessage,
         verificationStatus: "invalid",
+        diagnostic: result.diagnostic,
+        ...(result.reason == null ? {} : { reason: result.reason }),
       };
     case "cancelled":
       throw new ProcessingCancelledError();

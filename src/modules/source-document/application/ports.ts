@@ -188,7 +188,11 @@ export interface CredentialSourceDocumentStatusResult {
       category: string | null;
     }>;
   };
-  error: null | { code: string };
+  /**
+   * Sanitized failure information. `code` is always a stable, non-empty
+   * public code; `message` is an optional user-facing explanation.
+   */
+  error: null | { code: string; message?: string | null };
 }
 
 export interface CredentialSourceDocumentReadPort {

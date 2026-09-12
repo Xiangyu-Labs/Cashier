@@ -7,11 +7,7 @@ import {
 import { toApplicationError } from "@/application/contracts/errors";
 import type { ApplicationErrorContract } from "@/application/contracts/errors";
 import { AppError } from "@/lib/errors";
-import {
-  supportedSourceDocumentActions,
-  toStableFailureCode,
-  toStableInvalidCode,
-} from "@/application/contracts";
+import { supportedSourceDocumentActions, toStableFailureCode } from "@/application/contracts";
 
 describe("target application contracts", () => {
   it("exposes actions for stable document lifecycle states", () => {
@@ -121,21 +117,6 @@ describe("target application contracts", () => {
         [null, "processing_unavailable"],
       ] as const;
       for (const [input, expected] of cases) expect(toStableFailureCode(input)).toBe(expected);
-    });
-  });
-
-  describe("toStableInvalidCode", () => {
-    it("preserves stable codes and maps legacy or unknown reasons to public codes", () => {
-      const cases = [
-        ["currency_required", "currency_required"],
-        ["unknown_currency", "currency_required"],
-        ["Parsing results diverged", "amount_conflict"],
-        ["Invalid content", "unsupported_document"],
-        ["Evidence anomaly", "insufficient_evidence"],
-        ["Some unknown reason", "insufficient_evidence"],
-        [null, "insufficient_evidence"],
-      ] as const;
-      for (const [input, expected] of cases) expect(toStableInvalidCode(input)).toBe(expected);
     });
   });
 });

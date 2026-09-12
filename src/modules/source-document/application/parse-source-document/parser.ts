@@ -17,6 +17,7 @@ import {
 } from "./contracts";
 import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
 import { TITLE_POLICY_PROMPT } from "@/modules/source-document/title-policy";
+import { INVALID_REASON_PROMPT } from "@/modules/source-document/failure-reason-policy";
 
 export interface ParserInput {
   evidence?: { images: readonly { dataUrl: string }[] };
@@ -74,6 +75,7 @@ function buildPrompt(input: ParserInput, aiLanguage: string): string {
 
   return `You are an expense evidence parser. Extract all expense line items from the provided document(s) and return structured JSON.
 ${TITLE_POLICY_PROMPT}
+${INVALID_REASON_PROMPT}
 
 ### Output Format
 
@@ -82,7 +84,7 @@ Return a single JSON object:
 \`\`\`json
 {
   "outcome": "success | invalid",
-  "invalid_reason": "string or null — only when outcome is invalid",
+  "invalid_reason": "the invalid-reason sentence described above, or null when outcome is success",
   "title": "merchant, service, or document name",
   "receipt_count": 1,
   "ledger_entries": [

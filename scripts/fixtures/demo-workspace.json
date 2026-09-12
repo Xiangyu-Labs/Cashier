@@ -310,8 +310,8 @@
       "inputText": "Parking receipt; merchant and total are unreadable.",
       "status": "failed",
       "failureKind": "invalid_input",
-      "failureCode": "insufficient_evidence",
-      "failureMessage": "The receipt does not contain enough readable information.",
+      "failureCode": "ai_declared_invalid",
+      "failureMessage": "The receipt photo is too blurry to read the merchant and the total.",
       "entries": []
     },
     {
@@ -494,8 +494,8 @@
       "inputText": "Lunch receipt with a total of 48.00 but no currency or location.",
       "status": "failed",
       "failureKind": "invalid_input",
-      "failureCode": "currency_required",
-      "failureMessage": "currency_required",
+      "failureCode": "ai_declared_invalid",
+      "failureMessage": "The receipt shows a total but no currency, so the expense cannot be recorded.",
       "entries": []
     },
     {
@@ -507,8 +507,8 @@
       "inputText": "Restaurant receipt where line items total 86.00 but the printed total is 68.00.",
       "status": "failed",
       "failureKind": "invalid_input",
-      "failureCode": "amount_conflict",
-      "failureMessage": "amount_conflict",
+      "failureCode": "ai_declared_invalid",
+      "failureMessage": "The printed total does not match the line items, so the amount is uncertain.",
       "entries": []
     },
     {
@@ -520,8 +520,8 @@
       "inputText": "Product warranty card without a purchase amount or transaction details.",
       "status": "failed",
       "failureKind": "invalid_input",
-      "failureCode": "unsupported_document",
-      "failureMessage": "unsupported_document",
+      "failureCode": "entry_validation_failed",
+      "failureMessage": null,
       "entries": []
     },
     {

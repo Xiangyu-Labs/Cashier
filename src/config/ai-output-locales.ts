@@ -230,7 +230,7 @@ export function buildAiOutputLocaleInstruction(locale: string | undefined): stri
   const audience = language == null ? targetLocale : `${language} (${targetLocale})`;
 
   return `### Mandatory Output Locale
-The ledger is for a native user of ${audience}. Write every persisted, user-visible ledger field in natural, idiomatic language for that locale: title, ledger_entries[].item_name, ledger_entries[].notes, and order_adjustments[].item_name.
+The ledger is for a native user of ${audience}. Write every persisted, user-visible ledger field in natural, idiomatic language for that locale: title, ledger_entries[].item_name, ledger_entries[].notes, order_adjustments[].item_name, and invalid_reason.
 Use concise terminology and naming conventions that a native speaker would expect in a personal bookkeeping app. This is not a literal-translation task.
 Preserve merchant names, brand names, product proper names, amounts, currencies, and all source-document facts when translating them would reduce accuracy or recognizability. The source document may be in any language.
 Keep JSON keys, enum values, currency codes, and other machine-readable protocol fields unchanged.

@@ -31,7 +31,6 @@ interface SourceDocumentCardProps {
   onEditRetryIntent?: () => void;
   processingStatus: SourceDocumentProcessingStatus | null;
   failureKind?: RevisionFailureKind | null;
-  failureMessage?: string | null;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   className?: string;
   selectionMode?: boolean;
@@ -64,7 +63,6 @@ function SourceDocumentCardBody({
   onEditRetryIntent,
   processingStatus,
   failureKind,
-  failureMessage,
   errorCode,
   className,
   selectionMode = false,
@@ -125,7 +123,6 @@ function SourceDocumentCardBody({
           sourceDocument={sourceDocument}
           processingStatus={processingStatus}
           failureKind={failureKind}
-          failureMessage={failureMessage}
           errorCode={errorCode}
           ledgerEntries={ledgerEntries}
           mainCurrency={mainCurrency}

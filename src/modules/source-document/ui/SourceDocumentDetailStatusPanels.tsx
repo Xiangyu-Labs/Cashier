@@ -5,8 +5,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AmountText } from "@/modules/currency/ui/amount-text";
-import type { InvalidCode, ProcessingFailureCode } from "@/application/contracts";
-import { toStableInvalidCode, toStableFailureCode } from "@/application/contracts";
+import { toStableFailureCode } from "@/application/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
@@ -97,20 +96,24 @@ export function SourceDocumentDetailStatusPanels({
           {sourceDocument.processingStatus === "failed" && (
             <div className="mb-3 px-1">
               {(() => {
-                const stableCode: InvalidCode | ProcessingFailureCode =
-                  sourceDocument.failureKind === "invalid_input"
-                    ? toStableInvalidCode(sourceDocument.failureMessage)
-                    : toStableFailureCode((sourceDocument as SourceDocument).errorCode);
+                // A document the AI could not turn into expenses shows one
+                // status plus the reason the AI wrote for the ledger owner.
+                const isUnparsable = sourceDocument.failureKind === "invalid_input";
+                const failureCode = toStableFailureCode(
+                  (sourceDocument as SourceDocument).errorCode
+                );
+                const title = isUnparsable
+                  ? diagnosticMessages.unparsableLabel
+                  : diagnosticMessages.label(failureCode);
+                const description = isUnparsable
+                  ? sourceDocument.failureMessage || diagnosticMessages.unparsableDescription
+                  : diagnosticMessages.description(failureCode);
                 return (
                   <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
                     <span className="mt-1 size-2 shrink-0 rounded-full bg-danger" aria-hidden />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-medium text-danger">
-                        {diagnosticMessages.label(stableCode)}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground/70">
-                        {diagnosticMessages.description(stableCode)}
-                      </span>
+                      <span className="text-xs font-medium text-danger">{title}</span>
+                      <span className="text-[11px] text-muted-foreground/70">{description}</span>
                     </div>
                   </div>
                 );

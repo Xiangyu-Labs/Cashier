@@ -50,13 +50,28 @@ export class ProcessingFailure extends Error {
   }
 }
 
-export interface ParseSourceDocumentOutput {
-  ledgerEntries: ParsedLedgerEntry[];
-  title?: string;
-  failureMessage?: string;
-  verificationStatus: "passed" | "invalid";
-  dateHints?: import("@/modules/source-document/date-organization-contracts").DateHint[];
-}
+/**
+ * Why a document that the AI processed produced no entries. This is internal
+ * triage metadata stored in the revision's failure code; it is never rendered.
+ * The ledger owner instead reads the AI-written natural-language reason.
+ */
+export type InvalidDiagnostic =
+  "ai_declared_invalid" | "non_positive_entry" | "entry_validation_failed";
+
+export type ParseSourceDocumentOutput =
+  | {
+      ledgerEntries: ParsedLedgerEntry[];
+      title?: string;
+      verificationStatus: "passed";
+      dateHints?: import("@/modules/source-document/date-organization-contracts").DateHint[];
+    }
+  | {
+      ledgerEntries: ParsedLedgerEntry[];
+      title?: string;
+      verificationStatus: "invalid";
+      reason?: string;
+      diagnostic: InvalidDiagnostic;
+    };
 
 export type ParsePipelineResult =
   | {
@@ -65,7 +80,7 @@ export type ParsePipelineResult =
       ledgerEntries: ParsedLedgerEntry[];
       dateHints?: import("@/modules/source-document/date-organization-contracts").DateHint[];
     }
-  | { kind: "invalid"; title: string; failureMessage: string }
+  | { kind: "invalid"; title: string; reason?: string; diagnostic: InvalidDiagnostic }
   | { kind: "cancelled" };
 
 export class ProcessingCancelledError extends Error {

@@ -123,6 +123,12 @@ export type NormalizedParseOutput = Omit<
 > & {
   invalid_reason?: string;
   title: string;
+  /**
+   * Internal triage label for an invalid outcome this module detected itself,
+   * as opposed to the AI declaring it. Never rendered and never persisted as
+   * user-facing text.
+   */
+  internal_diagnostic?: "non_positive_entry";
   receipt_totals: NormalizedReceiptTotal[];
   ledger_entries: NormalizedLedgerEntry[];
   order_adjustments: NormalizedOrderAdjustment[];
@@ -170,11 +176,11 @@ export function normalizeResult(
 
   // Zero cannot represent a usable expense. Negative successful entries above
   // have already been normalized from debit-display notation.
-  const invalidEntry = ledgerEntries.find((entry) => compare(entry.amount, "0") <= 0);
-  if (invalidEntry != null) {
+  const hasNonPositiveEntry = ledgerEntries.some((entry) => compare(entry.amount, "0") <= 0);
+  if (hasNonPositiveEntry) {
     return {
       outcome: "invalid",
-      invalid_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
+      internal_diagnostic: "non_positive_entry",
       title: normalizeTitle(output.title, fallbackTitleForOutcome(output, aiLanguage)),
       receipt_count: output.receipt_count,
       receipt_totals: receiptTotals,

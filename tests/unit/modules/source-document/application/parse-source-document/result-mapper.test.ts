@@ -135,13 +135,30 @@ describe("toParseSourceDocumentOutput", () => {
     const result: ParsePipelineResult = {
       kind: "invalid",
       title: "Blurred receipt",
-      failureMessage: "Results inconsistent",
+      reason: "Results inconsistent",
+      diagnostic: "ai_declared_invalid",
     };
 
     expect(toParseSourceDocumentOutput(result)).toEqual({
       ledgerEntries: [],
       title: "Blurred receipt",
-      failureMessage: "Results inconsistent",
+      reason: "Results inconsistent",
+      diagnostic: "ai_declared_invalid",
+      verificationStatus: "invalid",
+    });
+  });
+
+  it("omits the reason when the pipeline found none", () => {
+    const result: ParsePipelineResult = {
+      kind: "invalid",
+      title: "Blurred receipt",
+      diagnostic: "entry_validation_failed",
+    };
+
+    expect(toParseSourceDocumentOutput(result)).toEqual({
+      ledgerEntries: [],
+      title: "Blurred receipt",
+      diagnostic: "entry_validation_failed",
       verificationStatus: "invalid",
     });
   });

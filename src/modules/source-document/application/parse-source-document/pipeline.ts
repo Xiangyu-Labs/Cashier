@@ -11,6 +11,7 @@ import { executeParser } from "./parser";
 import type { ParserInput } from "./parser";
 import { convertToParsedEntries } from "./result-mapper";
 import type { NormalizedParseOutput } from "./parser-schema";
+import { normalizeFailureReason } from "@/modules/source-document/failure-reason-policy";
 import { runtimeEnv } from "@/lib/env/runtime";
 
 // ===== Context =====
@@ -65,10 +66,12 @@ function resolveOutcome(
   result: NormalizedParseOutput
 ): ParsePipelineResult | { kind: "continue"; result: NormalizedParseOutput } {
   if (result.outcome === "invalid") {
+    const reason = normalizeFailureReason(result.invalid_reason);
     return {
       kind: "invalid",
       title: result.title,
-      failureMessage: result.invalid_reason ?? "Document cannot be parsed",
+      diagnostic: result.internal_diagnostic ?? "ai_declared_invalid",
+      ...(reason == null ? {} : { reason }),
     };
   }
   return { kind: "continue", result };

@@ -222,6 +222,74 @@ describe("API v1 source-documents route", () => {
     expect(missing.headers.get("cache-control")).toBe("private, no-store");
   });
 
+  it("GET reports an unparsable document with a stable code and the AI reason", async () => {
+    const image = await validJpegBase64();
+    const created = await POST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+      })
+    ).then((response) => response.json());
+    const db = getTestDb();
+    await db
+      .update(sourceDocumentRevisions)
+      .set({
+        processingStatus: "failed",
+        failureKind: "invalid_input",
+        failureCode: "ai_declared_invalid",
+        failureMessage: "This is a refund, not an expense.",
+        finishedAt: new Date(),
+      })
+      .where(eq(sourceDocumentRevisions.id, created.revisionId));
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${created.sourceDocumentId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: created.sourceDocumentId }) }
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      sourceDocumentId: created.sourceDocumentId,
+      status: "invalid",
+      result: null,
+      error: { code: "VALIDATION_FAILED", message: "This is a refund, not an expense." },
+    });
+  });
+
+  it("GET omits the AI reason when a failed document has none", async () => {
+    const image = await validJpegBase64();
+    const created = await POST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+      })
+    ).then((response) => response.json());
+    const db = getTestDb();
+    await db
+      .update(sourceDocumentRevisions)
+      .set({
+        processingStatus: "failed",
+        failureKind: "invalid_input",
+        failureCode: "entry_validation_failed",
+        failureMessage: null,
+        finishedAt: new Date(),
+      })
+      .where(eq(sourceDocumentRevisions.id, created.revisionId));
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${created.sourceDocumentId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: created.sourceDocumentId }) }
+    );
+    const body = await response.json();
+    expect(body.status).toBe("invalid");
+    expect(body.error).toEqual({ code: "VALIDATION_FAILED", message: null });
+  });
+
   it("totals converted amounts in the ledger main currency instead of raw amounts", async () => {
     const image = await validJpegBase64();
     const created = await POST(

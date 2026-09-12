@@ -1,13 +1,7 @@
 {
   "DiagnosticCode": {
-    "insufficient_evidence": "证据不足",
-    "insufficient_evidence_desc": "收据中缺少足够的信息以提取条目。请尝试上传更清晰的图片或添加更多文字。",
-    "currency_required": "需要货币",
-    "currency_required_desc": "系统无法确定使用的货币。请在输入中指定货币。",
-    "amount_conflict": "金额冲突",
-    "amount_conflict_desc": "解析出的金额不一致或存在冲突。请检查并更正条目。",
-    "unsupported_document": "不支持的文档",
-    "unsupported_document_desc": "不支持解析此文档类型。请使用收据或发票。",
+    "unparsable_document": "无法解析",
+    "unparsable_document_desc": "AI 未能从这份单据中解析出可记账的支出。可以换一张更清晰的图片，或补充文字说明后重试。",
     "ai_provider_unavailable": "AI 服务不可用",
     "ai_provider_unavailable_desc": "AI 提供方暂时不可用。请稍后重试。",
     "ai_schema_invalid": "AI 响应无效",

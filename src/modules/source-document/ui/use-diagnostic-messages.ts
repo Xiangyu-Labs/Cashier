@@ -1,23 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { InvalidCode, ProcessingFailureCode } from "@/application/contracts";
-
-type DiagnosticCode = InvalidCode | ProcessingFailureCode;
+import type { ProcessingFailureCode } from "@/application/contracts";
 
 export function useDiagnosticMessages() {
   const t = useTranslations("DiagnosticCode");
 
-  const label = (code: DiagnosticCode) => {
+  const label = (code: ProcessingFailureCode) => {
     switch (code) {
-      case "insufficient_evidence":
-        return t("insufficient_evidence");
-      case "currency_required":
-        return t("currency_required");
-      case "amount_conflict":
-        return t("amount_conflict");
-      case "unsupported_document":
-        return t("unsupported_document");
       case "ai_provider_unavailable":
         return t("ai_provider_unavailable");
       case "ai_schema_invalid":
@@ -37,16 +27,8 @@ export function useDiagnosticMessages() {
     }
   };
 
-  const description = (code: DiagnosticCode) => {
+  const description = (code: ProcessingFailureCode) => {
     switch (code) {
-      case "insufficient_evidence":
-        return t("insufficient_evidence_desc");
-      case "currency_required":
-        return t("currency_required_desc");
-      case "amount_conflict":
-        return t("amount_conflict_desc");
-      case "unsupported_document":
-        return t("unsupported_document_desc");
       case "ai_provider_unavailable":
         return t("ai_provider_unavailable_desc");
       case "ai_schema_invalid":
@@ -66,5 +48,12 @@ export function useDiagnosticMessages() {
     }
   };
 
-  return { label, description };
+  return {
+    label,
+    description,
+    /** Title for a document the AI could not turn into any expense. */
+    unparsableLabel: t("unparsable_document"),
+    /** Fallback for a failed document that carries no reason of its own. */
+    unparsableDescription: t("unparsable_document_desc"),
+  };
 }

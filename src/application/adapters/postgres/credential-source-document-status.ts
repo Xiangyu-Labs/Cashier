@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { db } from "@/persistence/db";
 import { ledgers, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
-import { toStableInvalidCode, toStableFailureCode } from "@/application/contracts";
+import { toStableFailureCode } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import type {
@@ -99,11 +99,14 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
         })),
       };
     }
+    // An unparsable document reports the stable VALIDATION_FAILED code — this
+    // replaces the four legacy invalid codes — plus the natural-language reason
+    // the ledger owner reads, which may be absent.
     const error =
       status === "failed"
         ? { code: toStableFailureCode(revision.failureCode) }
         : status === "invalid"
-          ? { code: toStableInvalidCode(revision.failureMessage) }
+          ? { code: "VALIDATION_FAILED", message: revision.failureMessage }
           : null;
     return {
       sourceDocumentId: document.id,

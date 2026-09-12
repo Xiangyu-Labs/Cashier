@@ -9,6 +9,8 @@ import type {
 } from "@/application/contracts";
 import { LedgerMainCurrencyChangedError } from "@/application/contracts";
 import { NotFoundError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import type { AIContext } from "@/lib/tasks/types";
 import { compare } from "@/lib/money/decimal";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
@@ -24,7 +26,9 @@ import {
   ProcessingCancelledError,
   ProcessingFailure,
   throwIfProcessingCancelled,
+  type InvalidDiagnostic,
 } from "@/modules/source-document/application/parse-source-document/contracts";
+import { normalizeFailureReason } from "@/modules/source-document/failure-reason-policy";
 import {
   isFailedLoadImageResult,
   isSuccessfulLoadImageResult,
@@ -47,6 +51,18 @@ export interface CurrentRevisionProcessorOptions {
 
 export class CurrentRevisionProcessor implements RevisionProcessorPort {
   constructor(private readonly options: CurrentRevisionProcessorOptions) {}
+
+  private failureLogContext(
+    request: RevisionProcessingRequestContract,
+    failureCode: InvalidDiagnostic
+  ): Record<string, unknown> {
+    return {
+      ledgerSubject: logIdentifier("ledger", request.ledgerId),
+      sourceDocumentSubject: logIdentifier("source-document", request.sourceDocumentId),
+      revisionSubject: logIdentifier("revision", request.revisionId),
+      failureCode,
+    };
+  }
 
   async process(
     request: RevisionProcessingRequestContract
@@ -107,33 +123,49 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     throwIfProcessingCancelled(signal);
     const output = toParseSourceDocumentOutput(pipeline);
     if (output.verificationStatus !== "passed") {
-      const failureMessage = output.failureMessage ?? "Invalid content";
+      const failureMessage = normalizeFailureReason(output.reason);
+      logger.warn(
+        this.failureLogContext(request, output.diagnostic),
+        "Revision could not be parsed"
+      );
       const preserved = await this.options.recordProcessingFailure({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
         failureKind: "invalid_input",
         failureMessage,
+        failureCode: output.diagnostic,
       });
       if (!preserved && request.lease != null) {
         throw new ProcessingCancelledError();
       }
-      return { processingStatus: "failed", failureMessage, completion: "atomic" };
+      return {
+        processingStatus: "failed",
+        ...(failureMessage == null ? {} : { failureMessage }),
+        completion: "atomic",
+      };
     }
 
     const validation = validateEntries(output.ledgerEntries);
     throwIfProcessingCancelled(signal);
     if (!validation.isValid) {
-      const failureMessage = validation.reason ?? "No valid entries";
+      logger.warn(
+        {
+          ...this.failureLogContext(request, "entry_validation_failed"),
+          validationReason: validation.reason ?? null,
+        },
+        "Revision entries failed validation; no entries were recorded"
+      );
       const preserved = await this.options.recordProcessingFailure({
         ...request,
         ...(request.lease == null ? {} : { lease: request.lease }),
         failureKind: "invalid_input",
-        failureMessage,
+        failureMessage: null,
+        failureCode: "entry_validation_failed",
       });
       if (!preserved && request.lease != null) {
         throw new ProcessingCancelledError();
       }
-      return { processingStatus: "failed", failureMessage, completion: "atomic" };
+      return { processingStatus: "failed", completion: "atomic" };
     }
     const { fallbackDate } = getEntryFallbackDate(revision.inputDocumentDate);
     const validEntries = output.ledgerEntries.filter(

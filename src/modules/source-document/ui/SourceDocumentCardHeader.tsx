@@ -26,14 +26,13 @@ import type {
   ProcessingFailureCode,
   RevisionFailureKind,
 } from "@/application/contracts";
-import { toStableFailureCode, toStableInvalidCode } from "@/application/contracts";
+import { toStableFailureCode } from "@/application/contracts";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight | SourceDocumentListItemDto;
   processingStatus: SourceDocumentProcessingStatus | null;
   failureKind?: RevisionFailureKind | null | undefined;
-  failureMessage?: string | null | undefined;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
@@ -71,7 +70,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   sourceDocument,
   processingStatus: status,
   failureKind,
-  failureMessage,
   errorCode,
   ledgerEntries,
   mainCurrency,
@@ -108,13 +106,15 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       status === "cancelled");
   const shouldShowTotal = ledgerEntries.length > 0 && (status === "completed" || status == null);
 
-  // Derive stable error code for display
-  const stableErrorCode =
-    status === "failed" && failureKind === "invalid_input"
-      ? toStableInvalidCode(failureMessage)
-      : status === "failed"
-        ? toStableFailureCode(errorCode)
-        : null;
+  // A failed document shows one stable label: a document the AI could not turn
+  // into entries reads as unparsable, everything else by its failure code. The
+  // AI-written reason is too long for this badge and lives in the detail panel.
+  const failureLabel =
+    status === "failed"
+      ? failureKind === "invalid_input"
+        ? diagnosticMessages.unparsableLabel
+        : diagnosticMessages.label(toStableFailureCode(errorCode))
+      : null;
 
   const hasAction = (action: SupportedSourceDocumentAction) => supportedActions.includes(action);
 
@@ -169,11 +169,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         {shouldShowProcessingStatus && (
           <ProcessingStatus
             status={processingStatus}
-            {...(stableErrorCode != null
-              ? { label: diagnosticMessages.label(stableErrorCode) }
-              : failureMessage != null && failureMessage !== ""
-                ? { label: failureMessage }
-                : {})}
+            {...(failureLabel != null ? { label: failureLabel } : {})}
           />
         )}
 

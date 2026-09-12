@@ -95,6 +95,24 @@ Authorization: Bearer <token>
 完成状态中的 `result.total` 使用账本主币种汇总，`result.totalCurrency` 是三位 ISO
 主币种代码。各条明细仍保留原始金额和币种。
 
+失败状态通过 `error` 对象描述，成功与处理中状态为 `null`：
+
+```json
+{
+  "status": "invalid",
+  "result": null,
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "这是一张退款单据，本系统只处理支出。"
+  }
+}
+```
+
+`status` 的取值、语义与 `Retry-After` 行为在所有失败情形下保持一致。`error.code` 恒为
+非空字符串：`status` 为 `"invalid"` 时固定为 `"VALIDATION_FAILED"`，`status` 为
+`"failed"` 时是稳定的失败码。`error.message` 是可选的、面向用户的自然语言说明，可能缺失
+或为 `null`，客户端应仅在它非空时展示。
+
 ## 重试与幂等
 
 网络超时不代表创建失败。重试 `POST` 时复用同一个 `Idempotency-Key`：

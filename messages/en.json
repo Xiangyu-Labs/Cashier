@@ -1,13 +1,7 @@
 {
   "DiagnosticCode": {
-    "insufficient_evidence": "Insufficient Evidence",
-    "insufficient_evidence_desc": "The receipt does not contain enough information to extract entries. Try uploading a clearer image or adding more text.",
-    "currency_required": "Currency Required",
-    "currency_required_desc": "The system could not determine the currency. Please specify the currency in your input.",
-    "amount_conflict": "Amount Conflict",
-    "amount_conflict_desc": "The parsed amounts are inconsistent or conflicting. Please review and correct the entries.",
-    "unsupported_document": "Unsupported Document",
-    "unsupported_document_desc": "This document type is not supported for parsing. Try a receipt or invoice instead.",
+    "unparsable_document": "Couldn't Parse",
+    "unparsable_document_desc": "The AI could not extract any recordable expense from this document. Try a clearer image, or add a note and retry.",
     "ai_provider_unavailable": "AI Service Unavailable",
     "ai_provider_unavailable_desc": "The AI provider is temporarily unavailable. Please retry later.",
     "ai_schema_invalid": "AI Response Invalid",

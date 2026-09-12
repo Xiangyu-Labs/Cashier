@@ -85,6 +85,9 @@ describe("parser-schema", () => {
     });
     const result = normalizeResult(withZeroEntry);
     expect(result.outcome).toBe("invalid");
+    expect(result.internal_diagnostic).toBe("non_positive_entry");
+    // The AI-facing reason stays untouched: the internal label is not user copy.
+    expect(result.invalid_reason).toBeUndefined();
   });
 
   it("normalizes a negative ledger entry and receipt total used as debit-display notation", () => {

@@ -26,6 +26,7 @@ function createProcessor(entryCount: number, overrides: Record<string, unknown> 
     rates: { EUR: 1, CNY: 8, USD: 1.2 },
   });
   const activateRevision = vi.fn().mockResolvedValue(true);
+  const recordProcessingFailure = vi.fn().mockResolvedValue(true);
   toOutputMock.mockReturnValue({
     verificationStatus: "passed",
     title: "Parsed",
@@ -58,12 +59,12 @@ function createProcessor(entryCount: number, overrides: Record<string, unknown> 
     getSettings,
     loadStoredFiles: vi.fn().mockResolvedValue([]),
     getRates,
-    recordProcessingFailure: vi.fn().mockResolvedValue(true),
+    recordProcessingFailure,
     getRevision: vi.fn().mockResolvedValue(null),
     activateRevision,
     ...overrides,
   });
-  return { processor, getSettings, getRates, activateRevision };
+  return { processor, getSettings, getRates, activateRevision, recordProcessingFailure };
 }
 
 const request = {
@@ -125,5 +126,62 @@ describe("CurrentRevisionProcessor", () => {
     expect(activateRevision).toHaveBeenCalledTimes(3);
     expect(getSettings).toHaveBeenCalledTimes(3);
     expect(runParsePipelineMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("records the AI reason and the AI-declared diagnostic when the AI rejects the document", async () => {
+    const { processor, recordProcessingFailure, activateRevision } = createProcessor(0);
+    toOutputMock.mockReturnValue({
+      verificationStatus: "invalid",
+      title: "Blurred receipt",
+      ledgerEntries: [],
+      reason: "  This is a refund, not an expense. ",
+      diagnostic: "ai_declared_invalid",
+    });
+
+    await expect(processor.process(request)).resolves.toEqual({
+      processingStatus: "failed",
+      failureMessage: "This is a refund, not an expense.",
+      completion: "atomic",
+    });
+
+    expect(recordProcessingFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureKind: "invalid_input",
+        failureCode: "ai_declared_invalid",
+        failureMessage: "This is a refund, not an expense.",
+      })
+    );
+    expect(activateRevision).not.toHaveBeenCalled();
+  });
+
+  it("records no user-facing reason when entry validation fails, keeping only the diagnostic", async () => {
+    const { processor, recordProcessingFailure, activateRevision } = createProcessor(1);
+    toOutputMock.mockReturnValue({
+      verificationStatus: "passed",
+      title: "Parsed",
+      ledgerEntries: [
+        {
+          itemName: "Discount",
+          amount: "0",
+          currency: "EUR",
+          categoryIndex: 0,
+          entryDate: "2026-09-01",
+        },
+      ],
+    });
+
+    await expect(processor.process(request)).resolves.toEqual({
+      processingStatus: "failed",
+      completion: "atomic",
+    });
+
+    expect(recordProcessingFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureKind: "invalid_input",
+        failureCode: "entry_validation_failed",
+        failureMessage: null,
+      })
+    );
+    expect(activateRevision).not.toHaveBeenCalled();
   });
 });

@@ -84,7 +84,7 @@ export interface ProcessingLeaseContract {
 interface ProcessingDiagnostic {
   correlationId: string;
   code: ApplicationErrorCode;
-  stableCode?: InvalidCode | ProcessingFailureCode;
+  stableCode?: ProcessingFailureCode;
 }
 
 export interface ProcessingCompletionContract {
@@ -100,18 +100,6 @@ export interface ProcessingClaimContract {
   claimToken: string;
   expiresAt: string;
 }
-
-/**
- * Stable, user-facing invalid codes for documents that parsed but need user attention.
- * These are localized and sanitized before being shown in the UI.
- */
-const INVALID_CODES = [
-  "insufficient_evidence",
-  "currency_required",
-  "amount_conflict",
-  "unsupported_document",
-] as const;
-export type InvalidCode = (typeof INVALID_CODES)[number];
 
 /**
  * Stable, user-facing processing failure codes for documents that failed to parse.
@@ -159,48 +147,6 @@ export function toStableFailureCode(legacyCode: string | null | undefined): Proc
   }
 }
 
-/**
- * Map a legacy invalid reason string to a stable InvalidCode.
- * Falls back to "insufficient_evidence" for unknown values.
- */
-export function toStableInvalidCode(reason: string | null | undefined): InvalidCode {
-  if (reason == null) return "insufficient_evidence";
-
-  const normalized = reason.toLowerCase().replace(/\s+/g, "_");
-
-  if ((INVALID_CODES as readonly string[]).includes(normalized)) {
-    return normalized as InvalidCode;
-  }
-
-  // Map common legacy values
-  if (normalized.includes("currency") || normalized.includes("unknown_currency")) {
-    return "currency_required";
-  }
-  if (
-    normalized.includes("amount") ||
-    normalized.includes("conflict") ||
-    normalized.includes("diverg")
-  ) {
-    return "amount_conflict";
-  }
-  if (
-    normalized.includes("unsupported") ||
-    normalized.includes("invalid") ||
-    normalized.includes("unrecognized")
-  ) {
-    return "unsupported_document";
-  }
-  if (
-    normalized.includes("evidence") ||
-    normalized.includes("content") ||
-    normalized.includes("anomaly")
-  ) {
-    return "insufficient_evidence";
-  }
-
-  return "insufficient_evidence";
-}
-
 export interface SourceDocumentSubmissionContract {
   sourceDocumentId: SourceDocumentId;
   revisionId: RevisionId;
@@ -240,7 +186,11 @@ export interface SourceDocumentPort {
     sourceDocumentId: SourceDocumentId;
     revisionId: RevisionId;
     failureKind: RevisionFailureKind;
-    failureMessage: string;
+    /**
+     * User-facing text. `null` when the failure carries no explanation, in
+     * which case the UI falls back to localized copy.
+     */
+    failureMessage: string | null;
     failureCode?: string | null;
     lease?: ProcessingLeaseContract;
   }): Promise<boolean>;
