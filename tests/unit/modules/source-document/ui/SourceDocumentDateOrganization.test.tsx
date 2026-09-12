@@ -509,9 +509,12 @@ describe("SourceDocumentDateOrganization", () => {
     const converted = within(row).getByText("¥72.00");
     expect(converted).toHaveClass("text-base", "font-semibold");
 
-    const original = within(row).getByText((text) => text.startsWith("≈"));
+    // The original amount is named by its currency code alone: no "≈" marks the
+    // figure below the converted one.
+    const original = within(row).getByText((text) => text.startsWith("USD"));
     expect(original).toHaveClass("text-xs", "text-muted-foreground");
     expect(original.textContent).toContain("USD");
+    expect(original.textContent).not.toContain("≈");
 
     // The original sits below the converted amount.
     expect(

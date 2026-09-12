@@ -54,7 +54,7 @@ export function AmountDisplay({
       </AmountText>
       {showConverted && showOriginal ? (
         <AmountText variant="secondary">
-          ≈ {formatCurrencyAmount(amount, originalCurrency, locale, { currencyDisplay: "code" })}
+          {formatCurrencyAmount(amount, originalCurrency, locale, { currencyDisplay: "code" })}
         </AmountText>
       ) : null}
       {status === "error" ? (

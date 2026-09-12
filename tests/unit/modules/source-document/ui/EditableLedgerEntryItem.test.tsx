@@ -93,9 +93,12 @@ describe("EditableLedgerEntryItem currency control", () => {
     const converted = screen.getByText("¥72.00");
     expect(converted).toHaveClass("text-base", "font-semibold", "text-text");
 
-    const original = screen.getByText((text) => text.startsWith("≈"));
+    // The original amount is named by its currency code alone: the row already
+    // reads as a converted one, so no "≈" marks the figure below.
+    const original = screen.getByText((text) => text.startsWith("USD"));
     expect(original).toHaveClass("text-xs", "text-muted-foreground");
     expect(original.textContent).toContain("USD");
+    expect(original.textContent).not.toContain("≈");
 
     // The original sits below the converted amount.
     expect(
