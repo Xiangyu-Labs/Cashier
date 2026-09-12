@@ -58,7 +58,9 @@ export const LedgerEntryCard = memo(function LedgerEntryCard({
             }
           : {})}
       >
-        <div className="px-3 py-3 sm:px-4">
+        {/* Same padding as the entry rows inside a source document, so a card
+            here is exactly as tall as one of those rows. */}
+        <div className="px-3 py-2 sm:px-4">
           <div
             className={cn(onView != null && !selectionMode && "cursor-pointer")}
             onClick={(e) => {

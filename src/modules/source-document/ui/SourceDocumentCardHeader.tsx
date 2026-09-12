@@ -122,11 +122,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   return (
     <div
       className={cn(
-        // The shell's 68px minimum is measured over its own 1px top and bottom
-        // borders, so a header filling the full 68px would push a collapsed
-        // card to 70px — 2px taller than the single-row entry cards it sits
-        // beside in the details tab.
-        "flex h-[calc(var(--selectable-card-header-height,68px)-2px)] items-center gap-1 py-2 pr-2 sm:pr-3",
+        // The shell's 56px minimum is measured over its own 1px top and bottom
+        // borders, so a header filling the full 56px would push a collapsed
+        // card to 58px — 2px taller than the single-row entry cards it sits
+        // beside in the details tab. What is left is one entry row's height,
+        // which is the point: this header carries less than a row does.
+        "flex h-[calc(var(--selectable-card-header-height,56px)-2px)] items-center gap-1 py-2 pr-2 sm:pr-3",
         selectionMode ? "pl-11" : "pl-2 sm:pl-3"
       )}
     >
@@ -134,7 +135,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         <button
           type="button"
           onClick={onToggleExpanded}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)]"
           aria-label={isExpanded ? t("collapse") : t("expand")}
           aria-expanded={isExpanded}
           aria-controls={contentId}
@@ -147,7 +148,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         </button>
       ) : (
-        <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center" />
+        <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center" />
       )}
 
       <button
@@ -157,7 +158,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         onPointerDown={onViewDetailsIntent}
         onFocus={onViewDetailsIntent}
         disabled={onViewDetails == null}
-        className="group flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none disabled:cursor-default sm:min-h-9"
+        className="group flex min-h-9 min-w-0 flex-1 items-center rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none disabled:cursor-default"
       >
         <span className="flex min-w-0 items-center gap-2 rounded-sm group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring">
           <span className={textRoleClassName("cardTitle", "truncate")}>
@@ -191,7 +192,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                   ref={menuTriggerRef}
                   variant="ghost"
                   size="icon-sm"
-                  className="h-11 w-11 text-muted-foreground hover:text-text sm:h-8 sm:w-8"
+                  className="h-9 w-9 text-muted-foreground hover:text-text sm:h-8 sm:w-8"
                   aria-label={t("moreActions")}
                 >
                   <MoreVertical className="h-4 w-4" />

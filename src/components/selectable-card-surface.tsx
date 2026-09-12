@@ -48,7 +48,11 @@ export const SelectableCardSurface = memo(function SelectableCardSurface({
   return (
     <div
       className={cn(
-        "relative rounded-[var(--radius-xl)] [--selectable-card-header-height:68px]",
+        // One row of a card. Every card in the ledger — a collapsed source
+        // document, an entry card in the details tab — is this tall, and the
+        // source-document header is this tall, so an expanded card's header
+        // lines up with the entry rows underneath it.
+        "relative rounded-[var(--radius-xl)] [--selectable-card-header-height:56px]",
         selectionMode && "isolate",
         selectionMode && selected && "ring-1 ring-primary",
         selectionMode && disabled && "opacity-60"
