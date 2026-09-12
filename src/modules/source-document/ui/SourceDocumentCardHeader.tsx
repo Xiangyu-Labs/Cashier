@@ -121,7 +121,11 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   return (
     <div
       className={cn(
-        "flex h-[var(--selectable-card-header-height,68px)] items-center gap-1 py-2 pr-2 sm:pr-3",
+        // The shell's 68px minimum is measured over its own 1px top and bottom
+        // borders, so a header filling the full 68px would push a collapsed
+        // card to 70px — 2px taller than the single-row entry cards it sits
+        // beside in the details tab.
+        "flex h-[calc(var(--selectable-card-header-height,68px)-2px)] items-center gap-1 py-2 pr-2 sm:pr-3",
         selectionMode ? "pl-11" : "pl-2 sm:pl-3"
       )}
     >

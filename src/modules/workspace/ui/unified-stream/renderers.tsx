@@ -73,14 +73,19 @@ function AnimatedInteractiveGroups(props: ControlledRendererProps) {
   const motion = useStreamListMotion(motionItems, expansionLayoutKey);
   const children: ReactNode[] = [];
 
-  for (const dateGroup of props.streamGroups) {
+  for (const [groupIndex, dateGroup] of props.streamGroups.entries()) {
     children.push(
-      <UnifiedGroupHeader
-        key={`header:${dateGroup.date}`}
-        group={dateGroup}
-        mainCurrency={props.mainCurrency}
-        {...(props.timeZone != null ? { timeZone: props.timeZone } : {})}
-      />
+      // A date header opens a group, so it takes the group gap above it while
+      // the cards inside keep the card gap: the same rhythm the details tab's
+      // date groups read at. The flat child list is deliberate — grouping the
+      // cards under a per-date element would remount a card whose date changes.
+      <div key={`header:${dateGroup.date}`} className={cn(groupIndex > 0 && "pt-2")}>
+        <UnifiedGroupHeader
+          group={dateGroup}
+          mainCurrency={props.mainCurrency}
+          {...(props.timeZone != null ? { timeZone: props.timeZone } : {})}
+        />
+      </div>
     );
     for (const item of dateGroup.items) {
       children.push(
