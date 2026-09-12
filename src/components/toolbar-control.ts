@@ -5,10 +5,12 @@
  * three unrelated groups. A toolbar row takes its control height, padding and
  * label size from here instead.
  *
- * Icons are deliberately not part of this: `Button` already sizes every icon it
- * wraps, and one size per view is the convention.
+ * The tier is one step below `Button`'s default so the row stays quiet next to
+ * the period label and the total it sits between: at 14px/36px the filter
+ * trigger outweighed both. Icons are deliberately not part of this: `Button`
+ * already sizes every icon it wraps, and one size per view is the convention.
  */
-export const TOOLBAR_CONTROL_CLASS = "h-9 gap-1.5 px-3 text-sm";
+export const TOOLBAR_CONTROL_CLASS = "h-8 gap-1.5 px-2.5 text-xs";
 
 /** Square, icon-only form of the same control. */
-export const TOOLBAR_ICON_BUTTON_CLASS = "h-9 w-9";
+export const TOOLBAR_ICON_BUTTON_CLASS = "h-8 w-8";
