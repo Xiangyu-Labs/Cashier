@@ -46,10 +46,12 @@ export function SourceDocumentSummaryHeader({
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
 
+  // The total's right inset matches the entry rows' `px-3` so the two line up;
+  // the left keeps its own tighter inset for the select control.
   return (
     <div
       data-testid="source-document-date-row"
-      className="relative flex min-w-0 items-center justify-between gap-2 border-b border-border p-2"
+      className="relative flex min-w-0 items-center justify-between gap-2 border-b border-border py-2 pl-2 pr-3"
     >
       <div className="relative z-10 flex shrink-0 items-center gap-2">
         {entryCount > 0 && !interactionDisabled && (
