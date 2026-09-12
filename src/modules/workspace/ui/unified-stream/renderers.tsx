@@ -11,7 +11,7 @@ const VIRTUALIZATION_THRESHOLD = 80;
 
 export function StaticUnifiedGroups(props: RendererProps & { readOnly: true }) {
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-4">
       {props.streamGroups.map((dateGroup) => (
         <div key={dateGroup.date} className="ledger-list-group space-y-2">
           <UnifiedGroupHeader
@@ -73,19 +73,14 @@ function AnimatedInteractiveGroups(props: ControlledRendererProps) {
   const motion = useStreamListMotion(motionItems, expansionLayoutKey);
   const children: ReactNode[] = [];
 
-  for (const [groupIndex, dateGroup] of props.streamGroups.entries()) {
+  for (const dateGroup of props.streamGroups) {
     children.push(
-      // A date header opens a group, so it takes the group gap above it while
-      // the cards inside keep the card gap: the same rhythm the details tab's
-      // date groups read at. The flat child list is deliberate — grouping the
-      // cards under a per-date element would remount a card whose date changes.
-      <div key={`header:${dateGroup.date}`} className={cn(groupIndex > 0 && "pt-2")}>
-        <UnifiedGroupHeader
-          group={dateGroup}
-          mainCurrency={props.mainCurrency}
-          {...(props.timeZone != null ? { timeZone: props.timeZone } : {})}
-        />
-      </div>
+      <UnifiedGroupHeader
+        key={`header:${dateGroup.date}`}
+        group={dateGroup}
+        mainCurrency={props.mainCurrency}
+        {...(props.timeZone != null ? { timeZone: props.timeZone } : {})}
+      />
     );
     for (const item of dateGroup.items) {
       children.push(
@@ -107,7 +102,11 @@ function AnimatedInteractiveGroups(props: ControlledRendererProps) {
     }
   }
 
-  return <div className="space-y-4 pt-2">{children}</div>;
+  // One flat list of headers and cards, so a date header keeps the same gap
+  // above it as the cards do and the header's own padding makes up the group
+  // band. The flat child list is deliberate — grouping the cards under a
+  // per-date element would remount a card whose date changes.
+  return <div className="space-y-4">{children}</div>;
 }
 
 type VirtualStreamRow =
@@ -176,7 +175,7 @@ function VirtualizedInteractiveGroups(props: ControlledRendererProps) {
   return (
     <div
       ref={listRef}
-      className="relative w-full pt-2"
+      className="relative w-full"
       style={{ height: virtualizer.getTotalSize() }}
       data-testid="virtualized-source-document-stream"
     >

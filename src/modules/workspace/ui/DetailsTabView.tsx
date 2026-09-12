@@ -166,7 +166,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
         </div>
       ) : null}
       <div className="space-y-4">
-        <div className="space-y-6 pt-2">
+        <div className="space-y-4">
           <LedgerEntryGroupsView
             groups={groupedItems}
             mainCurrency={ledger?.settings.mainCurrency ?? monthStats.mainCurrency}
