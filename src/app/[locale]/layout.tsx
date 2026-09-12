@@ -63,8 +63,11 @@ export default async function LocaleLayout({
   const shellMessages = pickMessages(allMessages, FEATURE_MESSAGES.shell);
   const tCommon = await getTranslations({ locale, namespace: "Common" });
 
+  // `scroll-behavior: smooth` is set in globals.css; the attribute tells the
+  // router it may turn that off for the scroll it performs on navigation, so
+  // route changes land where they intend to instead of animating there.
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="antialiased" style={{ backgroundColor: "var(--bg)" }}>
         <NextIntlClientProvider messages={shellMessages} locale={locale}>
           <a

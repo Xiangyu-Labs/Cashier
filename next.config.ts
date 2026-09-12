@@ -10,6 +10,11 @@ const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = 
 const nextConfig: NextConfig = {
   // instrumentation.ts is enabled by default in Next.js 16+
   output: "standalone",
+  // The dev tools badge is fixed to a viewport corner, where it covers the
+  // ledger's own footer controls at phone widths — the source-document modal's
+  // Evidence button sits underneath it. Development warnings still reach the
+  // terminal and the browser console.
+  devIndicators: false,
   images: {
     unoptimized: true, // Disable Next.js image optimization - images are pre-processed on upload
     remotePatterns,

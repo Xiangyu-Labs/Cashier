@@ -9,6 +9,13 @@ test("@demo opens a populated workspace with evidence and statistics", async ({ 
   await page.getByRole("button", { name: "Continue as dev", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login/);
 
+  // This walkthrough runs the dev server, where Next's issues pill sits in a
+  // viewport corner — over the source-document modal's own footer controls at
+  // phone widths. Collapsing it is what a developer does when it gets in the
+  // way; the badge is absent in a production build, so the click is optional.
+  const issuesBadge = page.getByRole("button", { name: "Collapse issues badge" });
+  if ((await issuesBadge.count()) > 0) await issuesBadge.click();
+
   const coffee = page.getByTestId("source-document-card-root").filter({ hasText: "Harbor Coffee" });
   await expect(coffee).toBeVisible();
   await coffee.getByRole("button", { name: /Harbor Coffee/ }).click();
