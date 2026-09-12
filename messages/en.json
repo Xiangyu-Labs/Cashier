@@ -255,7 +255,7 @@
     "refresh": "Refresh",
     "refreshSuccess": "Refreshed",
     "refreshFailed": "Refresh failed. Try again.",
-    "refreshHint": "Double-click to refresh",
+    "refreshHint": "Click to refresh",
     "refreshing": "Refreshing…",
     "unsavedChangesTitle": "Unsaved changes",
     "unsavedChangesDescription": "Unsaved changes will be lost. Discard them?",

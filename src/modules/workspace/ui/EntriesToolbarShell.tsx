@@ -36,8 +36,8 @@ interface EntriesToolbarShellProps {
   batchActions?: ReactNode | undefined;
   syncStatus?: ReactNode | undefined;
   className?: string;
-  /** Manual refresh for the tab. The box doubles as its trigger, so the bar
-   * above the tabs carries no button wherever this is passed. */
+  /** Manual refresh for the tab. The box is its trigger, so the bar above the
+   * tabs carries no button wherever this is passed. */
   onRefresh?: (() => Promise<unknown> | unknown) | undefined;
   isRefreshing?: boolean | undefined;
 }
@@ -61,7 +61,7 @@ export function EntriesToolbarShell({
       toast.error(t("refreshFailed"));
     }
   };
-  const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target instanceof Element && event.target.closest(OWN_GESTURE_SELECTOR) != null) {
       return;
     }
@@ -72,7 +72,7 @@ export function EntriesToolbarShell({
     <div
       data-testid="entries-toolbar"
       className={`relative mx-2 mb-2 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2 sm:mb-4 ${className}`}
-      {...(onRefresh != null ? { onDoubleClick: handleDoubleClick } : {})}
+      {...(onRefresh != null ? { onClick: handleClick } : {})}
     >
       {children}
       {syncStatus != null ? (
@@ -84,10 +84,10 @@ export function EntriesToolbarShell({
         </div>
       ) : null}
       {onRefresh != null ? (
-        // Doubling as the trigger keeps the refresh reachable by keyboard and
-        // by tap, which a double-click alone is not. Centred on the box rather
-        // than between the controls, because it names a gesture the whole box
-        // answers to; nothing in the row grows, so the middle is always free.
+        // Doubling as the trigger keeps the refresh reachable by keyboard, which
+        // clicking the box is not. Centred on the box rather than between the
+        // controls, because it names a gesture the whole box answers to;
+        // nothing in the row grows, so the middle is always free.
         <button
           type="button"
           data-testid="toolbar-refresh-hint"

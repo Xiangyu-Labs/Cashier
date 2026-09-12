@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({ toast: { error: toastError } }));
 describe("EntriesToolbarShell", () => {
   afterEach(() => vi.clearAllMocks());
 
-  it("refreshes the tab when the box itself is double-clicked", () => {
+  it("refreshes the tab when the box itself is clicked", () => {
     const onRefresh = vi.fn();
     render(
       <EntriesToolbarShell onRefresh={onRefresh} totalLabel="¥12.00">
@@ -20,7 +20,7 @@ describe("EntriesToolbarShell", () => {
       </EntriesToolbarShell>
     );
 
-    fireEvent.doubleClick(screen.getByText("¥12.00"));
+    fireEvent.click(screen.getByText("¥12.00"));
 
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
@@ -36,9 +36,9 @@ describe("EntriesToolbarShell", () => {
       </EntriesToolbarShell>
     );
 
-    fireEvent.doubleClick(screen.getByRole("button", { name: "select" }));
+    fireEvent.click(screen.getByRole("button", { name: "select" }));
     // Radix portals its popovers, but their events still bubble through the box.
-    fireEvent.doubleClick(screen.getByRole("dialog"));
+    fireEvent.click(screen.getByRole("dialog"));
 
     expect(onRefresh).not.toHaveBeenCalled();
   });
