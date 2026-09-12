@@ -156,13 +156,17 @@ export function LedgerPageClient({
   return (
     <>
       <div>
-        <div className="flex h-9 items-center justify-end px-2">
-          <RefreshButton
-            onRefresh={refreshActiveTab}
-            isRefreshing={isRefreshing}
-            disabled={activeTab === "settings" && dirtyChangeCount > 0}
-          />
-        </div>
+        {/* The stream and details tabs refresh from their own toolbar box, so
+            only the tabs without one keep the bar. */}
+        {activeTab === "stats" || activeTab === "settings" ? (
+          <div className="flex h-9 items-center justify-end px-2">
+            <RefreshButton
+              onRefresh={refreshActiveTab}
+              isRefreshing={isRefreshing}
+              disabled={activeTab === "settings" && dirtyChangeCount > 0}
+            />
+          </div>
+        ) : null}
         {/* Only mount the active tab — inactive tabs load lazily */}
         {activeFeatureStatus === "error" ? (
           <LedgerQueryErrorBanner empty onRetry={retryFeatureMessages} />
@@ -198,6 +202,8 @@ export function LedgerPageClient({
           hasPassword={hasPassword}
           passwordUpdatedAt={passwordUpdatedAt}
           interfaceLanguage={interfaceLanguage}
+          onRefresh={refreshActiveTab}
+          isRefreshing={isRefreshing}
         />
 
         <NewRecordDialog

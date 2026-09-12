@@ -46,6 +46,8 @@ interface LedgerEntriesToolbarProps {
   timeZone?: string;
   readOnly?: boolean;
   syncStatus?: ReactNode;
+  onRefresh?: (() => Promise<unknown> | unknown) | undefined;
+  isRefreshing?: boolean | undefined;
 }
 
 export function LedgerEntriesToolbar({
@@ -76,6 +78,8 @@ export function LedgerEntriesToolbar({
   timeZone,
   readOnly = false,
   syncStatus,
+  onRefresh,
+  isRefreshing,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -138,6 +142,8 @@ export function LedgerEntriesToolbar({
   return (
     <EntriesToolbarShell
       syncStatus={syncStatus}
+      onRefresh={onRefresh}
+      isRefreshing={isRefreshing}
       totalLabel={
         !isSelectionMode && filteredTotal !== undefined
           ? [totalPrefix, formatCurrencyAmount(filteredTotal, mainCurrency, locale)]

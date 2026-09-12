@@ -28,6 +28,8 @@ interface SourceDocumentDetailOverlaysProps {
   isSaving: boolean;
   setShowAddEntryDialog: (open: boolean) => void;
   handleAddEntrySubmit: (data: AddEntryData) => Promise<boolean>;
+  /** Ledger timezone, so the split dialog names today/yesterday the ledger's way. */
+  timeZone?: string;
 }
 
 /** The retry, split, and add-entry dialogs that overlay the detail modal on demand. */
@@ -53,6 +55,7 @@ export function SourceDocumentDetailOverlays({
   isSaving,
   setShowAddEntryDialog,
   handleAddEntrySubmit,
+  timeZone,
 }: SourceDocumentDetailOverlaysProps) {
   return (
     <>
@@ -74,6 +77,7 @@ export function SourceDocumentDetailOverlays({
           isSubmitting={isSplitting}
           onOpenChange={setShowSplitDialog}
           onSubmit={handleSplit}
+          {...(timeZone != null ? { timeZone } : {})}
         />
       ) : null}
       {showAddEntryDialog && onAddEntry != null ? (

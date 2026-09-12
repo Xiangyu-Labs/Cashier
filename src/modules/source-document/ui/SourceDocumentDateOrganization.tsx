@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Pencil, X } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { CalendarSync, Check, Pencil, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatRelativeDateLabel } from "@/lib/date-utils";
+import { DateFilter } from "@/components/ui/date-filter";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type { DateOrganizationSuggestion } from "../date-organization-contracts";
 import type { ApplyDateOrganizationInput } from "../contracts";
 import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
+import { buildSourceDocumentDetailViewModel } from "./source-document-detail-view-model";
+import { SourceDocumentTotal } from "./SourceDocumentViewDetails/components/SourceDocumentTotal";
 
 interface Props {
   suggestion: DateOrganizationSuggestion;
@@ -36,9 +38,6 @@ export function SourceDocumentDateOrganization({
   timeZone,
 }: Props) {
   const t = useTranslations("SourceDocumentDetail.dateOrganization");
-  const tCard = useTranslations("SourceDocumentCard");
-  const tCommon = useTranslations("Common");
-  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [applicationError, setApplicationError] = useState(false);
@@ -47,17 +46,8 @@ export function SourceDocumentDateOrganization({
     [suggestion.items]
   );
   // An entry is missing from the suggestion exactly when the model could not put
-  // a date on it. Those start on the bill date and stay flagged, so the group
-  // they land in can say the date is a guess.
-  const undatedIds = useMemo(
-    () =>
-      new Set(
-        entries
-          .filter((entry) => suggestionByEntryId.get(entry.id)?.resolvedDate == null)
-          .map((entry) => entry.id)
-      ),
-    [entries, suggestionByEntryId]
-  );
+  // a date on it; those sit on the bill date like anything else the suggestion
+  // does not move, and are not called out — the panel only ever proposes dates.
   const initialDates = () =>
     Object.fromEntries(
       entries.map((entry) => [
@@ -80,14 +70,26 @@ export function SourceDocumentDateOrganization({
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([entryDate, ledgerEntryIds]) => ({ id: entryDate, entryDate, ledgerEntryIds }));
   }, [dates, entries, suggestion.sourceDocumentDate]);
-  const undatedGroupIds = useMemo(
+  // Each group carries the total of the entries it holds, read through the same
+  // view model the entry card below uses, so the figure the suggestion proposes
+  // and the figure that lands on the record can be compared line for line.
+  const groupSummaries = useMemo(
     () =>
-      new Set(
-        groups
-          .filter((group) => group.ledgerEntryIds.some((id) => undatedIds.has(id)))
-          .map((group) => group.id)
-      ),
-    [groups, undatedIds]
+      groups.map((group) => {
+        const groupEntries = group.ledgerEntryIds
+          .map((id) => entryById.get(id))
+          .filter((entry): entry is LedgerEntryEmbeddedViewDto => entry != null);
+        const { totalInMainCurrency, staleConversionCount, unconvertedCount } =
+          buildSourceDocumentDetailViewModel({
+            ledgerEntries: groupEntries,
+            pendingChanges: { entries: {} },
+            mainCurrency,
+            entryDate: suggestion.sourceDocumentDate,
+            originalEntryDate: suggestion.sourceDocumentDate,
+          });
+        return { group, totalInMainCurrency, staleConversionCount, unconvertedCount };
+      }),
+    [groups, entryById, mainCurrency, suggestion.sourceDocumentDate]
   );
   /**
    * Apply every group at once. Groups are never applied individually: the
@@ -136,9 +138,20 @@ export function SourceDocumentDateOrganization({
   };
 
   return (
-    <section className="rounded-lg border border-info/30 bg-info/5" aria-label={t("title")}>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-info/15 px-3 py-3">
-        <div className="min-w-0 text-sm font-semibold">{t("title")}</div>
+    <section
+      className="overflow-hidden rounded-lg border border-info/30 bg-info/5"
+      aria-label={t("title")}
+    >
+      {/* The box around the whole suggestion wears the same tint as the groups
+          inside it, so the block reads as one suggestion rather than a white
+          card holding green ones. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-info/15 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {/* Marks the block as a feature, not another line of the record. Drawn
+              in the title's own colour, like every other icon in the app. */}
+          <CalendarSync aria-hidden="true" className="size-4 shrink-0" />
+          <span className="min-w-0 truncate text-sm font-semibold">{t("title")}</span>
+        </div>
         <div className="flex gap-1">
           {editing ? (
             <>
@@ -197,55 +210,74 @@ export function SourceDocumentDateOrganization({
           {t("applyFailed")}
         </p>
       ) : null}
-      <div className="divide-y divide-info/15">
-        {groups.map((group) => (
-          <div key={group.id} className="py-3">
-            <div className="mb-2 flex items-center gap-2 px-3 text-sm font-medium">
-              {editing ? (
-                <Input
-                  aria-label={t("groupDate")}
-                  type="date"
-                  className="h-8 w-36"
-                  value={group.entryDate}
-                  onChange={(event) => setGroupDate(group.ledgerEntryIds, event.target.value)}
-                />
-              ) : (
-                <span>
-                  {formatRelativeDateLabel(
-                    group.entryDate,
-                    locale,
-                    { today: tCommon("today"), yesterday: tCommon("yesterday") },
-                    timeZone
-                  )}
-                </span>
-              )}
-              {undatedGroupIds.has(group.id) ? (
-                <span className="text-xs font-normal text-muted-foreground">
-                  {tCard("dateUnknown")}
-                </span>
-              ) : null}
-            </div>
-            <div className="divide-y divide-border/50">
-              {group.ledgerEntryIds.map((id) => {
-                const entry = entryById.get(id);
-                if (entry == null) return null;
-                return (
-                  // The same row the line-item list renders, in read-only mode.
-                  <EditableLedgerEntryItem
-                    key={id}
-                    ledgerEntry={entry}
-                    categories={entry.category != null ? [entry.category] : []}
-                    mainCurrency={mainCurrency}
-                    sourceDocumentEntryDate={suggestion.sourceDocumentDate}
-                    originalEntryDate={suggestion.sourceDocumentDate}
-                    readOnly
-                    variant="plain"
+      {/* One card per date, inset from the box and spaced at the app's card gap. */}
+      <div className="space-y-4 p-3">
+        {groupSummaries.map(
+          ({ group, totalInMainCurrency, staleConversionCount, unconvertedCount }) => (
+            <div
+              key={group.id}
+              className="overflow-hidden rounded-lg border border-info/30 bg-info/5"
+            >
+              {/* The entry card the rows below will become, down to the centred
+                date and the right-aligned total — the select control is the one
+                part a proposal has no use for. */}
+              <div
+                data-testid="date-organization-group-header"
+                className="relative flex min-h-12 min-w-0 items-center justify-between gap-2 border-b border-info/15 py-2 pl-2 pr-3"
+              >
+                <div className="relative z-10 flex shrink-0 items-center gap-2" />
+                <div className="flex min-w-0 items-center gap-2 sm:absolute sm:left-1/2 sm:top-1/2 sm:max-w-[55%] sm:-translate-x-1/2 sm:-translate-y-1/2">
+                  {/* The date field the bill's own toolbar uses, so adjusting a
+                      group and adjusting the record are the same gesture. It is
+                      static text until 调整 turns it into the picker. */}
+                  <DateFilter
+                    value={group.entryDate}
+                    onChange={(date) => {
+                      if (date != null) {
+                        setGroupDate(group.ledgerEntryIds, formatDateTimeForApi(date));
+                      }
+                    }}
+                    size="sm"
+                    className="min-w-fit shrink-0"
+                    truncate={false}
+                    showClear={false}
+                    showClearShortcut={false}
+                    readOnly={!editing}
+                    readOnlyTextClassName="font-medium"
+                    hideReadOnlyIcon
+                    ariaLabel={t("groupDate")}
+                    {...(timeZone != null ? { timeZone } : {})}
                   />
-                );
-              })}
+                </div>
+                <SourceDocumentTotal
+                  totalInMainCurrency={totalInMainCurrency}
+                  mainCurrency={mainCurrency}
+                  staleConversionCount={staleConversionCount}
+                  unconvertedCount={unconvertedCount}
+                />
+              </div>
+              <div className="divide-y divide-info/15">
+                {group.ledgerEntryIds.map((id) => {
+                  const entry = entryById.get(id);
+                  if (entry == null) return null;
+                  return (
+                    // The same row the line-item list renders, in read-only mode.
+                    <EditableLedgerEntryItem
+                      key={id}
+                      ledgerEntry={entry}
+                      categories={entry.category != null ? [entry.category] : []}
+                      mainCurrency={mainCurrency}
+                      sourceDocumentEntryDate={suggestion.sourceDocumentDate}
+                      originalEntryDate={suggestion.sourceDocumentDate}
+                      readOnly
+                      variant="plain"
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        )}
       </div>
     </section>
   );

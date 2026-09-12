@@ -351,6 +351,7 @@ function SourceDocumentDetailEditor({
         isSaving={status.isSaving}
         setShowAddEntryDialog={dialogs.setShowAddEntryDialog}
         handleAddEntrySubmit={actions.handleAddEntrySubmit}
+        {...(timeZone != null ? { timeZone } : {})}
       />
     </>
   );

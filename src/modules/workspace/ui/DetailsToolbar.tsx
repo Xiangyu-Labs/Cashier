@@ -6,6 +6,8 @@ interface DetailsToolbarProps {
   children?: ReactNode;
   batchActions?: ReactNode;
   actions?: ReactNode;
+  onRefresh?: (() => Promise<unknown> | unknown) | undefined;
+  isRefreshing?: boolean | undefined;
 }
 
 export function DetailsToolbar({
@@ -13,9 +15,17 @@ export function DetailsToolbar({
   children,
   batchActions,
   actions,
+  onRefresh,
+  isRefreshing,
 }: DetailsToolbarProps) {
   return (
-    <EntriesToolbarShell totalLabel={totalLabel} batchActions={batchActions} actions={actions}>
+    <EntriesToolbarShell
+      totalLabel={totalLabel}
+      batchActions={batchActions}
+      actions={actions}
+      onRefresh={onRefresh}
+      isRefreshing={isRefreshing}
+    >
       {children}
     </EntriesToolbarShell>
   );

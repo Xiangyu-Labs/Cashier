@@ -11,8 +11,10 @@ import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-actio
 import type { GroupedEntry } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import type { PeriodParams } from "@/lib/period-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DateFilter } from "@/components/ui/date-filter";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +51,8 @@ interface DetailsTabViewProps {
   sentinelRef: RefCallback<HTMLDivElement>;
   batch: BatchController;
   onViewEntry: (entry: LedgerEntry) => void;
+  onRefresh?: (() => Promise<unknown> | unknown) | undefined;
+  isRefreshing?: boolean | undefined;
 }
 
 export function DetailsTabView(props: DetailsTabViewProps) {
@@ -70,6 +74,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
     sentinelRef,
     batch,
     onViewEntry,
+    onRefresh,
+    isRefreshing,
   } = props;
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
@@ -86,6 +92,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
   return (
     <>
       <DetailsToolbar
+        onRefresh={onRefresh}
+        isRefreshing={isRefreshing}
         {...(!batch.isSelectionMode && monthStats.mainTotal != null
           ? {
               totalLabel: formatCurrencyAmount(
@@ -142,7 +150,9 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             categories={categories}
             preferredCurrencies={ledger?.settings.currencies ?? []}
             showStatus={false}
-            className="flex-1 sm:flex-none"
+            // Deliberately unsized, like the stream's: the panel does not grow
+            // past its trigger, so the toolbar's middle stays free for the
+            // centred refresh hint instead of being reserved by empty space.
           />
         ) : null}
       </DetailsToolbar>
@@ -234,14 +244,20 @@ export function DetailsTabView(props: DetailsTabViewProps) {
                 })}
               </p>
             ) : null}
-            <input
-              type="date"
-              name="entryDate"
-              autoComplete="off"
-              aria-label={t("changeDateTitle")}
+            {/* The same picker the entry toolbar and the stream use; the field
+                never empties, so it offers no clear. */}
+            <DateFilter
               value={batch.selectedDate}
-              onChange={(event) => batch.setSelectedDate(event.target.value)}
-              className="min-h-11 rounded-md border border-border bg-bg px-3"
+              onChange={(date) => {
+                if (date != null) batch.setSelectedDate(formatDateTimeForApi(date));
+              }}
+              className="w-full"
+              showClear={false}
+              showClearShortcut={false}
+              ariaLabel={t("changeDateTitle")}
+              // The field is seeded from this timezone, so it must read the day
+              // back against the same one.
+              {...(batch.timeZone != null ? { timeZone: batch.timeZone } : {})}
             />
             <DialogFooter>
               <Button

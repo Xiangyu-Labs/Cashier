@@ -25,6 +25,12 @@ interface CalendarProps {
   onChange: (date: Date | null) => void;
   /** Whether to show shortcut options */
   showShortcuts?: boolean;
+  /**
+   * Whether the shortcuts include 清除. Fields whose value cannot be empty (a
+   * document date, a batch target date) hide it, so no visible control is a
+   * no-op.
+   */
+  showClearShortcut?: boolean;
   /** 最小可选日期 */
   minDate?: Date;
   /** 最大可选日期 */
@@ -37,6 +43,7 @@ export function Calendar({
   value,
   onChange,
   showShortcuts = true,
+  showClearShortcut = true,
   minDate,
   maxDate,
   className,
@@ -48,6 +55,7 @@ export function Calendar({
       value={value}
       onChange={onChange}
       showShortcuts={showShortcuts}
+      showClearShortcut={showClearShortcut}
       minDate={minDate}
       maxDate={maxDate}
       className={className}
@@ -60,6 +68,7 @@ function CalendarView({
   value,
   onChange,
   showShortcuts,
+  showClearShortcut,
   minDate,
   maxDate,
   className,
@@ -68,6 +77,7 @@ function CalendarView({
   value: Date | null | undefined;
   onChange: (date: Date | null) => void;
   showShortcuts: boolean;
+  showClearShortcut: boolean;
   minDate: Date | undefined;
   maxDate: Date | undefined;
   className: string | undefined;
@@ -189,7 +199,7 @@ function CalendarView({
     <div className={cn("w-[280px] p-3", className)}>
       {/* Shortcuts */}
       {showShortcuts && (
-        <div className="grid grid-cols-3 gap-1 mb-3">
+        <div className={cn("grid gap-1 mb-3", showClearShortcut ? "grid-cols-3" : "grid-cols-2")}>
           <Button
             type="button"
             variant="ghost"
@@ -210,15 +220,17 @@ function CalendarView({
           >
             {t("yesterday")}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-h-11 text-xs text-muted-foreground"
-            onClick={handleClear}
-          >
-            {t("clear")}
-          </Button>
+          {showClearShortcut ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-11 text-xs text-muted-foreground"
+              onClick={handleClear}
+            >
+              {t("clear")}
+            </Button>
+          ) : null}
         </div>
       )}
 

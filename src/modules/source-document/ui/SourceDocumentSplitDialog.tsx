@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Calendar, Loader2, Scissors } from "lucide-react";
+import { Loader2, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateFilter } from "@/components/ui/date-filter";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { formatCurrencyAmount } from "@/lib/format/currency";
@@ -25,6 +25,8 @@ interface SourceDocumentSplitDialogProps {
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (entryDate: string) => Promise<void>;
+  /** Ledger timezone, so 今天/昨天 name the ledger's day rather than the device's. */
+  timeZone?: string;
 }
 
 export function SourceDocumentSplitDialog({
@@ -35,6 +37,7 @@ export function SourceDocumentSplitDialog({
   isSubmitting,
   onOpenChange,
   onSubmit,
+  timeZone,
 }: SourceDocumentSplitDialogProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -43,20 +46,6 @@ export function SourceDocumentSplitDialog({
   const previewEntries = selectedEntries.slice(0, 5);
   const remainingCount = selectedEntries.length - previewEntries.length;
   const totalSelected = selectedCount ?? selectedEntries.length;
-
-  // Quick date presets, computed in local time (dates are stored as yyyy-MM-dd).
-  const datePresets = (() => {
-    const day = (offset: number) => {
-      const date = new Date();
-      date.setDate(date.getDate() + offset);
-      return formatDateTimeForApi(date);
-    };
-    return [
-      { label: t("splitDateToday"), value: day(0) },
-      { label: t("splitDateYesterday"), value: day(-1) },
-      { label: t("splitDateDayBeforeYesterday"), value: day(-2) },
-    ];
-  })();
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isSubmitting && onOpenChange(nextOpen)}>
@@ -96,35 +85,20 @@ export function SourceDocumentSplitDialog({
         ) : null}
         <div className="grid gap-2">
           <Label htmlFor="split-entry-date">{t("splitDate")}</Label>
-          <div className="relative">
-            <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="split-entry-date"
-              type="date"
-              name="entryDate"
-              autoComplete="off"
-              required
-              value={entryDate}
-              disabled={isSubmitting}
-              className="pl-9"
-              onChange={(event) => setEntryDate(event.target.value)}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {datePresets.map((preset) => (
-              <Button
-                key={preset.value}
-                type="button"
-                variant={entryDate === preset.value ? "default" : "outline"}
-                size="sm"
-                className="h-8"
-                disabled={isSubmitting}
-                onClick={() => setEntryDate(preset.value)}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
+          {/* The same picker every other date field uses, so 今天/昨天 and the
+              month grid are learned once. */}
+          <DateFilter
+            value={entryDate}
+            onChange={(date) => {
+              if (date != null) setEntryDate(formatDateTimeForApi(date));
+            }}
+            className="w-full"
+            showClear={false}
+            showClearShortcut={false}
+            disabled={isSubmitting}
+            ariaLabel={t("splitDate")}
+            {...(timeZone != null ? { timeZone } : {})}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>

@@ -30,6 +30,8 @@ interface LedgerEntriesTabProps {
   advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
   timeZone?: string;
+  onRefresh?: (() => Promise<unknown> | unknown) | undefined;
+  isRefreshing?: boolean | undefined;
 }
 
 export function LedgerEntriesTab({
@@ -40,6 +42,8 @@ export function LedgerEntriesTab({
   advancedFilters,
   collapseEntriesDefault = false,
   timeZone,
+  onRefresh,
+  isRefreshing,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -180,6 +184,8 @@ export function LedgerEntriesTab({
           ? {}
           : { filteredTotal: streamData.filteredTotal })}
         {...(timeZone != null ? { timeZone } : {})}
+        onRefresh={onRefresh}
+        isRefreshing={isRefreshing}
       />
       {streamData.streamTotalData?.unconvertedCount != null &&
       streamData.streamTotalData.unconvertedCount > 0 ? (

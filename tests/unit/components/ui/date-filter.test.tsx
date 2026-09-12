@@ -3,7 +3,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { DateFilter } from "@/components/ui/date-filter";
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  // The calendar behind the picker reads its weekday row with `raw`.
+  useTranslations: () =>
+    Object.assign((key: string) => key, {
+      raw: () => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+    }),
   useLocale: () => "zh-CN",
 }));
 
@@ -98,5 +102,38 @@ describe("DateFilter", () => {
     render(<DateFilter value={null} onChange={() => {}} readOnly />);
 
     expect(screen.getByRole("button", { name: "selectDate" })).toBeInTheDocument();
+  });
+
+  it("offers the calendar's clear shortcut unless the field says otherwise", () => {
+    const { unmount } = render(<DateFilter value="2026-07-28" onChange={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "2026年7月28日 星期二" }));
+    expect(screen.getByText("clear")).toBeInTheDocument();
+    unmount();
+
+    // A field that can never be empty hides both clear affordances.
+    render(
+      <DateFilter
+        value="2026-07-28"
+        onChange={() => {}}
+        showClear={false}
+        showClearShortcut={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "2026年7月28日 星期二" }));
+    expect(screen.getByText("today")).toBeInTheDocument();
+    expect(screen.queryByText("clear")).not.toBeInTheDocument();
+  });
+
+  it("names today against the ledger timezone, not the device's", () => {
+    // Same instant as the timezone test in the date-suggestion suite: at noon
+    // UTC it is already the 10th in Kiritimati, so the 9th reads as yesterday.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-09T12:00:00.000Z"));
+
+    render(
+      <DateFilter value="2026-09-09" onChange={() => {}} readOnly timeZone="Pacific/Kiritimati" />
+    );
+
+    expect(screen.getByText("yesterday")).toBeInTheDocument();
   });
 });

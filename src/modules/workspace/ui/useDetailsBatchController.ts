@@ -173,6 +173,7 @@ export function useDetailsBatchController(
     setDeleteDialogOpen,
     selectedDate,
     setSelectedDate,
+    timeZone,
     dateImpact,
     dateSelectionSnapshot,
     update,

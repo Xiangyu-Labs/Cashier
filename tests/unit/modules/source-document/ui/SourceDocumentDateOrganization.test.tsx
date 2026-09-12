@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import { SourceDocumentDateOrganization } from "@/modules/source-document/ui/SourceDocumentDateOrganization";
@@ -137,7 +137,7 @@ describe("SourceDocumentDateOrganization", () => {
     expect(chip).toBeInTheDocument();
     expect(chip).toHaveClass("h-8", "w-8");
     // Rows are the shared line-item component in its transparent variant, so
-    // they don't paint an opaque block on the panel's tinted background.
+    // the surface of the group card they sit on shows through.
     const row = chip?.closest("div");
     expect(row).toHaveClass("bg-transparent");
     expect(row).not.toHaveClass("bg-surface");
@@ -220,8 +220,14 @@ describe("SourceDocumentDateOrganization", () => {
       />
     );
 
-    expect(screen.getByText("¥18.00")).toHaveClass("text-base", "font-semibold");
-    expect(screen.queryByText("18.00 CNY")).not.toBeInTheDocument();
+    // The row's own figure sits in the live region AmountDisplay owns, and the
+    // group header carries the same number as that group's total.
+    const rowAmount = document.querySelector('[aria-live="polite"]');
+    expect(rowAmount).toHaveTextContent("¥18.00");
+    expect(rowAmount).not.toHaveTextContent("CNY");
+    expect(
+      within(screen.getByTestId("date-organization-group-header")).getByText("¥18.00")
+    ).toBeInTheDocument();
     // Entry rows share the line-item styling so the two lists line up.
     expect(screen.getByText("早餐")).toHaveClass("font-medium", "text-text");
   });
@@ -253,9 +259,9 @@ describe("SourceDocumentDateOrganization", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "调整" }));
-    fireEvent.change(screen.getByLabelText("分组日期"), {
-      target: { value: "2026-09-08" },
-    });
+    // The group date edits through the shared picker: open it, pick a day.
+    fireEvent.click(screen.getByLabelText("分组日期"));
+    fireEvent.click(document.querySelector('[data-calendar-date="2026-09-08"]') as HTMLElement);
     fireEvent.click(screen.getByRole("button", { name: "完成调整" }));
     // 2026-09-08 is yesterday under the pinned clock, so the header says so.
     expect(screen.getByText("昨天")).toBeInTheDocument();
@@ -362,7 +368,67 @@ describe("SourceDocumentDateOrganization", () => {
     expect(screen.queryByRole("button", { name: /应用日期|应用此组/ })).toBeNull();
   });
 
-  it("keeps an undated entry on the bill date and flags it as a guess", () => {
+  it("gives each date group the entry card's date-and-total header, minus the select control", () => {
+    const lunch: LedgerEntryEmbeddedViewDto = {
+      ...entry,
+      id: "66666666-6666-4666-8666-666666666666",
+      itemName: "午餐",
+      amount: "30.00",
+      convertedAmount: "30.00",
+    };
+
+    render(
+      <SourceDocumentDateOrganization
+        suggestion={{
+          schemaVersion: 1,
+          id: "44444444-4444-4444-8444-444444444444",
+          referenceDate: "2026-09-10",
+          sourceDocumentDate: "2026-09-10",
+          items: [
+            {
+              ledgerEntryId: entry.id,
+              dateHint: { kind: "relative", value: "yesterday", sourceText: "昨天" },
+              resolvedDate: "2026-09-09",
+              sourceText: "昨天",
+              snapshot: { itemName: entry.itemName, amount: entry.amount, currency: "CNY" },
+            },
+            {
+              ledgerEntryId: lunch.id,
+              dateHint: { kind: "absolute", value: "2026-09-08", sourceText: "9月8日" },
+              resolvedDate: "2026-09-08",
+              sourceText: "9月8日",
+              snapshot: { itemName: lunch.itemName, amount: lunch.amount, currency: "CNY" },
+            },
+          ],
+        }}
+        entries={[entry, lunch]}
+        disabled={false}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    // One card per date, each carrying the suggestion's tint…
+    const headers = screen.getAllByTestId("date-organization-group-header");
+    expect(headers).toHaveLength(2);
+    expect(headers[0]?.parentElement).toHaveClass("rounded-lg", "bg-info/5");
+
+    // …headed by the date the entries would land on, centred, over that date's
+    // total, which is the sum of exactly the rows below it.
+    const today = within(headers[0] as HTMLElement);
+    expect(today.getByText("今天")).toHaveClass("text-sm", "font-medium", "text-text");
+    expect(today.getByText("¥18.00")).toBeInTheDocument();
+    const yesterday = within(headers[1] as HTMLElement);
+    expect(yesterday.getByText("昨天")).toBeInTheDocument();
+    expect(yesterday.getByText("¥30.00")).toBeInTheDocument();
+
+    // The select control is the entry card's one part a proposal drops.
+    for (const header of headers) {
+      expect(within(header).queryByRole("button")).toBeNull();
+    }
+  });
+
+  it("keeps an undated entry on the bill date without flagging it", () => {
     const undated: LedgerEntryEmbeddedViewDto = {
       ...entry,
       id: "77777777-7777-4777-8777-777777777777",
@@ -395,15 +461,15 @@ describe("SourceDocumentDateOrganization", () => {
       />
     );
 
-    expect(screen.getByText("日期未知")).toBeInTheDocument();
+    // No date on the bill means no date to move, so the entry simply stays put:
+    // the panel proposes dates and says nothing about the entry it can't place.
+    expect(screen.queryByText("日期未知")).toBeNull();
 
-    // The group carries the bill date rather than a "keep original" state, and
-    // that date is editable like any other group's.
-    fireEvent.click(screen.getByRole("button", { name: "调整" }));
-    const groupDates = screen
-      .getAllByLabelText("分组日期")
-      .map((input) => (input as HTMLInputElement).value);
-    expect(groupDates).toEqual(["2026-09-10", "2026-09-09"]);
+    // The undated entry lands in a group carrying the bill date (2026-09-10,
+    // which the pinned clock reads as a plain date) rather than a "keep
+    // original" state, and the dated entry keeps the date the model resolved.
+    expect(screen.getByText("2026年9月10日 星期四")).toBeInTheDocument();
+    expect(screen.getByText("今天")).toBeInTheDocument();
   });
 
   it("stacks the converted amount above the original for a foreign-currency entry", () => {
@@ -439,10 +505,11 @@ describe("SourceDocumentDateOrganization", () => {
       />
     );
 
-    const converted = screen.getByText("¥72.00");
+    const row = document.querySelector('[aria-live="polite"]') as HTMLElement;
+    const converted = within(row).getByText("¥72.00");
     expect(converted).toHaveClass("text-base", "font-semibold");
 
-    const original = screen.getByText((text) => text.startsWith("≈"));
+    const original = within(row).getByText((text) => text.startsWith("≈"));
     expect(original).toHaveClass("text-xs", "text-muted-foreground");
     expect(original.textContent).toContain("USD");
 

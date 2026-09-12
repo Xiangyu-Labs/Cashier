@@ -25,6 +25,12 @@ interface DateFilterProps {
   size?: "sm" | "default";
   /** Show clear button when date is selected */
   showClear?: boolean;
+  /**
+   * Whether the calendar's shortcuts include 清除. Pass false where the field's
+   * value can never be empty, so no visible control is a no-op; a field that
+   * cannot show a clear button may still clear from the calendar.
+   */
+  showClearShortcut?: boolean;
   /** Whether to truncate overflow text with ellipsis */
   truncate?: boolean;
   disabled?: boolean;
@@ -40,6 +46,16 @@ interface DateFilterProps {
   hideReadOnlyIcon?: boolean;
   minDate?: Date;
   maxDate?: Date;
+  /**
+   * Ledger timezone: 今天/昨天 must name the day the ledger is on, not the day
+   * the device is on, or the same field reads differently in the two tabs.
+   */
+  timeZone?: string;
+  /**
+   * Accessible name for the trigger. A bare date field has no visible label, so
+   * without this a screen reader announces only the value.
+   */
+  ariaLabel?: string;
 }
 
 export function DateFilter({
@@ -49,6 +65,7 @@ export function DateFilter({
   placeholder,
   size = "default",
   showClear = true,
+  showClearShortcut = true,
   truncate = true,
   disabled = false,
   readOnly = false,
@@ -56,6 +73,8 @@ export function DateFilter({
   hideReadOnlyIcon = false,
   minDate,
   maxDate,
+  timeZone,
+  ariaLabel,
 }: DateFilterProps) {
   const t = useTranslations("DateFilter");
   const tCommon = useTranslations("Common");
@@ -74,10 +93,15 @@ export function DateFilter({
   const dateLabel =
     civilDateString == null
       ? null
-      : formatRelativeDateLabel(civilDateString, locale, {
-          today: tCommon("today"),
-          yesterday: tCommon("yesterday"),
-        });
+      : formatRelativeDateLabel(
+          civilDateString,
+          locale,
+          {
+            today: tCommon("today"),
+            yesterday: tCommon("yesterday"),
+          },
+          timeZone
+        );
 
   const dateValue = React.useMemo(
     () => (civilDateString == null ? null : parseDateString(civilDateString)),
@@ -121,6 +145,7 @@ export function DateFilter({
             disabled={disabled}
             variant="outline"
             size={isSmall ? "sm" : "default"}
+            {...(ariaLabel != null ? { "aria-label": ariaLabel } : {})}
             className={cn(
               "w-full justify-start text-left font-normal",
               isSmall ? "h-8 px-2" : "h-10 px-3",
@@ -157,6 +182,9 @@ export function DateFilter({
           onChange={handleDateChange}
           onEscape={() => setOpen(false)}
           showShortcuts
+          // Fields whose value can never be empty pass false, so the calendar
+          // does not offer a 清除 that silently does nothing.
+          showClearShortcut={showClearShortcut}
           {...(minDate === undefined ? {} : { minDate })}
           {...(maxDate === undefined ? {} : { maxDate })}
         />

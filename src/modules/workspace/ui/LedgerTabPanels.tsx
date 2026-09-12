@@ -53,6 +53,9 @@ interface LedgerTabPanelsProps {
   hasPassword?: boolean | undefined;
   passwordUpdatedAt?: string | null | undefined;
   interfaceLanguage?: InterfaceLanguage | undefined;
+  /** Owned by the page, because the tab that needs it is the tab that is mounted. */
+  onRefresh?: () => Promise<unknown> | unknown;
+  isRefreshing?: boolean | undefined;
 }
 
 /** Routes to whichever ledger tab is active; inactive tabs stay unmounted. */
@@ -74,6 +77,8 @@ export function LedgerTabPanels({
   hasPassword,
   passwordUpdatedAt,
   interfaceLanguage,
+  onRefresh,
+  isRefreshing,
 }: LedgerTabPanelsProps) {
   return (
     <div className={hidden ? "hidden" : undefined} aria-hidden={hidden || undefined}>
@@ -88,6 +93,8 @@ export function LedgerTabPanels({
               advancedFilters={advancedFilters}
               collapseEntriesDefault={ledger.settings.collapseEntriesDefault}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+              onRefresh={onRefresh}
+              isRefreshing={isRefreshing}
             />
           </DeferredFeatureMessages>
         </div>
@@ -108,6 +115,8 @@ export function LedgerTabPanels({
               onFiltersChange={onFiltersChange}
               advancedFilters={advancedFilters}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+              onRefresh={onRefresh}
+              isRefreshing={isRefreshing}
             />
           </DeferredFeatureMessages>
         </div>
