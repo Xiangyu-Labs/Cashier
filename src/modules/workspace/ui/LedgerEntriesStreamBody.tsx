@@ -137,7 +137,7 @@ export function LedgerEntriesStreamBody({
           {/* End of list indicator when no more pages */}
           {!hasNextPage && streamGroups.length > 0 && (
             <div className="flex justify-center py-4">
-              <span className="text-xs text-muted-foreground/50">— {t("noMore")} —</span>
+              <span className="text-xs text-muted-foreground">— {t("noMore")} —</span>
             </div>
           )}
         </>

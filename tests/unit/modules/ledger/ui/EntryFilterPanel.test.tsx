@@ -71,6 +71,8 @@ describe("EntryFilterPanel", () => {
         onFiltersChange={onFiltersChange}
         showCategory={false}
         showCurrency={false}
+
+        periodParams={{ period: "thisMonth" }}
       />
     );
 
@@ -85,6 +87,67 @@ describe("EntryFilterPanel", () => {
     expect(screen.queryByRole("dialog", { name: "筛选" })).not.toBeInTheDocument();
   });
 
+  it("does not promise a dropdown where the panel opens as a sheet", async () => {
+    mobileViewport = true;
+    const { container } = render(
+      <EntryFilterPanel
+        filters={{}}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+
+        periodParams={{ period: "thisMonth" }}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "筛选" })).toHaveAttribute("aria-haspopup", "dialog");
+    expect(container.querySelector(".lucide-chevron-down")).toBeNull();
+  });
+
+  it("offers the four date presets and no other windows", () => {
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        periodParams={{ period: "thisMonth" }}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    const group = screen.getByRole("group", { name: "时间范围" });
+    expect(group).toBeInTheDocument();
+    for (const label of ["本月", "上个月", "全部", "自定义区间"]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("button", { name: "过去7天" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "最近30天" })).not.toBeInTheDocument();
+  });
+
+  it("shows the start and end fields only for a hand-picked range", () => {
+    const view = render(
+      <EntryFilterPanel
+        filters={{}}
+        periodParams={{ period: "thisMonth" }}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+    expect(screen.queryAllByRole("button", { name: "date" })).toHaveLength(0);
+
+    view.rerender(
+      <EntryFilterPanel
+        filters={{}}
+        periodParams={{ period: "custom", startDate: "2026-09-01", endDate: "2026-09-10" }}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+    expect(screen.getAllByRole("button", { name: "date" })).toHaveLength(2);
+  });
+
   it("renders status checkboxes for all processing statuses", () => {
     render(
       <EntryFilterPanel
@@ -92,18 +155,33 @@ describe("EntryFilterPanel", () => {
         onFiltersChange={vi.fn()}
         showCategory={false}
         showCurrency={false}
+
+        periodParams={{ period: "thisMonth" }}
       />
     );
 
-    // Check that the status section header is rendered
-    expect(screen.getByText("状态")).toBeDefined();
-
-    // Check that all processing status checkbox labels are rendered
-    // "处理中" appears as a checkbox label, and "进行中" as a preset button
+    // The status set is a checkbox group; its name is carried for screen
+    // readers only, because the checkbox labels already say what it filters.
+    expect(screen.getByRole("group", { name: "状态" })).toBeInTheDocument();
     expect(screen.getByText("处理中")).toBeDefined(); // checkbox label
     expect(screen.getByText("已完成")).toBeDefined();
     expect(screen.getByText("失败")).toBeDefined();
     expect(screen.getByText("已取消")).toBeDefined();
+  });
+
+  it("clears the status filter by unchecking, without a separate control", () => {
+    render(
+      <EntryFilterPanel
+        filters={{ statuses: ["failed"] }}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+
+        periodParams={{ period: "thisMonth" }}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "全部状态" })).not.toBeInTheDocument();
   });
 
   it("keeps needs_attention preset in the draft until Apply", async () => {
@@ -116,13 +194,12 @@ describe("EntryFilterPanel", () => {
         onFiltersChange={onFiltersChange}
         showCategory={false}
         showCurrency={false}
+
+        periodParams={{ period: "thisMonth" }}
       />
     );
 
-    // "待处理" is the needs_attention preset button
-    // It's unique — no checkbox shares this text
-    const needsAttentionBtn = screen.getByRole("button", { name: "待处理" });
-    await user.click(needsAttentionBtn);
+    await user.click(screen.getByRole("button", { name: "待处理" }));
     expect(onFiltersChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
     expect(onFiltersChange).toHaveBeenCalledTimes(1);
@@ -139,12 +216,12 @@ describe("EntryFilterPanel", () => {
         onFiltersChange={onFiltersChange}
         showCategory={false}
         showCurrency={false}
+
+        periodParams={{ period: "thisMonth" }}
       />
     );
 
-    // "进行中" is uniquely the in_progress preset button (distinct from "处理中" checkbox label)
-    const presetButton = screen.getByRole("button", { name: "进行中" });
-    await user.click(presetButton);
+    await user.click(screen.getByRole("button", { name: "进行中" }));
     expect(onFiltersChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
     expect(onFiltersChange).toHaveBeenCalledTimes(1);
@@ -175,15 +252,36 @@ describe("EntryFilterPanel", () => {
     );
   });
 
-  it("offers a last-month date preset alongside the existing presets", async () => {
+  it("submits a hand-picked range as a custom period", async () => {
     const user = userEvent.setup();
     const onFiltersChange = vi.fn();
 
     render(
       <EntryFilterPanel
         filters={{}}
-        onFiltersChange={onFiltersChange}
         periodParams={{ period: "thisMonth" }}
+        onFiltersChange={onFiltersChange}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "自定义区间" }));
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+
+    expect(onFiltersChange).toHaveBeenCalledTimes(1);
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.anything(), "custom");
+  });
+
+  it("submits last month as a named period", async () => {
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn();
+
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        periodParams={{ period: "thisMonth" }}
+        onFiltersChange={onFiltersChange}
         showCategory={false}
         showCurrency={false}
       />

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CalendarSync, Check, Pencil, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { textRoleClassName } from "@/components/typography";
 import { DateFilter } from "@/components/ui/date-filter";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
@@ -150,7 +151,7 @@ export function SourceDocumentDateOrganization({
           {/* Marks the block as a feature, not another line of the record. Drawn
               in the title's own colour, like every other icon in the app. */}
           <CalendarSync aria-hidden="true" className="size-4 shrink-0" />
-          <span className="min-w-0 truncate text-sm font-semibold">{t("title")}</span>
+          <span className={textRoleClassName("cardTitle", "min-w-0 truncate")}>{t("title")}</span>
         </div>
         <div className="flex gap-1">
           {editing ? (

@@ -2,27 +2,27 @@ import type { ReactNode } from "react";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
 
 interface DetailsToolbarProps {
+  rangeLabel?: string;
   totalLabel?: string;
   children?: ReactNode;
   batchActions?: ReactNode;
-  actions?: ReactNode;
   onRefresh?: (() => Promise<unknown> | unknown) | undefined;
   isRefreshing?: boolean | undefined;
 }
 
 export function DetailsToolbar({
+  rangeLabel,
   totalLabel,
   children,
   batchActions,
-  actions,
   onRefresh,
   isRefreshing,
 }: DetailsToolbarProps) {
   return (
     <EntriesToolbarShell
+      rangeLabel={rangeLabel}
       totalLabel={totalLabel}
       batchActions={batchActions}
-      actions={actions}
       onRefresh={onRefresh}
       isRefreshing={isRefreshing}
     >

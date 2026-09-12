@@ -26,6 +26,7 @@ export function useDetailsBatchController(
   timeZone?: string
 ) {
   const t = useTranslations("DetailsTab");
+  const tBatch = useTranslations("BatchActions");
   const tCommon = useTranslations("Common");
   const allIds = useMemo(() => entries.map((entry) => entry.id), [entries]);
   const entryById = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
@@ -54,6 +55,7 @@ export function useDetailsBatchController(
     () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date())
   );
   const [dateImpact, setDateImpact] = useState<BatchDateImpact | null>(null);
+  const [datePreviewFailed, setDatePreviewFailed] = useState(false);
   const [dateSelectionSnapshot, setDateSelectionSnapshot] = useState<{
     entryIds: string[];
     targets: VersionedTarget[];
@@ -64,9 +66,17 @@ export function useDetailsBatchController(
     setDateDialogOpen(open);
     if (!open) {
       setDateImpact(null);
+      setDatePreviewFailed(false);
       setDateSelectionSnapshot(null);
     }
   }, []);
+  // The preview is answered for a snapshot of the selection, so a selection
+  // that moved since then is no longer what the dialog describes.
+  const dateSelectionChanged =
+    dateSelectionSnapshot != null &&
+    (dateSelectionSnapshot.queryFingerprint !== queryFingerprint ||
+      dateSelectionSnapshot.entryIds.length !== selection.selectedIds.length ||
+      dateSelectionSnapshot.entryIds.some((id, index) => id !== selection.selectedIds[index]));
 
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(selection.isSelectionMode);
@@ -131,10 +141,17 @@ export function useDetailsBatchController(
     onSuccess: ({ entryIds: snapshotEntryIds, targets, impact }) => {
       setDateImpact(impact);
       setDateSelectionSnapshot({ entryIds: snapshotEntryIds, targets, queryFingerprint, impact });
-      setDateDialogVisibility(true);
     },
-    onError: () => toast.error(tCommon("error")),
+    onError: () => setDatePreviewFailed(true),
   });
+  const { mutate: previewDateMutate, isPending: isPreviewingDate } = previewDate;
+  // The dialog opens on the day the user is about to set and fills in what the
+  // change touches, instead of asking for the day first and the impact after.
+  const openDateDialog = useCallback(() => {
+    setDateDialogVisibility(true);
+    previewDateMutate();
+  }, [previewDateMutate, setDateDialogVisibility]);
+  const retryDatePreview = useCallback(() => previewDateMutate(), [previewDateMutate]);
   const updateDates = useLedgerMutation<{ impact: BatchDateImpact }, void>(ledgerId, {
     refreshMode: "background",
     invalidates: ["documents", "stats"],
@@ -157,9 +174,9 @@ export function useDetailsBatchController(
       return unwrapAtomicBatchCommandResult(result);
     },
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
-    errorMessage: t("selectionChanged"),
-    onSuccess: () => {
-      toast.success(t("dateUpdated"));
+    errorMessage: tBatch("selectionChanged"),
+    onSuccess: (result) => {
+      toast.success(tBatch("datesUpdated", { count: result.impact.affectedEntryCount }));
       selection.clearSelection();
       setDateDialogVisibility(false);
     },
@@ -169,6 +186,11 @@ export function useDetailsBatchController(
     ...selection,
     dateDialogOpen,
     setDateDialogOpen: setDateDialogVisibility,
+    openDateDialog,
+    datePreviewFailed,
+    dateSelectionChanged,
+    retryDatePreview,
+    isPreviewingDate,
     deleteDialogOpen,
     setDeleteDialogOpen,
     selectedDate,

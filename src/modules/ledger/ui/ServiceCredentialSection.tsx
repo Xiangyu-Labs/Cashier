@@ -104,7 +104,7 @@ export function ServiceCredentialSection({
 
       <div className="space-y-3">
         {credentials.length === 0 ? (
-          <div className="rounded-[var(--radius)] border border-dashed border-border py-8 text-center text-muted">
+          <div className="rounded-[var(--radius)] border border-dashed border-border py-8 text-center text-muted-foreground">
             {t("noCredentials")}
           </div>
         ) : (
@@ -116,12 +116,12 @@ export function ServiceCredentialSection({
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{credential.name}</div>
-                  <div className="truncate font-mono text-xs text-muted">
+                  <div className="truncate font-mono text-xs text-muted-foreground">
                     {credential.tokenPrefix && credential.tokenSuffix
                       ? `${credential.tokenPrefix}...${credential.tokenSuffix}`
                       : "******"}
                   </div>
-                  <div className="mt-1 text-[10px] text-muted">
+                  <div className="mt-1 text-micro text-muted-foreground">
                     {t("createdAt", {
                       date: formatInstantDateLabel(credential.createdAt, locale, {
                         today: tCommon("today"),
@@ -137,7 +137,7 @@ export function ServiceCredentialSection({
                 disabled={isCreating || isDeleting}
                 onClick={() => setCredentialToDelete(credential)}
                 aria-label={t("deleteButton", { name: credential.name })}
-                className="shrink-0 text-muted hover:text-danger"
+                className="shrink-0 text-muted-foreground hover:text-danger"
               >
                 <Trash2 size={16} />
               </Button>

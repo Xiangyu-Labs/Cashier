@@ -38,22 +38,12 @@
     "notes": "Notes"
   },
   "DateRangeFilter": {
-    "selectRange": "Select date range",
-    "commonRanges": "Common Ranges",
     "thisMonth": "This Month",
     "lastMonth": "Last Month",
-    "pastWeek": "Past 7 Days",
-    "pastMonth": "Past 30 Days",
-    "past3Months": "Past 3 Months",
-    "past6Months": "Past 6 Months",
-    "pastYear": "Past 1 Year",
     "customRange": "Custom Range",
-    "apply": "Apply",
-    "today": "Today",
-    "yesterday": "Yesterday",
-    "clear": "Clear",
     "startDate": "Start",
-    "endDate": "End"
+    "endDate": "End",
+    "all": "All"
   },
   "StatsChart": {
     "scaleAdjusted": "Scale adjusted",

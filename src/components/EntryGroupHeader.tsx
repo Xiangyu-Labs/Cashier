@@ -1,4 +1,5 @@
 import { AmountText } from "@/modules/currency/ui/amount-text";
+import { textRoleClassName } from "@/components/typography";
 
 interface EntryGroupHeaderProps {
   title: string;
@@ -8,7 +9,7 @@ interface EntryGroupHeaderProps {
 export function EntryGroupHeader({ title, totalLabel }: EntryGroupHeaderProps) {
   return (
     <div className="mx-2 mb-4 flex items-center justify-between border-b border-border/80 pb-2 pt-3">
-      <h3 className="min-w-0 text-xs font-medium text-muted-foreground">{title}</h3>
+      <h3 className={textRoleClassName("meta", "min-w-0 font-medium")}>{title}</h3>
       {totalLabel != null && totalLabel !== "" && (
         <AmountText variant="group">{totalLabel}</AmountText>
       )}

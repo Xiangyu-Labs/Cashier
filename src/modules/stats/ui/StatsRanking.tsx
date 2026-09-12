@@ -3,6 +3,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
+import { textRoleClassName } from "@/components/typography";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import Decimal from "decimal.js";
@@ -76,7 +77,9 @@ export function StatsRanking({
 
   return (
     <div className="space-y-5 px-2">
-      <h3 className="font-semibold text-lg flex items-center gap-2">{t("expenseRanking")}</h3>
+      <h3 className={textRoleClassName("sectionTitle", "flex items-center gap-2")}>
+        {t("expenseRanking")}
+      </h3>
 
       <div className="space-y-5">
         {data.map((cat) => {

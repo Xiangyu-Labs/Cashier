@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
+import { textRoleClassName } from "@/components/typography";
 
 interface SettingsPageProps {
   params: Promise<{ id: string }>;
@@ -20,7 +21,7 @@ function LedgerNotFound({ message, backLabel }: { message: string; backLabel: st
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="flex w-full max-w-md flex-col gap-6 rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
-        <h1 className="text-xl font-bold">{message}</h1>
+        <h1 className={textRoleClassName("pageTitle")}>{message}</h1>
         <Button variant="outline" className="w-full" asChild>
           <Link href="/">{backLabel}</Link>
         </Button>

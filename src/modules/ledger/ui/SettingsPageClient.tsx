@@ -9,6 +9,7 @@ import { SettingsTab } from "./SettingsTab";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useSettingsLeaveGuard } from "@/modules/ledger/hooks/useSettingsLeaveGuard";
+import { textRoleClassName } from "@/components/typography";
 
 interface SettingsPageClientProps {
   ledger: Ledger;
@@ -47,7 +48,7 @@ export function SettingsPageClient({
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl sm:text-2xl font-semibold truncate">{t("title")}</h1>
+        <h1 className={textRoleClassName("pageTitle", "truncate")}>{t("title")}</h1>
       </div>
 
       <SettingsTab

@@ -4,6 +4,7 @@ import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { TOOLBAR_CONTROL_CLASS } from "@/components/toolbar-control";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -17,9 +18,11 @@ export type { EntryFilters } from "@/modules/ledger/filters";
 interface EntryFilterPanelProps {
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
-  periodParams?: PeriodParams;
+  periodParams: PeriodParams;
   categories?: EntryCategory[];
   preferredCurrencies?: string[];
+  /** Ledger timezone: the date fields' 今天/昨天 must name the ledger's day. */
+  timeZone?: string;
   showCategory?: boolean;
   showCurrency?: boolean;
   showStatus?: boolean;
@@ -48,6 +51,7 @@ export function EntryFilterPanel({
   periodParams,
   categories = [],
   preferredCurrencies = [],
+  timeZone,
   showCategory = true,
   showCurrency = true,
   showStatus = true,
@@ -73,9 +77,8 @@ export function EntryFilterPanel({
   const trigger = (
     <Button
       variant="outline"
-      size="sm"
       className={cn(
-        "h-7 gap-1.5 px-2.5 text-xs",
+        TOOLBAR_CONTROL_CLASS,
         activeFilterCount > 0 && "border-primary/50 text-primary"
       )}
       onClick={isMobile ? () => handleOpenChange(true) : undefined}
@@ -85,14 +88,16 @@ export function EntryFilterPanel({
       aria-haspopup={isMobile ? "dialog" : undefined}
       aria-expanded={isMobile ? open : undefined}
     >
-      <SlidersHorizontal className="h-3.5 w-3.5" />
+      <SlidersHorizontal aria-hidden="true" />
       <span>{t("filter")}</span>
       {activeFilterCount > 0 && (
-        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-micro font-medium text-primary">
           {activeFilterCount}
         </span>
       )}
-      <ChevronDown className="h-3 w-3 opacity-50" />
+      {/* A chevron promises a panel anchored to the trigger, which is what the
+          desktop popover does; on mobile this opens a sheet from the bottom. */}
+      {!isMobile && <ChevronDown aria-hidden="true" className="opacity-50" />}
     </Button>
   );
 
@@ -101,6 +106,7 @@ export function EntryFilterPanel({
       {...draft}
       categories={categories}
       preferredCurrencies={preferredCurrencies}
+      timeZone={timeZone}
       showCategory={showCategory}
       showCurrency={showCurrency}
       showStatus={showStatus}
@@ -115,10 +121,13 @@ export function EntryFilterPanel({
           <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent
               variant="sheet"
-              className="max-h-[calc(100svh-1rem)] overflow-y-auto rounded-b-none rounded-t-lg p-0 pb-[env(safe-area-inset-bottom)]"
+              className="max-h-[calc(100svh-1rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 rounded-b-none rounded-t-lg p-0"
               aria-describedby={undefined}
             >
-              <DialogTitle className="sr-only">{t("filter")}</DialogTitle>
+              {/* The sheet covers the trigger, so it has to say what it is. */}
+              <DialogTitle className="border-b border-border px-4 py-3 pr-12 text-sm font-medium">
+                {t("filter")}
+              </DialogTitle>
               {filterContent}
             </DialogContent>
           </Dialog>
@@ -127,10 +136,10 @@ export function EntryFilterPanel({
         <Popover open={open} onOpenChange={handleOpenChange}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>
           <PopoverContent
-            align="center"
+            align="start"
             collisionPadding={16}
             sideOffset={10}
-            className="max-h-[calc(100svh-8rem)] w-[min(420px,calc(100vw-2rem))] overflow-y-auto p-0 sm:w-[420px]"
+            className="max-h-[calc(100svh-8rem)] w-[min(360px,calc(100vw-2rem))] overflow-y-auto p-0"
           >
             {filterContent}
           </PopoverContent>

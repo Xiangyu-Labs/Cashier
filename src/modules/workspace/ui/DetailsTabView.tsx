@@ -7,22 +7,20 @@ import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contra
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
 import { LedgerEntryGroupsView } from "@/modules/ledger/ui/LedgerEntryGroupsView";
-import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
+import {
+  BatchDateDialog,
+  batchDateImpactSummary,
+  LedgerEntriesBatchActionToolbar,
+} from "@/modules/ledger/ui/batch-action-toolbar";
 import type { GroupedEntry } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import type { PeriodParams } from "@/lib/period-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { TOOLBAR_ICON_BUTTON_CLASS } from "@/components/toolbar-control";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DateFilter } from "@/components/ui/date-filter";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DetailsToolbar } from "./DetailsToolbar";
+import { usePeriodLabel } from "./usePeriodLabel";
 import { EmptyState } from "@/components/EmptyState";
 import type { useDetailsBatchController } from "./useDetailsBatchController";
 
@@ -81,6 +79,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
   const locale = useLocale();
+  const rangeLabel = usePeriodLabel(periodParams, batch.timeZone);
   const { isPending, toggleSelection } = batch;
   const handleToggleSelection = useCallback(
     (id: string) => {
@@ -94,6 +93,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
       <DetailsToolbar
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
+        {...(!batch.isSelectionMode && rangeLabel != null ? { rangeLabel } : {})}
         {...(!batch.isSelectionMode && monthStats.mainTotal != null
           ? {
               totalLabel: formatCurrencyAmount(
@@ -106,9 +106,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
         batchActions={
           batch.isSelectionMode ? (
             <LedgerEntriesBatchActionToolbar
-              variant="inline"
+              selectionUnit="entry"
               selectedCount={batch.selectedIds.length}
-              totalCount={batch.selectableCount}
               isAllSelected={batch.isAllSelected}
               hasMoreData={hasNextPage || entries.length > batch.selectableCount}
               onSelectAll={() => !batch.isPending && batch.selectAll()}
@@ -121,8 +120,9 @@ export function DetailsTabView(props: DetailsTabViewProps) {
               onChangeCurrency={async (currency) => {
                 await batch.update.mutateAsync({ currency });
               }}
-              onChangeDate={() => batch.previewDate.mutate()}
+              onChangeDate={batch.openDateDialog}
               onDelete={() => batch.setDeleteDialogOpen(true)}
+              isDeleting={batch.remove.isPending}
               isProcessing={batch.isPending}
             />
           ) : undefined
@@ -133,7 +133,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           size="icon"
           onClick={batch.toggleSelectionMode}
           disabled={batch.isPending}
-          className="h-8 w-8"
+          className={cn("shrink-0", TOOLBAR_ICON_BUTTON_CLASS)}
           aria-label={batch.isSelectionMode ? t("cancelSelect") : t("select")}
         >
           {batch.isSelectionMode ? (
@@ -150,6 +150,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             categories={categories}
             preferredCurrencies={ledger?.settings.currencies ?? []}
             showStatus={false}
+            {...(batch.timeZone != null ? { timeZone: batch.timeZone } : {})}
             // Deliberately unsized, like the stream's: the panel does not grow
             // past its trigger, so the toolbar's middle stays free for the
             // centred refresh hint instead of being reserved by empty space.
@@ -210,7 +211,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           ) : null}
           {!hasNextPage && entries.length > 0 ? (
             <div className="flex justify-center py-4">
-              <span className="text-xs text-muted-foreground/50">— {t("noMore")} —</span>
+              <span className="text-xs text-muted-foreground">— {t("noMore")} —</span>
             </div>
           ) : null}
         </div>
@@ -227,55 +228,20 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             return result.stale.length + result.failed.length === 0;
           }}
         />
-        <Dialog
+        <BatchDateDialog
           open={batch.dateDialogOpen}
-          onOpenChange={(open) => !batch.updateDates.isPending && batch.setDateDialogOpen(open)}
-        >
-          <DialogContent variant="modal">
-            <DialogHeader>
-              <DialogTitle>{t("changeDateTitle")}</DialogTitle>
-            </DialogHeader>
-            {batch.dateImpact != null ? (
-              <p className="text-sm text-muted-foreground">
-                {t("changeDateImpact", {
-                  selected: batch.dateImpact.selectedEntryCount,
-                  documents: batch.dateImpact.sourceDocumentCount,
-                  affected: batch.dateImpact.affectedEntryCount,
-                })}
-              </p>
-            ) : null}
-            {/* The same picker the entry toolbar and the stream use; the field
-                never empties, so it offers no clear. */}
-            <DateFilter
-              value={batch.selectedDate}
-              onChange={(date) => {
-                if (date != null) batch.setSelectedDate(formatDateTimeForApi(date));
-              }}
-              className="w-full"
-              showClear={false}
-              showClearShortcut={false}
-              ariaLabel={t("changeDateTitle")}
-              // The field is seeded from this timezone, so it must read the day
-              // back against the same one.
-              {...(batch.timeZone != null ? { timeZone: batch.timeZone } : {})}
-            />
-            <DialogFooter>
-              <Button
-                variant="outline"
-                disabled={batch.updateDates.isPending}
-                onClick={() => batch.setDateDialogOpen(false)}
-              >
-                {tCommon("cancel")}
-              </Button>
-              <Button
-                disabled={batch.updateDates.isPending || batch.selectedDate === ""}
-                onClick={() => batch.updateDates.mutate()}
-              >
-                {tCommon("confirm")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          onOpenChange={batch.setDateDialogOpen}
+          value={batch.selectedDate}
+          onChange={batch.setSelectedDate}
+          impact={batch.dateImpact == null ? null : batchDateImpactSummary(batch.dateImpact)}
+          isPreviewing={batch.isPreviewingDate}
+          previewFailed={batch.datePreviewFailed}
+          onRetryPreview={batch.retryDatePreview}
+          selectionChanged={batch.dateSelectionChanged}
+          isConfirming={batch.updateDates.isPending}
+          onConfirm={() => batch.updateDates.mutate()}
+          {...(batch.timeZone != null ? { timeZone: batch.timeZone } : {})}
+        />
       </div>
     </>
   );

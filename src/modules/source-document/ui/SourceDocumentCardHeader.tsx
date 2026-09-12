@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { textRoleClassName } from "@/components/typography";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
 import type {
@@ -159,7 +160,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         className="group flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none disabled:cursor-default sm:min-h-9"
       >
         <span className="flex min-w-0 items-center gap-2 rounded-sm group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring">
-          <span className="truncate text-sm font-semibold text-text">
+          <span className={textRoleClassName("cardTitle", "truncate")}>
             {sourceDocument.title?.trim() || t("untitled")}
           </span>
         </span>

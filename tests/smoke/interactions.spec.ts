@@ -35,15 +35,15 @@ test("selection, discard confirmation and one-tap split navigation", async ({
   await expect(surface.getByRole("checkbox")).toBeChecked();
   await page.screenshot({ path: testInfo.outputPath("stream-selection.png"), fullPage: true });
   await activate(page.getByRole("button", { name: "Cancel", exact: true }));
-  await card.getByRole("button", { name: /Quick Entry$/ }).click();
+  await card.getByRole("button", { name, exact: true }).click();
   dialog = page.getByRole("dialog");
-  const menuBox = await dialog
-    .getByRole("button", { name: "Bill Details", exact: true })
-    .boundingBox();
+  // The header holds the title and the close button, so the title has to stop
+  // before the close control starts.
+  const titleBox = await dialog.getByText(name, { exact: true }).first().boundingBox();
   const closeBox = await dialog.getByRole("button", { name: "Close", exact: true }).boundingBox();
-  expect(menuBox).not.toBeNull();
+  expect(titleBox).not.toBeNull();
   expect(closeBox).not.toBeNull();
-  expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(closeBox!.x);
+  expect(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(closeBox!.x);
   await dialog.getByRole("button", { name: "Select", exact: true }).click();
   const row = dialog.getByRole("checkbox", { name: `Select ${name}`, exact: true });
   await activate(row);
@@ -51,7 +51,8 @@ test("selection, discard confirmation and one-tap split navigation", async ({
   await page.screenshot({ path: testInfo.outputPath("detail-selection.png"), fullPage: true });
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await dialog.getByRole("button", { name: "Edit", exact: true }).click();
-  await dialog.getByRole("button", { name: "Dining", exact: true }).first().click();
+  // A field swaps from its display button to an input when it is clicked.
+  await dialog.getByRole("button", { name, exact: true }).first().click();
   await dialog.getByRole("textbox").first().fill("Discard this title");
   await dialog.getByRole("textbox").first().press("Enter");
   await dialog.getByRole("button", { name: "Cancel editing", exact: true }).click();
@@ -146,8 +147,9 @@ test("selection, discard confirmation and one-tap split navigation", async ({
   expect(jumpBox!.height + 0.001).toBeGreaterThanOrEqual(44);
   await activate(jump);
   await expect(page).not.toHaveURL(originalUrl);
-  await expect(page.getByRole("dialog")).toContainText("Third item");
+  // The bill being left behind is still in the DOM while it animates out.
+  await expect(page.getByRole("dialog").last()).toContainText("Third item");
   await page.screenshot({ path: testInfo.outputPath("split-navigation.png"), fullPage: true });
   await page.reload();
-  await expect(page.getByRole("dialog")).toContainText("Third item");
+  await expect(page.getByRole("dialog").last()).toContainText("Third item");
 });

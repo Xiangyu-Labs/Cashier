@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCcw, LayoutDashboard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
+import { textRoleClassName } from "@/components/typography";
 
 export default function LedgerError({
   error,
@@ -22,8 +23,8 @@ export default function LedgerError({
     <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-4">
       <div className="flex w-full max-w-md flex-col gap-6 rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
         <div className="space-y-2">
-          <h1 className="text-xl font-bold">{tLedger("title")}</h1>
-          <p className="text-muted-foreground text-sm">{tLedger("description")}</p>
+          <h1 className={textRoleClassName("pageTitle")}>{tLedger("title")}</h1>
+          <p className={textRoleClassName("bodyMuted")}>{tLedger("description")}</p>
         </div>
 
         <div className="flex flex-col gap-3">

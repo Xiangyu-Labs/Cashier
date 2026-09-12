@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { textRoleClassName } from "@/components/typography";
 import { AmountText } from "@/modules/currency/ui/amount-text";
 import { toStableFailureCode } from "@/application/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
@@ -112,8 +113,10 @@ export function SourceDocumentDetailStatusPanels({
                   <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
                     <span className="mt-1 size-2 shrink-0 rounded-full bg-danger" aria-hidden />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-medium text-danger">{title}</span>
-                      <span className="text-[11px] text-muted-foreground/70">{description}</span>
+                      <span className={textRoleClassName("meta", "font-medium text-danger")}>
+                        {title}
+                      </span>
+                      <span className={textRoleClassName("micro")}>{description}</span>
                     </div>
                   </div>
                 );
@@ -126,10 +129,10 @@ export function SourceDocumentDetailStatusPanels({
               <div className="mb-3 px-1">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-medium text-primary">
+                    <span className={textRoleClassName("meta", "font-medium text-primary")}>
                       {t("activeResultTitle")}
                     </span>
-                    <span className="text-[11px] text-muted-foreground/70">
+                    <span className={textRoleClassName("micro")}>
                       {t("activeResultDescription")}
                     </span>
                     <AmountText variant="group">

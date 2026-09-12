@@ -103,6 +103,37 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
 - Filtered ledger results show the amount without a `Filtered total` prefix. Unfiltered results may
   show `Total` / `合计`; missing bill titles use `Untitled Bill` / `未命名账单`.
 
+### Typography
+
+Reach for a role in `src/components/typography.ts` before writing a raw size. The table is the
+single answer to "how big is this kind of text", and it is what keeps page headings, section
+headings, metadata and micro labels identical across surfaces.
+
+| Role           | Size              | Use for                                              |
+| -------------- | ----------------- | ---------------------------------------------------- |
+| `pageTitle`    | 24px semibold     | The `<h1>` of a page.                                |
+| `dialogTitle`  | 18px semibold     | A modal or sheet title.                              |
+| `sectionTitle` | 16px semibold     | A page-level section heading, like a settings group. |
+| `cardTitle`    | 14px semibold     | The title of one card in a list.                     |
+| `body`         | 14px              | Default prose.                                       |
+| `bodyStrong`   | 14px medium       | Form labels, entry names, inline values.             |
+| `bodyMuted`    | 14px muted        | Descriptions and hints under a title.                |
+| `meta`         | 12px muted        | Secondary metadata: timestamps, counts, hints.       |
+| `micro`        | 11px muted        | Chips, chart ticks, dense badges.                    |
+| `provisional`  | 11px italic muted | Machine-generated text that may still change.        |
+
+- The sizes above are the frozen scale. `micro` is the only tier Tailwind does not ship; it lives in
+  `src/app/globals.css` as `--text-micro`. Do not add arbitrary values such as `text-[13px]`, and do
+  not add a step between tiers — `text-xl` (20px) is retired from headings so page titles are always
+  24px. Larger display type (the 404 watermark, OTP and amount fields) is the deliberate exception.
+- Secondary text is either `text-muted-foreground` or `text-muted-foreground/60`. The `text-muted`
+  alias is gone: both names resolved to the same token, which made the palette look larger than it
+  was.
+- Headings are `font-semibold`. `font-bold` is reserved for display numerals.
+- Interactive controls keep their own sizes: `Button` is 14px (`text-xs` at `size="sm"`), and form
+  inputs stay `text-base md:text-sm` so mobile browsers do not zoom on focus.
+
 Run `npm run check:architecture` locally. CI must reject import cycles.
 Architecture rules inspect TypeScript syntax for protected writes and structured log fields; comments
-and ordinary strings are not architectural evidence.
+and ordinary strings are not architectural evidence. The typography rules read class literals, so
+arbitrary text sizes and the retired `text-muted` alias fail the check while comments stay exempt.

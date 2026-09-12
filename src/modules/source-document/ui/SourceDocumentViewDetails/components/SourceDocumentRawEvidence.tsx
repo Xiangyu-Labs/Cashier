@@ -5,6 +5,7 @@ import Image from "next/image";
 import { FileText, ImagePlay, Maximize2 } from "lucide-react";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { cn } from "@/lib/utils";
+import { textRoleClassName } from "@/components/typography";
 import { storedFileReadUrl } from "../../../stored-file-read";
 import { SourceDocumentImageModal } from "../../SourceDocumentImageModal";
 
@@ -31,11 +32,11 @@ export function SourceDocumentRawEvidence({
     <>
       <section className="shrink-0 overflow-hidden rounded-lg border border-border/60 bg-surface2/20">
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-3 py-2.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <div className={textRoleClassName("meta", "flex items-center gap-2 font-semibold")}>
             <FileText className="h-3 w-3 text-primary/70" />
             {t("rawEvidence")}
             {(hasImages || hasRawText) && (
-              <span className="text-xs font-normal text-muted-foreground/60">
+              <span className={textRoleClassName("meta", "font-normal")}>
                 (
                 {[hasImages && `${files.length} ${tCard("image")}`, hasRawText && t("rawContent")]
                   .filter(Boolean)
@@ -48,11 +49,15 @@ export function SourceDocumentRawEvidence({
 
         <div className="space-y-4 px-3 pb-3 pt-3">
           {!hasImages && !hasRawText && !isLoadingImages ? (
-            <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("noEvidence")}</p>
+            <p className={textRoleClassName("bodyMuted", "px-3 py-6 text-center")}>
+              {t("noEvidence")}
+            </p>
           ) : null}
           {(hasImages || isLoadingImages) && (
             <div>
-              <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground/60">
+              <h3
+                className={textRoleClassName("meta", "mb-2 flex items-center gap-1.5 font-medium")}
+              >
                 <ImagePlay className="h-3 w-3 text-primary/60" />
                 {tCard("image")}
               </h3>
@@ -120,9 +125,7 @@ export function SourceDocumentRawEvidence({
 
           {hasRawText && (
             <div>
-              <h3 className="mb-2 text-xs font-medium text-muted-foreground/60">
-                {t("rawContent")}
-              </h3>
+              <h3 className={textRoleClassName("meta", "mb-2 font-medium")}>{t("rawContent")}</h3>
               <div className="whitespace-pre-wrap break-words rounded-lg border border-border/40 bg-surface/50 p-3 text-sm leading-relaxed text-text/70">
                 {sourceDocument.text}
               </div>

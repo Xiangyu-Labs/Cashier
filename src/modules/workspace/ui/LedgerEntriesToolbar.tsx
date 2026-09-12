@@ -1,18 +1,22 @@
 import { useState } from "react";
-import { ArrowLeft, RefreshCw, SquareDashedMousePointer, Trash2 } from "lucide-react";
+import { ArrowLeft, SquareDashedMousePointer } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { TOOLBAR_ICON_BUTTON_CLASS } from "@/components/toolbar-control";
 import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
+import {
+  BatchDateDialog,
+  batchDateImpactSummary,
+  LedgerEntriesBatchActionToolbar,
+} from "@/modules/ledger/ui/batch-action-toolbar";
 import type { PeriodParams, PeriodPreset } from "@/lib/period-utils";
-import { SourceDocumentActions } from "@/modules/source-document/ui/batch-action-toolbar/SourceDocumentActions";
 import { cn } from "@/lib/utils";
-import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
 import type { ReactNode } from "react";
-import { BatchActionButton } from "@/components/batch-action-button";
+import { usePeriodLabel } from "./usePeriodLabel";
 import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
 
 interface LedgerEntriesToolbarProps {
@@ -40,7 +44,6 @@ interface LedgerEntriesToolbarProps {
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
   periodParams: PeriodParams;
-  totalPrefix?: string;
   mainCurrency: string;
   filteredTotal?: string;
   timeZone?: string;
@@ -72,7 +75,6 @@ export function LedgerEntriesToolbar({
   filters,
   onFiltersChange,
   periodParams,
-  totalPrefix,
   mainCurrency,
   filteredTotal,
   timeZone,
@@ -85,15 +87,15 @@ export function LedgerEntriesToolbar({
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
   const locale = useLocale();
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const date = getDateInTimezone(timeZone);
-    return date == null ? new Date() : parseDateString(date);
-  });
+  const rangeLabel = usePeriodLabel(periodParams, timeZone);
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(
+    () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date()) ?? ""
+  );
   const [dateImpact, setDateImpact] = useState<BatchEntryDateImpact | null>(null);
   const [dateImpactError, setDateImpactError] = useState(false);
   const [isPreviewingDateImpact, setIsPreviewingDateImpact] = useState(false);
-  const [dateConfirmOpen, setDateConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [dateSelectionSnapshot, setDateSelectionSnapshot] = useState<{
     sourceDocumentIds: string[];
     entryIds: string[];
@@ -108,30 +110,20 @@ export function LedgerEntriesToolbar({
     ) &&
     dateSelectionSnapshot.entryIds.length === selectedEntryIds.length &&
     dateSelectionSnapshot.entryIds.every((id, index) => id === selectedEntryIds[index]);
-  const showBatchActions = isSelectionMode && selectedCount > 0;
   const isProcessing = externallyProcessing || isUpdatingDates || isRetrying || isDeleting;
-  const masterChecked: boolean | "indeterminate" = isAllSelected
-    ? true
-    : selectedCount > 0
-      ? "indeterminate"
-      : false;
-  const handlePreviewDateImpact = async () => {
-    if (!onUpdateDates) return;
+
+  const previewDateImpact = async () => {
+    if (onPreviewDateImpact == null) return;
     const snapshot = {
       sourceDocumentIds: [...selectedSourceDocumentIds],
       entryIds: [...selectedEntryIds],
       queryFingerprint,
     };
-    if (onPreviewDateImpact == null) {
-      return onUpdateDates(formatDateTimeForApi(selectedDate), snapshot.sourceDocumentIds);
-    }
     setIsPreviewingDateImpact(true);
     setDateImpactError(false);
     try {
       setDateImpact(await onPreviewDateImpact(snapshot.sourceDocumentIds, snapshot.entryIds));
       setDateSelectionSnapshot(snapshot);
-      setDatePickerOpen(false);
-      setDateConfirmOpen(true);
     } catch {
       setDateImpactError(true);
     } finally {
@@ -139,16 +131,42 @@ export function LedgerEntriesToolbar({
     }
   };
 
+  const handleOpenDateDialog = () => {
+    setDateDialogOpen(true);
+    void previewDateImpact();
+  };
+
+  const handleDateDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setDateImpact(null);
+      setDateSelectionSnapshot(null);
+      setDateImpactError(false);
+    }
+    setDateDialogOpen(open);
+  };
+
+  const handleConfirmDate = async () => {
+    if (onUpdateDates == null) return;
+    if (dateSelectionSnapshot == null) {
+      // No preview to honour, so the live selection is the one that was shown.
+      await onUpdateDates(selectedDate, [...selectedSourceDocumentIds]);
+      handleDateDialogOpenChange(false);
+      return;
+    }
+    if (!dateSelectionMatches) return;
+    await onUpdateDates(selectedDate, dateSelectionSnapshot.sourceDocumentIds);
+    handleDateDialogOpenChange(false);
+  };
+
   return (
     <EntriesToolbarShell
       syncStatus={syncStatus}
       onRefresh={onRefresh}
       isRefreshing={isRefreshing}
+      {...(!isSelectionMode && rangeLabel != null ? { rangeLabel } : {})}
       totalLabel={
         !isSelectionMode && filteredTotal !== undefined
-          ? [totalPrefix, formatCurrencyAmount(filteredTotal, mainCurrency, locale)]
-              .filter(Boolean)
-              .join(" ")
+          ? formatCurrencyAmount(filteredTotal, mainCurrency, locale)
           : undefined
       }
     >
@@ -157,7 +175,7 @@ export function LedgerEntriesToolbar({
         size="icon"
         onClick={onToggleSelectionMode}
         disabled={readOnly || isProcessing}
-        className="shrink-0 h-8 w-8"
+        className={cn("shrink-0", TOOLBAR_ICON_BUTTON_CLASS)}
         aria-label={
           readOnly ? tCommon("readOnlyPreview") : isSelectionMode ? t("cancelSelect") : t("select")
         }
@@ -173,81 +191,19 @@ export function LedgerEntriesToolbar({
       </Button>
 
       {isSelectionMode && (
-        <>
-          <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5">
-            <Checkbox
-              checked={masterChecked}
-              disabled={isProcessing}
-              onCheckedChange={(checked) => {
-                if (checked === true) onSelectAll();
-                else onClearSelection();
-              }}
-              aria-label={isAllSelected ? t("deselectAll") : t("selectAll")}
-              className="h-4 w-4"
-            />
-            <span className="text-xs font-medium text-text">
-              {tBatch("selected", { count: selectedCount })}
-            </span>
-            {isAllSelected && hasMoreData ? (
-              <span className="text-xs text-muted-foreground">
-                {tBatch("loadedOnly", { count: selectedCount })}
-              </span>
-            ) : null}
-          </div>
-        </>
-      )}
-
-      {showBatchActions && (
-        <>
-          <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 basis-full sm:basis-auto">
-            <SourceDocumentActions
-              isProcessing={isProcessing}
-              isUpdatingDates={isUpdatingDates}
-              onUpdateDates={() => void handlePreviewDateImpact()}
-              onCancel={() => setDatePickerOpen(false)}
-              datePickerOpen={datePickerOpen}
-              setDatePickerOpen={setDatePickerOpen}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              showUpdateDates={onUpdateDates !== undefined}
-              dateImpactError={dateImpactError}
-              isPreviewingDateImpact={isPreviewingDateImpact}
-            />
-            {onRetry != null && (
-              <BatchActionButton
-                variant="outline"
-                icon={RefreshCw}
-                loading={isRetrying}
-                disabled={isProcessing}
-                onClick={onRetry}
-              >
-                {tBatch("retry")}
-              </BatchActionButton>
-            )}
-            {onDelete != null && (
-              <ConfirmDialog
-                title={tBatch("deleteTitle")}
-                description={tBatch("deleteDescription", {
-                  count: selectedCount,
-                  scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
-                })}
-                variant="destructive"
-                confirmLabel={tCommon("delete")}
-                onConfirm={onDelete}
-                trigger={
-                  <BatchActionButton
-                    variant="destructive"
-                    icon={Trash2}
-                    loading={isDeleting}
-                    disabled={isProcessing}
-                  >
-                    {tCommon("delete")}
-                  </BatchActionButton>
-                }
-              />
-            )}
-          </div>
-        </>
+        <LedgerEntriesBatchActionToolbar
+          className="basis-full"
+          selectionUnit="document"
+          selectedCount={selectedCount}
+          isAllSelected={isAllSelected}
+          hasMoreData={hasMoreData}
+          onSelectAll={onSelectAll}
+          onClearSelection={onClearSelection}
+          {...(onUpdateDates != null ? { onChangeDate: handleOpenDateDialog } : {})}
+          {...(onRetry != null ? { onRetry: () => void onRetry(), isRetrying } : {})}
+          {...(onDelete != null ? { onDelete: () => setDeleteConfirmOpen(true), isDeleting } : {})}
+          isProcessing={isProcessing}
+        />
       )}
 
       {!isSelectionMode && (
@@ -257,35 +213,39 @@ export function LedgerEntriesToolbar({
           periodParams={periodParams}
           showCategory={false}
           showCurrency={false}
-          className={cn("w-auto", showBatchActions && "sm:ml-auto")}
+          className="w-auto"
+          {...(timeZone != null ? { timeZone } : {})}
         />
       )}
-      <ConfirmDialog
-        open={dateConfirmOpen}
-        onOpenChange={setDateConfirmOpen}
-        title={tBatch("dateImpactTitle")}
-        description={
-          dateSelectionSnapshot != null && !dateSelectionMatches
-            ? tBatch("selectionChanged")
-            : tBatch("dateImpactDescription", {
-                documents: dateImpact?.sourceDocumentCount ?? 0,
-                entries: dateImpact?.affectedEntryCount ?? 0,
-                scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
-              })
-        }
-        confirmLabel={tBatch("confirm")}
-        onConfirm={async () => {
-          if (dateImpact == null || onUpdateDates == null) return false;
-          if (dateSelectionSnapshot == null || !dateSelectionMatches) return false;
-          await onUpdateDates(
-            formatDateTimeForApi(selectedDate),
-            dateSelectionSnapshot.sourceDocumentIds
-          );
-          setDateImpact(null);
-          setDateSelectionSnapshot(null);
-          return true;
-        }}
+      <BatchDateDialog
+        open={dateDialogOpen}
+        onOpenChange={handleDateDialogOpenChange}
+        value={selectedDate}
+        onChange={setSelectedDate}
+        impact={dateImpact == null ? null : batchDateImpactSummary(dateImpact)}
+        isPreviewing={isPreviewingDateImpact || isUpdatingDates}
+        previewFailed={dateImpactError}
+        onRetryPreview={() => void previewDateImpact()}
+        selectionChanged={dateSelectionSnapshot != null && !dateSelectionMatches}
+        {...(isAllSelected && hasMoreData ? { scopeNote: tBatch("loadedScope") } : {})}
+        isConfirming={isUpdatingDates}
+        onConfirm={() => void handleConfirmDate()}
+        {...(timeZone != null ? { timeZone } : {})}
       />
+      {onDelete != null && (
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          title={tBatch("deleteTitleDocuments")}
+          description={tBatch("deleteDescriptionDocuments", {
+            count: selectedCount,
+            scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
+          })}
+          variant="destructive"
+          confirmLabel={tCommon("delete")}
+          onConfirm={onDelete}
+        />
+      )}
     </EntriesToolbarShell>
   );
 }

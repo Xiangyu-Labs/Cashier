@@ -38,22 +38,12 @@
     "notes": "备注"
   },
   "DateRangeFilter": {
-    "selectRange": "选择日期范围",
-    "commonRanges": "常用区间",
     "thisMonth": "本月",
     "lastMonth": "上个月",
-    "pastWeek": "过去7天",
-    "pastMonth": "最近30天",
-    "past3Months": "过去3个月",
-    "past6Months": "过去半年",
-    "pastYear": "过去1年",
     "customRange": "自定义区间",
-    "apply": "应用",
-    "today": "今天",
-    "yesterday": "昨天",
-    "clear": "清除",
     "startDate": "开始日期",
-    "endDate": "结束日期"
+    "endDate": "结束日期",
+    "all": "全部"
   },
   "StatsChart": {
     "scaleAdjusted": "已调整显示比例",

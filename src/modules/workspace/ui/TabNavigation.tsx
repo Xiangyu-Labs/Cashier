@@ -128,9 +128,9 @@ function NavButton({
       onFocus={onIntent}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent md:flex-row md:gap-1 md:px-2 md:text-sm",
+        "relative inline-flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-micro font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent md:flex-row md:gap-1 md:px-2 md:text-sm",
         disabled
-          ? "cursor-not-allowed text-muted-foreground/45"
+          ? "cursor-not-allowed text-muted-foreground/60"
           : active
             ? "bg-surface2/60 text-text after:bg-primary"
             : "text-muted-foreground hover:bg-surface2/40 hover:text-text"

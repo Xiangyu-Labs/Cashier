@@ -1,8 +1,7 @@
-import { Calendar, ChevronDown, DollarSign, Loader2, Scissors, Tag, Trash2 } from "lucide-react";
+import { Calendar, ChevronDown, DollarSign, RefreshCw, Scissors, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BatchActionButton } from "@/components/batch-action-button";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,25 +16,38 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 interface LedgerEntriesActionsProps {
   categories: EntryCategory[];
   preferredCurrencies: string[];
-  isProcessing: boolean;
-  isChangingCategory: boolean;
-  isChangingCurrency: boolean;
-  onChangeCategory: (categoryId: string | null) => void;
-  onChangeCurrency: (currency: string) => void;
+  /** Every action is unavailable, either because a write is running or because
+   * the selection is empty. */
+  disabled: boolean;
+  isChangingCategory?: boolean;
+  isChangingCurrency?: boolean;
+  isRetrying?: boolean;
+  isDeleting?: boolean;
+  onChangeCategory?: (categoryId: string | null) => void;
+  onChangeCurrency?: (currency: string) => void;
   onChangeDate?: () => void;
+  onRetry?: () => void;
   onSplit?: () => void;
   onDelete?: () => void;
 }
 
+/**
+ * The batch action row, in one order everywhere: category, date, split, retry,
+ * currency, delete. A surface renders only the actions its entities support, so
+ * the subsets still line up — every view puts delete last.
+ */
 export function LedgerEntriesActions({
   categories,
   preferredCurrencies,
-  isProcessing,
-  isChangingCategory,
-  isChangingCurrency,
+  disabled,
+  isChangingCategory = false,
+  isChangingCurrency = false,
+  isRetrying = false,
+  isDeleting = false,
   onChangeCategory,
   onChangeCurrency,
   onChangeDate,
+  onRetry,
   onSplit,
   onDelete,
 }: LedgerEntriesActionsProps) {
@@ -50,93 +62,106 @@ export function LedgerEntriesActions({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 px-3 text-sm">
-            {isChangingCategory ? (
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            ) : (
-              <Tag aria-hidden="true" className="size-4" />
-            )}
-            <span className="hidden sm:inline">{t("manualCategory")}</span>
-            <span className="sm:hidden">{t("manualCategoryShort")}</span>
-            <ChevronDown aria-hidden="true" className="size-3 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-48 max-h-64 overflow-y-auto">
-          <DropdownMenuItem
-            onClick={() => onChangeCategory(null)}
-            className="text-muted-foreground"
-          >
-            <CategoryIcon iconName="CircleSlash" className="w-4 h-4 mr-2 opacity-50" />
-            {t("uncategorized")}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {categories.map((category) => (
-            <DropdownMenuItem key={category.id} onClick={() => onChangeCategory(category.id)}>
-              <CategoryIcon iconName={category.icon} className="w-4 h-4 mr-2" />
-              {category.name}
+      {onChangeCategory != null && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <BatchActionButton
+              icon={Tag}
+              variant="outline"
+              disabled={disabled}
+              loading={isChangingCategory}
+              shortLabel={t("manualCategoryShort")}
+              trailing={<ChevronDown aria-hidden="true" className="opacity-50" />}
+            >
+              {t("manualCategory")}
+            </BatchActionButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-48 max-h-64 overflow-y-auto">
+            <DropdownMenuItem
+              onClick={() => onChangeCategory(null)}
+              className="text-muted-foreground"
+            >
+              <CategoryIcon iconName="CircleSlash" className="w-4 h-4 mr-2 opacity-50" />
+              {t("uncategorized")}
             </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuSeparator />
+            {categories.map((category) => (
+              <DropdownMenuItem key={category.id} onClick={() => onChangeCategory(category.id)}>
+                <CategoryIcon iconName={category.icon} className="w-4 h-4 mr-2" />
+                {category.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {onChangeDate != null && (
         <BatchActionButton
           variant="outline"
           icon={Calendar}
-          disabled={isProcessing}
+          disabled={disabled}
+          shortLabel={t("setDateShort")}
           onClick={onChangeDate}
         >
           {t("setDate")}
         </BatchActionButton>
       )}
       {onSplit != null && (
-        <BatchActionButton
-          variant="outline"
-          icon={Scissors}
-          disabled={isProcessing}
-          onClick={onSplit}
-        >
+        <BatchActionButton variant="outline" icon={Scissors} disabled={disabled} onClick={onSplit}>
           {t("split")}
         </BatchActionButton>
       )}
+      {onRetry != null && (
+        <BatchActionButton
+          variant="outline"
+          icon={RefreshCw}
+          disabled={disabled}
+          loading={isRetrying}
+          onClick={onRetry}
+        >
+          {t("retry")}
+        </BatchActionButton>
+      )}
+
+      {onChangeCurrency != null && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <BatchActionButton
+              icon={DollarSign}
+              variant="outline"
+              disabled={disabled}
+              loading={isChangingCurrency}
+              shortLabel={t("setCurrencyShort")}
+              trailing={<ChevronDown aria-hidden="true" className="opacity-50" />}
+            >
+              {t("setCurrency")}
+            </BatchActionButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-32 max-h-64 overflow-y-auto">
+            {currencyList.map((currency) => (
+              <DropdownMenuItem
+                key={currency}
+                onClick={() => onChangeCurrency(currency)}
+                className={cn(preferredCurrencies.includes(currency) && "font-medium")}
+              >
+                {currency}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       {onDelete != null && (
         <BatchActionButton
           variant="destructive"
           icon={Trash2}
-          disabled={isProcessing}
+          disabled={disabled}
+          loading={isDeleting}
           onClick={onDelete}
         >
           {t("delete")}
         </BatchActionButton>
       )}
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 px-3 text-sm">
-            {isChangingCurrency ? (
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            ) : (
-              <DollarSign aria-hidden="true" className="size-4" />
-            )}
-            <span className="hidden sm:inline">{t("setCurrency")}</span>
-            <span className="sm:hidden">{t("setCurrencyShort")}</span>
-            <ChevronDown aria-hidden="true" className="size-3 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-32 max-h-64 overflow-y-auto">
-          {currencyList.map((currency) => (
-            <DropdownMenuItem
-              key={currency}
-              onClick={() => onChangeCurrency(currency)}
-              className={cn(preferredCurrencies.includes(currency) && "font-medium")}
-            >
-              {currency}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
     </>
   );
 }

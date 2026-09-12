@@ -107,7 +107,16 @@ try {
     ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)],
     { env, stdio: "inherit" }
   );
-  await run(["node_modules/@playwright/test/cli.js", "test", ...process.argv.slice(2)]);
+  // The @demo spec needs the dev sign-in, which this runner deliberately keeps
+  // off (DEV_AUTH_BYPASS is false and NODE_ENV is production). It runs under
+  // `npm run test:demo`, which boots the demo environment instead.
+  await run([
+    "node_modules/@playwright/test/cli.js",
+    "test",
+    "--grep-invert",
+    "@demo",
+    ...process.argv.slice(2),
+  ]);
 } finally {
   await stop(activeChild);
   await stop(server);

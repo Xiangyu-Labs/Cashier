@@ -1,5 +1,4 @@
 "use client";
-import { Calendar as CalendarIcon, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +15,10 @@ import { cn } from "@/lib/utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
-import type { PeriodPreset } from "@/lib/period-utils";
+import {
+  ENTRY_FILTER_PRESETS,
+  type EntryFilterPreset,
+} from "@/modules/ledger/entry-filter-presets";
 import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
 import type { EntryFilters, StreamStatusPreset } from "@/modules/ledger/filters";
 
@@ -30,17 +32,16 @@ const STATUS_OPTIONS: SourceDocumentProcessingStatus[] = [
 interface EntryFilterContentProps {
   tempFilters: EntryFilters;
   setTempFilters: (updater: (prev: EntryFilters) => EntryFilters) => void;
-  tempPeriod: PeriodPreset | null;
-  activePreset: PeriodPreset;
-  handleDatePreset: (preset: PeriodPreset) => void;
+  displayPreset: EntryFilterPreset;
+  handleDatePreset: (preset: EntryFilterPreset) => void;
   setTempFilterDate: (field: "startDate" | "endDate", date: Date | null) => void;
   handleApply: () => void;
   handleReset: () => void;
   toggleStatus: (status: SourceDocumentProcessingStatus) => void;
-  resetStatuses: () => void;
   handlePreset: (preset: StreamStatusPreset) => void;
   categories: EntryCategory[];
   preferredCurrencies: string[];
+  timeZone?: string | undefined;
   showCategory: boolean;
   showCurrency: boolean;
   showStatus: boolean;
@@ -49,17 +50,16 @@ interface EntryFilterContentProps {
 export function EntryFilterContent({
   tempFilters,
   setTempFilters,
-  tempPeriod,
-  activePreset,
+  displayPreset,
   handleDatePreset,
   setTempFilterDate,
   handleApply,
   handleReset,
   toggleStatus,
-  resetStatuses,
   handlePreset,
   categories,
   preferredCurrencies,
+  timeZone,
   showCategory,
   showCurrency,
   showStatus,
@@ -80,11 +80,24 @@ export function EntryFilterContent({
         return t("statusCancelled");
     }
   };
+  const presetLabel = (preset: EntryFilterPreset) => {
+    switch (preset) {
+      case "thisMonth":
+        return tDateRange("thisMonth");
+      case "lastMonth":
+        return tDateRange("lastMonth");
+      case "all":
+        return tDateRange("all");
+      case "custom":
+        return tDateRange("customRange");
+    }
+  };
 
+  // The footer stays put while the sections scroll, so the primary action is
+  // never something the user has to scroll to find.
   return (
-    <div className="space-y-4 p-4">
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground">{t("search")}</div>
+    <div className="flex min-h-0 flex-col">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         <Input
           type="search"
           name="search"
@@ -100,63 +113,61 @@ export function EntryFilterContent({
           aria-label={t("searchPlaceholder")}
           className="h-9 text-base sm:text-sm"
         />
-      </div>
-      {/* Custom Date Range Section */}
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-          <CalendarIcon aria-hidden="true" className="h-3 w-3" />
-          {t("dateRange")}
-        </div>
-        <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
-          {(
-            [
-              { preset: "thisMonth", label: tDateRange("thisMonth") },
-              { preset: "all", label: t("allTime") },
-              { preset: "week", label: tDateRange("pastWeek") },
-              { preset: "lastMonth", label: tDateRange("lastMonth") },
-              { preset: "month", label: tDateRange("pastMonth") },
-              { preset: "custom", label: tDateRange("customRange") },
-            ] as const
-          ).map(({ preset, label }) => {
-            const displayPreset = tempPeriod ?? activePreset;
-            const isActive = displayPreset === preset;
-            return (
-              <Button
-                key={preset}
-                variant="ghost"
-                size="sm"
-                className={cn("text-xs h-7", isActive && "bg-primary/10 text-primary font-medium")}
-                aria-pressed={isActive}
-                onClick={() => handleDatePreset(preset)}
-              >
-                {label}
-              </Button>
-            );
-          })}
-        </div>
-        <div className="flex gap-2 items-center">
-          <DateFilter
-            {...(tempFilters.startDate != null ? { value: tempFilters.startDate } : {})}
-            onChange={(date) => setTempFilterDate("startDate", date)}
-            size="sm"
-            className="flex-1 h-8"
-            showClear={false}
-          />
-          <span className="text-muted-foreground text-sm">-</span>
-          <DateFilter
-            {...(tempFilters.endDate != null ? { value: tempFilters.endDate } : {})}
-            onChange={(date) => setTempFilterDate("endDate", date)}
-            size="sm"
-            className="flex-1 h-8"
-            showClear={false}
-          />
-        </div>
-      </div>
 
-      {/* Category Select */}
-      {showCategory && (
         <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">{t("category")}</div>
+          <div
+            className="flex gap-1 rounded-lg bg-surface2 p-1"
+            role="group"
+            aria-label={t("dateRange")}
+          >
+            {ENTRY_FILTER_PRESETS.map((preset) => {
+              const isActive = displayPreset === preset;
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  aria-pressed={isActive}
+                  className={cn(
+                    "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors duration-[var(--motion-feedback)]",
+                    isActive
+                      ? "bg-surface text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-text"
+                  )}
+                  onClick={() => handleDatePreset(preset)}
+                >
+                  {presetLabel(preset)}
+                </button>
+              );
+            })}
+          </div>
+          {/* The two fields only say something when the range is hand-picked;
+              while a preset is active they would restate the preset. */}
+          {displayPreset === "custom" ? (
+            <div className="flex items-center gap-2">
+              <DateFilter
+                {...(tempFilters.startDate != null ? { value: tempFilters.startDate } : {})}
+                onChange={(date) => setTempFilterDate("startDate", date)}
+                size="sm"
+                className="h-9 flex-1"
+                showClear={false}
+                ariaLabel={tDateRange("startDate")}
+                {...(timeZone != null ? { timeZone } : {})}
+              />
+              <span className="text-sm text-muted-foreground">-</span>
+              <DateFilter
+                {...(tempFilters.endDate != null ? { value: tempFilters.endDate } : {})}
+                onChange={(date) => setTempFilterDate("endDate", date)}
+                size="sm"
+                className="h-9 flex-1"
+                showClear={false}
+                ariaLabel={tDateRange("endDate")}
+                {...(timeZone != null ? { timeZone } : {})}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {showCategory && (
           <Select
             value={tempFilters.categoryId ?? "__all__"}
             onValueChange={(value) =>
@@ -180,13 +191,9 @@ export function EntryFilterContent({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        )}
 
-      {/* Currency Select */}
-      {showCurrency && preferredCurrencies.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">{t("currency")}</div>
+        {showCurrency && preferredCurrencies.length > 0 && (
           <Select
             value={tempFilters.currency ?? "__all__"}
             onValueChange={(value) =>
@@ -208,13 +215,9 @@ export function EntryFilterContent({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        )}
 
-      {/* Price Range */}
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground">{t("priceRange")}</div>
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           <AmountInput
             placeholder={t("minAmount")}
             aria-label={t("minAmount")}
@@ -229,7 +232,7 @@ export function EntryFilterContent({
             }
             className="min-w-0 flex-1 h-9 text-base sm:text-sm"
           />
-          <span className="text-muted-foreground text-sm">-</span>
+          <span className="text-sm text-muted-foreground">-</span>
           <AmountInput
             placeholder={t("maxAmount")}
             aria-label={t("maxAmount")}
@@ -245,13 +248,10 @@ export function EntryFilterContent({
             className="min-w-0 flex-1 h-9 text-base sm:text-sm"
           />
         </div>
-      </div>
 
-      {/* Status */}
-      {showStatus && (
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">{t("status")}</div>
-          <div className="space-y-1">
+        {showStatus && (
+          <fieldset className="space-y-1">
+            <legend className="sr-only">{t("status")}</legend>
             {STATUS_OPTIONS.map((status) => (
               <label key={status} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
                 <Checkbox
@@ -261,38 +261,35 @@ export function EntryFilterContent({
                 {statusLabel(status)}
               </label>
             ))}
-          </div>
-          <div className="flex flex-wrap gap-1 pt-1">
-            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={resetStatuses}>
-              {t("allStatuses")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => handlePreset("needs_attention")}
-            >
-              {t("needsAttention")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => handlePreset("in_progress")}
-            >
-              {t("inProgress")}
-            </Button>
-          </div>
-        </div>
-      )}
+            {/* Unchecking is how the status filter is cleared, so no 全部状态
+                control restates the empty state. */}
+            <div className="flex flex-wrap gap-1 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => handlePreset("needs_attention")}
+              >
+                {t("needsAttention")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => handlePreset("in_progress")}
+              >
+                {t("inProgress")}
+              </Button>
+            </div>
+          </fieldset>
+        )}
+      </div>
 
-      {/* Actions */}
-      <div className="flex gap-2 pt-2 border-t">
-        <Button variant="ghost" size="sm" className="flex-1 h-8" onClick={handleReset}>
-          <X aria-hidden="true" className="h-4 w-4 mr-1" />
+      <div className="flex gap-2 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <Button variant="ghost" size="sm" className="flex-1" onClick={handleReset}>
           {t("reset")}
         </Button>
-        <Button size="sm" className="flex-1 h-8" onClick={handleApply}>
+        <Button size="sm" className="flex-1" onClick={handleApply}>
           {t("apply")}
         </Button>
       </div>

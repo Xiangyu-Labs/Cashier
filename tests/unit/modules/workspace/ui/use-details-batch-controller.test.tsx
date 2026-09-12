@@ -141,7 +141,8 @@ describe("useDetailsBatchController", () => {
     act(() => {
       result.current.handleSelect("entry-1", true);
     });
-    await act(async () => result.current.previewDate.mutateAsync());
+    act(() => result.current.openDateDialog());
+    await act(async () => Promise.resolve());
     let mutation!: Promise<unknown>;
     act(() => {
       mutation = result.current.updateDates.mutateAsync();
@@ -294,7 +295,8 @@ describe("useDetailsBatchController", () => {
       { wrapper }
     );
     act(() => result.current.handleSelect("entry-1", true));
-    await act(async () => result.current.previewDate.mutateAsync());
+    act(() => result.current.openDateDialog());
+    await act(async () => Promise.resolve());
 
     await expect(result.current.updateDates.mutateAsync()).rejects.toMatchObject({
       code: "SOURCE_DOCUMENT_STALE",
@@ -302,5 +304,23 @@ describe("useDetailsBatchController", () => {
 
     expect(result.current.dateDialogOpen).toBe(true);
     expect(result.current.selectedIds).toEqual(["entry-1"]);
+  });
+
+  it("leaves the dialog open with the failure when the preview cannot be computed", async () => {
+    const { wrapper } = setup();
+    previewBatchLedgerEntryDateActionMock.mockRejectedValueOnce(new Error("preview down"));
+    const { result } = renderHook(
+      () => useDetailsBatchController("ledger-1", [entry("entry-1")], "fingerprint"),
+      { wrapper }
+    );
+    act(() => {
+      result.current.handleSelect("entry-1", true);
+      result.current.openDateDialog();
+    });
+    await act(async () => Promise.resolve());
+
+    expect(result.current.dateDialogOpen).toBe(true);
+    expect(result.current.datePreviewFailed).toBe(true);
+    expect(result.current.dateImpact).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { EditableCategorySelect } from "@/components/editable-category-select";
+import { textRoleClassName } from "@/components/typography";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Button } from "@/components/ui/button";
@@ -145,23 +146,23 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
             onChange={(v) => handleChange("itemName", v)}
             placeholder={t("productName")}
             displayClassName="font-medium text-text text-sm"
-            inputClassName="text-sm font-medium"
+            inputClassName={textRoleClassName("bodyStrong")}
             disabled={readOnly}
           />
         </div>
 
         {(displayData.description != null || category != null) && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+          <div className={textRoleClassName("meta", "flex items-center gap-1 mt-0.5")}>
             {category != null && <span className="shrink-0">{category.name}</span>}
             {displayData.description != null && displayData.description !== "" && (
               <>
-                <span className="text-muted-foreground/30">·</span>
+                <span className="text-muted-foreground/60">·</span>
                 <EditableField
                   value={displayData.description ?? ""}
                   onChange={(v) => handleChange("description", v !== "" ? v : null)}
                   placeholder={t("notes")}
-                  displayClassName="truncate text-muted-foreground/60 text-[11px] italic"
-                  inputClassName="text-[11px]"
+                  displayClassName={textRoleClassName("provisional", "truncate")}
+                  inputClassName="text-micro"
                   disabled={readOnly}
                 />
               </>

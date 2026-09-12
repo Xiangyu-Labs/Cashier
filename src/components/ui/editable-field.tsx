@@ -251,7 +251,7 @@ export function EditableField({
       {renderDisplay ? (
         renderDisplay(value)
       ) : (
-        <span className={cn(value === "" && "text-muted-foreground/50", "truncate")}>
+        <span className={cn(value === "" && "text-muted-foreground/60", "truncate")}>
           {value !== "" ? value : placeholder}
         </span>
       )}

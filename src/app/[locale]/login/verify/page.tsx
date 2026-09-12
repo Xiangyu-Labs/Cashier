@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { Mail, CheckCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { textRoleClassName } from "@/components/typography";
 
 export default function VerifyPage() {
   const t = useTranslations("Auth");
@@ -20,26 +21,28 @@ export default function VerifyPage() {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-text mb-2">{t("checkEmail")}</h1>
+        <h1 className={textRoleClassName("pageTitle", "mb-2")}>{t("checkEmail")}</h1>
 
         {/* Description */}
-        <p className="text-muted mb-6">
+        <p className={textRoleClassName("bodyMuted", "mb-6")}>
           {t("checkEmailDesc", { email: email !== "" ? email : "your email" })}
         </p>
 
         {/* Email Icon Card */}
         <div className="bg-surface rounded-xl border border-border p-6 mb-6">
           <div className="flex items-center justify-center gap-3 text-text">
-            <Mail aria-hidden="true" className="w-5 h-5 text-muted" />
+            <Mail aria-hidden="true" className="w-5 h-5 text-muted-foreground" />
             <span className="font-medium">{email}</span>
           </div>
         </div>
 
         {/* Expiry Note */}
-        <p className="text-sm text-muted mb-6">{t("linkExpires", { minutes: 15 })}</p>
+        <p className={textRoleClassName("bodyMuted", "mb-6")}>
+          {t("linkExpires", { minutes: 15 })}
+        </p>
 
         {/* Didn't receive email */}
-        <div className="text-sm text-muted">
+        <div className={textRoleClassName("bodyMuted")}>
           <span>{t("didNotReceive")}</span>
           <Link href="/login" className="ml-1 text-primary hover:underline">
             {t("resend")}

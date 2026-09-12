@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { AlertCircle, Home } from "lucide-react";
+import { textRoleClassName } from "@/components/typography";
 
 export default function NotFound() {
   const t = useTranslations("NotFound");
@@ -18,8 +19,8 @@ export default function NotFound() {
             </div>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-text mb-4">{t("title")}</h1>
-        <p className="text-muted mb-8">{t("description")}</p>
+        <h1 className={textRoleClassName("pageTitle", "mb-4")}>{t("title")}</h1>
+        <p className={textRoleClassName("bodyMuted", "mb-8")}>{t("description")}</p>
         <Link
           href="/"
           className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"

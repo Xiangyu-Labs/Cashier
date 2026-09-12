@@ -17,6 +17,7 @@ import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { LedgerQueryErrorBanner } from "@/modules/workspace/ui/LedgerQueryErrorBanner";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { textRoleClassName } from "@/components/typography";
 import { LedgerTabPanels } from "./LedgerTabPanels";
 import { NewRecordDialog } from "./NewRecordDialog";
 import { RefreshButton } from "@/components/ui/refresh-button";
@@ -148,7 +149,7 @@ export function LedgerPageClient({
   if (ledger == null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
-        <h1 className="text-muted">{t("notFound")}</h1>
+        <h1 className={textRoleClassName("pageTitle")}>{t("notFound")}</h1>
       </div>
     );
   }

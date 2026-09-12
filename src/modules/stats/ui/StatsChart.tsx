@@ -112,7 +112,7 @@ export function StatsChart({
     <div className="w-full h-52 relative pt-6 pb-6 select-none">
       {/* Outlier indicator */}
       {hasOutliers && (
-        <div className="absolute top-0 right-2 text-[10px] text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
+        <div className="absolute top-0 right-2 text-micro text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
           {t("scaleAdjusted")}
         </div>
       )}
@@ -120,7 +120,7 @@ export function StatsChart({
       <div className="pointer-events-none absolute bottom-8 left-12 right-2 top-6 flex flex-col justify-between">
         {yAxisTicks.map((tick) => (
           <div key={tick} className="relative h-px w-full border-b border-dashed border-border/40">
-            <span className="absolute right-full -translate-y-1/2 pr-2 text-[10px] tabular-nums text-muted-foreground">
+            <span className="absolute right-full -translate-y-1/2 pr-2 text-micro tabular-nums text-muted-foreground">
               {formatAxisAmount(tick)}
             </span>
           </div>
@@ -211,7 +211,7 @@ export function StatsChart({
                     cursor-pointer transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]
                     ${
                       isCapped
-                        ? 'border-2 border-danger after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-danger'
+                        ? 'border-2 border-danger after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-micro after:text-danger'
                         : "border-2 border-primary hover:border-primary/70"
                     }
                   `}
@@ -253,7 +253,7 @@ export function StatsChart({
           return (
             <div
               key={i}
-              className="absolute text-[10px] text-muted-foreground transform -translate-x-1/2 text-center w-8"
+              className="absolute text-micro text-muted-foreground transform -translate-x-1/2 text-center w-8"
               style={{ left: `${leftPos}%` }}
             >
               {p.label}

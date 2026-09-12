@@ -16,6 +16,7 @@ import { ArrowLeft, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { EditableField } from "@/components/ui/editable-field";
+import { textRoleClassName } from "@/components/typography";
 import type { AddEntryData } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { PendingChanges } from "@/modules/source-document/detail-types";
@@ -189,8 +190,8 @@ function SourceDocumentDetailEditor({
                 value={editor.displayTitle}
                 onChange={(v) => editor.handleSourceDocChange({ title: v })}
                 placeholder={t("untitled")}
-                displayClassName="font-semibold text-text text-base truncate"
-                inputClassName="font-semibold text-base"
+                displayClassName={textRoleClassName("sectionTitle", "truncate")}
+                inputClassName={textRoleClassName("sectionTitle")}
                 disabled={status.busy || !editor.isEditMode}
               />
             </div>
@@ -261,8 +262,13 @@ function SourceDocumentDetailEditor({
 
           {selection.isSelectionMode && (
             <LedgerEntriesBatchActionToolbar
+              // The band sits between the entry list and the footer, so it
+              // carries the separator the modal body does not provide. The
+              // modal is a column, so a full-width basis would become a
+              // full-height one — the band only needs its own height.
+              className="shrink-0 border-t border-border pt-3"
+              selectionUnit="entry"
               selectedCount={selection.selectedIds.length}
-              totalCount={ledgerEntries.length}
               isAllSelected={selection.isAllSelected}
               onSelectAll={() => selection.handleSelectAll(true)}
               onClearSelection={() => selection.handleSelectAll(false)}
@@ -277,7 +283,6 @@ function SourceDocumentDetailEditor({
               isChangingCategory={status.isSaving}
               isChangingCurrency={status.isSaving}
               isProcessing={status.busy}
-              variant="inline"
             />
           )}
 

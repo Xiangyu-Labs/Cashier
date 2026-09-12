@@ -292,6 +292,40 @@ describe("findBoundaryViolations", () => {
     ]);
   });
 
+  it("rejects arbitrary text sizes and the duplicate muted token", () => {
+    expect(
+      findBoundaryViolations(
+        "src/components/ui/badge.tsx",
+        'const sizes = { sm: "px-1.5 py-px text-[10px]" };'
+      )
+    ).toEqual([
+      "src/components/ui/badge.tsx: text sizes must come from the frozen scale in globals.css, not text-[10px]",
+    ]);
+    expect(
+      findBoundaryViolations("src/lib/date-utils.ts", 'const meta = "text-xs text-muted";')
+    ).toEqual([
+      "src/lib/date-utils.ts: use text-muted-foreground rather than the duplicate text-muted token",
+    ]);
+  });
+
+  it("accepts the frozen scale, including the custom micro size", () => {
+    expect(
+      findBoundaryViolations(
+        "src/components/typography.ts",
+        'const roles = { meta: "text-xs text-muted-foreground", micro: "text-micro text-muted-foreground" };'
+      )
+    ).toEqual([]);
+  });
+
+  it("ignores typography mentioned in comments", () => {
+    expect(
+      findBoundaryViolations(
+        "src/components/typography.ts",
+        "// text-[10px] and text-muted used to live here."
+      )
+    ).toEqual([]);
+  });
+
   it("restricts source-document writes to registered aggregate writers", () => {
     expect(
       findBoundaryViolations(

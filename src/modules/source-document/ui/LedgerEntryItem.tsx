@@ -1,6 +1,7 @@
 import { memo } from "react";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { textRoleClassName } from "@/components/typography";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
@@ -63,17 +64,22 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <p className="font-medium text-text text-sm truncate">{ledgerEntry.itemName}</p>
+            <p className={textRoleClassName("bodyStrong", "truncate")}>{ledgerEntry.itemName}</p>
           </div>
 
           <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
             {ledgerEntry.category != null && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground truncate min-w-0 flex-1">
+              <div
+                className={textRoleClassName(
+                  "meta",
+                  "flex items-center gap-1 truncate min-w-0 flex-1"
+                )}
+              >
                 <span className="shrink-0">{ledgerEntry.category.name}</span>
                 {ledgerEntry.description != null && ledgerEntry.description !== "" && (
                   <span className="hidden sm:contents">
-                    <span className="text-muted-foreground/30 shrink-0">·</span>
-                    <span className="truncate text-muted-foreground/60 text-[11px] italic">
+                    <span className="text-muted-foreground/60 shrink-0">·</span>
+                    <span className={textRoleClassName("provisional", "truncate")}>
                       {ledgerEntry.description}
                     </span>
                   </span>

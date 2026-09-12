@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
+import { textRoleClassName } from "@/components/typography";
 
 export default function Error({
   error,
@@ -26,10 +27,12 @@ export default function Error({
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-text">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("description", { message: t("title") })}</p>
+          <h1 className={textRoleClassName("pageTitle")}>{t("title")}</h1>
+          <p className={textRoleClassName("bodyMuted")}>
+            {t("description", { message: t("title") })}
+          </p>
           {error.digest != null && (
-            <p className="text-xs font-mono bg-surface2 p-2 rounded text-muted-foreground mt-4">
+            <p className={textRoleClassName("meta", "font-mono bg-surface2 p-2 rounded mt-4")}>
               {t("errorId", { id: error.digest })}
             </p>
           )}

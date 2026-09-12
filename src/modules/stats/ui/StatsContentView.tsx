@@ -3,6 +3,7 @@
 import { BarChart3, Grid3X3 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { textRoleClassName } from "@/components/typography";
 import type { DateRangeType } from "@/lib/date-utils";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import { CalendarHeatmapSection } from "./CalendarHeatmapSection";
@@ -129,7 +130,7 @@ export function StatsContentView({
 
       <div className="min-w-0 space-y-2 px-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">
+          <h3 className={textRoleClassName("bodyMuted", "font-semibold")}>
             {chartView === "trend" ? t("expenseTrend") : t("dailyHeatmap")}
           </h3>
           <div className="flex items-center gap-1">

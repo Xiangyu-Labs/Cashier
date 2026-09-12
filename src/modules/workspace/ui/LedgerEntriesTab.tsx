@@ -47,7 +47,6 @@ export function LedgerEntriesTab({
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
-  const tFilter = useTranslations("EntryFilterPanel");
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
     periodParams,
     advancedFilters,
@@ -178,7 +177,6 @@ export function LedgerEntriesTab({
         filters={filters}
         onFiltersChange={onFiltersChange}
         periodParams={periodParams}
-        {...(!streamData.hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
         mainCurrency={mainCurrency}
         {...(streamData.filteredTotal === undefined
           ? {}

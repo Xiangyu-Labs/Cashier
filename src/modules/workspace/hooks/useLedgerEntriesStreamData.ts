@@ -52,13 +52,6 @@ export function useLedgerEntriesStreamData({
   });
   const { data: streamTotalData } = streamTotalQuery;
   const filteredTotal = streamTotalData?.total;
-  const hasActiveFilters =
-    filters.startDate != null ||
-    filters.endDate != null ||
-    filters.minAmount != null ||
-    filters.maxAmount != null ||
-    (filters.statuses?.length ?? 0) > 0 ||
-    (filters.search?.trim().length ?? 0) > 0;
 
   // Use the unified stream hook with paginated all-statuses results
   const {
@@ -91,6 +84,5 @@ export function useLedgerEntriesStreamData({
     isFetchNextPageError,
     streamTotalData,
     filteredTotal,
-    hasActiveFilters,
   };
 }

@@ -6,6 +6,9 @@ test("password login, default ledger, manual entry, edit, delete and sign out", 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const item = `Smoke ${testInfo.project.name} ${testInfo.repeatEachIndex}`;
+  // The stream tab refreshes from its own toolbar box, so the idle refresh
+  // control is that box's hint button rather than a button in the bar above.
+  const refreshControl = page.getByTestId("toolbar-refresh-hint");
   await expect
     .poll(
       async () => {
@@ -38,15 +41,16 @@ test("password login, default ledger, manual entry, edit, delete and sign out", 
   await create.getByRole("button", { name: "Record", exact: true }).click();
   await expect(create).toHaveCount(0);
   await page.reload();
-  await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeEnabled();
+  await expect(refreshControl).toBeEnabled();
   await page
     .getByTestId("source-document-card-root")
     .filter({ hasText: item })
-    .getByRole("button", { name: /Quick Entry$/ })
+    .getByRole("button", { name: item, exact: true })
     .click();
   const detail = page.getByRole("dialog").first();
   await detail.getByRole("button", { name: "Edit", exact: true }).click();
-  await detail.getByRole("button", { name: "Dining", exact: true }).first().click();
+  // A field swaps from its display button to an input when it is clicked.
+  await detail.getByRole("button", { name: item, exact: true }).first().click();
   const title = detail.getByRole("textbox").first();
   await title.fill(`${item} edited`);
   await title.press("Enter");
@@ -71,7 +75,7 @@ test("password login, default ledger, manual entry, edit, delete and sign out", 
   await expect(page).not.toHaveURL(/detailId=/);
   await page.reload();
   await expect(page.getByText(`${item} edited`, { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeEnabled();
+  await expect(refreshControl).toBeEnabled();
   await page
     .getByRole("navigation", { name: "Ledger navigation" })
     .getByRole("button", { name: "Settings", exact: true })

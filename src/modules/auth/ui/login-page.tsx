@@ -7,6 +7,7 @@ import { EmailStep } from "./email-step";
 import { OtpStep } from "./otp-step";
 import { PasswordStep } from "./password-step";
 import { useSearchParams } from "next/navigation";
+import { textRoleClassName } from "@/components/typography";
 
 export function AuthLoginPage({
   emailAuthEnabled = false,
@@ -41,10 +42,10 @@ export function AuthLoginPage({
             height={48}
             className="mx-auto mb-4 rounded-lg border border-border"
           />
-          <h1 className="text-2xl font-semibold text-text">
+          <h1 className={textRoleClassName("pageTitle")}>
             <span translate="no">Cashier</span>
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">{t("productTagline")}</p>
+          <p className={textRoleClassName("bodyMuted", "mt-2")}>{t("productTagline")}</p>
         </div>
 
         <div className="rounded-lg border border-border bg-surface p-6 shadow-none">
@@ -77,14 +78,14 @@ export function AuthLoginPage({
           ) : null}
 
           <div className="mb-5">
-            <h2 className="text-base font-semibold text-text">
+            <h2 className={textRoleClassName("sectionTitle")}>
               {passwordMode
                 ? t("passwordLoginTitle")
                 : flow.step === "email"
                   ? t("emailLoginTitle")
                   : t("verifyCode")}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className={textRoleClassName("bodyMuted", "mt-1")}>
               {passwordMode
                 ? t("passwordLoginDesc")
                 : flow.step === "email"
@@ -132,7 +133,7 @@ export function AuthLoginPage({
 
         {flow.isDevAuthAvailable ? (
           <div className="mt-4 rounded-md border border-dashed border-border bg-surface2/60 p-3 text-center">
-            <p className="text-xs text-muted-foreground">{t("devSignInDesc")}</p>
+            <p className={textRoleClassName("meta")}>{t("devSignInDesc")}</p>
             <button
               type="button"
               onClick={flow.handleDevSignIn}

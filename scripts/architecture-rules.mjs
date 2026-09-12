@@ -161,6 +161,46 @@ function collectRawLogIdentifierProperties(sourceFile) {
   return [...properties];
 }
 
+const arbitraryTextSizePattern = /(?<![\w-])text-\[\d+(?:\.\d+)?(?:px|rem|em)\]/;
+// `text-muted` and `text-muted-foreground` resolve to the same colour token.
+const duplicateMutedTokenPattern = /(?<![\w-])text-muted(?![-\w])/;
+
+/**
+ * Typography lives in class strings, which are ordinary literals — reading
+ * literals instead of the raw source keeps the rules out of comments.
+ */
+function collectStringLiteralValues(sourceFile) {
+  const values = [];
+  const visit = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      values.push(node.text);
+    } else if (ts.isTemplateExpression(node)) {
+      values.push(node.head.text);
+      for (const span of node.templateSpans) values.push(span.literal.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return values;
+}
+
+function collectTypographyViolations(sourceFile) {
+  const violations = [];
+  const literals = collectStringLiteralValues(sourceFile);
+  const arbitrarySize = literals
+    .map((value) => arbitraryTextSizePattern.exec(value)?.[0])
+    .find((match) => match != null);
+  if (arbitrarySize != null) {
+    violations.push(
+      `text sizes must come from the frozen scale in globals.css, not ${arbitrarySize}`
+    );
+  }
+  if (literals.some((value) => duplicateMutedTokenPattern.test(value))) {
+    violations.push("use text-muted-foreground rather than the duplicate text-muted token");
+  }
+  return violations;
+}
+
 function hasSourceDocumentWrite(sourceFile) {
   let found = false;
   const visit = (node) => {
@@ -214,6 +254,10 @@ export function findBoundaryViolations(relativePath, source) {
     violations.push(
       `${relativePath}: logger/console must hash or omit raw identifier property ${property}`
     );
+  }
+
+  for (const violation of collectTypographyViolations(sourceFile)) {
+    violations.push(`${relativePath}: ${violation}`);
   }
 
   if (

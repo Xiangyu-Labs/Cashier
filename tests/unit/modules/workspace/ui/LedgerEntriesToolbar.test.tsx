@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { PeriodParams } from "@/lib/period-utils";
+import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
 import { LedgerEntriesToolbar } from "@/modules/workspace/ui/LedgerEntriesToolbar";
 
 const defaultPeriodParams: PeriodParams = { period: "thisMonth" };
@@ -16,26 +17,48 @@ const defaultProps = {
   filters: {} as const,
   onFiltersChange: vi.fn(),
   periodParams: defaultPeriodParams,
-  onPeriodChange: vi.fn(),
-  totalPrefix: "Total",
   mainCurrency: "CNY",
   filteredTotal: "123.45",
 };
 
 describe("LedgerEntriesToolbar", () => {
-  it("shows the unfiltered total with its label", () => {
+  it("names the span the total covers", () => {
     render(<LedgerEntriesToolbar {...defaultProps} />);
 
-    expect(screen.getByText("Total ¥123.45")).toBeInTheDocument();
+    expect(screen.getByText("本月")).toBeInTheDocument();
+    expect(screen.getByText("¥123.45")).toBeInTheDocument();
+  });
+
+  it("prints the two days of a range the panel cannot name", () => {
+    render(
+      <LedgerEntriesToolbar
+        {...defaultProps}
+        periodParams={{ period: "custom", startDate: "2026-09-01", endDate: "2026-09-10" }}
+      />
+    );
+
+    expect(screen.getByText(/9月1日/)).toBeInTheDocument();
+    expect(screen.getByText(/9月10日/)).toBeInTheDocument();
   });
 
   it("shows selection controls instead of totals and filters while selecting", () => {
     render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={3} />);
 
-    expect(screen.getByText(/已选择 3 项/)).toBeInTheDocument();
+    expect(screen.getByText(/已选择 3 张单据/)).toBeInTheDocument();
     expect(screen.getByTitle("取消")).toBeInTheDocument();
-    expect(screen.queryByText("Total ¥123.45")).not.toBeInTheDocument();
+    expect(screen.queryByText("¥123.45")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "筛选" })).not.toBeInTheDocument();
+  });
+
+  it("offers select all before anything is selected", () => {
+    render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={0} />);
+
+    expect(screen.getByText(/已选择 0 张单据/)).toBeInTheDocument();
+    const master = screen.getByRole("checkbox");
+    expect(master).toBeEnabled();
+
+    fireEvent.click(master);
+    expect(defaultProps.onSelectAll).toHaveBeenCalled();
   });
 
   it("keeps active status details inside the filter panel", () => {
@@ -45,12 +68,54 @@ describe("LedgerEntriesToolbar", () => {
     expect(screen.getByRole("button", { name: "已启用 1 个筛选" })).toBeDefined();
   });
 
-  it("renders only the amount when a filtered result omits the prefix", () => {
-    const { totalPrefix: _totalPrefix, ...filteredProps } = defaultProps;
-    render(<LedgerEntriesToolbar {...filteredProps} />);
+  it("renders the amount without a redundant label when the prefix is gone", () => {
+    render(<LedgerEntriesToolbar {...defaultProps} />);
 
     expect(screen.getByText("¥123.45")).toBeInTheDocument();
     expect(screen.queryByText(/Filtered total/i)).not.toBeInTheDocument();
+  });
+
+  it("asks for the date and the impact in one dialog", async () => {
+    const onUpdateDates = vi.fn();
+    let answerPreview: (impact: BatchEntryDateImpact) => void = () => {};
+    const onPreviewDateImpact = vi.fn(
+      () =>
+        new Promise<BatchEntryDateImpact>((resolve) => {
+          answerPreview = resolve;
+        })
+    );
+    render(
+      <LedgerEntriesToolbar
+        {...defaultProps}
+        isSelectionMode
+        selectedCount={1}
+        selectedSourceDocumentIds={["document-1"]}
+        selectedEntryIds={["entry-1"]}
+        onUpdateDates={onUpdateDates}
+        onPreviewDateImpact={onPreviewDateImpact}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /修改日期/ }));
+
+    // The dialog is up before the preview answers, and fills in behind it.
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认" })).toBeDisabled();
+
+    answerPreview({
+      selectedEntryCount: 1,
+      sourceDocumentCount: 1,
+      affectedEntryCount: 1,
+      sourceDocumentIds: ["document-1"],
+    });
+
+    await waitFor(() => expect(onPreviewDateImpact).toHaveBeenCalledOnce());
+    expect(await screen.findByText(/将影响 1 张单据和 1 条分录/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "确认" }));
+    await waitFor(() =>
+      expect(onUpdateDates).toHaveBeenCalledWith(expect.any(String), ["document-1"])
+    );
   });
 
   it("blocks date confirmation when the selection query changes after preview", async () => {
@@ -72,8 +137,7 @@ describe("LedgerEntriesToolbar", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "修改日期" }));
-    fireEvent.click(await screen.findByRole("button", { name: "确认" }));
+    fireEvent.click(screen.getByRole("button", { name: /修改日期/ }));
     await waitFor(() => expect(onPreviewDateImpact).toHaveBeenCalledOnce());
 
     rerender(
@@ -90,7 +154,9 @@ describe("LedgerEntriesToolbar", () => {
     );
 
     expect(screen.getByText("所选项目已变化，请重新预览日期影响。")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "确认" }));
+    const confirm = screen.getByRole("button", { name: "确认" });
+    expect(confirm).toBeDisabled();
+    fireEvent.click(confirm);
     expect(onUpdateDates).not.toHaveBeenCalled();
   });
 });

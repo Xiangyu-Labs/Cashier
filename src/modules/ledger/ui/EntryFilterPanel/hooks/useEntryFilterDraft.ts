@@ -1,23 +1,15 @@
 "use client";
 import * as React from "react";
 import { periodToDateRange, type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
-import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { SourceDocumentProcessingStatus } from "@/modules/source-document/types";
+import { resolveActivePreset, type EntryFilterPreset } from "@/modules/ledger/entry-filter-presets";
 import {
   type EntryFilters,
   type StreamStatusPreset,
   STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/ledger/filters";
 import { compare, DECIMAL_STRING_PATTERN } from "@/lib/money/decimal";
-
-const VISIBLE_PRESETS: PeriodPreset[] = [
-  "thisMonth",
-  "all",
-  "week",
-  "lastMonth",
-  "month",
-  "custom",
-];
 
 function normalizeAmountRange(filters: EntryFilters): EntryFilters {
   const { minAmount, maxAmount } = filters;
@@ -42,7 +34,7 @@ function normalizeAmountRange(filters: EntryFilters): EntryFilters {
 interface UseEntryFilterDraftOptions {
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
-  periodParams?: PeriodParams | undefined;
+  periodParams: PeriodParams;
   showCategory: boolean;
   showCurrency: boolean;
   showStatus: boolean;
@@ -61,7 +53,7 @@ export function useEntryFilterDraft({
 
   // Internal state for editing before applying - initialized from filters when popover opens
   const [tempFilters, setTempFilters] = React.useState<EntryFilters>(filters);
-  const [tempPeriod, setTempPeriod] = React.useState<PeriodPreset | null>(null);
+  const [tempPeriod, setTempPeriod] = React.useState<EntryFilterPreset | null>(null);
 
   // Reset temp filters when popover opens (not using useEffect to sync with external filters)
   const handleOpenChange = (isOpen: boolean) => {
@@ -73,8 +65,13 @@ export function useEntryFilterDraft({
     }
   };
 
+  // Which date range the ledger is on, and which one the draft is on: the panel
+  // paints the draft so a preset click is visible before it is applied.
+  const activePreset = resolveActivePreset(periodParams);
+  const displayPreset = tempPeriod ?? activePreset;
+
   const activeFilterCount = [
-    periodParams?.period != null && periodParams.period !== "thisMonth",
+    activePreset !== "thisMonth",
     filters.search != null && filters.search.trim() !== "",
     showStatus && (filters.statuses?.length ?? 0) > 0,
     showCategory && filters.categoryId != null && filters.categoryId !== "",
@@ -83,41 +80,7 @@ export function useEntryFilterDraft({
     filters.maxAmount !== undefined && filters.maxAmount !== null,
   ].filter((x): x is true => x === true).length;
 
-  // Get active preset from periodParams if available, otherwise derive from filters
-  const activePreset: PeriodPreset =
-    (periodParams?.period != null && VISIBLE_PRESETS.includes(periodParams.period)
-      ? periodParams.period
-      : undefined) ??
-    (() => {
-      const now = new Date();
-      const start = filters.startDate != null ? parseDateString(filters.startDate) : undefined;
-      const end = filters.endDate != null ? parseDateString(filters.endDate) : undefined;
-
-      if (start == null || end == null) return "thisMonth";
-
-      // Check thisMonth
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      if (
-        start.getTime() === monthStart.getTime() &&
-        end.getDate() === monthEnd.getDate() &&
-        end.getMonth() === monthEnd.getMonth()
-      ) {
-        return "thisMonth";
-      }
-
-      // Check past week — delegates to the same date-range math the server and
-      // the URL layer use (period-utils.ts), instead of a second, drifting
-      // day-diff heuristic.
-      const weekRange = periodToDateRange({ period: "week" });
-      if (filters.startDate === weekRange.startDate && filters.endDate === weekRange.endDate) {
-        return "week";
-      }
-
-      return "custom";
-    })();
-
-  const handleDatePreset = (preset: PeriodPreset) => {
+  const handleDatePreset = (preset: EntryFilterPreset) => {
     let newFilters = { ...tempFilters };
 
     if (preset === "all") {
@@ -191,10 +154,6 @@ export function useEntryFilterDraft({
     });
   };
 
-  const resetStatuses = () => {
-    setTempFilters((prev) => ({ ...prev, statuses: [] }));
-  };
-
   const handlePreset = (preset: StreamStatusPreset) => {
     const presetStatuses = STREAM_STATUS_PRESET_VALUES[preset];
     setTempFilters((prev) => ({ ...prev, statuses: presetStatuses }));
@@ -209,12 +168,12 @@ export function useEntryFilterDraft({
     tempPeriod,
     activeFilterCount,
     activePreset,
+    displayPreset,
     handleDatePreset,
     setTempFilterDate,
     handleApply,
     handleReset,
     toggleStatus,
-    resetStatuses,
     handlePreset,
   };
 }

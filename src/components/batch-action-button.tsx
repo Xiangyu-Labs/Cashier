@@ -3,11 +3,20 @@
 import type { ComponentType, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { TOOLBAR_CONTROL_CLASS } from "@/components/toolbar-control";
 import { cn } from "@/lib/utils";
 
 export interface BatchActionButtonProps extends Omit<ButtonProps, "children"> {
   icon: ComponentType<{ className?: string }>;
   loading?: boolean;
+  /**
+   * Narrower label for the mobile row. Without one the button keeps a single
+   * label at every width; with one, the wide label is what a screen reader
+   * reads, so the short form has to be contained in it.
+   */
+  shortLabel?: string;
+  /** Rendered after the label, for the chevron that marks a menu. */
+  trailing?: ReactNode;
   children: ReactNode;
 }
 
@@ -18,6 +27,8 @@ export interface BatchActionButtonProps extends Omit<ButtonProps, "children"> {
 export function BatchActionButton({
   icon: Icon,
   loading = false,
+  shortLabel,
+  trailing,
   children,
   className,
   disabled,
@@ -28,7 +39,7 @@ export function BatchActionButton({
       size="sm"
       aria-busy={loading || undefined}
       disabled={disabled || loading}
-      className={cn("h-9 gap-1.5 px-3 text-sm", className)}
+      className={cn(TOOLBAR_CONTROL_CLASS, className)}
       {...props}
     >
       {loading ? (
@@ -36,7 +47,15 @@ export function BatchActionButton({
       ) : (
         <Icon aria-hidden="true" className="size-4" />
       )}
-      <span>{children}</span>
+      {shortLabel == null ? (
+        <span>{children}</span>
+      ) : (
+        <>
+          <span className="hidden sm:inline">{children}</span>
+          <span className="sm:hidden">{shortLabel}</span>
+        </>
+      )}
+      {trailing}
     </Button>
   );
 }

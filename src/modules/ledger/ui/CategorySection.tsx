@@ -104,12 +104,14 @@ export function CategorySection({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="min-w-0 truncate text-sm font-medium">{category.name}</span>
                 {category.entryCount == null ? null : (
-                  <span className="text-[10px] text-muted">
+                  <span className="text-micro text-muted-foreground">
                     {t("categoryItemCount", { count: category.entryCount })}
                   </span>
                 )}
                 {category.id != null && generatingCategoryIds.has(category.id) ? (
-                  <span className="text-[10px] text-muted">{t("generatingMetadata")}</span>
+                  <span className="text-micro text-muted-foreground">
+                    {t("generatingMetadata")}
+                  </span>
                 ) : null}
                 {category.id != null &&
                 failedCategoryIds.has(category.id) &&
@@ -119,7 +121,7 @@ export function CategorySection({
                     onClick={() => onRetryMetadata(category.id!)}
                     variant="ghost"
                     size="sm"
-                    className="min-h-11 px-2 text-[10px] text-danger"
+                    className="min-h-11 px-2 text-micro text-danger"
                   >
                     <RefreshCw className="h-3 w-3" />
                     {t("retryMetadata")}
@@ -127,7 +129,7 @@ export function CategorySection({
                 ) : null}
               </div>
               {category.description !== "" ? (
-                <p className="truncate text-xs text-muted">{category.description}</p>
+                <p className="truncate text-xs text-muted-foreground">{category.description}</p>
               ) : null}
             </div>
             {managing ? (

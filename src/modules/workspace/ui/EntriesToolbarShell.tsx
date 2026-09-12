@@ -29,10 +29,12 @@ const OWN_GESTURE_SELECTOR = [
 
 interface EntriesToolbarShellProps {
   children: ReactNode;
+  /** The span the total covers, e.g. 本月 or 2026年9月1日 - 9月30日. A total with
+   * no range attached cannot be read on its own. */
+  rangeLabel?: string | undefined;
   totalLabel?: string | undefined;
   batchActions?: ReactNode | undefined;
   syncStatus?: ReactNode | undefined;
-  actions?: ReactNode | undefined;
   className?: string;
   /** Manual refresh for the tab. The box doubles as its trigger, so the bar
    * above the tabs carries no button wherever this is passed. */
@@ -42,10 +44,10 @@ interface EntriesToolbarShellProps {
 
 export function EntriesToolbarShell({
   children,
+  rangeLabel,
   totalLabel,
   batchActions,
   syncStatus,
-  actions,
   className = "",
   onRefresh,
   isRefreshing = false,
@@ -92,18 +94,20 @@ export function EntriesToolbarShell({
           onClick={() => void refresh()}
           disabled={isRefreshing}
           title={t("refresh")}
-          className="absolute left-1/2 top-1/2 shrink-0 -translate-x-1/2 -translate-y-1/2 select-none rounded-sm px-0.5 text-[11px] text-muted-foreground/40 transition-colors hover:text-muted-foreground/70"
+          className="absolute left-1/2 top-1/2 shrink-0 -translate-x-1/2 -translate-y-1/2 select-none rounded-sm px-0.5 text-micro text-muted-foreground/60 transition-colors hover:text-muted-foreground"
         >
           {isRefreshing ? t("refreshing") : t("refreshHint")}
         </button>
       ) : null}
-      {totalLabel != null && totalLabel !== "" ? (
-        <AmountText variant="summary" className="ml-auto whitespace-nowrap">
-          {totalLabel}
-        </AmountText>
-      ) : null}
-      {actions != null ? (
-        <div className={totalLabel == null ? "ml-auto" : undefined}>{actions}</div>
+      {rangeLabel != null || (totalLabel != null && totalLabel !== "") ? (
+        <div className="ml-auto flex min-w-0 items-center gap-2 whitespace-nowrap">
+          {rangeLabel != null ? (
+            <span className="text-xs text-muted-foreground sm:text-sm">{rangeLabel}</span>
+          ) : null}
+          {totalLabel != null && totalLabel !== "" ? (
+            <AmountText variant="summary">{totalLabel}</AmountText>
+          ) : null}
+        </div>
       ) : null}
       {batchActions != null ? <div className="min-w-0 basis-full">{batchActions}</div> : null}
     </div>

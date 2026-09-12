@@ -3,7 +3,6 @@ import { useCallback, useMemo } from "react";
 import {
   type PeriodParams,
   type PeriodPreset,
-  periodToDateRange,
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
@@ -16,13 +15,7 @@ import {
   updateLedgerSearchParams,
 } from "../ledger-url-params";
 import { pushLedgerUrl } from "../ledger-url-navigation";
-import {
-  buildLedgerEntryFilters,
-  splitLedgerFilterChange,
-  type StreamStatusPreset,
-  STREAM_STATUS_PRESET_VALUES,
-} from "../ledger-filter-state";
-import type { LedgerAdvancedFilters } from "../initial-query-state";
+import { buildLedgerEntryFilters, splitLedgerFilterChange } from "../ledger-filter-state";
 
 interface FilterParams {
   categoryId: string | null;
@@ -43,15 +36,9 @@ interface UsePeriodFilterParams {
 
 interface UsePeriodFilterReturn {
   periodParams: PeriodParams;
-  dateRange: { startDate: string | null; endDate: string | null };
   filters: EntryFilters;
   filterParams: FilterParams;
-  statuses: SourceDocumentProcessingStatus[];
-  handlePeriodChange: (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
-  handleAdvancedFiltersChange: (newFilters: LedgerAdvancedFilters) => void;
   handleFiltersChange: (newFilters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
-  applyStreamStatusPreset: (preset: StreamStatusPreset) => void;
-  resetFilters: () => void;
 }
 
 function buildPeriodUrlUpdate(
@@ -89,11 +76,6 @@ export function usePeriodFilter({
     return parsed;
   }, [scopedSearchParams]);
 
-  const dateRange = useMemo(
-    () => periodToDateRange(periodParams, timeZone),
-    [periodParams, timeZone]
-  );
-
   const filterParams = useMemo<FilterParams>(
     () => readLedgerFilterParams(searchParams, scope),
     [scope, searchParams]
@@ -102,29 +84,6 @@ export function usePeriodFilter({
   const filters: EntryFilters = useMemo(
     () => buildLedgerEntryFilters(periodParams, filterParams, timeZone),
     [filterParams, periodParams, timeZone]
-  );
-
-  const statuses: SourceDocumentProcessingStatus[] = useMemo(
-    () => filterParams.statuses ?? [],
-    [filterParams.statuses]
-  );
-
-  const handlePeriodChange = useCallback(
-    (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
-      if (options?.skipUrlUpdate) return;
-
-      const params = updateLedgerSearchParams(searchParams, buildPeriodUrlUpdate(newPeriod), scope);
-      pushLedgerUrl(pathname, params, locale, "filter");
-    },
-    [locale, pathname, scope, searchParams]
-  );
-
-  const handleAdvancedFiltersChange = useCallback(
-    (newFilters: LedgerAdvancedFilters) => {
-      const params = updateLedgerSearchParams(searchParams, newFilters, scope);
-      pushLedgerUrl(pathname, params, locale, "filter");
-    },
-    [locale, pathname, scope, searchParams]
   );
 
   const handleFiltersChange = useCallback(
@@ -149,52 +108,10 @@ export function usePeriodFilter({
     [filters, locale, pathname, periodParams, scope, searchParams]
   );
 
-  const applyStreamStatusPreset = useCallback(
-    (preset: StreamStatusPreset) => {
-      const presetStatuses = STREAM_STATUS_PRESET_VALUES[preset];
-      const params = updateLedgerSearchParams(
-        searchParams,
-        {
-          period: "all",
-          minAmount: null,
-          maxAmount: null,
-          statuses: presetStatuses,
-          tab: "stream",
-        },
-        "stream"
-      );
-      pushLedgerUrl(pathname, params, locale, "filter");
-    },
-    [locale, pathname, searchParams]
-  );
-
-  const resetFilters = useCallback(() => {
-    const params = updateLedgerSearchParams(
-      searchParams,
-      {
-        period: "thisMonth",
-        categoryId: null,
-        currency: null,
-        minAmount: null,
-        maxAmount: null,
-        statuses: null,
-        search: null,
-      },
-      scope
-    );
-    pushLedgerUrl(pathname, params, locale, "filter");
-  }, [locale, pathname, scope, searchParams]);
-
   return {
     periodParams,
-    dateRange,
     filters,
     filterParams,
-    statuses,
-    handlePeriodChange,
-    handleAdvancedFiltersChange,
     handleFiltersChange,
-    applyStreamStatusPreset,
-    resetFilters,
   };
 }

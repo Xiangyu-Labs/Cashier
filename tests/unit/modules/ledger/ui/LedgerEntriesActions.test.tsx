@@ -21,7 +21,7 @@ function renderActions() {
     <LedgerEntriesActions
       categories={[category]}
       preferredCurrencies={["USD"]}
-      isProcessing={false}
+      disabled={false}
       isChangingCategory={false}
       isChangingCurrency={false}
       onChangeCategory={vi.fn()}
@@ -37,7 +37,7 @@ describe("LedgerEntriesActions dropdown triggers", () => {
       <LedgerEntriesActions
         categories={[category]}
         preferredCurrencies={["USD"]}
-        isProcessing={false}
+        disabled={false}
         isChangingCategory={false}
         isChangingCurrency={false}
         onChangeCategory={vi.fn()}
@@ -52,7 +52,7 @@ describe("LedgerEntriesActions dropdown triggers", () => {
       <LedgerEntriesActions
         categories={[category]}
         preferredCurrencies={["USD"]}
-        isProcessing={false}
+        disabled={false}
         isChangingCategory={false}
         isChangingCurrency={false}
         onChangeCategory={vi.fn()}

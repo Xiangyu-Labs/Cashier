@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { textRoleClassName } from "@/components/typography";
 
 const DialogDepthContext = React.createContext(0);
 
@@ -155,7 +156,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight focus-visible:outline-none",
+      textRoleClassName("dialogTitle", "leading-none focus-visible:outline-none"),
       className
     )}
     data-dialog-initial-focus=""
@@ -171,7 +172,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn(textRoleClassName("bodyMuted"), className)}
     {...props}
   />
 ));

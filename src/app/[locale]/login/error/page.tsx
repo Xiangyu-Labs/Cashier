@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { textRoleClassName } from "@/components/typography";
 
 export default function LoginErrorPage() {
   const t = useTranslations("Auth");
@@ -55,10 +56,10 @@ export default function LoginErrorPage() {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-text mb-2">{errorMessage.title}</h1>
+        <h1 className={textRoleClassName("pageTitle", "mb-2")}>{errorMessage.title}</h1>
 
         {/* Description */}
-        <p className="text-muted mb-8">{errorMessage.desc}</p>
+        <p className={textRoleClassName("bodyMuted", "mb-8")}>{errorMessage.desc}</p>
 
         {/* Try Again Button */}
         <Button asChild className="h-11 px-8">

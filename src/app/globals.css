@@ -40,6 +40,18 @@
 
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono-list);
+
+  /*
+   * The frozen type scale. Text in `src/**` uses micro 11, xs 12, sm 14, base
+   * 16, lg 18, 2xl 24 or the responsive 3xl/4xl pair the stats hero uses.
+   * `micro` is the only tier Tailwind does not ship, and it replaces the ad-hoc
+   * `text-[10px]` / `text-[11px]` values. Use the roles in
+   * src/components/typography.ts rather than a raw size where one fits; the
+   * architecture check rejects arbitrary `text-[...]` sizes. Larger sizes are
+   * reserved for display type — the 404 watermark, OTP and amount fields.
+   */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 0.875rem;
 }
 
 :root {

@@ -1,5 +1,6 @@
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { textRoleClassName } from "@/components/typography";
 
 interface EmptyStateProps {
   title: string;
@@ -14,9 +15,9 @@ export function EmptyState({ title, description, actionLabel, onAction }: EmptyS
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-border bg-bg text-muted-foreground">
         <FileText className="h-5 w-5" aria-hidden="true" />
       </div>
-      <h3 className="text-sm font-semibold text-text">{title}</h3>
+      <h3 className={textRoleClassName("cardTitle")}>{title}</h3>
       {description != null && description !== "" && (
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
+        <p className={textRoleClassName("bodyMuted", "mt-1 max-w-sm")}>{description}</p>
       )}
       {actionLabel != null && onAction != null && (
         <Button type="button" size="sm" className="mt-4" onClick={onAction}>
