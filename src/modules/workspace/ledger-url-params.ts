@@ -5,7 +5,9 @@ import { isValidDateString } from "@/lib/date-utils";
 
 const STATUSES_URL_PARAM = "statuses";
 export type LedgerFilterScope = "stream" | "details";
-type LedgerDetailType = "source-document" | "ledger-entry";
+/** Only records have a detail sheet; an entry URL is no longer a valid target
+ * and parses to null, so a stale `detailType=ledger-entry` link is dropped. */
+type LedgerDetailType = "source-document";
 export type StatsRange = "week" | "month" | "year";
 export type StatsView = "heatmap" | "trend";
 
@@ -158,7 +160,7 @@ export interface LedgerUrlUpdate {
   search?: string | null;
 }
 
-const DETAIL_TYPES = new Set<LedgerDetailType>(["source-document", "ledger-entry"]);
+const DETAIL_TYPES = new Set<LedgerDetailType>(["source-document"]);
 const STATS_RANGES = new Set<StatsRange>(["week", "month", "year"]);
 const STATS_VIEWS = new Set<StatsView>(["heatmap", "trend"]);
 const MIN_STATS_OFFSET: Readonly<Record<StatsRange, number>> = {

@@ -48,7 +48,7 @@ describe("findBoundaryViolations", () => {
   it.each([
     ["use-cases", "@/modules/ledger/application/use-cases/list-entries"],
     ["hooks", "@/modules/ledger/hooks/useCategoryMutations"],
-    ["ui", "@/modules/ledger/ui/LedgerEntryDetailModal"],
+    ["ui", "@/modules/ledger/ui/LedgerEntryCard"],
     ["server actions", "@/modules/currency/server-actions/convert-currency"],
   ])("rejects src/lib importing module %s", (_label, specifier) => {
     const violations = findBoundaryViolations(
@@ -63,7 +63,7 @@ describe("findBoundaryViolations", () => {
   it("rejects src/components/providers importing module UI", () => {
     const violations = findBoundaryViolations(
       "src/components/providers/ModalStackRenderer.tsx",
-      'import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";'
+      'import { LedgerEntryCard } from "@/modules/ledger/ui/LedgerEntryCard";'
     );
     expect(violations).toEqual([
       "src/components/providers/ModalStackRenderer.tsx: src/components/providers must not import module UI",
@@ -215,7 +215,7 @@ describe("findBoundaryViolations", () => {
     expect(
       findBoundaryViolations(
         "src/components/providers/Barrel.tsx",
-        'export { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";'
+        'export { LedgerEntryCard } from "@/modules/ledger/ui/LedgerEntryCard";'
       )
     ).toEqual([
       "src/components/providers/Barrel.tsx: src/components/providers must not import module UI",

@@ -7,9 +7,9 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import "@/instrumentation-client";
 
 const ledgerId = "ledger-1";
-const detailId = "entry-1";
-const detailSearch = `detailType=ledger-entry&detailId=${detailId}`;
-const guardKey = `ledger-entry-detail:${ledgerId}:${detailId}`;
+const detailId = "document-1";
+const detailSearch = `detailType=source-document&detailId=${detailId}`;
+const guardKey = `source-document-detail:${ledgerId}:${detailId}`;
 
 describe("useLedgerHistorySync", () => {
   beforeEach(() => {
@@ -56,7 +56,7 @@ describe("useLedgerHistorySync", () => {
 
     await waitFor(() =>
       expect(useModalStackStore.getState().stack).toEqual([
-        { type: "ledger-entry", id: detailId, ledgerId, returnFocus: null },
+        { type: "source-document", id: detailId, ledgerId, returnFocus: null },
       ])
     );
 

@@ -1,5 +1,5 @@
 export function ledgerDetailLeaveGuardKey(
-  type: "source-document" | "ledger-entry",
+  type: "source-document",
   ledgerId: string,
   id: string
 ): string {

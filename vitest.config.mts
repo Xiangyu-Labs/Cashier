@@ -46,6 +46,7 @@ const unitDomTypeScriptTests = [
   "tests/unit/api/v1/source-documents-route-omission.test.ts",
   "tests/unit/lib/ai/openai-client.test.ts",
   "tests/unit/lib/image-utils.test.ts",
+  "tests/unit/lib/navigation/ledger-detail-navigation.test.ts",
   "tests/unit/lib/utils.test.ts",
   "tests/unit/modal-stack.test.ts",
   "tests/unit/modules/currency/useConvertedAmount.test.ts",

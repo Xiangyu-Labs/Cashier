@@ -4,8 +4,8 @@ import { ModalStackRenderer } from "@/modules/workspace/ui/ModalStackRenderer";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
-vi.mock("@/modules/ledger/ui/LedgerEntryDetailWrapper", () => ({
-  LedgerEntryDetailWrapper: ({
+vi.mock("@/modules/source-document/ui/SourceDocumentDetailWrapper", () => ({
+  SourceDocumentDetailWrapper: ({
     open,
     onClose,
     onBack,
@@ -16,16 +16,12 @@ vi.mock("@/modules/ledger/ui/LedgerEntryDetailWrapper", () => ({
     onBack?: () => void;
     onExitComplete?: () => void;
   }) => (
-    <div data-testid="ledger-modal" data-open={open}>
+    <div data-testid="detail-modal" data-open={open}>
       <button onClick={onClose}>close</button>
       {onBack != null && <button onClick={onBack}>back</button>}
       {!open && onExitComplete != null && <button onClick={onExitComplete}>exit complete</button>}
     </div>
   ),
-}));
-
-vi.mock("@/modules/source-document/ui/SourceDocumentDetailWrapper", () => ({
-  SourceDocumentDetailWrapper: () => null,
 }));
 
 describe("ModalStackRenderer", () => {
@@ -38,15 +34,15 @@ describe("ModalStackRenderer", () => {
     render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     act(() => {
       useModalStackStore.getState().push({
-        type: "ledger-entry",
-        id: "entry-1",
+        type: "source-document",
+        id: "document-1",
         ledgerId: "ledger-1",
       });
     });
 
     fireEvent.click(await screen.findByRole("button", { name: "close" }));
     expect(useModalStackStore.getState().stack).toHaveLength(1);
-    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "false");
+    expect(screen.getByTestId("detail-modal")).toHaveAttribute("data-open", "false");
 
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
     expect(useModalStackStore.getState().stack).toHaveLength(0);
@@ -54,14 +50,14 @@ describe("ModalStackRenderer", () => {
 
   it("can reopen the same item after its exit completes", async () => {
     render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
-    const item = { type: "ledger-entry" as const, id: "entry-1", ledgerId: "ledger-1" };
+    const item = { type: "source-document" as const, id: "document-1", ledgerId: "ledger-1" };
 
     act(() => useModalStackStore.getState().push(item));
     fireEvent.click(await screen.findByRole("button", { name: "close" }));
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
     act(() => useModalStackStore.getState().push(item));
 
-    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
+    expect(screen.getByTestId("detail-modal")).toHaveAttribute("data-open", "true");
   });
 
   it("returns to the previous detail only after the top exit completes", async () => {
@@ -69,10 +65,10 @@ describe("ModalStackRenderer", () => {
     act(() => {
       useModalStackStore
         .getState()
-        .push({ type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" });
+        .push({ type: "source-document", id: "document-1", ledgerId: "ledger-1" });
       useModalStackStore
         .getState()
-        .push({ type: "ledger-entry", id: "entry-2", ledgerId: "ledger-1" });
+        .push({ type: "source-document", id: "document-2", ledgerId: "ledger-1" });
     });
 
     fireEvent.click(await screen.findByRole("button", { name: "back" }));
@@ -80,9 +76,9 @@ describe("ModalStackRenderer", () => {
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
 
     expect(useModalStackStore.getState().stack).toEqual([
-      { type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" },
+      { type: "source-document", id: "document-1", ledgerId: "ledger-1" },
     ]);
-    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
+    expect(screen.getByTestId("detail-modal")).toHaveAttribute("data-open", "true");
   });
 
   it("keeps lower wrappers mounted while only opening the top wrapper", async () => {
@@ -90,13 +86,13 @@ describe("ModalStackRenderer", () => {
     act(() => {
       useModalStackStore
         .getState()
-        .push({ type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" });
+        .push({ type: "source-document", id: "document-1", ledgerId: "ledger-1" });
       useModalStackStore
         .getState()
-        .push({ type: "ledger-entry", id: "entry-2", ledgerId: "ledger-1" });
+        .push({ type: "source-document", id: "document-2", ledgerId: "ledger-1" });
     });
 
-    const modals = screen.getAllByTestId("ledger-modal");
+    const modals = screen.getAllByTestId("detail-modal");
     expect(modals).toHaveLength(2);
     expect(modals[0]).toHaveAttribute("data-open", "false");
     expect(modals[1]).toHaveAttribute("data-open", "true");
@@ -105,10 +101,10 @@ describe("ModalStackRenderer", () => {
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
 
     expect(useModalStackStore.getState().stack).toEqual([
-      { type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" },
+      { type: "source-document", id: "document-1", ledgerId: "ledger-1" },
     ]);
-    expect(screen.getAllByTestId("ledger-modal")).toHaveLength(1);
-    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
+    expect(screen.getAllByTestId("detail-modal")).toHaveLength(1);
+    expect(screen.getByTestId("detail-modal")).toHaveAttribute("data-open", "true");
   });
 
   it("focuses the page fallback when the original trigger was removed", async () => {
@@ -127,8 +123,8 @@ describe("ModalStackRenderer", () => {
     render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     act(() => {
       useModalStackStore.getState().push({
-        type: "ledger-entry",
-        id: "entry-1",
+        type: "source-document",
+        id: "document-1",
         ledgerId: "ledger-1",
         returnFocus: removedTrigger,
       });
@@ -149,15 +145,15 @@ describe("ModalStackRenderer", () => {
       .registerLeaveGuard("source-document-retry-navigation", { requestLeave });
     useModalStackStore
       .getState()
-      .push({ type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" });
+      .push({ type: "source-document", id: "document-1", ledgerId: "ledger-1" });
     useModalStackStore
       .getState()
-      .push({ type: "ledger-entry", id: "entry-2", ledgerId: "ledger-1" });
+      .push({ type: "source-document", id: "document-2", ledgerId: "ledger-1" });
     render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     fireEvent.click(screen.getByRole("button", { name: "back" }));
     expect(requestLeave).toHaveBeenCalledTimes(1);
-    expect(screen.getAllByTestId("ledger-modal")[1]).toHaveAttribute("data-open", "true");
+    expect(screen.getAllByTestId("detail-modal")[1]).toHaveAttribute("data-open", "true");
     act(() => requestLeave.mock.calls[0]![0]());
-    expect(screen.getAllByTestId("ledger-modal")[1]).toHaveAttribute("data-open", "false");
+    expect(screen.getAllByTestId("detail-modal")[1]).toHaveAttribute("data-open", "false");
   });
 });

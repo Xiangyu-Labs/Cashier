@@ -4,6 +4,7 @@ import {
   parseStatusesParam,
   formatStatusesParam,
   migrateLegacyLedgerSearchParams,
+  normalizeLedgerUrlSearchParams,
   readLedgerFilterParams,
   readStatsSearchParams,
   setStatsSearchParams,
@@ -146,14 +147,14 @@ describe("ledger-url-params", () => {
     window.history.replaceState(
       { cashier: { ledgerNavigation: true, kind: "detail" } },
       "",
-      "/ledger/test-id?detailType=ledger-entry&detailId=entry-1"
+      "/ledger/test-id?detailType=source-document&detailId=document-1"
     );
     const replaceState = vi.spyOn(window.history, "replaceState");
     const pushState = vi.spyOn(window.history, "pushState");
 
     const url = pushLedgerUrl(
       "/ledger/test-id",
-      new URLSearchParams("tab=stats&detailType=ledger-entry&detailId=entry-1"),
+      new URLSearchParams("tab=stats&detailType=source-document&detailId=document-1"),
       "en",
       "tab"
     );
@@ -161,6 +162,14 @@ describe("ledger-url-params", () => {
     expect(url).toBe("/en/ledger/test-id?tab=stats");
     expect(replaceState).toHaveBeenCalled();
     expect(pushState).not.toHaveBeenCalled();
+  });
+
+  it("drops a stale ledger-entry detail link now that entries have no sheet", () => {
+    const normalized = normalizeLedgerUrlSearchParams(
+      new URLSearchParams("tab=details&detailType=ledger-entry&detailId=entry-1")
+    );
+
+    expect(normalized?.toString()).toBe("tab=details");
   });
 
   it.each([

@@ -68,8 +68,8 @@ describe("ModalStackGate", () => {
 
     act(() => {
       useModalStackStore.getState().push({
-        type: "ledger-entry",
-        id: "entry-1",
+        type: "source-document",
+        id: "document-2",
         ledgerId: "ledger-1",
       });
     });

@@ -12,7 +12,7 @@ import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGroup
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import { useDetailsBatchController } from "./useDetailsBatchController";
 import { DetailsTabView } from "./DetailsTabView";
-import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
+import { openLedgerEntrySourceDocument } from "@/lib/navigation/ledger-detail-navigation";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -78,9 +78,10 @@ export function DetailsTab({
     isFetchNextPageError: data.isFetchNextPageError,
     fetchNextPage: data.fetchNextPage,
   });
+  // An entry has no detail sheet of its own — opening one lands on the record
+  // it belongs to, the same sheet the stream card opens.
   const handleViewEntry = useCallback(
-    (entry: LedgerEntry) =>
-      openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId }),
+    (entry: LedgerEntry) => openLedgerEntrySourceDocument(entry),
     []
   );
   return (

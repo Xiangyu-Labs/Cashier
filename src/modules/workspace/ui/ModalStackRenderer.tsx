@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui/SourceDocumentDetailWrapper";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { closeLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
@@ -73,10 +72,6 @@ export function ModalStackRenderer({
       ...(timeZone != null ? { timeZone } : {}),
     };
 
-    return stackItem.type === "source-document" ? (
-      <SourceDocumentDetailWrapper key={key} {...sharedProps} />
-    ) : (
-      <LedgerEntryDetailWrapper key={key} {...sharedProps} />
-    );
+    return <SourceDocumentDetailWrapper key={key} {...sharedProps} />;
   });
 }

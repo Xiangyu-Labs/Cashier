@@ -7,7 +7,7 @@ describe("Modal Stack Store", () => {
   });
 
   it("maintains back-navigation state across push, pop, and close", () => {
-    useModalStackStore.getState().push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    useModalStackStore.getState().push({ type: "source-document", id: "1", ledgerId: "ledger-1" });
     useModalStackStore.getState().push({ type: "source-document", id: "2", ledgerId: "ledger-1" });
     expect(useModalStackStore.getState().canGoBack).toBe(true);
     expect(useModalStackStore.getState().isOpen("2")).toBe(true);
@@ -22,13 +22,13 @@ describe("Modal Stack Store", () => {
 
   it("truncates the stack when revisiting an existing entity", () => {
     const state = useModalStackStore.getState();
-    state.push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    state.push({ type: "source-document", id: "1", ledgerId: "ledger-1" });
     state.push({ type: "source-document", id: "2", ledgerId: "ledger-1" });
-    state.push({ type: "ledger-entry", id: "3", ledgerId: "ledger-1" });
-    state.push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    state.push({ type: "source-document", id: "3", ledgerId: "ledger-1" });
+    state.push({ type: "source-document", id: "1", ledgerId: "ledger-1" });
 
     expect(useModalStackStore.getState().stack).toEqual([
-      { type: "ledger-entry", id: "1", ledgerId: "ledger-1" },
+      { type: "source-document", id: "1", ledgerId: "ledger-1" },
     ]);
     expect(useModalStackStore.getState().canGoBack).toBe(false);
   });

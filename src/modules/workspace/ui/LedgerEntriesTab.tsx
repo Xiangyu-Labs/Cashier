@@ -3,7 +3,10 @@ import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { type PeriodParams } from "@/lib/period-utils";
-import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
+import {
+  openLedgerDetail,
+  openLedgerEntrySourceDocument,
+} from "@/lib/navigation/ledger-detail-navigation";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
 import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
@@ -87,9 +90,12 @@ export function LedgerEntriesTab({
     []
   );
 
-  const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
-    openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
-  }, []);
+  // An entry row opens the record it belongs to; entries have no sheet of
+  // their own.
+  const handleViewLedgerEntry = useCallback(
+    (entry: LedgerEntry) => openLedgerEntrySourceDocument(entry),
+    []
+  );
 
   const handleDeleteSourceConfirm = useCallback(
     (doc: SourceDocument) =>

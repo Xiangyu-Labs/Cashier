@@ -1,8 +1,15 @@
 import { create } from "zustand";
 
-export type ModalItem =
-  | { type: "source-document"; id: string; ledgerId: string; returnFocus?: HTMLElement | null }
-  | { type: "ledger-entry"; id: string; ledgerId: string; returnFocus?: HTMLElement | null };
+/**
+ * The stack only ever holds source documents: an entry has no sheet of its
+ * own, and the row that opens one lands on the record it belongs to.
+ */
+export type ModalItem = {
+  type: "source-document";
+  id: string;
+  ledgerId: string;
+  returnFocus?: HTMLElement | null;
+};
 
 interface ModalStackState {
   stack: ModalItem[];

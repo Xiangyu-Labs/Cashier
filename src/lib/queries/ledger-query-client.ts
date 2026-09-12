@@ -13,7 +13,6 @@ type QueryActions = {
     input: import("@/modules/source-document/contract-refresh").LedgerRefreshRequest
   ) => Promise<import("@/modules/source-document/contract-refresh").LedgerRefreshResult>;
   entries: typeof import("@/modules/ledger/server/list-entries").getLedgerEntriesAction;
-  entry: typeof import("@/modules/ledger/server/get-entry").getLedgerEntryAction;
   summary: typeof import("@/modules/ledger/server/stats").getLedgerStatsAction;
   stats: typeof import("@/modules/stats/server/get-enhanced-stats").getEnhancedStats;
 };
@@ -40,6 +39,5 @@ export const listStreamPageAction = query("stream");
 export const getStreamTotalAction = query("total");
 export const getStreamRefreshAction = query("refresh");
 export const getLedgerEntriesAction = query("entries");
-export const getLedgerEntryAction = query("entry");
 export const getLedgerStatsAction = query("summary");
 export const getEnhancedStats = query("stats");

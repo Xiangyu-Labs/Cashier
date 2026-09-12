@@ -31,6 +31,23 @@ export function openLedgerDetail(item: Omit<ModalItem, "returnFocus">): void {
   );
 }
 
+/**
+ * A ledger entry has no detail sheet of its own, so opening one lands on the
+ * record it belongs to — the sheet the stream card opens. Entries are stored
+ * with a source document, so the guard only covers a malformed payload.
+ */
+export function openLedgerEntrySourceDocument(entry: {
+  sourceDocumentId: string | null;
+  ledgerId: string;
+}): void {
+  if (entry.sourceDocumentId == null || entry.sourceDocumentId === "") return;
+  openLedgerDetail({
+    type: "source-document",
+    id: entry.sourceDocumentId,
+    ledgerId: entry.ledgerId,
+  });
+}
+
 export function closeLedgerDetail(): void {
   const modalState = useModalStackStore.getState();
   const current = modalState.stack.at(-1);
